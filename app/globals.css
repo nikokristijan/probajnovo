@@ -11,82 +11,187 @@ body { background: var(--background); color: var(--foreground); }
 img, svg { display: block; max-width: 100%; }
 
 /* =====================================================================
-     NOVO — agencijska stranica (Space Grotesk + JetBrains Mono, bijelo/crno
-   s plavo-narančastim akcentima). Vjerna kopija stvarnog novo.hr dizajna.
+   NOVO — agencijska početna stranica. Fiksni, cjeloekranski "OS/folder"
+   izgled bez ikakvog scrolla stranice (inspiracija: bf.inc) — crno-bijelo,
+   minimalistički, s plutajućim EXHIBIT i projekt prozorima preko svega.
    ===================================================================== */
-.novo {
-  position: relative;
-font-family: var(--font-space-grotesk), "Arial Black", sans-serif;
-background: #fff;
-color: #000;
-min-height: 100vh;
---novo-blue: #0000c3;
---novo-orange: #ff7f00;
+html.novo-lock-scroll,
+html.novo-lock-scroll body {
+  overflow: hidden;
+  height: 100%;
+  overscroll-behavior: none;
+}
+
+.novo-os {
+  position: fixed;
+  inset: 0;
+  height: 100dvh;
+  width: 100dvw;
+  display: grid;
+  grid-template-columns: 160px 1fr 230px;
+  grid-template-rows: 64px 1fr 36px;
+  grid-template-areas:
+    "top   top    top"
+    "nav   main   side"
+    "foot  foot   foot";
+  font-family: var(--font-space-grotesk), "Arial Black", sans-serif;
+  background: #fff;
+  color: #000;
+  overflow: hidden;
+  --novo-blue: #0000c3;
+  --novo-orange: #ff7f00;
+}
+.novo-os .mono { font-family: var(--font-jetbrains-mono), monospace; }
+.novo-os .muted { color: rgba(0, 0, 0, 0.5); }
+.novo-os button, .novo-os a { font-family: inherit; }
+.novo-os button:focus-visible, .novo-os a:focus-visible { outline: 2px solid var(--novo-blue); outline-offset: 2px; }
+
+@media (max-width: 720px) {
+  .novo-os {
+    grid-template-columns: 1fr;
+    grid-template-rows: 56px 40px 1fr auto 32px;
+    grid-template-areas:
+      "top"
+      "nav"
+      "main"
+      "side"
+      "foot";
   }
-.novo .mono { font-family: var(--font-jetbrains-mono), monospace; }
-.novo .muted { color: rgba(0, 0, 0, 0.5); }
-.novo button, .novo a { font-family: inherit; }
-.novo button:focus-visible, .novo a:focus-visible { outline: 2px solid var(--novo-blue); outline-offset: 2px; }
+}
 
-.novo-header {
+.novo-os-topbar {
+  grid-area: top;
   display: flex; align-items: center; justify-content: space-between;
-padding: 20px 32px; border-bottom: 1px solid rgba(0, 0, 0, 0.1);
-position: sticky; top: 0; background: #fff; z-index: 3;
+  padding: 0 20px; border-bottom: 1px solid rgba(0,0,0,0.1);
 }
-.novo-logo { font-family: var(--font-space-grotesk), sans-serif; font-weight: 700; font-size: 20px; letter-spacing: -0.02em; color: var(--novo-orange); text-decoration: none; }
-.novo-nav { display: flex; gap: 20px; }
-.novo-nav a {
-  background: none; border: none; cursor: pointer; color: #000; padding: 4px; text-decoration: none;
-font-family: var(--font-jetbrains-mono), monospace; font-size: 11px; letter-spacing: 0.12em;
-transition: color 0.15s ease;
+.novo-os-logo { font-weight: 700; font-size: 18px; letter-spacing: -0.02em; color: var(--novo-orange); }
+.novo-os-coords { font-size: 11px; letter-spacing: 0.05em; display: none; }
+@media (min-width: 720px) { .novo-os-coords { display: inline; } }
+
+.novo-os-nav {
+  grid-area: nav;
+  display: flex; flex-direction: column; gap: 4px;
+  padding: 20px 12px; border-right: 1px solid rgba(0,0,0,0.1);
+  overflow-y: auto;
 }
-.novo-nav a:hover { color: var(--novo-orange); }
+@media (max-width: 720px) {
+  .novo-os-nav { flex-direction: row; padding: 8px 16px; border-right: none; border-bottom: 1px solid rgba(0,0,0,0.1); gap: 18px; }
+}
+.novo-os-navbtn {
+  background: none; border: none; cursor: pointer; text-align: left; color: rgba(0,0,0,0.45);
+  font-family: var(--font-jetbrains-mono), monospace; font-size: 11px; letter-spacing: 0.12em;
+  padding: 6px 4px; transition: color 0.15s ease;
+}
+.novo-os-navbtn:hover { color: #000; }
+.novo-os-navbtn.active { color: #000; position: relative; }
+.novo-os-navbtn.active::before { content: "●"; color: var(--novo-orange); font-size: 6px; margin-right: 6px; vertical-align: middle; }
 
-.novo .hero { padding: 48px 32px 40px; }
-.novo .hero h1 { font-size: 28px; line-height: 1.25; max-width: 640px; font-weight: 500; letter-spacing: -0.01em; margin: 0; }
-@media (min-width: 640px) { .novo .hero h1 { font-size: 42px; } }
+.novo-os-main {
+  grid-area: main;
+  overflow: hidden;
+  display: flex; flex-direction: column;
+  padding: 32px;
+  min-height: 0;
+}
+.novo-os-hero { max-width: 620px; margin: auto 0; display: flex; flex-direction: column; gap: 22px; }
+.novo-os-hero h1 { font-size: 26px; line-height: 1.3; font-weight: 500; letter-spacing: -0.01em; margin: 0; }
+@media (min-width: 720px) { .novo-os-hero h1 { font-size: 38px; } }
+.novo-os-cta { align-self: flex-start; background: #000; color: #fff; border: none; padding: 12px 20px; font-size: 11px; letter-spacing: 0.1em; cursor: pointer; }
+.novo-os-cta:hover { background: var(--novo-orange); }
 
-.novo .section { padding: 56px 32px 40px; }
-.novo .section-title {
+.novo-os-panel { display: flex; flex-direction: column; min-height: 0; height: 100%; }
+.section-title {
   font-family: var(--font-jetbrains-mono), monospace; font-size: 11px; letter-spacing: 0.15em;
-color: rgba(0, 0, 0, 0.4); margin: 0 0 16px; display: flex; align-items: center; gap: 7px;
+  color: rgba(0, 0, 0, 0.4); margin: 0 0 16px; display: flex; align-items: center; gap: 7px; flex-shrink: 0;
 }
-.novo .section-title::before { content: ""; width: 6px; height: 6px; background: var(--novo-orange); display: inline-block; flex-shrink: 0; }
+.section-title::before { content: ""; width: 6px; height: 6px; background: var(--novo-orange); display: inline-block; flex-shrink: 0; }
 
-.novo .studies-head, .novo .studies-row-grid { display: grid; grid-template-columns: 44px 1fr 150px 60px; gap: 12px; align-items: center; }
-@media (max-width: 640px) {
-  .novo .studies-head, .novo .studies-row-grid { grid-template-columns: 36px 1fr 56px; }
-  .novo .col-cat { display: none; }
+.studies-head, .studies-row-grid { display: grid; grid-template-columns: 44px 1fr 150px 60px; gap: 12px; align-items: center; }
+@media (max-width: 720px) {
+  .studies-head, .studies-row-grid { grid-template-columns: 36px 1fr 56px; }
+  .col-cat { display: none; }
 }
-.novo .studies-head { border-bottom: 1px solid #000; padding-bottom: 8px; font-family: var(--font-jetbrains-mono), monospace; font-size: 11px; letter-spacing: 0.1em; color: rgba(0, 0, 0, 0.5); }
-.novo .studies-row { width: 100%; background: none; border: none; border-bottom: 1px solid rgba(0, 0, 0, 0.1); padding: 18px 0; text-align: left; display: block; text-decoration: none; color: inherit; }
-.novo .studies-row:hover .proj-name { text-decoration: underline; text-decoration-color: var(--novo-orange); text-decoration-thickness: 2px; }
-.novo .proj-no { font-family: var(--font-jetbrains-mono), monospace; font-size: 12px; color: var(--novo-blue); }
-.novo .proj-name { font-size: 17px; }
-.novo .proj-cat { font-family: var(--font-jetbrains-mono), monospace; font-size: 12px; color: rgba(0, 0, 0, 0.5); }
-.novo .proj-year { font-family: var(--font-jetbrains-mono), monospace; font-size: 12px; color: rgba(0, 0, 0, 0.5); text-align: right; }
-.novo .studies-empty { font-family: var(--font-jetbrains-mono), monospace; font-size: 13px; color: rgba(0,0,0,.5); padding: 18px 0; }
+.studies-head { border-bottom: 1px solid #000; padding-bottom: 8px; font-family: var(--font-jetbrains-mono), monospace; font-size: 11px; letter-spacing: 0.1em; color: rgba(0, 0, 0, 0.5); flex-shrink: 0; }
+.studies-scroll { overflow-y: auto; min-height: 0; flex: 1; }
+.studies-row { width: 100%; background: none; border: none; border-bottom: 1px solid rgba(0, 0, 0, 0.1); padding: 16px 0; text-align: left; display: block; cursor: pointer; color: inherit; }
+.studies-row:hover .proj-name { text-decoration: underline; text-decoration-color: var(--novo-orange); text-decoration-thickness: 2px; }
+.proj-no { font-family: var(--font-jetbrains-mono), monospace; font-size: 12px; color: var(--novo-blue); }
+.proj-name { font-size: 16px; }
+.proj-cat { font-family: var(--font-jetbrains-mono), monospace; font-size: 12px; color: rgba(0, 0, 0, 0.5); }
+.proj-year { font-family: var(--font-jetbrains-mono), monospace; font-size: 12px; color: rgba(0, 0, 0, 0.5); text-align: right; }
+.studies-empty { font-family: var(--font-jetbrains-mono), monospace; font-size: 13px; color: rgba(0,0,0,.5); padding: 18px 0; }
 
-.novo .office-grid { display: grid; grid-template-columns: 1fr; gap: 32px; max-width: 720px; }
-@media (min-width: 640px) { .novo .office-grid { grid-template-columns: 1fr 1fr; } }
-.novo .office-text { font-family: var(--font-jetbrains-mono), monospace; font-size: 14px; line-height: 1.7; color: rgba(0, 0, 0, 0.7); margin: 0; white-space: pre-line; }
-.novo .office-contacts { display: flex; flex-direction: column; gap: 10px; font-size: 14px; }
-.novo .office-contacts a { font-family: var(--font-jetbrains-mono), monospace; color: #000; text-decoration: none; width: fit-content; display: inline-flex; align-items: center; gap: 6px; transition: color 0.15s ease; }
-.novo .office-contacts a:hover { color: var(--novo-orange); text-decoration: underline; }
-.novo .office-contacts span { font-family: var(--font-jetbrains-mono), monospace; color: rgba(0, 0, 0, 0.5); }
+.office-text { font-family: var(--font-jetbrains-mono), monospace; font-size: 13.5px; line-height: 1.8; color: rgba(0, 0, 0, 0.7); margin: 0; white-space: pre-line; overflow-y: auto; }
 
-.novo-footer { padding: 20px 32px; border-top: 1px solid rgba(0, 0, 0, 0.1); display: flex; align-items: center; justify-content: space-between; font-family: var(--font-jetbrains-mono), monospace; font-size: 11px; letter-spacing: 0.1em; color: rgba(0, 0, 0, 0.3); }
+.novo-os-side {
+  grid-area: side;
+  display: flex; flex-direction: column; gap: 22px; justify-content: center;
+  padding: 24px 22px; border-left: 1px solid rgba(0,0,0,0.1); overflow-y: auto;
+}
+@media (max-width: 720px) {
+  .novo-os-side { flex-direction: row; flex-wrap: wrap; border-left: none; border-top: 1px solid rgba(0,0,0,0.1); padding: 12px 16px; gap: 16px; justify-content: flex-start; }
+}
+.novo-os-side-block { display: flex; flex-direction: column; gap: 4px; font-size: 13px; }
+.novo-os-side-block a { color: #000; text-decoration: none; word-break: break-all; }
+.novo-os-side-block a:hover { color: var(--novo-orange); text-decoration: underline; }
+.novo-os-side-block span:last-child:not(.mono) { color: rgba(0,0,0,0.7); }
 
-/* halftone placeholder tile (umjesto stvarnih fotografija dok ih ne dodaš) */
-.novo .halftone { position: relative; width: 100%; height: 100%; overflow: hidden; background: #efefef; }
-.novo .halftone::before { content: ""; position: absolute; inset: 0; background-image: radial-gradient(circle, rgba(0,0,0,.18) 1.6px, transparent 1.7px); background-size: 9px 9px; }
-.novo .halftone-label { position: absolute; left: 10px; bottom: 8px; font-family: var(--font-jetbrains-mono), monospace; font-size: 10px; letter-spacing: .12em; color: rgba(0,0,0,.42); text-transform: uppercase; }
+.novo-os-footer {
+  grid-area: foot;
+  padding: 0 20px; border-top: 1px solid rgba(0, 0, 0, 0.1); display: flex; align-items: center; justify-content: space-between;
+  font-family: var(--font-jetbrains-mono), monospace; font-size: 10px; letter-spacing: 0.1em; color: rgba(0, 0, 0, 0.35);
+}
+
+/* Plutajući prozor — dijele ga EXHIBIT i pop-up prozori projekata */
+.floating-window {
+  position: fixed;
+  background: #fff;
+  border: 1px solid rgba(0,0,0,0.18);
+  border-top: 3px solid var(--novo-blue);
+  box-shadow: 0 10px 30px rgba(0,0,0,0.16);
+  max-width: calc(100vw - 24px);
+}
+.fw-titlebar {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 8px 10px; border-bottom: 1px solid rgba(0,0,0,0.1);
+  font-family: var(--font-jetbrains-mono), monospace; font-size: 10px; letter-spacing: 0.1em;
+  cursor: grab; touch-action: none; user-select: none; background: #fafafa;
+}
+.fw-titlebar:active { cursor: grabbing; }
+.fw-title { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.fw-controls { display: flex; align-items: center; gap: 6px; flex-shrink: 0; }
+.fw-btn { background: none; border: none; cursor: pointer; padding: 2px 4px; color: #000; font-size: 13px; line-height: 1; transition: color 0.15s ease; }
+.fw-btn:hover { color: var(--novo-orange); }
+.fw-chevron { display: inline-block; transition: transform 0.15s ease; }
+.fw-chevron-up { transform: rotate(180deg); }
+
+/* EXHIBIT — ambijentalna jedna slika koja se auto-scrolla prema dolje u petlji */
+.exhibit-viewport { height: 210px; overflow: hidden; position: relative; }
+@media (min-width: 640px) { .exhibit-viewport { height: 240px; } }
+.exhibit-track { display: flex; flex-direction: column; animation: exhibit-scroll 24s linear infinite; }
+.floating-window:hover .exhibit-track { animation-play-state: paused; }
+@keyframes exhibit-scroll { from { transform: translateY(0); } to { transform: translateY(-50%); } }
+.exhibit-frame { width: 100%; height: 210px; flex-shrink: 0; }
+@media (min-width: 640px) { .exhibit-frame { height: 240px; } }
+.exhibit-img { width: 100%; height: 100%; object-fit: cover; display: block; filter: grayscale(1); }
+
+/* Pop-up prozor projekta */
+.proj-viewport { width: 100%; }
+.proj-image-btn { display: block; width: 100%; height: 220px; padding: 0; border: none; cursor: pointer; background: #efefef; }
+@media (min-width: 640px) { .proj-image-btn { height: 260px; } }
+.proj-img { width: 100%; height: 100%; object-fit: cover; display: block; filter: grayscale(1); }
+.proj-info { padding: 10px 12px 12px; display: flex; flex-direction: column; gap: 8px; }
+.proj-desc { font-family: var(--font-jetbrains-mono), monospace; font-size: 11px; line-height: 1.5; color: rgba(0,0,0,0.7); margin: 0; }
+.proj-meta { display: flex; align-items: center; justify-content: space-between; font-size: 10px; }
+.proj-actions { display: flex; flex-direction: column; gap: 4px; margin-top: 2px; }
+.link { display: inline-flex; align-items: center; gap: 4px; color: #000; text-decoration: underline; font-size: 11px; width: fit-content; transition: color 0.15s ease; }
+.link:hover { color: var(--novo-orange); }
 
 /* =====================================================================
    VIKENDICA — predložak za pojedinačnu stranicu na /[slug].
-      Svaka vikendica dobiva svoju --accent boju iz baze (accentColor), pa
-         ne mora izgledati kao novo.hr — samo je poveznica ista.
-            ===================================================================== */
+   Svaka vikendica dobiva svoju --accent boju iz baze (accentColor), pa
+   ne mora izgledati kao novo.hr — samo je poveznica ista.
+   ===================================================================== */
 .stay {
   --accent: #b5502e;
   --accent-dark: color-mix(in srgb, var(--accent) 70%, black);
@@ -105,6 +210,16 @@ color: rgba(0, 0, 0, 0.4); margin: 0 0 16px; display: flex; align-items: center;
 .stay-hero .loc { font-size: 12px; font-weight: 700; letter-spacing: .14em; text-transform: uppercase; color: #fff; opacity: .85; font-family: var(--font-karla), sans-serif; }
 .stay-hero h1 { font-size: clamp(32px, 6vw, 52px); font-weight: 600; margin: 10px 0 8px; letter-spacing: -0.01em; }
 .stay-hero p { margin: 0; font-size: 16px; color: #fff; opacity: .92; font-family: var(--font-karla), sans-serif; max-width: 46ch; }
+
+.stay-banner { position: relative; height: clamp(260px, 42vw, 440px); overflow: hidden; }
+.stay-banner img { width: 100%; height: 100%; object-fit: cover; }
+.stay-banner-overlay { position: absolute; inset: 0; display: flex; flex-direction: column; justify-content: flex-end; padding: clamp(20px, 5vw, 56px); background: linear-gradient(0deg, rgba(0,0,0,0.55), rgba(0,0,0,0) 60%); color: #fff; }
+.stay-banner-overlay .loc { font-size: 12px; font-weight: 700; letter-spacing: .14em; text-transform: uppercase; opacity: .9; font-family: var(--font-karla), sans-serif; }
+.stay-banner-overlay h1 { font-size: clamp(30px, 5.5vw, 50px); font-weight: 600; margin: 10px 0 6px; letter-spacing: -0.01em; }
+.stay-banner-overlay p { margin: 0; font-size: 15px; opacity: .92; font-family: var(--font-karla), sans-serif; max-width: 46ch; }
+
+.stay-gallery { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 12px; }
+.stay-gallery-img { width: 100%; aspect-ratio: 4 / 3; object-fit: cover; border-radius: 12px; }
 
 .stay-stats { display: flex; flex-wrap: wrap; gap: 10px; padding: 20px clamp(20px, 5vw, 56px); border-bottom: 1px solid #e7dcc3; }
 .stay-stat { background: var(--plaster); border-radius: 10px; padding: 9px 15px; font-size: 13.5px; font-weight: 700; color: var(--ink); }
@@ -129,7 +244,7 @@ color: rgba(0, 0, 0, 0.4); margin: 0 0 16px; display: flex; align-items: center;
 
 /* =====================================================================
    ADMIN — jednostavno, funkcionalno sučelje (Tailwind za layout/forme).
-      ===================================================================== */
+   ===================================================================== */
 .admin-shell { min-height: 100vh; background: #f7f7f5; font-family: var(--font-space-grotesk), sans-serif; }
 .admin-input {
   border: 1px solid rgba(0, 0, 0, 0.15);
