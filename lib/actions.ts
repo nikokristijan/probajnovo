@@ -29,7 +29,7 @@ const RESERVED_SLUGS = new Set([
   "sitemap.xml",
   "favicon.ico",
   "_next",
-  ]);
+]);
 
 /* ---------------------------------------------------------------- */
 /* Prijava / odjava                                                  */
@@ -43,7 +43,7 @@ const LoginSchema = z.object({
 export async function loginAction(
   _prevState: ActionState,
   formData: FormData
-  ): Promise<ActionState> {
+): Promise<ActionState> {
   const parsed = LoginSchema.safeParse({
     email: formData.get("email"),
     password: formData.get("password"),
@@ -52,17 +52,17 @@ export async function loginAction(
     return { error: "Provjeri email i lozinku." };
   }
 
-const admin = await findAdminByEmail(parsed.data.email.toLowerCase().trim());
+  const admin = await findAdminByEmail(parsed.data.email.toLowerCase().trim());
   if (!admin) {
     return { error: "Pogrešan email ili lozinka." };
   }
 
-const valid = await bcrypt.compare(parsed.data.password, admin.passwordHash);
+  const valid = await bcrypt.compare(parsed.data.password, admin.passwordHash);
   if (!valid) {
     return { error: "Pogrešan email ili lozinka." };
   }
 
-const token = await createSessionToken({ adminId: admin.id, email: admin.email });
+  const token = await createSessionToken({ adminId: admin.id, email: admin.email });
   await setSessionCookie(token);
   redirect("/admin");
 }
@@ -95,7 +95,7 @@ const AgencySchema = z.object({
 export async function updateAgencyAction(
   _prevState: ActionState,
   formData: FormData
-  ): Promise<ActionState> {
+): Promise<ActionState> {
   await requireAdmin();
   const parsed = AgencySchema.safeParse({
     heroTitle: formData.get("heroTitle"),
@@ -119,9 +119,9 @@ export async function updateAgencyAction(
 
 const PropertySchema = z.object({
   slug: z
-  .string()
-  .min(1, "Slug je obavezan.")
-  .regex(/^[a-z0-9-]+$/, "Slug smije sadržavati samo mala slova, brojke i crtice."),
+    .string()
+    .min(1, "Slug je obavezan.")
+    .regex(/^[a-z0-9-]+$/, "Slug smije sadržavati samo mala slova, brojke i crtice."),
   name: z.string().min(1, "Naziv je obavezan."),
   location: z.string().min(1),
   tagline: z.string().min(1),
@@ -132,22 +132,40 @@ const PropertySchema = z.object({
   bedrooms: z.coerce.number().int().min(0),
   distanceFromCenter: z.string().min(1),
   accentColor: z
-  .string()
-  .regex(/^#[0-9a-fA-F]{6}$/, "Boja mora biti u obliku #RRGGBB."),
+    .string()
+    .regex(/^#[0-9a-fA-F]{6}$/, "Boja mora biti u obliku #RRGGBB."),
+  images: z.string(), // JSON niz URL-ova, parsiramo dolje
+  bannerImage: z.string().optional(),
+  contactEmail: z
+    .string()
+    .optional()
+    .refine((v) => !v || z.email().safeParse(v).success, {
+      message: "Kontakt email vikendice mora biti ispravan email.",
+    }),
   published: z.coerce.boolean(),
 });
 
 function parseAmenities(raw: string): string[] {
   return raw
-  .split("\n")
-  .map((line) => line.trim())
-  .filter(Boolean);
+    .split("\n")
+    .map((line) => line.trim())
+    .filter(Boolean);
+}
+
+function parseImages(raw: string): string[] {
+  try {
+    const arr = JSON.parse(raw);
+    if (!Array.isArray(arr)) return [];
+    return arr.filter((s) => typeof s === "string" && s.trim().length > 0);
+  } catch {
+    return [];
+  }
 }
 
 export async function createPropertyAction(
   _prevState: ActionState,
   formData: FormData
-  ): Promise<ActionState> {
+): Promise<ActionState> {
   await requireAdmin();
   const parsed = PropertySchema.safeParse({
     slug: formData.get("slug"),
@@ -161,6 +179,9 @@ export async function createPropertyAction(
     bedrooms: formData.get("bedrooms"),
     distanceFromCenter: formData.get("distanceFromCenter"),
     accentColor: formData.get("accentColor"),
+    images: formData.get("images") ?? "[]",
+    bannerImage: formData.get("bannerImage") ?? "",
+    contactEmail: formData.get("contactEmail") ?? "",
     published: formData.get("published") === "on",
   });
   if (!parsed.success) {
@@ -170,16 +191,19 @@ export async function createPropertyAction(
     return { error: `"${parsed.data.slug}" je rezervirana adresa, odaberi drugu.` };
   }
 
-try {
-  await createProperty({
-    ...parsed.data,
-    amenities: parseAmenities(parsed.data.amenities),
-  });
-} catch {
-  return { error: "Ta adresa (slug) je već zauzeta — odaberi drugu." };
-}
+  try {
+    await createProperty({
+      ...parsed.data,
+      amenities: parseAmenities(parsed.data.amenities),
+      images: parseImages(parsed.data.images),
+      bannerImage: parsed.data.bannerImage?.trim() || null,
+      contactEmail: parsed.data.contactEmail?.trim() || null,
+    });
+  } catch {
+    return { error: "Ta adresa (slug) je već zauzeta — odaberi drugu." };
+  }
 
-revalidatePath("/");
+  revalidatePath("/");
   revalidatePath("/admin");
   redirect("/admin");
 }
@@ -188,7 +212,7 @@ export async function updatePropertyAction(
   id: number,
   _prevState: ActionState,
   formData: FormData
-  ): Promise<ActionState> {
+): Promise<ActionState> {
   await requireAdmin();
   const parsed = PropertySchema.safeParse({
     slug: formData.get("slug"),
@@ -202,6 +226,9 @@ export async function updatePropertyAction(
     bedrooms: formData.get("bedrooms"),
     distanceFromCenter: formData.get("distanceFromCenter"),
     accentColor: formData.get("accentColor"),
+    images: formData.get("images") ?? "[]",
+    bannerImage: formData.get("bannerImage") ?? "",
+    contactEmail: formData.get("contactEmail") ?? "",
     published: formData.get("published") === "on",
   });
   if (!parsed.success) {
@@ -211,16 +238,19 @@ export async function updatePropertyAction(
     return { error: `"${parsed.data.slug}" je rezervirana adresa, odaberi drugu.` };
   }
 
-try {
-  await updateProperty(id, {
-    ...parsed.data,
-    amenities: parseAmenities(parsed.data.amenities),
-  });
-} catch {
-  return { error: "Ta adresa (slug) je već zauzeta — odaberi drugu." };
-}
+  try {
+    await updateProperty(id, {
+      ...parsed.data,
+      amenities: parseAmenities(parsed.data.amenities),
+      images: parseImages(parsed.data.images),
+      bannerImage: parsed.data.bannerImage?.trim() || null,
+      contactEmail: parsed.data.contactEmail?.trim() || null,
+    });
+  } catch {
+    return { error: "Ta adresa (slug) je već zauzeta — odaberi drugu." };
+  }
 
-revalidatePath("/");
+  revalidatePath("/");
   revalidatePath(`/${parsed.data.slug}`);
   revalidatePath("/admin");
   return { success: true };
