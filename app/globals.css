@@ -1,0 +1,144 @@
+@import "tailwindcss";
+
+/* ============ osnovno ============ */
+:root {
+  --background: #ffffff;
+  --foreground: #171717;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; padding: 0; }
+body { background: var(--background); color: var(--foreground); }
+img, svg { display: block; max-width: 100%; }
+
+/* =====================================================================
+     NOVO — agencijska stranica (Space Grotesk + JetBrains Mono, bijelo/crno
+   s plavo-narančastim akcentima). Vjerna kopija stvarnog novo.hr dizajna.
+   ===================================================================== */
+.novo {
+  position: relative;
+font-family: var(--font-space-grotesk), "Arial Black", sans-serif;
+background: #fff;
+color: #000;
+min-height: 100vh;
+--novo-blue: #0000c3;
+--novo-orange: #ff7f00;
+  }
+.novo .mono { font-family: var(--font-jetbrains-mono), monospace; }
+.novo .muted { color: rgba(0, 0, 0, 0.5); }
+.novo button, .novo a { font-family: inherit; }
+.novo button:focus-visible, .novo a:focus-visible { outline: 2px solid var(--novo-blue); outline-offset: 2px; }
+
+.novo-header {
+  display: flex; align-items: center; justify-content: space-between;
+padding: 20px 32px; border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+position: sticky; top: 0; background: #fff; z-index: 3;
+}
+.novo-logo { font-family: var(--font-space-grotesk), sans-serif; font-weight: 700; font-size: 20px; letter-spacing: -0.02em; color: var(--novo-orange); text-decoration: none; }
+.novo-nav { display: flex; gap: 20px; }
+.novo-nav a {
+  background: none; border: none; cursor: pointer; color: #000; padding: 4px; text-decoration: none;
+font-family: var(--font-jetbrains-mono), monospace; font-size: 11px; letter-spacing: 0.12em;
+transition: color 0.15s ease;
+}
+.novo-nav a:hover { color: var(--novo-orange); }
+
+.novo .hero { padding: 48px 32px 40px; }
+.novo .hero h1 { font-size: 28px; line-height: 1.25; max-width: 640px; font-weight: 500; letter-spacing: -0.01em; margin: 0; }
+@media (min-width: 640px) { .novo .hero h1 { font-size: 42px; } }
+
+.novo .section { padding: 56px 32px 40px; }
+.novo .section-title {
+  font-family: var(--font-jetbrains-mono), monospace; font-size: 11px; letter-spacing: 0.15em;
+color: rgba(0, 0, 0, 0.4); margin: 0 0 16px; display: flex; align-items: center; gap: 7px;
+}
+.novo .section-title::before { content: ""; width: 6px; height: 6px; background: var(--novo-orange); display: inline-block; flex-shrink: 0; }
+
+.novo .studies-head, .novo .studies-row-grid { display: grid; grid-template-columns: 44px 1fr 150px 60px; gap: 12px; align-items: center; }
+@media (max-width: 640px) {
+  .novo .studies-head, .novo .studies-row-grid { grid-template-columns: 36px 1fr 56px; }
+  .novo .col-cat { display: none; }
+}
+.novo .studies-head { border-bottom: 1px solid #000; padding-bottom: 8px; font-family: var(--font-jetbrains-mono), monospace; font-size: 11px; letter-spacing: 0.1em; color: rgba(0, 0, 0, 0.5); }
+.novo .studies-row { width: 100%; background: none; border: none; border-bottom: 1px solid rgba(0, 0, 0, 0.1); padding: 18px 0; text-align: left; display: block; text-decoration: none; color: inherit; }
+.novo .studies-row:hover .proj-name { text-decoration: underline; text-decoration-color: var(--novo-orange); text-decoration-thickness: 2px; }
+.novo .proj-no { font-family: var(--font-jetbrains-mono), monospace; font-size: 12px; color: var(--novo-blue); }
+.novo .proj-name { font-size: 17px; }
+.novo .proj-cat { font-family: var(--font-jetbrains-mono), monospace; font-size: 12px; color: rgba(0, 0, 0, 0.5); }
+.novo .proj-year { font-family: var(--font-jetbrains-mono), monospace; font-size: 12px; color: rgba(0, 0, 0, 0.5); text-align: right; }
+.novo .studies-empty { font-family: var(--font-jetbrains-mono), monospace; font-size: 13px; color: rgba(0,0,0,.5); padding: 18px 0; }
+
+.novo .office-grid { display: grid; grid-template-columns: 1fr; gap: 32px; max-width: 720px; }
+@media (min-width: 640px) { .novo .office-grid { grid-template-columns: 1fr 1fr; } }
+.novo .office-text { font-family: var(--font-jetbrains-mono), monospace; font-size: 14px; line-height: 1.7; color: rgba(0, 0, 0, 0.7); margin: 0; white-space: pre-line; }
+.novo .office-contacts { display: flex; flex-direction: column; gap: 10px; font-size: 14px; }
+.novo .office-contacts a { font-family: var(--font-jetbrains-mono), monospace; color: #000; text-decoration: none; width: fit-content; display: inline-flex; align-items: center; gap: 6px; transition: color 0.15s ease; }
+.novo .office-contacts a:hover { color: var(--novo-orange); text-decoration: underline; }
+.novo .office-contacts span { font-family: var(--font-jetbrains-mono), monospace; color: rgba(0, 0, 0, 0.5); }
+
+.novo-footer { padding: 20px 32px; border-top: 1px solid rgba(0, 0, 0, 0.1); display: flex; align-items: center; justify-content: space-between; font-family: var(--font-jetbrains-mono), monospace; font-size: 11px; letter-spacing: 0.1em; color: rgba(0, 0, 0, 0.3); }
+
+/* halftone placeholder tile (umjesto stvarnih fotografija dok ih ne dodaš) */
+.novo .halftone { position: relative; width: 100%; height: 100%; overflow: hidden; background: #efefef; }
+.novo .halftone::before { content: ""; position: absolute; inset: 0; background-image: radial-gradient(circle, rgba(0,0,0,.18) 1.6px, transparent 1.7px); background-size: 9px 9px; }
+.novo .halftone-label { position: absolute; left: 10px; bottom: 8px; font-family: var(--font-jetbrains-mono), monospace; font-size: 10px; letter-spacing: .12em; color: rgba(0,0,0,.42); text-transform: uppercase; }
+
+/* =====================================================================
+   VIKENDICA — predložak za pojedinačnu stranicu na /[slug].
+      Svaka vikendica dobiva svoju --accent boju iz baze (accentColor), pa
+         ne mora izgledati kao novo.hr — samo je poveznica ista.
+            ===================================================================== */
+.stay {
+  --accent: #b5502e;
+  --accent-dark: color-mix(in srgb, var(--accent) 70%, black);
+  --ink: #2b2016;
+  --paper: #fbf7ee;
+  --plaster: #efe7d4;
+  --dim: #7a6e5b;
+  font-family: var(--font-karla), "Segoe UI", sans-serif;
+  color: var(--ink);
+  background: var(--paper);
+  min-height: 100vh;
+}
+.stay h1, .stay h2, .stay h3 { font-family: var(--font-zilla-slab), Georgia, serif; }
+
+.stay-hero { position: relative; padding: clamp(60px, 12vw, 110px) clamp(20px, 5vw, 56px) clamp(36px, 6vw, 56px); color: var(--paper); background: linear-gradient(160deg, var(--accent), var(--accent-dark)); overflow: hidden; }
+.stay-hero .loc { font-size: 12px; font-weight: 700; letter-spacing: .14em; text-transform: uppercase; color: #fff; opacity: .85; font-family: var(--font-karla), sans-serif; }
+.stay-hero h1 { font-size: clamp(32px, 6vw, 52px); font-weight: 600; margin: 10px 0 8px; letter-spacing: -0.01em; }
+.stay-hero p { margin: 0; font-size: 16px; color: #fff; opacity: .92; font-family: var(--font-karla), sans-serif; max-width: 46ch; }
+
+.stay-stats { display: flex; flex-wrap: wrap; gap: 10px; padding: 20px clamp(20px, 5vw, 56px); border-bottom: 1px solid #e7dcc3; }
+.stay-stat { background: var(--plaster); border-radius: 10px; padding: 9px 15px; font-size: 13.5px; font-weight: 700; color: var(--ink); }
+
+.stay-section { padding: clamp(30px, 5vw, 48px) clamp(20px, 5vw, 56px); }
+.stay-about { display: grid; grid-template-columns: 1fr; gap: 16px; max-width: 70ch; }
+.stay-about p { font-size: 15.5px; line-height: 1.8; color: #4a4030; margin: 0; white-space: pre-line; }
+
+.stay-alt { background: var(--plaster); }
+.stay-amenities { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 12px; margin-top: 18px; }
+.stay-amenity { background: var(--paper); border: 1px solid #e7dcc3; border-radius: 10px; padding: 12px 14px; font-size: 14px; font-weight: 700; }
+
+.stay-book { display: flex; flex-wrap: wrap; gap: 20px; align-items: center; justify-content: space-between; background: var(--accent); color: var(--paper); border-radius: 18px; padding: 26px clamp(20px, 4vw, 36px); }
+.stay-book .price { font-family: var(--font-zilla-slab), serif; font-size: 32px; font-weight: 600; }
+.stay-book .price small { font-size: 14px; font-weight: 400; font-family: var(--font-karla), sans-serif; opacity: .85; }
+.stay-book p { margin: 6px 0 0; font-size: 13px; opacity: .9; font-family: var(--font-karla), sans-serif; }
+.stay-book a.bookbtn { background: var(--paper); color: var(--accent-dark); font-weight: 700; font-size: 14.5px; padding: 13px 24px; border-radius: 999px; text-decoration: none; white-space: nowrap; }
+
+.stay-foot { background: var(--ink); color: #c9bba0; text-align: center; padding: 22px; font-size: 12.5px; }
+.stay-foot .credit { margin-top: 6px; color: #9a8c71; }
+.stay-foot .credit a { color: var(--accent); font-weight: 700; text-decoration: none; }
+
+/* =====================================================================
+   ADMIN — jednostavno, funkcionalno sučelje (Tailwind za layout/forme).
+      ===================================================================== */
+.admin-shell { min-height: 100vh; background: #f7f7f5; font-family: var(--font-space-grotesk), sans-serif; }
+.admin-input {
+  border: 1px solid rgba(0, 0, 0, 0.15);
+  border-radius: 10px;
+  padding: 9px 12px;
+  font-size: 14px;
+  font-family: inherit;
+  outline: none;
+  width: 100%;
+  background: #fff;
+}
+.admin-input:focus { border-color: #0000c3; }
