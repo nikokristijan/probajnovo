@@ -19,6 +19,11 @@ import {
   createStudy,
   updateStudy,
   deleteStudy,
+  getAdminById,
+  listAdmins,
+  createAdmin,
+  deleteAdmin,
+  countAdmins,
 } from "@/lib/db/queries";
 
 export type ActionState = { error?: string; success?: boolean } | undefined;
@@ -81,6 +86,16 @@ async function requireAdmin() {
     redirect("/admin/login");
   }
   return admin;
+}
+
+/** Kao requireAdmin, ali dodatno provjeri je li ovaj admin glavni (super admin). */
+async function requireSuperAdmin() {
+  const admin = await requireAdmin();
+  const row = await getAdminById(admin.adminId);
+  if (!row || !row.isSuperAdmin) {
+    redirect("/admin");
+  }
+  return { ...admin, row };
 }
 
 /* ---------------------------------------------------------------- */
@@ -146,6 +161,20 @@ const PropertySchema = z.object({
       message: "Kontakt email vikendice mora biti ispravan email.",
     }),
   published: z.coerce.boolean(),
+  showInStudies: z.coerce.boolean(),
+  layoutStyle: z.enum(["classic", "editorial", "raw"]).default("classic"),
+  darkMode: z.coerce.boolean(),
+  checkInTime: z.string().optional(),
+  checkOutTime: z.string().optional(),
+  houseRules: z.string().optional(), // jedan po retku, parsiramo kao amenities
+  hostName: z.string().optional(),
+  hostNote: z.string().optional(),
+  mapUrl: z
+    .string()
+    .optional()
+    .refine((v) => !v || /^https?:\/\//i.test(v), {
+      message: "Poveznica za mapu mora počinjati s http:// ili https://",
+    }),
 });
 
 function parseAmenities(raw: string): string[] {
@@ -186,6 +215,15 @@ export async function createPropertyAction(
     bannerImage: formData.get("bannerImage") ?? "",
     contactEmail: formData.get("contactEmail") ?? "",
     published: formData.get("published") === "on",
+    showInStudies: formData.get("showInStudies") === "on",
+    layoutStyle: formData.get("layoutStyle") ?? "classic",
+    darkMode: formData.get("darkMode") === "on",
+    checkInTime: formData.get("checkInTime") ?? "",
+    checkOutTime: formData.get("checkOutTime") ?? "",
+    houseRules: formData.get("houseRules") ?? "",
+    hostName: formData.get("hostName") ?? "",
+    hostNote: formData.get("hostNote") ?? "",
+    mapUrl: formData.get("mapUrl") ?? "",
   });
   if (!parsed.success) {
     return { error: parsed.error.issues[0]?.message ?? "Provjeri unesene podatke." };
@@ -201,6 +239,12 @@ export async function createPropertyAction(
       images: parseImages(parsed.data.images),
       bannerImage: parsed.data.bannerImage?.trim() || null,
       contactEmail: parsed.data.contactEmail?.trim() || null,
+      checkInTime: parsed.data.checkInTime?.trim() || null,
+      checkOutTime: parsed.data.checkOutTime?.trim() || null,
+      houseRules: parseAmenities(parsed.data.houseRules ?? ""),
+      hostName: parsed.data.hostName?.trim() || null,
+      hostNote: parsed.data.hostNote?.trim() || null,
+      mapUrl: parsed.data.mapUrl?.trim() || null,
     });
   } catch {
     return { error: "Ta adresa (slug) je već zauzeta — odaberi drugu." };
@@ -233,6 +277,15 @@ export async function updatePropertyAction(
     bannerImage: formData.get("bannerImage") ?? "",
     contactEmail: formData.get("contactEmail") ?? "",
     published: formData.get("published") === "on",
+    showInStudies: formData.get("showInStudies") === "on",
+    layoutStyle: formData.get("layoutStyle") ?? "classic",
+    darkMode: formData.get("darkMode") === "on",
+    checkInTime: formData.get("checkInTime") ?? "",
+    checkOutTime: formData.get("checkOutTime") ?? "",
+    houseRules: formData.get("houseRules") ?? "",
+    hostName: formData.get("hostName") ?? "",
+    hostNote: formData.get("hostNote") ?? "",
+    mapUrl: formData.get("mapUrl") ?? "",
   });
   if (!parsed.success) {
     return { error: parsed.error.issues[0]?.message ?? "Provjeri unesene podatke." };
@@ -248,6 +301,12 @@ export async function updatePropertyAction(
       images: parseImages(parsed.data.images),
       bannerImage: parsed.data.bannerImage?.trim() || null,
       contactEmail: parsed.data.contactEmail?.trim() || null,
+      checkInTime: parsed.data.checkInTime?.trim() || null,
+      checkOutTime: parsed.data.checkOutTime?.trim() || null,
+      houseRules: parseAmenities(parsed.data.houseRules ?? ""),
+      hostName: parsed.data.hostName?.trim() || null,
+      hostNote: parsed.data.hostNote?.trim() || null,
+      mapUrl: parsed.data.mapUrl?.trim() || null,
     });
   } catch {
     return { error: "Ta adresa (slug) je već zauzeta — odaberi drugu." };
@@ -347,4 +406,54 @@ export async function deleteStudyAction(id: number) {
   revalidatePath("/");
   revalidatePath("/admin");
   redirect("/admin");
+}
+
+/* ---------------------------------------------------------------- */
+/* Admini (samo glavni admin smije upravljati drugim adminima)       */
+/* ---------------------------------------------------------------- */
+
+const AdminSchema = z.object({
+  email: z.string().email({ message: "Unesi ispravan email." }),
+  password: z.string().min(8, { message: "Lozinka mora imati barem 8 znakova." }),
+});
+
+export async function createAdminAction(
+  _prevState: ActionState,
+  formData: FormData
+): Promise<ActionState> {
+  await requireSuperAdmin();
+  const parsed = AdminSchema.safeParse({
+    email: formData.get("email"),
+    password: formData.get("password"),
+  });
+  if (!parsed.success) {
+    return { error: parsed.error.issues[0]?.message ?? "Provjeri unesene podatke." };
+  }
+  const email = parsed.data.email.toLowerCase().trim();
+  const existing = await findAdminByEmail(email);
+  if (existing) {
+    return { error: "Već postoji admin s tim emailom." };
+  }
+  const passwordHash = await bcrypt.hash(parsed.data.password, 12);
+  await createAdmin({ email, passwordHash, isSuperAdmin: false });
+  revalidatePath("/admin/admins");
+  redirect("/admin/admins");
+}
+
+export async function deleteAdminAction(id: number) {
+  const { adminId, row } = await requireSuperAdmin();
+  if (id === adminId) {
+    // ne dopuštamo da glavni admin sam sebe obriše (zaključao bi se van)
+    redirect("/admin/admins");
+  }
+  const target = row.id === id ? row : await getAdminById(id);
+  if (target?.isSuperAdmin) {
+    const total = await countAdmins();
+    if (total <= 1) {
+      redirect("/admin/admins");
+    }
+  }
+  await deleteAdmin(id);
+  revalidatePath("/admin/admins");
+  redirect("/admin/admins");
 }
