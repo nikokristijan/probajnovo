@@ -1,22 +1,23 @@
-import { getAgency, listProperties, listStudies } from "@/lib/db/queries";
-import NovoHome, { type StudyProject } from "@/components/NovoHome";
+import { getAgency, listProperties, listStudies, listProducts } from "@/lib/db/queries";
+import NovoHome, { type StudyProject, type ProductCard } from "@/components/NovoHome";
 
 export const revalidate = 0; // uvijek svježe iz baze (admin izmjene odmah vidljive)
 
 export default async function HomePage() {
-  const [agencyData, propertiesData, studiesData] = await Promise.all([
+  const [agencyData, propertiesData, studiesData, productsData] = await Promise.all([
     getAgency(),
     listProperties({ onlyPublished: true }),
     listStudies({ onlyPublished: true }),
+    listProducts({ onlyPublished: true }),
   ]);
 
   const heroTitle =
     agencyData?.heroTitle ??
-    "NOVO is a creative agency working across brand identity, digital design, and film.";
+   "NOVO je kreativni studio koji spaja brend identitet, digitalni dizajn i film.";
   const officeText = agencyData?.officeText ?? "";
   const agencyContactEmail = agencyData?.contactEmail ?? "hello@novo.studio";
   const instagramHandle = agencyData?.instagramHandle ?? "@novo.hr";
-  const city = agencyData?.city ?? "Slavonski Brod, Croatia";
+  const city = agencyData?.city ?? "Slavonski Brod, Hrvatska";
 
   const propertyProjects: StudyProject[] = propertiesData
     .filter((p) => p.showInStudies)
@@ -53,6 +54,16 @@ export default async function HomePage() {
 
   const projects: StudyProject[] = [...propertyProjects, ...studyProjects];
 
+  const products: ProductCard[] = productsData.map((p) => ({
+    id: p.id,
+    name: p.name,
+    tagline: p.tagline,
+    description: p.description,
+    priceEur: p.priceEur,
+    images: p.images,
+    features: p.features,
+  }));
+
   return (
     <NovoHome
       heroTitle={heroTitle}
@@ -61,6 +72,7 @@ export default async function HomePage() {
       instagramHandle={instagramHandle}
       city={city}
       projects={projects}
+      products={products}
     />
   );
 }
