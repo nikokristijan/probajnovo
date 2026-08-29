@@ -354,10 +354,6 @@ export default function NovoHome({
       <main className="novo-os-main">
         {view === "home" && (
           <div className="novo-os-hero">
-            <div className="novo-os-hero-mark" aria-hidden="true">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src="/novo-logo.png" alt="" />
-            </div>
             <div className="novo-os-hero-content">
               <span className="novo-os-kicker mono">KREATIVNI STUDIO</span>
               <h1>{heroTitle}</h1>
