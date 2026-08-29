@@ -1,23 +1,28 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getCurrentAdminRecord } from "@/lib/auth";
-import { listProperties, listStudies } from "@/lib/db/queries";
+import { listProperties, listStudies, listProducts } from "@/lib/db/queries";
 
 export default async function AdminDashboard() {
   const admin = await getCurrentAdminRecord();
   if (!admin) redirect("/admin/login");
 
-  const [properties, studies] = await Promise.all([listProperties(), listStudies()]);
+  const [properties, studies, products] = await Promise.all([
+    listProperties(),
+    listStudies(),
+    listProducts(),
+  ]);
   const publishedCount = properties.filter((p) => p.published).length;
   const inStudiesCount = properties.filter((p) => p.showInStudies).length;
 
   return (
     <div className="flex flex-col gap-12">
-      <section className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+      <section className="grid grid-cols-2 sm:grid-cols-5 gap-3">
         <StatCard label="Vikendice" value={properties.length} />
         <StatCard label="Objavljeno" value={publishedCount} />
         <StatCard label="U Studies popisu" value={inStudiesCount} />
         <StatCard label="Studies unosi" value={studies.length} />
+        <StatCard label="Proizvodi" value={products.length} />
       </section>
 
       <section>
@@ -30,6 +35,9 @@ export default async function AdminDashboard() {
           </Link>
           <Link href="/admin/studies/new" className="admin-quicklink">
             + Novi Study
+          </Link>
+          <Link href="/admin/products/new" className="admin-quicklink">
+            + Novi proizvod
           </Link>
           <Link href="/admin/agency" className="admin-quicklink">
             Sadržaj agencije
@@ -147,6 +155,57 @@ export default async function AdminDashboard() {
             ))}
           </div>
         )}
+      </section>
+
+      <section>
+        <div className="flex items-center justify-between mb-6">
+          <div>
+            <h1 className="text-xl font-bold">Proizvodi</h1>
+            <p className="text-xs text-black/50 mt-0.5">
+              Fizički proizvodi (npr. 3D printane pločice s NFC oznakama) — prikazuju se u
+              PROIZVODI popisu na naslovnici. Bez online plaćanja, posjetitelj šalje upit mailom.
+            </p>
+          </div>
+          <Link
+            href="/admin/products/new"
+            className="rounded-full bg-black text-white text-sm font-semibold px-4 py-2 shrink-0"
+          >
+            + Dodaj proizvod
+          </Link>
+        </div>
+
+        {products.length === 0 ? (
+          <p className="text-sm text-black/60">
+            Još nema dodanih proizvoda. Klikni &ldquo;Dodaj proizvod&rdquo; da napraviš prvi.
+          </p>
+        ) : (
+          <div className="flex flex-col gap-2">
+            {products.map((p) => (
+              <Link
+                key={p.id}
+                href={`/admin/products/${p.id}`}
+                className="flex items-center justify-between border border-black/10 rounded-xl px-4 py-3 bg-white hover:border-[#0000c3]/40"
+              >
+                <div>
+                  <div className="font-semibold text-sm">{p.name}</div>
+                  <div className="text-xs text-black/50 mt-0.5">
+                    {p.priceEur != null ? `od ${p.priceEur} €` : "na upit"}
+                </div>
+              </div>
+              <span
+                className={
+                  "text-xs font-semibold px-2.5 py-1 rounded-full " +
+                  (p.published
+                    ? "bg-green-100 text-green-700"
+                    : "bg-black/5 text-black/50")
+                }
+              >
+                {p.published ? "objavljeno" : "skriveno"}
+              </span>
+            </Link>
+          ))}
+        </div>
+      )}
       </section>
     </div>
   );
