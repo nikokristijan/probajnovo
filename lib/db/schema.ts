@@ -47,6 +47,22 @@ export const properties = pgTable("properties", {
   /** Email na koji ide "Kontaktirajte nas" za OVU vikendicu. Null = koristi agency.contactEmail. */
   contactEmail: text("contact_email"),
   published: boolean("published").notNull().default(true),
+  /** Ako je true, vikendica se pojavljuje i u STUDIES popisu na naslovnici (opt-in, ne automatski). */
+  showInStudies: boolean("show_in_studies").notNull().default(false),
+  /** Vizualni layout stranice vikendice: "classic" | "editorial" | "raw". */
+  layoutStyle: text("layout_style").notNull().default("classic"),
+  /** Tamna varijanta boja za stranicu vikendice. */
+  darkMode: boolean("dark_mode").notNull().default(false),
+  /** Vrijeme prijave/odjave, slobodan tekst (npr. "15:00"). Null = ne prikazuje se. */
+  checkInTime: text("check_in_time"),
+  checkOutTime: text("check_out_time"),
+  /** Kućni red — jedan po retku, kao amenities. */
+  houseRules: jsonb("house_rules").$type<string[]>().notNull().default([]),
+  /** Ime domaćina i osobna poruka gostima (opcionalno, za osobniji dojam). */
+  hostName: text("host_name"),
+  hostNote: text("host_note"),
+  /** Poveznica na Google Maps (ili sličnu) za prikaz lokacije. */
+  mapUrl: text("map_url"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
@@ -80,6 +96,8 @@ export const adminUsers = pgTable("admin_users", {
   id: serial("id").primaryKey(),
   email: text("email").notNull().unique(),
   passwordHash: text("password_hash").notNull(),
+  /** Glavni admin — jedini koji može dodavati/micati druge admine. */
+  isSuperAdmin: boolean("is_super_admin").notNull().default(false),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
