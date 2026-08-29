@@ -92,6 +92,29 @@ export const studies = pgTable("studies", {
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
 
+/**
+ * Fizički proizvodi agencije (npr. 3D printane pločice s NFC oznakama za
+ * spajanje vikendica/firmi na internet i Google recenzije). Nema online
+ * plaćanja — posjetitelj šalje upit mailom izravno s NOVO stranice.
+ */
+export const products = pgTable("products", {
+  id: serial("id").primaryKey(),
+  name: text("name").notNull(),
+  tagline: text("tagline").notNull(),
+  description: text("description").notNull(),
+  /** Cijena u eurima (okvirna, "od"). Null = prikazuje se "na upit". */
+  priceEur: integer("price_eur"),
+  /** Galerija slika (URL-ovi na Vercel Blob). */
+  images: jsonb("images").$type<string[]>().notNull().default([]),
+  /** Kratke značajke — jedna po retku, prikazane kao chipovi (npr. "NFC oznaka", "Vodootporno"). */
+  features: jsonb("features").$type<string[]>().notNull().default([]),
+  published: boolean("published").notNull().default(true),
+  /** Ručni redoslijed unutar popisa (manji broj = prvo). */
+  position: integer("position").notNull().default(0),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
 export const adminUsers = pgTable("admin_users", {
   id: serial("id").primaryKey(),
   email: text("email").notNull().unique(),
@@ -106,4 +129,6 @@ export type Property = typeof properties.$inferSelect;
 export type NewProperty = typeof properties.$inferInsert;
 export type Study = typeof studies.$inferSelect;
 export type NewStudy = typeof studies.$inferInsert;
+export type Product = typeof products.$inferSelect;
+export type NewProduct = typeof products.$inferInsert;
 export type AdminUser = typeof adminUsers.$inferSelect;
