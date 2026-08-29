@@ -51,6 +51,31 @@ export const properties = pgTable("properties", {
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
 
+/**
+ * Opći portfolio unos agencije (brend identitet, digitalni dizajn, film...).
+ * Odvojeno od `properties` (vikendica) jer nema booking-specifična polja
+ * (cijena, gosti, sobe, kontakt) niti vlastitu stranicu — prikazuje se
+ * samo kao redak u STUDIES popisu i pop-up prozoru sa slikama i opisom.
+ */
+export const studies = pgTable("studies", {
+  id: serial("id").primaryKey(),
+  title: text("title").notNull(),
+  /** Kratka kategorija/lokacija prikazana u STUDIES popisu, npr. "Brend identitet". */
+  category: text("category").notNull(),
+  tagline: text("tagline").notNull(),
+  description: text("description").notNull(),
+  year: integer("year").notNull(),
+  /** Galerija slika (URL-ovi na Vercel Blob) kroz koje se lista u pop-up prozoru. */
+  images: jsonb("images").$type<string[]>().notNull().default([]),
+  /** Opcionalna vanjska poveznica (npr. klijentova stranica). Null = nema linka. */
+  externalUrl: text("external_url"),
+  published: boolean("published").notNull().default(true),
+  /** Ručni redoslijed unutar STUDIES popisa (manji broj = prvo). */
+  position: integer("position").notNull().default(0),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
 export const adminUsers = pgTable("admin_users", {
   id: serial("id").primaryKey(),
   email: text("email").notNull().unique(),
@@ -61,4 +86,6 @@ export const adminUsers = pgTable("admin_users", {
 export type Agency = typeof agency.$inferSelect;
 export type Property = typeof properties.$inferSelect;
 export type NewProperty = typeof properties.$inferInsert;
+export type Study = typeof studies.$inferSelect;
+export type NewStudy = typeof studies.$inferInsert;
 export type AdminUser = typeof adminUsers.$inferSelect;
