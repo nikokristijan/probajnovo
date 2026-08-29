@@ -1,5 +1,6 @@
 import { SignJWT, jwtVerify } from "jose";
 import { cookies } from "next/headers";
+import { getAdminById } from "@/lib/db/queries";
 
 const COOKIE_NAME = "novo_admin_session";
 const SESSION_DURATION_SECONDS = 60 * 60 * 24 * 7; // 7 dana
@@ -64,6 +65,15 @@ export async function getCurrentAdmin(): Promise<SessionPayload | null> {
   const token = store.get(COOKIE_NAME)?.value;
   if (!token) return null;
   return verifySessionToken(token);
+}
+
+/** Pročitaj trenutnu sesiju I puni admin_users redak (uključujući isSuperAdmin). */
+export async function getCurrentAdminRecord() {
+  const session = await getCurrentAdmin();
+  if (!session) return null;
+  const row = await getAdminById(session.adminId);
+  if (!row) return null;
+  return row;
 }
 
 export const SESSION_COOKIE_NAME = COOKIE_NAME;
