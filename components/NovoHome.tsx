@@ -6,17 +6,26 @@ import { useEffect, useRef, useState } from "react";
 /* Tipovi                                                              */
 /* ------------------------------------------------------------------ */
 
+/**
+ * "vikendica" = booking property sa svojom /[slug] stranicom i kontakt emailom.
+ * "study" = opći portfolio unos agencije (brend, dizajn, film…) — samo tekst +
+ * slike + opcionalna vanjska poveznica, bez vlastite stranice.
+ */
 export type StudyProject = {
   id: number;
-  slug: string;
+  kind: "vikendica" | "study";
+  slug?: string;
   name: string;
   location: string;
   tagline: string;
   description: string;
   year: number;
   images: string[];
-  contactEmail: string;
+  contactEmail?: string;
+  externalUrl?: string;
 };
+
+const SERVICES = ["BREND IDENTITET", "DIGITALNI DIZAJN", "WEB & PRODUKT", "FILM & MOTION", "MARKETING"];
 
 type NovoHomeProps = {
   heroTitle: string;
@@ -205,15 +214,24 @@ function ProjectContent({ project }: { project: StudyProject }) {
           </span>
         </div>
         <div className="proj-actions">
-          <a
-            href={`mailto:${project.contactEmail}?subject=Upit — ${project.name}`}
-            className="mono link"
-          >
-            KONTAKTIRAJTE NAS ↗
-          </a>
-          <a href={`/${project.slug}`} className="mono link">
-            CIJELA STRANICA ↗
-          </a>
+          {project.kind === "vikendica" && project.contactEmail && (
+            <a
+              href={`mailto:${project.contactEmail}?subject=Upit — ${project.name}`}
+              className="mono link"
+            >
+              KONTAKTIRAJTE NAS ↗
+            </a>
+          )}
+          {project.kind === "vikendica" && project.slug && (
+            <a href={`/${project.slug}`} className="mono link">
+              CIJELA STRANICA ↗
+            </a>
+          )}
+          {project.kind === "study" && project.externalUrl && (
+            <a href={project.externalUrl} target="_blank" rel="noreferrer" className="mono link">
+              POGLEDAJ PROJEKT ↗
+            </a>
+          )}
         </div>
       </div>
     </div>
@@ -306,7 +324,10 @@ export default function NovoHome({
   return (
     <div className="novo-os">
       <div className="novo-os-topbar">
-        <span className="novo-os-logo">NOVO</span>
+        <div className="novo-os-brand">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src="/novo-logo.png" alt="NOVO" className="novo-os-logo-img" />
+        </div>
         <span className="novo-os-coords mono muted">
           {coords.x}(X), {coords.y}(Y)
         </span>
@@ -333,10 +354,24 @@ export default function NovoHome({
       <main className="novo-os-main">
         {view === "home" && (
           <div className="novo-os-hero">
-            <h1>{heroTitle}</h1>
-            <button className="novo-os-cta mono" onClick={() => setView("studies")}>
-              POGLEDAJ PROJEKTE ↗
-            </button>
+            <div className="novo-os-hero-mark" aria-hidden="true">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src="/novo-logo.png" alt="" />
+            </div>
+            <div className="novo-os-hero-content">
+              <span className="novo-os-kicker mono">KREATIVNI STUDIO</span>
+              <h1>{heroTitle}</h1>
+              <div className="novo-os-services">
+                {SERVICES.map((s) => (
+                  <span key={s} className="novo-os-chip mono">
+                    {s}
+                  </span>
+                ))}
+              </div>
+              <button className="novo-os-cta mono" onClick={() => setView("studies")}>
+                POGLEDAJ PROJEKTE ↗
+              </button>
+            </div>
           </div>
         )}
 
@@ -346,7 +381,7 @@ export default function NovoHome({
             <div className="studies-head">
               <span>NO.</span>
               <span>NAME</span>
-              <span className="col-cat">LOKACIJA</span>
+              <span className="col-cat">INFO</span>
               <span>YEAR</span>
             </div>
             <div className="studies-scroll">
@@ -370,7 +405,34 @@ export default function NovoHome({
         {view === "office" && (
           <div className="novo-os-panel">
             <h2 className="section-title">OFFICE</h2>
-            <p className="office-text">{officeText}</p>
+            <div className="office-grid">
+              <div className="office-col">
+                <p className="office-text">{officeText}</p>
+                <div className="novo-os-services office-services">
+                  {SERVICES.map((s) => (
+                    <span key={s} className="novo-os-chip mono">
+                      {s}
+                    </span>
+                  ))}
+                </div>
+              </div>
+              <div className="office-col office-contact">
+                <div className="office-block">
+                  <span className="mono muted">STUDIO</span>
+                  <span>{city}</span>
+                </div>
+                <div className="office-block">
+                  <span className="mono muted">INQUIRE</span>
+                  <a href={`mailto:${contactEmail}`}>{contactEmail}</a>
+                </div>
+                <div className="office-block">
+                  <span className="mono muted">ONLINE</span>
+                  <a href={instaUrl} target="_blank" rel="noreferrer">
+                    {instagramHandle}
+                  </a>
+                </div>
+              </div>
+            </div>
           </div>
         )}
       </main>
@@ -394,7 +456,7 @@ export default function NovoHome({
 
       <div className="novo-os-footer">
         <span>© {new Date().getFullYear()} NOVO</span>
-        <span>Slavonski Brod</span>
+        <span>{city}</span>
       </div>
 
       {exhibitReady && (
