@@ -1,6 +1,13 @@
 import { eq, desc } from "drizzle-orm";
 import { db } from "./index";
-import { agency, properties, adminUsers, type NewProperty } from "./schema";
+import {
+  agency,
+  properties,
+  studies,
+  adminUsers,
+  type NewProperty,
+  type NewStudy,
+} from "./schema";
 
 const AGENCY_ROW_ID = 1;
 
@@ -55,6 +62,37 @@ return row;
 
 export async function deleteProperty(id: number) {
 await db.delete(properties).where(eq(properties.id, id));
+}
+
+export async function listStudies({ onlyPublished = false } = {}) {
+const rows = await db
+.select()
+.from(studies)
+.orderBy(desc(studies.year), studies.position, desc(studies.createdAt));
+return onlyPublished ? rows.filter((s) => s.published) : rows;
+}
+
+export async function getStudyById(id: number) {
+const rows = await db.select().from(studies).where(eq(studies.id, id)).limit(1);
+return rows[0] ?? null;
+}
+
+export async function createStudy(data: NewStudy) {
+const [row] = await db.insert(studies).values(data).returning();
+return row;
+}
+
+export async function updateStudy(id: number, data: Partial<NewStudy>) {
+const [row] = await db
+.update(studies)
+.set({ ...data, updatedAt: new Date() })
+.where(eq(studies.id, id))
+.returning();
+return row;
+}
+
+export async function deleteStudy(id: number) {
+await db.delete(studies).where(eq(studies.id, id));
 }
 
 export async function findAdminByEmail(email: string) {
