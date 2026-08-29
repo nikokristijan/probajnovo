@@ -2,6 +2,8 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getPropertyBySlug, getAgency } from "@/lib/db/queries";
+import RevealSection from "@/components/RevealSection";
+import GalleryLightbox from "@/components/GalleryLightbox";
 
 export const revalidate = 0;
 
@@ -37,9 +39,19 @@ export default async function PropertyPage({
   const accentStyle = { "--accent": property.accentColor } as React.CSSProperties;
   const contactEmail = property.contactEmail || agency?.contactEmail || "hello@novo.studio";
   const gallery = property.images.filter((src) => src !== property.bannerImage);
+  const mailHref = `mailto:${contactEmail}?subject=Upit — ${property.name}`;
 
   return (
     <div className="stay" style={accentStyle}>
+      <header className="stay-nav">
+        <Link href="/" className="stay-nav-brand">
+          NOVO
+        </Link>
+        <a className="stay-nav-cta" href={mailHref}>
+          Pošaljite upit
+        </a>
+      </header>
+
       {property.bannerImage ? (
         <div className="stay-banner">
           {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -65,25 +77,21 @@ export default async function PropertyPage({
         <div className="stay-stat">od {property.priceFromEur} €/noć</div>
       </div>
 
-      <div className="stay-section stay-about">
+      <RevealSection className="stay-section stay-about">
+        <h2 className="stay-eyebrow">O objektu</h2>
         <p>{property.description}</p>
-      </div>
+      </RevealSection>
 
       {gallery.length > 0 && (
-        <div className="stay-section">
-          <h2 style={{ fontSize: 20, fontWeight: 600, marginBottom: 16 }}>Galerija</h2>
-          <div className="stay-gallery">
-            {gallery.map((src) => (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img key={src} src={src} alt={property.name} className="stay-gallery-img" />
-            ))}
-          </div>
-        </div>
+        <RevealSection className="stay-section">
+          <h2 className="stay-eyebrow">Galerija</h2>
+          <GalleryLightbox images={gallery} alt={property.name} />
+        </RevealSection>
       )}
 
       {property.amenities.length > 0 && (
-        <div className="stay-section stay-alt">
-          <h2 style={{ fontSize: 20, fontWeight: 600 }}>Sadržaji</h2>
+        <RevealSection className="stay-section stay-alt">
+          <h2 className="stay-eyebrow">Sadržaji</h2>
           <div className="stay-amenities">
             {property.amenities.map((a) => (
               <div className="stay-amenity" key={a}>
@@ -91,10 +99,10 @@ export default async function PropertyPage({
               </div>
             ))}
           </div>
-        </div>
+        </RevealSection>
       )}
 
-      <div className="stay-section">
+      <RevealSection className="stay-section">
         <div className="stay-book">
           <div>
             <div className="price">
@@ -102,11 +110,11 @@ export default async function PropertyPage({
             </div>
             <p>Odgovaramo unutar 24h</p>
           </div>
-          <a className="bookbtn" href={`mailto:${contactEmail}?subject=Upit — ${property.name}`}>
+          <a className="bookbtn" href={mailHref}>
             Pošaljite upit
           </a>
         </div>
-      </div>
+      </RevealSection>
 
       <footer className="stay-foot">
         {property.name} · {property.location}
@@ -114,6 +122,10 @@ export default async function PropertyPage({
           Stranicu pokreće <Link href="/">novo.hr</Link>
         </div>
       </footer>
+
+      <div className="stay-mobile-cta">
+        <a href={mailHref}>Pošaljite upit</a>
+      </div>
     </div>
   );
 }
