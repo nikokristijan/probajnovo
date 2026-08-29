@@ -107,9 +107,6 @@ html.novo-lock-scroll body {
   min-height: 0;
 }
 .novo-os-hero { position: relative; max-width: 660px; margin: auto 0; }
-.novo-os-hero-mark { position: absolute; top: -34px; right: -8px; width: 190px; opacity: 0.05; pointer-events: none; z-index: 0; }
-.novo-os-hero-mark img { width: 100%; height: auto; display: block; }
-@media (max-width: 720px) { .novo-os-hero-mark { display: none; } }
 .novo-os-hero-content { position: relative; z-index: 1; display: flex; flex-direction: column; gap: 20px; }
 .novo-os-kicker { font-size: 11px; letter-spacing: 0.16em; color: var(--novo-blue); }
 .novo-os-hero h1 { font-size: 26px; line-height: 1.3; font-weight: 500; letter-spacing: -0.01em; margin: 0; }
@@ -195,9 +192,9 @@ html.novo-lock-scroll body {
 .fw-titlebar:active { cursor: grabbing; }
 .fw-title { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .fw-controls { display: flex; align-items: center; gap: 6px; flex-shrink: 0; }
-.fw-btn { background: none; border: none; cursor: pointer; padding: 2px 4px; color: #000; font-size: 13px; line-height: 1; transition: color 0.15s ease; }
-.fw-btn:hover { color: var(--novo-orange); }
-.fw-chevron { display: inline-block; transition: transform 0.15s ease; }
+.fw-btn { background: none; border: none; cursor: pointer; padding: 0; width: 22px; height: 22px; display: inline-flex; align-items: center; justify-content: center; color: #000; font-size: 13px; line-height: 1; border-radius: 5px; transition: color 0.15s ease, background 0.15s ease; }
+.fw-btn:hover { color: var(--novo-orange); background: rgba(0,0,0,0.06); }
+.fw-chevron { display: inline-flex; align-items: center; justify-content: center; width: 12px; height: 12px; transform-origin: 50% 50%; transform: rotate(0deg); transition: transform 0.2s ease; }
 .fw-chevron-up { transform: rotate(180deg); }
 
 /* EXHIBIT — ambijentalna jedna slika koja se auto-scrolla prema dolje u petlji */
@@ -305,7 +302,6 @@ html.novo-lock-scroll body {
 .stay-eyebrow { font-family: var(--font-karla), sans-serif; font-size: 11px; font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase; color: var(--accent-dark); margin: 0 0 14px; }
 
 .stay-section { padding: clamp(30px, 5vw, 48px) clamp(20px, 5vw, 56px); }
-
 .stay-about { display: grid; grid-template-columns: 1fr; gap: 16px; max-width: 70ch; }
 .stay-about p { font-size: 15.5px; line-height: 1.8; color: #4a4030; margin: 0; white-space: pre-line; }
 
@@ -342,9 +338,73 @@ html.novo-lock-scroll body {
   }
 }
 
-/* ====================================================================
+/* Prijava/odjava, kućni red, domaćin, mapa — dodatne "skroz opremljene" sekcije */
+.stay-hours { display: flex; flex-wrap: wrap; gap: 14px; }
+.stay-hour { display: flex; flex-direction: column; gap: 4px; background: var(--plaster); border-radius: 10px; padding: 14px 20px; min-width: 140px; }
+.stay-hour-label { font-size: 10.5px; letter-spacing: 0.14em; color: var(--dim); }
+.stay-hour-value { font-family: var(--font-zilla-slab), Georgia, serif; font-size: 20px; font-weight: 600; }
+
+.stay-rules { list-style: none; margin: 18px 0 0; padding: 0; display: flex; flex-direction: column; gap: 10px; max-width: 60ch; }
+.stay-rules li { position: relative; padding-left: 22px; font-size: 14.5px; line-height: 1.6; color: #4a4030; }
+.stay-rules li::before { content: "—"; position: absolute; left: 0; color: var(--accent); font-weight: 700; }
+
+.stay-host { background: var(--paper); border: 1px solid #e7dcc3; border-radius: 14px; padding: 22px 26px; max-width: 60ch; transition: transform 0.2s ease; }
+.stay-host:hover { transform: translateY(-2px); }
+.stay-host-name { font-family: var(--font-zilla-slab), Georgia, serif; font-size: 19px; font-weight: 600; margin-bottom: 6px; }
+.stay-host-note { margin: 0; font-size: 14.5px; line-height: 1.7; color: #4a4030; font-style: italic; }
+
+.stay-map-link { display: inline-flex; align-items: center; gap: 6px; margin-top: 16px; background: var(--accent); color: var(--paper); font-weight: 700; font-size: 13.5px; padding: 11px 20px; border-radius: 999px; text-decoration: none; transition: transform 0.15s ease, box-shadow 0.15s ease; }
+.stay-map-link:hover { transform: translateY(-2px); box-shadow: 0 8px 18px color-mix(in srgb, var(--accent) 45%, transparent); }
+
+/* Tamna varijanta — samo mijenja tokene, ostatak CSS-a se automatski prilagodi */
+.stay-dark { --ink: #f2ede1; --paper: #15120f; --plaster: #211c17; --dim: #a89c86; }
+.stay-dark .stay-nav { border-bottom-color: #33291d; }
+.stay-dark .stay-stats { border-bottom-color: #33291d; }
+.stay-dark .stay-amenity, .stay-dark .stay-host { border-color: #33291d; }
+.stay-dark .stay-foot { background: #000; }
+
+/* =====================================================================
+   EDITORIAL — magazinski layout: veliki naslovi, drop-cap, pull-quote.
+   ===================================================================== */
+.stay-editorial .stay-hero h1, .stay-editorial .stay-banner-overlay h1 { font-size: clamp(36px, 7.5vw, 64px); letter-spacing: -0.02em; }
+.stay-editorial .stay-eyebrow { font-size: 12px; letter-spacing: 0.2em; }
+.stay-editorial .stay-about { max-width: 78ch; }
+.stay-dropcap::first-letter { font-family: var(--font-zilla-slab), Georgia, serif; font-size: 3.6em; font-weight: 700; float: left; line-height: 0.8; padding: 6px 8px 0 0; color: var(--accent); }
+.stay-pullquote { padding: 10px clamp(20px, 5vw, 56px) clamp(20px, 4vw, 40px); }
+.stay-pullquote blockquote { margin: 0; font-family: var(--font-zilla-slab), Georgia, serif; font-size: clamp(24px, 4vw, 38px); font-weight: 600; line-height: 1.3; color: var(--accent-dark); border-left: 4px solid var(--accent); padding-left: 24px; max-width: 60ch; }
+.stay-editorial .stay-gallery { grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); }
+.stay-editorial .stay-gallery-item:nth-child(3n+1) { grid-column: span 1; }
+
+/* =====================================================================
+   RAW — brutalist: mono, oštri rubovi, marquee traka, grid pozadina.
+   ===================================================================== */
+.stay-raw { font-family: var(--font-jetbrains-mono), monospace; }
+.stay-raw h1, .stay-raw h2, .stay-raw h3 { font-family: var(--font-jetbrains-mono), monospace; text-transform: uppercase; letter-spacing: -0.01em; }
+.stay-raw .stay-nav { border-bottom: 2px solid var(--ink); backdrop-filter: none; background: var(--paper); }
+.stay-raw .stay-nav-cta, .stay-raw .stay-book a.bookbtn, .stay-raw .stay-map-link { border-radius: 0; }
+.stay-raw .stay-hero, .stay-raw .stay-banner-overlay { background: var(--ink); }
+.stay-raw .stay-hero { background-image: repeating-linear-gradient(45deg, color-mix(in srgb, var(--paper) 6%, transparent) 0 2px, transparent 2px 14px); }
+.stay-raw .stay-stat, .stay-raw .stay-amenity, .stay-raw .stay-hour, .stay-raw .stay-host { border-radius: 0; border: 2px solid var(--ink); box-shadow: 4px 4px 0 var(--accent); background: var(--paper); }
+.stay-raw .stay-stat:hover, .stay-raw .stay-amenity:hover { transform: translate(-2px, -2px); box-shadow: 6px 6px 0 var(--accent); }
+.stay-raw .stay-gallery-item, .stay-raw .stay-gallery-img { border-radius: 0; }
+.stay-raw .stay-book { border-radius: 0; border: 2px solid var(--ink); }
+.stay-raw .stay-eyebrow { font-family: var(--font-jetbrains-mono), monospace; }
+.stay-raw .stay-rules li::before { content: ">"; }
+.stay-raw .stay-mobile-cta a { border-radius: 0; }
+
+/* Marquee traka — beskonačno klizeći tekst, karakterističan "raw" detalj */
+.stay-marquee { overflow: hidden; background: var(--ink); color: var(--paper); border-bottom: 2px solid var(--ink); white-space: nowrap; }
+.stay-marquee-track { display: inline-flex; gap: 40px; padding: 8px 0; animation: stay-marquee-scroll 22s linear infinite; }
+.stay-marquee-track span { font-size: 12px; letter-spacing: 0.08em; text-transform: uppercase; padding-right: 40px; border-right: 1px solid color-mix(in srgb, var(--paper) 30%, transparent); }
+.stay-marquee-track span:last-child { border-right: none; }
+@keyframes stay-marquee-scroll { from { transform: translateX(0); } to { transform: translateX(-50%); } }
+@media (prefers-reduced-motion: reduce) { .stay-marquee-track { animation: none; } }
+
+/* =====================================================================
    ADMIN — jednostavno, funkcionalno sučelje (Tailwind za layout/forme).
    ===================================================================== */
+.admin-quicklink { font-size: 13px; font-weight: 600; border: 1px solid rgba(0,0,0,0.12); border-radius: 999px; padding: 8px 16px; background: #fff; text-decoration: none; color: #000; transition: border-color 0.15s ease, color 0.15s ease; }
+.admin-quicklink:hover { border-color: #ff7f00; color: #ff7f00; }
 .admin-shell { min-height: 100vh; background: #f7f7f5; font-family: var(--font-space-grotesk), sans-serif; }
 .admin-input {
   border: 1px solid rgba(0, 0, 0, 0.15);
