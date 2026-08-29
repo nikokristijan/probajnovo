@@ -18,21 +18,23 @@ export default async function HomePage() {
   const instagramHandle = agencyData?.instagramHandle ?? "@novo.hr";
   const city = agencyData?.city ?? "Slavonski Brod, Croatia";
 
-  const propertyProjects: StudyProject[] = propertiesData.map((p) => {
-    const gallery = p.bannerImage ? [p.bannerImage, ...p.images] : p.images;
-    return {
-      id: p.id,
-      kind: "vikendica",
-      slug: p.slug,
-      name: p.name,
-      location: p.location,
-      tagline: p.tagline,
-      description: p.description,
-      year: p.createdAt.getFullYear(),
-      images: gallery,
-      contactEmail: p.contactEmail || agencyContactEmail,
-    };
-  });
+  const propertyProjects: StudyProject[] = propertiesData
+    .filter((p) => p.showInStudies)
+    .map((p) => {
+      const gallery = p.bannerImage ? [p.bannerImage, ...p.images] : p.images;
+      return {
+        id: p.id,
+        kind: "vikendica",
+        slug: p.slug,
+        name: p.name,
+        location: p.location,
+        tagline: p.tagline,
+        description: p.description,
+        year: p.createdAt.getFullYear(),
+        images: gallery,
+        contactEmail: p.contactEmail || agencyContactEmail,
+      };
+    });
 
   // +1_000_000 na id da se nikad ne poklopi s properties.id (obje tablice
   // kreću brojanje od 1) — id se koristi kao React key i za prepoznavanje
