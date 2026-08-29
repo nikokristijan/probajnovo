@@ -1,12 +1,14 @@
-import { eq, desc } from "drizzle-orm";
+import { eq, desc, asc } from "drizzle-orm";
 import { db } from "./index";
 import {
   agency,
   properties,
   studies,
+  products,
   adminUsers,
   type NewProperty,
   type NewStudy,
+  type NewProduct,
 } from "./schema";
 
 const AGENCY_ROW_ID = 1;
@@ -93,6 +95,34 @@ return row;
 
 export async function deleteStudy(id: number) {
 await db.delete(studies).where(eq(studies.id, id));
+}
+
+export async function listProducts({ onlyPublished = false } = {}) {
+const rows = await db.select().from(products).orderBy(asc(products.position), desc(products.createdAt));
+return onlyPublished ? rows.filter((p) => p.published) : rows;
+}
+
+export async function getProductById(id: number) {
+const rows = await db.select().from(products).where(eq(products.id, id)).limit(1);
+return rows[0] ?? null;
+}
+
+export async function createProduct(data: NewProduct) {
+const [row] = await db.insert(products).values(data).returning();
+return row;
+}
+
+export async function updateProduct(id: number, data: Partial<NewProduct>) {
+const [row] = await db
+.update(products)
+.set({ ...data, updatedAt: new Date() })
+.where(eq(products.id, id))
+.returning();
+return row;
+}
+
+export async function deleteProduct(id: number) {
+await db.delete(products).where(eq(products.id, id));
 }
 
 export async function findAdminByEmail(email: string) {
