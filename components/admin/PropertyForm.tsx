@@ -26,6 +26,15 @@ type FormValues = {
   bannerImage: string;
   contactEmail: string;
   published: boolean;
+  showInStudies: boolean;
+  layoutStyle: "classic" | "editorial" | "raw";
+  darkMode: boolean;
+  checkInTime: string;
+  checkOutTime: string;
+  houseRules: string;
+  hostName: string;
+  hostNote: string;
+  mapUrl: string;
 };
 
 function initialValues(property?: Property): FormValues {
@@ -45,6 +54,15 @@ function initialValues(property?: Property): FormValues {
     bannerImage: property?.bannerImage ?? "",
     contactEmail: property?.contactEmail ?? "",
     published: property?.published ?? true,
+    showInStudies: property?.showInStudies ?? false,
+    layoutStyle: (property?.layoutStyle as FormValues["layoutStyle"]) ?? "classic",
+    darkMode: property?.darkMode ?? false,
+    checkInTime: property?.checkInTime ?? "",
+    checkOutTime: property?.checkOutTime ?? "",
+    houseRules: property?.houseRules?.join("\n") ?? "",
+    hostName: property?.hostName ?? "",
+    hostNote: property?.hostNote ?? "",
+    mapUrl: property?.mapUrl ?? "",
   };
 }
 
@@ -194,6 +212,108 @@ export default function PropertyForm({
             value={values.accentColor}
             onChange={(e) => set("accentColor", e.target.value)}
             className="admin-input h-[38px] p-1"
+          />
+        </Field>
+      </div>
+
+      <div className="border border-black/10 rounded-xl p-4 flex flex-col gap-4 bg-black/[0.02]">
+        <span className="text-sm font-semibold">Izgled stranice vikendice</span>
+        <div className="grid grid-cols-2 gap-4">
+          <Field label="Layout">
+            <select
+              name="layoutStyle"
+              value={values.layoutStyle}
+              onChange={(e) => set("layoutStyle", e.target.value as FormValues["layoutStyle"])}
+              className="admin-input"
+            >
+              <option value="classic">Classic — čisto, uravnoteženo</option>
+              <option value="editorial">Editorial — magazinski, veliki naslovi</option>
+              <option value="raw">Raw — brutalist, mono, oštro</option>
+            </select>
+          </Field>
+          <label className="flex items-center gap-2 text-sm font-medium mt-auto pb-2">
+            <input
+              type="checkbox"
+              name="darkMode"
+              checked={values.darkMode}
+              onChange={(e) => set("darkMode", e.target.checked)}
+            />
+            Tamna varijanta boja
+          </label>
+        </div>
+        <label className="flex items-center gap-2 text-sm font-medium">
+          <input
+            type="checkbox"
+            name="showInStudies"
+            checked={values.showInStudies}
+            onChange={(e) => set("showInStudies", e.target.checked)}
+          />
+          Prikaži i u STUDIES popisu na naslovnici
+        </label>
+      </div>
+
+      <div className="border border-black/10 rounded-xl p-4 flex flex-col gap-4 bg-black/[0.02]">
+        <span className="text-sm font-semibold">Prijava, odjava i kućni red</span>
+        <div className="grid grid-cols-2 gap-4">
+          <Field label="Prijava (check-in)">
+            <input
+              name="checkInTime"
+              value={values.checkInTime}
+              onChange={(e) => set("checkInTime", e.target.value)}
+              placeholder="npr. od 15:00"
+              className="admin-input"
+            />
+          </Field>
+          <Field label="Odjava (check-out)">
+            <input
+              name="checkOutTime"
+              value={values.checkOutTime}
+              onChange={(e) => set("checkOutTime", e.target.value)}
+              placeholder="npr. do 10:00"
+              className="admin-input"
+            />
+          </Field>
+        </div>
+        <Field label="Kućni red — jedan po retku">
+          <textarea
+            name="houseRules"
+            value={values.houseRules}
+            onChange={(e) => set("houseRules", e.target.value)}
+            rows={4}
+            placeholder={"Nema pušenja u kući\nTiha noć od 22h\nKućni ljubimci uz najavu"}
+            className="admin-input"
+          />
+        </Field>
+      </div>
+
+      <div className="border border-black/10 rounded-xl p-4 flex flex-col gap-4 bg-black/[0.02]">
+        <span className="text-sm font-semibold">Domaćin (opcionalno, osobniji dojam)</span>
+        <Field label="Ime domaćina">
+          <input
+            name="hostName"
+            value={values.hostName}
+            onChange={(e) => set("hostName", e.target.value)}
+            placeholder="npr. Ana"
+            className="admin-input"
+          />
+        </Field>
+        <Field label="Osobna poruka gostima">
+          <textarea
+            name="hostNote"
+            value={values.hostNote}
+            onChange={(e) => set("hostNote", e.target.value)}
+            rows={3}
+            placeholder="npr. Javite se ako vam treba bilo što — javljam se brzo!"
+            className="admin-input"
+          />
+        </Field>
+        <Field label="Poveznica na mapu (Google Maps i sl., opcionalno)">
+          <input
+            name="mapUrl"
+            value={values.mapUrl}
+            onChange={(e) => set("mapUrl", e.target.value)}
+            placeholder="https://maps.google.com/…"
+            className="admin-input"
           />
         </Field>
       </div>
