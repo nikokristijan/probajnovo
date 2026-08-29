@@ -19,6 +19,9 @@ import {
   createStudy,
   updateStudy,
   deleteStudy,
+  createProduct,
+  updateProduct,
+  deleteProduct,
   getAdminById,
   listAdmins,
   createAdmin,
@@ -403,6 +406,89 @@ export async function updateStudyAction(
 export async function deleteStudyAction(id: number) {
   await requireAdmin();
   await deleteStudy(id);
+  revalidatePath("/");
+  revalidatePath("/admin");
+  redirect("/admin");
+}
+
+/* ---------------------------------------------------------------- */
+/* Proizvodi (fizički proizvodi — 3D printane pločice s NFC oznakama) */
+/* ---------------------------------------------------------------- */
+
+const ProductSchema = z.object({
+  name: z.string().min(1, "Naziv je obavezan."),
+  tagline: z.string().min(1, "Kratki opis je obavezan."),
+  description: z.string().min(1, "Opis je obavezan."),
+  priceEur: z.string().optional(),
+  images: z.string(), // JSON niz URL-ova, parsiramo gore definiranim parseImages
+  features: z.string().optional(), // jedan po retku, parsiramo kao amenities
+  published: z.coerce.boolean(),
+  position: z.coerce.number().int().default(0),
+});
+
+function readProductFormData(formData: FormData) {
+  return {
+    name: formData.get("name"),
+    tagline: formData.get("tagline"),
+    description: formData.get("description"),
+    priceEur: formData.get("priceEur") ?? "",
+    images: formData.get("images") ?? "[]",
+    features: formData.get("features") ?? "",
+    published: formData.get("published") === "on",
+    position: formData.get("position") ?? "0",
+  };
+}
+
+function parsePriceEur(raw?: string): number | null {
+  if (!raw || raw.trim() === "") return null;
+  const n = Number(raw);
+  return Number.isFinite(n) && n >= 0 ? Math.round(n) : null;
+}
+
+export async function createProductAction(
+  _prevState: ActionState,
+  formData: FormData
+): Promise<ActionState> {
+  await requireAdmin();
+  const parsed = ProductSchema.safeParse(readProductFormData(formData));
+  if (!parsed.success) {
+    return { error: parsed.error.issues[0]?.message ?? "Provjeri unesene podatke." };
+  }
+  await createProduct({
+    ...parsed.data,
+    priceEur: parsePriceEur(parsed.data.priceEur),
+    images: parseImages(parsed.data.images),
+    features: parseAmenities(parsed.data.features ?? ""),
+  });
+  revalidatePath("/");
+  revalidatePath("/admin");
+  redirect("/admin");
+}
+
+export async function updateProductAction(
+  id: number,
+  _prevState: ActionState,
+  formData: FormData
+): Promise<ActionState> {
+  await requireAdmin();
+  const parsed = ProductSchema.safeParse(readProductFormData(formData));
+  if (!parsed.success) {
+    return { error: parsed.error.issues[0]?.message ?? "Provjeri unesene podatke." };
+  }
+  await updateProduct(id, {
+    ...parsed.data,
+    priceEur: parsePriceEur(parsed.data.priceEur),
+    images: parseImages(parsed.data.images),
+    features: parseAmenities(parsed.data.features ?? ""),
+  });
+  revalidatePath("/");
+  revalidatePath("/admin");
+  return { success: true };
+}
+
+export async function deleteProductAction(id: number) {
+  await requireAdmin();
+  await deleteProduct(id);
   revalidatePath("/");
   revalidatePath("/admin");
   redirect("/admin");
