@@ -16,6 +16,9 @@ import {
   createProperty,
   updateProperty,
   deleteProperty,
+  createStudy,
+  updateStudy,
+  deleteStudy,
 } from "@/lib/db/queries";
 
 export type ActionState = { error?: string; success?: boolean } | undefined;
@@ -259,6 +262,88 @@ export async function updatePropertyAction(
 export async function deletePropertyAction(id: number) {
   await requireAdmin();
   await deleteProperty(id);
+  revalidatePath("/");
+  revalidatePath("/admin");
+  redirect("/admin");
+}
+
+/* ---------------------------------------------------------------- */
+/* Studies (opći portfolio unosi — brend identitet, dizajn, film...) */
+/* ---------------------------------------------------------------- */
+
+const StudySchema = z.object({
+  title: z.string().min(1, "Naslov je obavezan."),
+  category: z.string().min(1, "Kategorija je obavezna."),
+  tagline: z.string().min(1, "Slogan je obavezan."),
+  description: z.string().min(1, "Opis je obavezan."),
+  year: z.coerce.number().int().min(1900).max(2100),
+  images: z.string(), // JSON niz URL-ova, parsiramo gore definiranim parseImages
+  externalUrl: z
+    .string()
+    .optional()
+    .refine((v) => !v || /^https?:\/\//i.test(v), {
+      message: "Poveznica mora počinjati s http:// ili https://",
+    }),
+  published: z.coerce.boolean(),
+  position: z.coerce.number().int().default(0),
+});
+
+function readStudyFormData(formData: FormData) {
+  return {
+    title: formData.get("title"),
+    category: formData.get("category"),
+    tagline: formData.get("tagline"),
+    description: formData.get("description"),
+    year: formData.get("year"),
+    images: formData.get("images") ?? "[]",
+    externalUrl: formData.get("externalUrl") ?? "",
+    published: formData.get("published") === "on",
+    position: formData.get("position") ?? "0",
+  };
+}
+
+export async function createStudyAction(
+  _prevState: ActionState,
+  formData: FormData
+): Promise<ActionState> {
+  await requireAdmin();
+  const parsed = StudySchema.safeParse(readStudyFormData(formData));
+  if (!parsed.success) {
+    return { error: parsed.error.issues[0]?.message ?? "Provjeri unesene podatke." };
+  }
+  await createStudy({
+    ...parsed.data,
+    images: parseImages(parsed.data.images),
+    externalUrl: parsed.data.externalUrl?.trim() || null,
+  });
+  revalidatePath("/");
+  revalidatePath("/admin");
+  redirect("/admin");
+}
+
+export async function updateStudyAction(
+  id: number,
+  _prevState: ActionState,
+  formData: FormData
+): Promise<ActionState> {
+  await requireAdmin();
+  const parsed = StudySchema.safeParse(readStudyFormData(formData));
+  if (!parsed.success) {
+    return { error: parsed.error.issues[0]?.message ?? "Provjeri unesene podatke." };
+  }
+  await updateStudy(id, {
+    ...parsed.data,
+    images: parseImages(parsed.data.images),
+    externalUrl: parsed.data.externalUrl?.trim() || null,
+  });
+  revalidatePath("/");
+  revalidatePath("/admin");
+  return { success: true };
+}
+
+export async function deleteStudyAction(id: number) {
+  await requireAdmin();
+  await deleteStudy(id);
   revalidatePath("/");
   revalidatePath("/admin");
   redirect("/admin");
