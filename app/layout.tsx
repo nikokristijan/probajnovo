@@ -26,6 +26,9 @@ const karla = Karla({
 export const metadata: Metadata = {
   title: "NOVO",
   description: "NOVO — kreativna agencija iz Slavonskog Broda.",
+  icons: {
+    icon: "/favicon-orange.png",
+  },
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
