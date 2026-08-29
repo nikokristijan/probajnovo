@@ -99,3 +99,29 @@ export async function findAdminByEmail(email: string) {
 const rows = await db.select().from(adminUsers).where(eq(adminUsers.email, email)).limit(1);
 return rows[0] ?? null;
 }
+
+export async function getAdminById(id: number) {
+const rows = await db.select().from(adminUsers).where(eq(adminUsers.id, id)).limit(1);
+return rows[0] ?? null;
+}
+
+export async function listAdmins() {
+return db.select().from(adminUsers).orderBy(adminUsers.createdAt);
+}
+
+export async function createAdmin(data: { email: string; passwordHash: string; isSuperAdmin?: boolean }) {
+const [row] = await db
+.insert(adminUsers)
+.values({ email: data.email, passwordHash: data.passwordHash, isSuperAdmin: data.isSuperAdmin ?? false })
+.returning();
+return row;
+}
+
+export async function deleteAdmin(id: number) {
+await db.delete(adminUsers).where(eq(adminUsers.id, id));
+}
+
+export async function countAdmins() {
+const rows = await db.select().from(adminUsers);
+return rows.length;
+}
