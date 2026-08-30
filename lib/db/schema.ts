@@ -22,6 +22,10 @@ export const agency = pgTable("agency", {
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
 
+export type Testimonial = { author: string; text: string; rating: number };
+export type FaqItem = { question: string; answer: string };
+export type SeasonalPrice = { label: string; priceEur: number };
+
 /**
  * One row per vikendica (holiday cottage) site, served at /[slug].
  * Each property can carry its own accent color so it doesn't have to
@@ -63,6 +67,22 @@ export const properties = pgTable("properties", {
   hostNote: text("host_note"),
   /** Poveznica na Google Maps (ili sličnu) za prikaz lokacije. */
   mapUrl: text("map_url"),
+  /** Izjave/recenzije gostiju — kartice s imenom, tekstom i ocjenom 1-5. */
+  testimonials: jsonb("testimonials").$type<Testimonial[]>().notNull().default([]),
+  /** Često postavljana pitanja — prikazuju se kao harmonika (accordion). */
+  faq: jsonb("faq").$type<FaqItem[]>().notNull().default([]),
+  /** Kategorija po slici iz `images` (url → naziv kategorije npr. "Interijer"), za grupiranu galeriju. */
+  imageCategories: jsonb("image_categories").$type<Record<string, string>>().notNull().default({}),
+  /** Poveznica na video ili virtualnu šetnju (YouTube, Vimeo, Matterport i sl.). */
+  videoUrl: text("video_url"),
+  /** Sezonski cjenik — ako je popunjen, prikazuje se tablica cijena po sezoni. */
+  seasonalPricing: jsonb("seasonal_pricing").$type<SeasonalPrice[]>().notNull().default([]),
+  /** Poveznica na vanjski kalendar dostupnosti (Booking.com, Airbnb i sl.). */
+  availabilityUrl: text("availability_url"),
+  /** Fotografija domaćina za karticu "Domaćin". */
+  hostPhoto: text("host_photo"),
+  /** Kratke oznake povjerenja — jedna po retku (npr. "4.9 na Google recenzijama"). */
+  reviewBadges: jsonb("review_badges").$type<string[]>().notNull().default([]),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
