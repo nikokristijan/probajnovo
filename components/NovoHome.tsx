@@ -104,6 +104,35 @@ function Chevron({ up }: { up: boolean }) {
   );
 }
 
+/* Ikone za cijeli zaslon (proizvodi) — kutne zagrade koje se šire/skupljaju,
+   dosljedno geometrijskom stilu Chevrona iznad. */
+function ExpandIcon() {
+  return (
+    <svg viewBox="0 0 12 12" width="10" height="10" fill="none" aria-hidden="true">
+      <path
+        d="M1 4.5V1h3.5M11 4.5V1H7.5M1 7.5V11h3.5M11 7.5V11H7.5"
+        stroke="currentColor"
+        strokeWidth="1.4"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+function CompressIcon() {
+  return (
+    <svg viewBox="0 0 12 12" width="10" height="10" fill="none" aria-hidden="true">
+      <path
+        d="M4.5 1v3.5H1M7.5 1v3.5H11M4.5 11V7.5H1M7.5 11V7.5H11"
+        stroke="currentColor"
+        strokeWidth="1.4"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
 /* ------------------------------------------------------------------ */
 /* Floating window — draggable, minimizable, closable                  */
 /* ------------------------------------------------------------------ */
@@ -117,6 +146,7 @@ function FloatingWindow({
   onClose,
   minimized,
   onToggleMinimize,
+  onToggleFullscreen,
   width = 220,
   children,
 }: {
@@ -128,6 +158,7 @@ function FloatingWindow({
   onClose?: () => void;
   minimized: boolean;
   onToggleMinimize?: () => void;
+  onToggleFullscreen?: () => void;
   width?: number;
   children: React.ReactNode;
 }) {
@@ -177,6 +208,16 @@ function FloatingWindow({
       >
         <span className="fw-title">{title}</span>
         <div className="fw-controls">
+          {onToggleFullscreen && (
+            <button
+              className="fw-btn"
+              onPointerDown={(e) => e.stopPropagation()}
+              onClick={onToggleFullscreen}
+              aria-label="Cijeli zaslon"
+            >
+              <ExpandIcon />
+            </button>
+          )}
           {onToggleMinimize && (
             <button
               className="fw-btn"
@@ -311,6 +352,97 @@ function ProductContent({ product, contactEmail }: { product: ProductCard; conta
   );
 }
 
+/* Cijeli zaslon proizvoda — umjesto malog plutajućeg prozora, proizvod
+   "postane" vlastita stranica preko cijelog ekrana (veća galerija, čitljiviji
+   opis). Otvara se klikom na ikonu širenja kraj minimiziranja, zatvara se
+   ikonom skupljanja (vraća se natrag na plutajući prozor) ili križićem. */
+function ProductFullscreenPage({
+  product,
+  contactEmail,
+  onExitFullscreen,
+  onClose,
+}: {
+  product: ProductCard;
+  contactEmail: string;
+  onExitFullscreen: () => void;
+  onClose: () => void;
+}) {
+  const [i, setI] = useState(0);
+  const images = product.images.length > 0 ? product.images : [undefined];
+
+  const subject = `Upit — ${product.name}`;
+  const body = `Pozdrav,\n\nZanima me proizvod: ${product.name}.\n\nKoličina: \nNaziv vikendice / firme: \n\nHvala!`;
+  const mailHref = `mailto:${contactEmail}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) {
+      if (e.key === "Escape") onExitFullscreen();
+    }
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [onExitFullscreen]);
+
+  return (
+    <div className="product-full mono">
+      <div className="product-full-topbar">
+        <span className="product-full-brand mono muted">NOVO — PROIZVOD</span>
+        <div className="fw-controls">
+          <button className="fw-btn" onClick={onExitFullscreen} aria-label="Izađi iz cijelog zaslona — natrag na prozor">
+            <CompressIcon />
+          </button>
+          <button className="fw-btn" onClick={onClose} aria-label="Zatvori">
+            ×
+          </button>
+        </div>
+      </div>
+      <div className="product-full-scroll">
+        <div className="product-full-body">
+          <div className="product-full-hero">
+            <ProjectImage src={images[i]} alt={product.name} className="product-full-hero-img" />
+          </div>
+          {images.length > 1 && (
+            <div className="product-full-thumbs">
+              {images.map((src, idx) => (
+                <button
+                  key={idx}
+                  className={idx === i ? "product-full-thumb active" : "product-full-thumb"}
+                  onClick={() => setI(idx)}
+                  aria-label={`Slika ${idx + 1}`}
+                >
+                  <ProjectImage src={src} alt={product.name} className="product-full-thumb-img" />
+                </button>
+              ))}
+            </div>
+          )}
+          <div className="product-full-info">
+            <span className="novo-os-kicker mono">PROIZVOD</span>
+            <h1>{product.name}</h1>
+            <p className="product-full-tagline">{product.tagline}</p>
+            <p className="product-full-desc">{product.description}</p>
+            {product.features.length > 0 && (
+              <div className="product-features">
+                {product.features.map((f) => (
+                  <span key={f} className="product-feature-chip mono">
+                    {f}
+                  </span>
+                ))}
+              </div>
+            )}
+            <div className="product-full-actions">
+              <span className="product-full-price mono">
+                {product.priceEur != null ? `od ${product.priceEur} €` : "Cijena na upit"}
+              </span>
+              <a href={mailHref} className="novo-os-cta mono">
+                POŠALJI UPIT ↗
+              </a>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 /* ------------------------------------------------------------------ */
 /* Glavna komponenta                                                    */
 /* ------------------------------------------------------------------ */
@@ -337,7 +469,7 @@ export default function NovoHome({
     { key: string; project: StudyProject; x: number; y: number; z: number; minimized: boolean }[]
   >([]);
   const [productWindows, setProductWindows] = useState<
-    { key: string; product: ProductCard; x: number; y: number; z: number; minimized: boolean }[]
+    { key: string; product: ProductCard; x: number; y: number; z: number; minimized: boolean; fullscreen: boolean }[]
   >([]);
   const [coords, setCoords] = useState({ x: 0, y: 0 });
 
@@ -406,7 +538,15 @@ export default function NovoHome({
       const baseY = Math.min(100 + count * 36, Math.max(vh - 420, 70));
       return [
         ...wins,
-        { key: `p-${product.id}-${Date.now()}`, product, x: baseX, y: baseY, z: ++zCounter.current, minimized: false },
+        {
+          key: `p-${product.id}-${Date.now()}`,
+          product,
+          x: baseX,
+          y: baseY,
+          z: ++zCounter.current,
+          minimized: false,
+          fullscreen: false,
+        },
       ];
     });
   };
@@ -416,6 +556,12 @@ export default function NovoHome({
     setProductWindows((wins) => wins.map((w) => (w.key === key ? { ...w, minimized: !w.minimized } : w)));
   const focusProduct = (key: string) =>
     setProductWindows((wins) => wins.map((w) => (w.key === key ? { ...w, z: ++zCounter.current } : w)));
+  const toggleFullscreenProduct = (key: string) =>
+    setProductWindows((wins) =>
+      wins.map((w) =>
+        w.key === key ? { ...w, fullscreen: !w.fullscreen, minimized: false, z: ++zCounter.current } : w
+      )
+    );
 
   const exhibitImages =
     projects.length > 0
@@ -626,22 +772,33 @@ export default function NovoHome({
         </FloatingWindow>
       ))}
 
-      {productWindows.map((w) => (
-        <FloatingWindow
-          key={w.key}
-          title={w.product.name.toUpperCase()}
-          x={w.x}
-          y={w.y}
-          z={w.z}
-          onFocus={() => focusProduct(w.key)}
-          onClose={() => closeProduct(w.key)}
-          minimized={w.minimized}
-          onToggleMinimize={() => toggleMinimizeProduct(w.key)}
-          width={260}
-        >
-          <ProductContent product={w.product} contactEmail={contactEmail} />
-        </FloatingWindow>
-      ))}
+      {productWindows.map((w) =>
+        w.fullscreen ? (
+          <ProductFullscreenPage
+            key={w.key}
+            product={w.product}
+            contactEmail={contactEmail}
+            onExitFullscreen={() => toggleFullscreenProduct(w.key)}
+            onClose={() => closeProduct(w.key)}
+          />
+        ) : (
+          <FloatingWindow
+            key={w.key}
+            title={w.product.name.toUpperCase()}
+            x={w.x}
+            y={w.y}
+            z={w.z}
+            onFocus={() => focusProduct(w.key)}
+            onClose={() => closeProduct(w.key)}
+            minimized={w.minimized}
+            onToggleMinimize={() => toggleMinimizeProduct(w.key)}
+            onToggleFullscreen={() => toggleFullscreenProduct(w.key)}
+            width={260}
+          >
+            <ProductContent product={w.product} contactEmail={contactEmail} />
+          </FloatingWindow>
+        )
+      )}
     </div>
   );
 }
