@@ -446,16 +446,84 @@ html.novo-lock-scroll body {
 .stay-dark .stay-foot { background: #000; }
 
 /* =====================================================================
-   EDITORIAL — magazinski layout: veliki naslovi, drop-cap, pull-quote.
+   CLASSIC — "obiteljski putni dnevnik": rukom pisan pečat od povjerenja
+   preko hero fotografije + polaroidi koji vise preko ruba banner slike.
+   ===================================================================== */
+.stay-stamp {
+  position: absolute; top: clamp(16px, 3vw, 26px); right: clamp(16px, 3vw, 26px); z-index: 2;
+  width: 74px; height: 74px; border-radius: 50%; border: 2px dashed rgba(255,255,255,0.78);
+  display: flex; align-items: center; justify-content: center; text-align: center; padding: 8px;
+  font-family: var(--font-zilla-slab), Georgia, serif; font-style: italic; color: #fff;
+  font-size: 12px; line-height: 1.15; transform: rotate(7deg);
+}
+.stay-classic .stay-hero, .stay-classic .stay-banner { position: relative; }
+
+.stay-classic-polaroids {
+  display: flex; gap: 14px; flex-wrap: wrap; position: relative; z-index: 3;
+  padding: 0 clamp(20px, 5vw, 56px); margin-top: -44px;
+}
+.stay-polaroid {
+  background: #fff; padding: 7px 7px 18px; width: 104px; flex-shrink: 0; position: relative;
+  box-shadow: 0 12px 26px rgba(43,32,22,0.2); transition: transform 0.2s ease;
+}
+.stay-polaroid:hover { transform: translateY(-4px) rotate(0deg) !important; }
+.stay-polaroid::before {
+  content: ""; position: absolute; top: -8px; left: 50%; transform: translateX(-50%) rotate(-4deg);
+  width: 34px; height: 14px; background: color-mix(in srgb, var(--accent) 55%, transparent);
+}
+.stay-polaroid:nth-child(1) { transform: rotate(-3deg); }
+.stay-polaroid:nth-child(2) { transform: rotate(2deg); margin-top: 14px; }
+.stay-polaroid:nth-child(2)::before { transform: translateX(-50%) rotate(5deg); }
+.stay-polaroid:nth-child(3) { transform: rotate(-1.5deg); }
+.stay-polaroid:nth-child(3)::before { transform: translateX(-50%) rotate(-8deg); }
+.stay-polaroid img { width: 100%; aspect-ratio: 1 / 1; object-fit: cover; display: block; }
+.stay-dark .stay-polaroid { background: #211c17; }
+@media (max-width: 640px) { .stay-polaroid { width: 78px; } .stay-classic-polaroids { gap: 8px; margin-top: -30px; } }
+
+/* =====================================================================
+   EDITORIAL — magazinski layout: veliki naslovi, drop-cap, pull-quote,
+   vertikalna "kralježnica" s imenom uz hero i rukom ocrtan citat.
    ===================================================================== */
 .stay-editorial .stay-hero h1, .stay-editorial .stay-banner-overlay h1 { font-size: clamp(36px, 7.5vw, 64px); letter-spacing: -0.02em; }
 .stay-editorial .stay-eyebrow { font-size: 12px; letter-spacing: 0.2em; }
-.stay-editorial .stay-about { max-width: 78ch; }
+.stay-editorial .stay-about { max-width: 78ch; position: relative; }
 .stay-dropcap::first-letter { font-family: var(--font-zilla-slab), Georgia, serif; font-size: 3.6em; font-weight: 700; float: left; line-height: 0.8; padding: 6px 8px 0 0; color: var(--accent); }
-.stay-pullquote { padding: 10px clamp(20px, 5vw, 56px) clamp(20px, 4vw, 40px); }
+.stay-pullquote { padding: 10px clamp(20px, 5vw, 56px) clamp(20px, 4vw, 40px); position: relative; }
 .stay-pullquote blockquote { margin: 0; font-family: var(--font-zilla-slab), Georgia, serif; font-size: clamp(24px, 4vw, 38px); font-weight: 600; line-height: 1.3; color: var(--accent-dark); border-left: 4px solid var(--accent); padding-left: 24px; max-width: 60ch; }
 .stay-editorial .stay-gallery { grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); }
 .stay-editorial .stay-gallery-item:nth-child(3n+1) { grid-column: span 1; }
+
+/* Vertikalna kralježnica s nazivom uz hero/banner — na uskom ekranu se sakriva
+   (nema prostora, a naslov je već vidljiv u samom heroju). */
+.stay-spine {
+  position: absolute; top: 0; bottom: 0; left: 0; z-index: 3;
+  display: flex; align-items: center; padding: 18px 0;
+  writing-mode: vertical-rl; text-orientation: mixed;
+  font-family: var(--font-jetbrains-mono), monospace; font-size: 10.5px;
+  letter-spacing: 0.22em; text-transform: uppercase; color: rgba(255,255,255,0.68);
+  border-right: 1px solid rgba(255,255,255,0.22);
+}
+.stay-editorial .stay-hero, .stay-editorial .stay-banner { position: relative; }
+.stay-editorial .stay-hero { padding-left: calc(clamp(20px, 5vw, 56px) + 30px); }
+.stay-editorial .stay-banner-overlay { padding-left: calc(clamp(20px, 5vw, 56px) + 30px); }
+@media (max-width: 640px) { .stay-spine { display: none; } .stay-editorial .stay-hero, .stay-editorial .stay-banner-overlay { padding-left: clamp(20px, 5vw, 56px); } }
+
+/* Div "duh" broj sekcije iza teksta "O objektu" — magazinski detalj,
+   koristi isti broj koji već ide u eyebrow (data-secno postavlja page.tsx). */
+.stay-editorial .stay-about::before {
+  content: attr(data-secno); position: absolute; top: -14px; left: -4px;
+  font-family: var(--font-zilla-slab), Georgia, serif; font-size: clamp(80px, 12vw, 150px);
+  line-height: 1; color: var(--plaster); z-index: 0; pointer-events: none; user-select: none;
+}
+.stay-editorial .stay-about > * { position: relative; z-index: 1; }
+
+/* Rukom ocrtan krug uz citat — kao da ga je urednik istaknuo olovkom */
+.stay-editorial .stay-pullquote::before {
+  content: ""; position: absolute; top: -6px; right: clamp(20px, 6vw, 70px);
+  width: 74px; height: 32px; opacity: 0.6; pointer-events: none;
+  background: no-repeat center / contain url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 90 40'%3E%3Cpath d='M6 24 C 4 8, 40 2, 70 10 C 92 16, 78 34, 40 32 C 18 31, 4 30, 6 24 Z' fill='none' stroke='%23b5502e' stroke-width='2.4' stroke-linecap='round'/%3E%3C/svg%3E");
+}
+@media (max-width: 640px) { .stay-editorial .stay-pullquote::before { display: none; } }
 
 /* =====================================================================
    RAW — brutalist: mono, oštri rubovi, marquee traka, grid pozadina.
@@ -464,13 +532,33 @@ html.novo-lock-scroll body {
 .stay-raw h1, .stay-raw h2, .stay-raw h3 { font-family: var(--font-jetbrains-mono), monospace; text-transform: uppercase; letter-spacing: -0.01em; }
 .stay-raw .stay-nav { border-bottom: 2px solid var(--ink); backdrop-filter: none; background: var(--paper); }
 .stay-raw .stay-nav-cta, .stay-raw .stay-book a.bookbtn, .stay-raw .stay-map-link { border-radius: 0; }
-.stay-raw .stay-hero, .stay-raw .stay-banner-overlay { background: var(--ink); }
-.stay-raw .stay-hero { background-image: repeating-linear-gradient(45deg, color-mix(in srgb, var(--paper) 6%, transparent) 0 2px, transparent 2px 14px); }
+/* VAŽNO: .stay-hero (nema banner slike) smije dobiti puni ink fon, ali
+   .stay-banner-overlay sjedi PREKO stvarne fotografije — puni fon bi je posve
+   sakrio (to je bio bug "banner ne radi u raw layoutu"). Overlay ostaje
+   proziran gradijent, samo pojačan/kontrastniji za raw estetiku. */
+.stay-raw .stay-hero { background: var(--ink); background-image: repeating-linear-gradient(45deg, color-mix(in srgb, var(--paper) 6%, transparent) 0 2px, transparent 2px 14px); }
+.stay-raw .stay-banner-overlay { background: linear-gradient(0deg, rgba(0,0,0,0.82) 0%, rgba(0,0,0,0.35) 55%, rgba(0,0,0,0.05) 100%); }
+.stay-raw .stay-banner { position: relative; }
+.stay-raw .stay-banner::before {
+  content: ""; position: absolute; inset: 0; z-index: 1; pointer-events: none; mix-blend-mode: overlay; opacity: 0.5;
+  background-image: repeating-linear-gradient(0deg, rgba(255,255,255,0.06) 0 1px, transparent 1px 3px);
+}
+.stay-raw .stay-hero .loc::before, .stay-raw .stay-banner-overlay .loc::before { content: "root@novo:~$ "; opacity: 0.5; }
+.stay-raw .stay-hero h1::after, .stay-raw .stay-banner-overlay h1::after {
+  content: "_"; color: var(--accent); animation: stay-raw-blink 1s steps(1) infinite;
+}
+@keyframes stay-raw-blink { 50% { opacity: 0; } }
+@media (prefers-reduced-motion: reduce) { .stay-raw .stay-hero h1::after, .stay-raw .stay-banner-overlay h1::after { animation: none; } }
 .stay-raw .stay-stat, .stay-raw .stay-amenity, .stay-raw .stay-hour, .stay-raw .stay-host { border-radius: 0; border: 2px solid var(--ink); box-shadow: 4px 4px 0 var(--accent); background: var(--paper); }
 .stay-raw .stay-stat:hover, .stay-raw .stay-amenity:hover { transform: translate(-2px, -2px); box-shadow: 6px 6px 0 var(--accent); }
 .stay-raw .stay-gallery-item, .stay-raw .stay-gallery-img { border-radius: 0; }
-.stay-raw .stay-book { border-radius: 0; border: 2px solid var(--ink); }
+.stay-raw .stay-book { border-radius: 0; border: 2px solid var(--ink); position: relative; }
+.stay-raw .stay-book::before {
+  content: "[ok]"; position: absolute; top: -11px; left: 18px; background: var(--paper);
+  border: 2px solid var(--ink); color: var(--accent-dark); font-weight: 700; font-size: 10px; padding: 0 7px;
+}
 .stay-raw .stay-eyebrow { font-family: var(--font-jetbrains-mono), monospace; }
+.stay-raw .stay-eyebrow::before { content: "§ "; color: var(--accent); }
 .stay-raw .stay-rules li::before { content: ">"; }
 .stay-raw .stay-mobile-cta a { border-radius: 0; }
 
@@ -549,6 +637,70 @@ html.novo-lock-scroll body {
 .stay-raw .stay-testimonial, .stay-raw .stay-faq-item { border: 2px solid var(--ink); box-shadow: 4px 4px 0 var(--accent); background: var(--paper); }
 .stay-raw .stay-badge { border-radius: 0; border: 2px solid var(--ink); background: var(--paper); }
 .stay-raw .stay-avail-link { border-radius: 0; }
+
+/* =====================================================================
+   APPLE — "liquid glass": stakleni efekt (blur + saturate + unutarnji sjaj)
+   koristimo SAMO tamo gdje ga i Apple stvarno koristi — navigacija, plutajuće
+   statistike preko fotografije, traka za rezervaciju — ne na svakoj kartici,
+   jer to brzo počne izgledati generički. Pozadina hero zone nije nasumična
+   "duga" nego prigušen mesh izveden iz --accent boje TE vikendice, pa je
+   svaka stranica automatski svoja "tema" bez ikakvog ručnog podešavanja.
+   Ispod fotografije stranica se vraća na čist, svijetli sadržaj (paper/plaster
+   tokeni), baš kao stvarne apple.com stranice — ne jedna duga hrpa stakla.
+   ===================================================================== */
+.stay-apple { --apple-ink: #101014; }
+.stay-apple .stay-nav {
+  background: rgba(16,16,20,0.42); backdrop-filter: blur(20px) saturate(180%); -webkit-backdrop-filter: blur(20px) saturate(180%);
+  border-bottom: 1px solid rgba(255,255,255,0.14);
+}
+.stay-apple .stay-nav-brand { color: #fff; }
+.stay-apple .stay-nav-cta {
+  background: rgba(255,255,255,0.16); backdrop-filter: blur(14px) saturate(180%); -webkit-backdrop-filter: blur(14px) saturate(180%);
+  border: 1px solid rgba(255,255,255,0.28); color: #fff; box-shadow: inset 0 1px 0 rgba(255,255,255,0.35);
+}
+
+.stay-apple .stay-hero {
+  background:
+    radial-gradient(ellipse 70% 60% at 14% 0%, color-mix(in srgb, var(--accent) 55%, transparent) 0%, transparent 62%),
+    radial-gradient(ellipse 60% 55% at 100% 25%, color-mix(in srgb, var(--accent-dark) 65%, transparent) 0%, transparent 60%),
+    var(--apple-ink);
+  color: #fff;
+}
+.stay-apple .stay-hero .loc, .stay-apple .stay-hero p { color: #fff; }
+.stay-apple .stay-hero h1, .stay-apple .stay-banner-overlay h1 { letter-spacing: -0.03em; }
+
+/* Statistike "plutaju" preko dna fotografije/heroja kao staklene kartice —
+   jedino mjesto uz navigaciju i dock traku gdje koristimo pravi liquid glass. */
+.stay-apple .stay-stats {
+  position: relative; z-index: 5; margin-top: -56px; border-bottom: none; padding-top: 0; gap: 12px;
+}
+.stay-apple .stay-stat {
+  background: rgba(255,255,255,0.13); backdrop-filter: blur(18px) saturate(180%); -webkit-backdrop-filter: blur(18px) saturate(180%);
+  border: 1px solid rgba(255,255,255,0.22); color: #fff; border-radius: 16px;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.3), 0 14px 30px rgba(0,0,0,0.28);
+}
+.stay-apple .stay-stat:hover { transform: translateY(-2px); box-shadow: inset 0 1px 0 rgba(255,255,255,0.35), 0 16px 32px rgba(0,0,0,0.3); }
+
+.stay-apple .stay-eyebrow { color: color-mix(in srgb, var(--accent) 78%, black 12%); }
+.stay-apple .stay-gallery-img, .stay-apple .stay-gallery-item { border-radius: 20px; }
+.stay-apple .stay-amenity, .stay-apple .stay-testimonial, .stay-apple .stay-faq-item, .stay-apple .stay-host, .stay-apple .stay-season-row {
+  border-radius: 20px; border-color: transparent; box-shadow: 0 2px 16px rgba(43,32,22,0.06);
+}
+.stay-apple .stay-badge { border-radius: 999px; background: color-mix(in srgb, var(--accent) 12%, var(--plaster)); }
+
+/* Traka za rezervaciju kao plutajući "dock" — tamno staklo na dnu stranice,
+   zatvara luk s tamnom navigacijom na vrhu. */
+.stay-apple .stay-book {
+  background: rgba(16,16,20,0.92); backdrop-filter: blur(22px) saturate(180%); -webkit-backdrop-filter: blur(22px) saturate(180%);
+  border: 1px solid rgba(255,255,255,0.14); border-radius: 999px; color: #fff;
+}
+.stay-apple .stay-book .price, .stay-apple .stay-book p { color: #fff; }
+.stay-apple .stay-book a.bookbtn { background: #fff; color: var(--apple-ink); }
+.stay-apple .stay-avail-link { border-color: rgba(255,255,255,0.4); color: #fff; }
+.stay-apple .stay-mobile-cta a {
+  background: rgba(16,16,20,0.92); backdrop-filter: blur(16px) saturate(180%); -webkit-backdrop-filter: blur(16px) saturate(180%);
+  color: #fff; border: 1px solid rgba(255,255,255,0.16);
+}
 
 /* =====================================================================
    ADMIN — jednostavno, funkcionalno sučelje (Tailwind za layout/forme).
