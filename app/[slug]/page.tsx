@@ -22,6 +22,7 @@ export async function generateMetadata({
     title: `${property.name} — ${property.location}`,
     description: property.tagline,
     robots: { index: true, follow: true },
+    icons: { icon: property.faviconUrl || "/favicon-orange.png" },
   };
 }
 
