@@ -196,6 +196,18 @@ const PropertySchema = z.object({
     }),
   hostPhoto: z.string().optional(),
   reviewBadges: z.string().optional(), // jedan po retku, parsiramo kao amenities
+  faviconUrl: z.string().optional(),
+  customDomain: z
+    .string()
+    .optional()
+    .refine(
+      (v) =>
+        !v ||
+        /^[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?(\.[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?)+$/i.test(
+          v.trim().replace(/^https?:\/\//i, "").replace(/\/.*$/, "")
+        ),
+      { message: "Domena mora biti u obliku npr. vila-marija.com (bez https:// i bez kose crte)." }
+    ),
 });
 
 function parseAmenities(raw: string): string[] {
@@ -272,6 +284,16 @@ function parseImageCategories(raw?: string): Record<string, string> {
   }
 }
 
+/** Normalizira uneseni tekst domene ("https://Vila-Marija.com/" → "vila-marija.com"). */
+function normalizeDomain(raw?: string): string | null {
+  const trimmed = (raw ?? "").trim();
+  if (!trimmed) return null;
+  return trimmed
+    .toLowerCase()
+    .replace(/^https?:\/\//, "")
+    .replace(/\/.*$/, "");
+}
+
 export async function createPropertyAction(
   _prevState: ActionState,
   formData: FormData
@@ -310,6 +332,8 @@ export async function createPropertyAction(
     availabilityUrl: formData.get("availabilityUrl") ?? "",
     hostPhoto: formData.get("hostPhoto") ?? "",
     reviewBadges: formData.get("reviewBadges") ?? "",
+    faviconUrl: formData.get("faviconUrl") ?? "",
+    customDomain: formData.get("customDomain") ?? "",
   });
   if (!parsed.success) {
     return { error: parsed.error.issues[0]?.message ?? "Provjeri unesene podatke." };
@@ -339,9 +363,11 @@ export async function createPropertyAction(
       availabilityUrl: parsed.data.availabilityUrl?.trim() || null,
       hostPhoto: parsed.data.hostPhoto?.trim() || null,
       reviewBadges: parseAmenities(parsed.data.reviewBadges ?? ""),
+      faviconUrl: parsed.data.faviconUrl?.trim() || null,
+      customDomain: normalizeDomain(parsed.data.customDomain),
     });
   } catch {
-    return { error: "Ta adresa (slug) je već zauzeta — odaberi drugu." };
+    return { error: "Ta adresa (slug) ili domena je već zauzeta — odaberi drugu." };
   }
 
   revalidatePath("/");
@@ -388,6 +414,8 @@ export async function updatePropertyAction(
     availabilityUrl: formData.get("availabilityUrl") ?? "",
     hostPhoto: formData.get("hostPhoto") ?? "",
     reviewBadges: formData.get("reviewBadges") ?? "",
+    faviconUrl: formData.get("faviconUrl") ?? "",
+    customDomain: formData.get("customDomain") ?? "",
   });
   if (!parsed.success) {
     return { error: parsed.error.issues[0]?.message ?? "Provjeri unesene podatke." };
@@ -417,9 +445,11 @@ export async function updatePropertyAction(
       availabilityUrl: parsed.data.availabilityUrl?.trim() || null,
       hostPhoto: parsed.data.hostPhoto?.trim() || null,
       reviewBadges: parseAmenities(parsed.data.reviewBadges ?? ""),
+      faviconUrl: parsed.data.faviconUrl?.trim() || null,
+      customDomain: normalizeDomain(parsed.data.customDomain),
     });
   } catch {
-    return { error: "Ta adresa (slug) je već zauzeta — odaberi drugu." };
+    return { error: "Ta adresa (slug) ili domena je već zauzeta — odaberi drugu." };
   }
 
   revalidatePath("/");
