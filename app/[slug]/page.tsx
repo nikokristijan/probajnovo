@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 import { getPropertyBySlug, getAgency } from "@/lib/db/queries";
 import RevealSection from "@/components/RevealSection";
 import GalleryLightbox from "@/components/GalleryLightbox";
+import StayInteractions from "@/components/StayInteractions";
 
 export const revalidate = 0;
 
@@ -53,13 +54,20 @@ export default async function PropertyPage({
     ...property.amenities.slice(0, 4),
   ].filter(Boolean);
 
+  // Numerirane sekcije (01, 02…) — editorial detalj, brojimo samo sekcije
+  // koje se stvarno prikazuju za ovu vikendicu (evaluira se redom kroz JSX).
+  let sectionNo = 0;
+  const eyebrowNo = () => String(++sectionNo).padStart(2, "0");
+
   return (
     <div className={stayClass} style={accentStyle}>
+      <StayInteractions />
+
       <header className="stay-nav">
         <Link href="/" className="stay-nav-brand">
           NOVO
         </Link>
-        <a className="stay-nav-cta" href={mailHref}>
+        <a className="stay-nav-cta" href={mailHref} data-magnetic>
           Pošaljite upit
         </a>
       </header>
@@ -100,7 +108,9 @@ export default async function PropertyPage({
       </div>
 
       <RevealSection className="stay-section stay-about">
-        <h2 className="stay-eyebrow">O objektu</h2>
+        <h2 className="stay-eyebrow">
+          <span className="stay-eyebrow-no">{eyebrowNo()}</span>O objektu
+        </h2>
         <p className={layout === "editorial" ? "stay-dropcap" : undefined}>
           {property.description}
         </p>
@@ -116,14 +126,18 @@ export default async function PropertyPage({
 
       {gallery.length > 0 && (
         <RevealSection className="stay-section">
-          <h2 className="stay-eyebrow">Galerija</h2>
+          <h2 className="stay-eyebrow">
+            <span className="stay-eyebrow-no">{eyebrowNo()}</span>Galerija
+          </h2>
           <GalleryLightbox images={gallery} alt={property.name} />
         </RevealSection>
       )}
 
       {property.amenities.length > 0 && (
         <RevealSection className="stay-section stay-alt">
-          <h2 className="stay-eyebrow">Sadržaji</h2>
+          <h2 className="stay-eyebrow">
+            <span className="stay-eyebrow-no">{eyebrowNo()}</span>Sadržaji
+          </h2>
           <div className="stay-amenities">
             {property.amenities.map((a) => (
               <div className="stay-amenity" key={a}>
@@ -136,7 +150,9 @@ export default async function PropertyPage({
 
       {(property.checkInTime || property.checkOutTime) && (
         <RevealSection className="stay-section">
-          <h2 className="stay-eyebrow">Prijava &amp; odjava</h2>
+          <h2 className="stay-eyebrow">
+            <span className="stay-eyebrow-no">{eyebrowNo()}</span>Prijava &amp; odjava
+          </h2>
           <div className="stay-hours">
             {property.checkInTime && (
               <div className="stay-hour">
@@ -156,7 +172,9 @@ export default async function PropertyPage({
 
       {property.houseRules.length > 0 && (
         <RevealSection className="stay-section stay-alt">
-          <h2 className="stay-eyebrow">Kućni red</h2>
+          <h2 className="stay-eyebrow">
+            <span className="stay-eyebrow-no">{eyebrowNo()}</span>Kućni red
+          </h2>
           <ul className="stay-rules">
             {property.houseRules.map((r) => (
               <li key={r}>{r}</li>
@@ -167,7 +185,9 @@ export default async function PropertyPage({
 
       {(property.hostName || property.hostNote) && (
         <RevealSection className="stay-section">
-          <h2 className="stay-eyebrow">Domaćin</h2>
+          <h2 className="stay-eyebrow">
+            <span className="stay-eyebrow-no">{eyebrowNo()}</span>Domaćin
+          </h2>
           <div className="stay-host">
             {property.hostName && <div className="stay-host-name">{property.hostName}</div>}
             {property.hostNote && <p className="stay-host-note">{property.hostNote}</p>}
@@ -177,8 +197,10 @@ export default async function PropertyPage({
 
       {property.mapUrl && (
         <RevealSection className="stay-section stay-alt">
-          <h2 className="stay-eyebrow">Lokacija</h2>
-          <a className="stay-map-link" href={property.mapUrl} target="_blank" rel="noreferrer">
+          <h2 className="stay-eyebrow">
+            <span className="stay-eyebrow-no">{eyebrowNo()}</span>Lokacija
+          </h2>
+          <a className="stay-map-link" href={property.mapUrl} target="_blank" rel="noreferrer" data-magnetic>
             Otvori na karti ↗
           </a>
         </RevealSection>
@@ -192,7 +214,7 @@ export default async function PropertyPage({
             </div>
             <p>Odgovaramo unutar 24h</p>
           </div>
-          <a className="bookbtn" href={mailHref}>
+          <a className="bookbtn" href={mailHref} data-magnetic>
             Pošaljite upit
           </a>
         </div>
