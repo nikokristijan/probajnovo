@@ -2,7 +2,7 @@
 
 import { useActionState, useState } from "react";
 import type { ActionState } from "@/lib/actions";
-import type { Property } from "@/lib/db/schema";
+import type { Property, Testimonial, FaqItem, SeasonalPrice } from "@/lib/db/schema";
 import ImageUploader from "./ImageUploader";
 
 type PropertyAction = (
@@ -34,7 +34,15 @@ type FormValues = {
   houseRules: string;
   hostName: string;
   hostNote: string;
+  hostPhoto: string;
   mapUrl: string;
+  testimonials: Testimonial[];
+  faq: FaqItem[];
+  imageCategories: Record<string, string>;
+  videoUrl: string;
+  seasonalPricing: SeasonalPrice[];
+  availabilityUrl: string;
+  reviewBadges: string;
 };
 
 function initialValues(property?: Property): FormValues {
@@ -62,7 +70,15 @@ function initialValues(property?: Property): FormValues {
     houseRules: property?.houseRules?.join("\n") ?? "",
     hostName: property?.hostName ?? "",
     hostNote: property?.hostNote ?? "",
+    hostPhoto: property?.hostPhoto ?? "",
     mapUrl: property?.mapUrl ?? "",
+    testimonials: property?.testimonials ?? [],
+    faq: property?.faq ?? [],
+    imageCategories: property?.imageCategories ?? {},
+    videoUrl: property?.videoUrl ?? "",
+    seasonalPricing: property?.seasonalPricing ?? [],
+    availabilityUrl: property?.availabilityUrl ?? "",
+    reviewBadges: property?.reviewBadges?.join("\n") ?? "",
   };
 }
 
@@ -156,6 +172,10 @@ export default function PropertyForm({
           placeholder={"Besplatan WiFi\nParking na posjedu\nVrt s roštiljem"}
           className="admin-input"
         />
+        <span className="text-xs text-black/50">
+          Prepoznate riječi (wifi, parking, bazen, kamin, klima, tv, kuhinja, roštilj, vrt,
+          ljubimci, perilica…) automatski dobiju ikonu na stranici.
+        </span>
       </Field>
 
       <div className="grid grid-cols-3 gap-4">
@@ -288,25 +308,34 @@ export default function PropertyForm({
 
       <div className="border border-black/10 rounded-xl p-4 flex flex-col gap-4 bg-black/[0.02]">
         <span className="text-sm font-semibold">Domaćin (opcionalno, osobniji dojam)</span>
-        <Field label="Ime domaćina">
-          <input
-            name="hostName"
-            value={values.hostName}
-            onChange={(e) => set("hostName", e.target.value)}
-            placeholder="npr. Ana"
-            className="admin-input"
+        <div className="grid grid-cols-[auto_1fr] gap-4 items-start">
+          <ImageUploader
+            label="Fotografija domaćina"
+            value={values.hostPhoto ? [values.hostPhoto] : []}
+            onChange={(urls) => set("hostPhoto", urls[0] ?? "")}
           />
-        </Field>
-        <Field label="Osobna poruka gostima">
-          <textarea
-            name="hostNote"
-            value={values.hostNote}
-            onChange={(e) => set("hostNote", e.target.value)}
-            rows={3}
-            placeholder="npr. Javite se ako vam treba bilo što — javljam se brzo!"
-            className="admin-input"
-          />
-        </Field>
+          <div className="flex flex-col gap-4">
+            <Field label="Ime domaćina">
+              <input
+                name="hostName"
+                value={values.hostName}
+                onChange={(e) => set("hostName", e.target.value)}
+                placeholder="npr. Ana"
+                className="admin-input"
+              />
+            </Field>
+            <Field label="Osobna poruka gostima">
+              <textarea
+                name="hostNote"
+                value={values.hostNote}
+                onChange={(e) => set("hostNote", e.target.value)}
+                rows={3}
+                placeholder="npr. Javite se ako vam treba bilo što — javljam se brzo!"
+                className="admin-input"
+              />
+            </Field>
+          </div>
+        </div>
         <Field label="Poveznica na mapu (Google Maps i sl., opcionalno)">
           <input
             name="mapUrl"
@@ -330,9 +359,81 @@ export default function PropertyForm({
           helpText="Sve slike koje posjetitelj može listati u pop-up prozoru projekta."
           multiple
           value={values.images}
-          onChange={(urls) => set("images", urls)}
+          onChange={(urls) => {
+            set("images", urls);
+            // ukloni kategorije obrisanih slika da se ne gomilaju u JSON-u
+            const next: Record<string, string> = {};
+            for (const url of urls) if (values.imageCategories[url]) next[url] = values.imageCategories[url];
+            set("imageCategories", next);
+          }}
+        />
+        <ImageCategoriesEditor
+          images={values.images}
+          value={values.imageCategories}
+          onChange={(v) => set("imageCategories", v)}
         />
       </div>
+
+      <div className="border border-black/10 rounded-xl p-4 flex flex-col gap-4 bg-black/[0.02]">
+        <span className="text-sm font-semibold">Video / virtualna šetnja i dostupnost</span>
+        <div className="grid grid-cols-2 gap-4">
+          <Field label="Poveznica na video (YouTube, Vimeo…, opcionalno)">
+            <input
+              name="videoUrl"
+              value={values.videoUrl}
+              onChange={(e) => set("videoUrl", e.target.value)}
+              placeholder="https://youtube.com/watch?v=…"
+              className="admin-input"
+            />
+          </Field>
+          <Field label="Poveznica na kalendar dostupnosti (opcionalno)">
+            <input
+              name="availabilityUrl"
+              value={values.availabilityUrl}
+              onChange={(e) => set("availabilityUrl", e.target.value)}
+              placeholder="https://booking.com/…"
+              className="admin-input"
+            />
+          </Field>
+        </div>
+      </div>
+
+      <div className="border border-black/10 rounded-xl p-4 flex flex-col gap-4 bg-black/[0.02]">
+        <span className="text-sm font-semibold">Sezonski cjenik (opcionalno)</span>
+        <span className="text-xs text-black/50">
+          Ako dodaš barem jedan red, na stranici se prikazuje tablica cijena po sezoni umjesto
+          jedne fiksne cijene.
+        </span>
+        <SeasonalPricingEditor
+          value={values.seasonalPricing}
+          onChange={(v) => set("seasonalPricing", v)}
+        />
+      </div>
+
+      <div className="border border-black/10 rounded-xl p-4 flex flex-col gap-4 bg-black/[0.02]">
+        <span className="text-sm font-semibold">Recenzije gostiju (opcionalno)</span>
+        <TestimonialsEditor
+          value={values.testimonials}
+          onChange={(v) => set("testimonials", v)}
+        />
+      </div>
+
+      <div className="border border-black/10 rounded-xl p-4 flex flex-col gap-4 bg-black/[0.02]">
+        <span className="text-sm font-semibold">Često postavljana pitanja (opcionalno)</span>
+        <FaqEditor value={values.faq} onChange={(v) => set("faq", v)} />
+      </div>
+
+      <Field label="Oznake povjerenja — jedna po retku (opcionalno)">
+        <textarea
+          name="reviewBadges"
+          value={values.reviewBadges}
+          onChange={(e) => set("reviewBadges", e.target.value)}
+          rows={3}
+          placeholder={"4.9 na Google recenzijama\n50+ zadovoljnih gostiju\nSuperhost 2025"}
+          className="admin-input"
+        />
+        <span className="text-xs text-black/50">Prikazuju se kao sitni chipovi pri vrhu stranice.</span>
+      </Field>
 
       <Field label="Kontakt email za ovu vikendicu (opcionalno)">
         <input
@@ -358,6 +459,11 @@ export default function PropertyForm({
       {/* Skrivena polja koja server action očekuje kao stringove */}
       <input type="hidden" name="images" value={JSON.stringify(values.images)} />
       <input type="hidden" name="bannerImage" value={values.bannerImage} />
+      <input type="hidden" name="hostPhoto" value={values.hostPhoto} />
+      <input type="hidden" name="testimonials" value={JSON.stringify(values.testimonials)} />
+      <input type="hidden" name="faq" value={JSON.stringify(values.faq)} />
+      <input type="hidden" name="imageCategories" value={JSON.stringify(values.imageCategories)} />
+      <input type="hidden" name="seasonalPricing" value={JSON.stringify(values.seasonalPricing)} />
 
       {state?.error && <p className="text-sm text-red-600">{state.error}</p>}
       {state?.success && <p className="text-sm text-green-700">Spremljeno.</p>}
@@ -379,5 +485,191 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
       <span className="text-sm font-medium">{label}</span>
       {children}
     </label>
+  );
+}
+
+function ImageCategoriesEditor({
+  images,
+  value,
+  onChange,
+}: {
+  images: string[];
+  value: Record<string, string>;
+  onChange: (v: Record<string, string>) => void;
+}) {
+  if (images.length === 0) return null;
+  return (
+    <div className="flex flex-col gap-2">
+      <span className="text-xs text-black/50">
+        Kategoriziraj slike galerije (opcionalno) — npr. Eksterijer, Interijer, Okolica. Ostavi
+        prazno da se galerija prikaže bez grupiranja.
+      </span>
+      <div className="flex flex-col gap-2">
+        {images.map((url) => (
+          <div key={url} className="flex items-center gap-2">
+            <div className="w-11 h-11 rounded-lg overflow-hidden border border-black/10 bg-black/5 shrink-0">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={url} alt="" className="w-full h-full object-cover" />
+            </div>
+            <input
+              className="admin-input"
+              placeholder="npr. Interijer"
+              value={value[url] ?? ""}
+              onChange={(e) => onChange({ ...value, [url]: e.target.value })}
+            />
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function TestimonialsEditor({
+  value,
+  onChange,
+}: {
+  value: Testimonial[];
+  onChange: (v: Testimonial[]) => void;
+}) {
+  function update(i: number, patch: Partial<Testimonial>) {
+    onChange(value.map((t, idx) => (idx === i ? { ...t, ...patch } : t)));
+  }
+  return (
+    <div className="flex flex-col gap-3">
+      {value.map((t, i) => (
+        <div key={i} className="admin-repeat-row">
+          <div className="grid grid-cols-[1fr_auto] gap-2">
+            <input
+              className="admin-input"
+              placeholder="Ime gosta"
+              value={t.author}
+              onChange={(e) => update(i, { author: e.target.value })}
+            />
+            <select
+              className="admin-input"
+              value={t.rating}
+              onChange={(e) => update(i, { rating: Number(e.target.value) })}
+            >
+              {[5, 4, 3, 2, 1].map((n) => (
+                <option key={n} value={n}>
+                  {"★".repeat(n)}
+                  {"☆".repeat(5 - n)}
+                </option>
+              ))}
+            </select>
+          </div>
+          <textarea
+            className="admin-input"
+            rows={2}
+            placeholder="Citat gosta"
+            value={t.text}
+            onChange={(e) => update(i, { text: e.target.value })}
+          />
+          <button
+            type="button"
+            onClick={() => onChange(value.filter((_, idx) => idx !== i))}
+            className="admin-repeat-remove"
+          >
+            Ukloni recenziju
+          </button>
+        </div>
+      ))}
+      <button
+        type="button"
+        onClick={() => onChange([...value, { author: "", text: "", rating: 5 }])}
+        className="admin-repeat-add"
+      >
+        + Dodaj recenziju
+      </button>
+    </div>
+  );
+}
+
+function FaqEditor({ value, onChange }: { value: FaqItem[]; onChange: (v: FaqItem[]) => void }) {
+  function update(i: number, patch: Partial<FaqItem>) {
+    onChange(value.map((f, idx) => (idx === i ? { ...f, ...patch } : f)));
+  }
+  return (
+    <div className="flex flex-col gap-3">
+      {value.map((f, i) => (
+        <div key={i} className="admin-repeat-row">
+          <input
+            className="admin-input"
+            placeholder="Pitanje"
+            value={f.question}
+            onChange={(e) => update(i, { question: e.target.value })}
+          />
+          <textarea
+            className="admin-input"
+            rows={2}
+            placeholder="Odgovor"
+            value={f.answer}
+            onChange={(e) => update(i, { answer: e.target.value })}
+          />
+          <button
+            type="button"
+            onClick={() => onChange(value.filter((_, idx) => idx !== i))}
+            className="admin-repeat-remove"
+          >
+            Ukloni pitanje
+          </button>
+        </div>
+      ))}
+      <button
+        type="button"
+        onClick={() => onChange([...value, { question: "", answer: "" }])}
+        className="admin-repeat-add"
+      >
+        + Dodaj pitanje
+      </button>
+    </div>
+  );
+}
+
+function SeasonalPricingEditor({
+  value,
+  onChange,
+}: {
+  value: SeasonalPrice[];
+  onChange: (v: SeasonalPrice[]) => void;
+}) {
+  function update(i: number, patch: Partial<SeasonalPrice>) {
+    onChange(value.map((s, idx) => (idx === i ? { ...s, ...patch } : s)));
+  }
+  return (
+    <div className="flex flex-col gap-3">
+      {value.map((s, i) => (
+        <div key={i} className="grid grid-cols-[1fr_140px_auto] gap-2 items-center">
+          <input
+            className="admin-input"
+            placeholder="npr. Ljetna sezona (lipanj–rujan)"
+            value={s.label}
+            onChange={(e) => update(i, { label: e.target.value })}
+          />
+          <input
+            className="admin-input"
+            type="number"
+            min={0}
+            placeholder="EUR / noć"
+            value={s.priceEur}
+            onChange={(e) => update(i, { priceEur: Number(e.target.value) })}
+          />
+          <button
+            type="button"
+            onClick={() => onChange(value.filter((_, idx) => idx !== i))}
+            className="admin-repeat-remove"
+          >
+            Ukloni
+          </button>
+        </div>
+      ))}
+      <button
+        type="button"
+        onClick={() => onChange([...value, { label: "", priceEur: 0 }])}
+        className="admin-repeat-add self-start"
+      >
+        + Dodaj sezonu
+      </button>
+    </div>
   );
 }
