@@ -4,6 +4,7 @@ import { useActionState, useState } from "react";
 import type { ActionState } from "@/lib/actions";
 import type { Property, Testimonial, FaqItem, SeasonalPrice } from "@/lib/db/schema";
 import ImageUploader from "./ImageUploader";
+import ReviewsImporter from "./ReviewsImporter";
 
 /** Prigušeni, "tonalni" tonovi umjesto šarenog neona — Apple hero pozadina
     (radial gradient mesh u CSS-u) izvodi se iz accentColor, pa ovo samo
@@ -53,6 +54,8 @@ type FormValues = {
   seasonalPricing: SeasonalPrice[];
   availabilityUrl: string;
   reviewBadges: string;
+  faviconUrl: string;
+  customDomain: string;
 };
 
 function initialValues(property?: Property): FormValues {
@@ -89,6 +92,8 @@ function initialValues(property?: Property): FormValues {
     seasonalPricing: property?.seasonalPricing ?? [],
     availabilityUrl: property?.availabilityUrl ?? "",
     reviewBadges: property?.reviewBadges?.join("\n") ?? "",
+    faviconUrl: property?.faviconUrl ?? "",
+    customDomain: property?.customDomain ?? "",
   };
 }
 
@@ -411,6 +416,36 @@ export default function PropertyForm({
       </div>
 
       <div className="border border-black/10 rounded-xl p-4 flex flex-col gap-4 bg-black/[0.02]">
+        <span className="text-sm font-semibold">Domena i favicon</span>
+        <span className="text-xs text-black/50">
+          Vikendica je uvijek dostupna na{" "}
+          <span className="font-mono">{(values.slug || "…") + ".novo.hr"}</span> i na{" "}
+          <span className="font-mono">novo.hr/{values.slug || "…"}</span> — nema dodatnog koraka.
+        </span>
+        <ImageUploader
+          label="Favicon (tab-ikona u pregledniku)"
+          helpText="Kvadratna slika, idealno 512×512px. Ako ne uploadaš, koristi se NOVO logo."
+          value={values.faviconUrl ? [values.faviconUrl] : []}
+          onChange={(urls) => set("faviconUrl", urls[0] ?? "")}
+        />
+        <Field label="Vlastita domena (opcionalno, npr. vila-marija.com)">
+          <input
+            name="customDomain"
+            value={values.customDomain}
+            onChange={(e) => set("customDomain", e.target.value)}
+            placeholder="vila-marija.com"
+            className="admin-input"
+          />
+        </Field>
+        <span className="text-xs text-black/50">
+          Ovo polje samo bilježi da vlasnik želi svoju domenu — spremanje ovdje je ne aktivira
+          automatski. Da bi zaživjela: vlasnik kod svog DNS registratora dodaje CNAME zapis koji
+          pokazuje na <span className="font-mono">cname.vercel-dns.com</span>, a mi je zatim ručno
+          dodamo u Vercel postavke projekta i povežemo s ovom vikendicom.
+        </span>
+      </div>
+
+      <div className="border border-black/10 rounded-xl p-4 flex flex-col gap-4 bg-black/[0.02]">
         <span className="text-sm font-semibold">Video / virtualna šetnja i dostupnost</span>
         <div className="grid grid-cols-2 gap-4">
           <Field label="Poveznica na video (YouTube, Vimeo…, opcionalno)">
@@ -445,6 +480,10 @@ export default function PropertyForm({
           onChange={(v) => set("seasonalPricing", v)}
         />
       </div>
+
+      <ReviewsImporter
+        onImport={(parsed) => set("testimonials", [...values.testimonials, ...parsed])}
+      />
 
       <div className="border border-black/10 rounded-xl p-4 flex flex-col gap-4 bg-black/[0.02]">
         <span className="text-sm font-semibold">Recenzije gostiju (opcionalno)</span>
@@ -496,6 +535,7 @@ export default function PropertyForm({
       <input type="hidden" name="images" value={JSON.stringify(values.images)} />
       <input type="hidden" name="bannerImage" value={values.bannerImage} />
       <input type="hidden" name="hostPhoto" value={values.hostPhoto} />
+      <input type="hidden" name="faviconUrl" value={values.faviconUrl} />
       <input type="hidden" name="testimonials" value={JSON.stringify(values.testimonials)} />
       <input type="hidden" name="faq" value={JSON.stringify(values.faq)} />
       <input type="hidden" name="imageCategories" value={JSON.stringify(values.imageCategories)} />
