@@ -10,10 +10,11 @@ import { useEffect, useRef, useState } from "react";
 export default function RevealSection({
   children,
   className = "",
+  ...rest
 }: {
   children: React.ReactNode;
   className?: string;
-}) {
+} & React.HTMLAttributes<HTMLDivElement>) {
   const ref = useRef<HTMLDivElement>(null);
   const [visible, setVisible] = useState(false);
 
@@ -39,7 +40,7 @@ export default function RevealSection({
   }, []);
 
   return (
-    <div ref={ref} className={`${className} reveal${visible ? " reveal-visible" : ""}`}>
+    <div ref={ref} className={`${className} reveal${visible ? " reveal-visible" : ""}`} {...rest}>
       {children}
     </div>
   );
