@@ -178,6 +178,24 @@ const PropertySchema = z.object({
     .refine((v) => !v || /^https?:\/\//i.test(v), {
       message: "Poveznica za mapu mora počinjati s http:// ili https://",
     }),
+  testimonials: z.string().optional(), // JSON niz {author,text,rating}, parsiramo dolje
+  faq: z.string().optional(), // JSON niz {question,answer}, parsiramo dolje
+  imageCategories: z.string().optional(), // JSON objekt url->kategorija, parsiramo dolje
+  videoUrl: z
+    .string()
+    .optional()
+    .refine((v) => !v || /^https?:\/\//i.test(v), {
+      message: "Poveznica na video mora počinjati s http:// ili https://",
+    }),
+  seasonalPricing: z.string().optional(), // JSON niz {label,priceEur}, parsiramo dolje
+  availabilityUrl: z
+    .string()
+    .optional()
+    .refine((v) => !v || /^https?:\/\//i.test(v), {
+      message: "Poveznica na dostupnost mora počinjati s http:// ili https://",
+    }),
+  hostPhoto: z.string().optional(),
+  reviewBadges: z.string().optional(), // jedan po retku, parsiramo kao amenities
 });
 
 function parseAmenities(raw: string): string[] {
@@ -194,6 +212,63 @@ function parseImages(raw: string): string[] {
     return arr.filter((s) => typeof s === "string" && s.trim().length > 0);
   } catch {
     return [];
+  }
+}
+
+function parseTestimonials(raw?: string): { author: string; text: string; rating: number }[] {
+  try {
+    const arr = JSON.parse(raw ?? "[]");
+    if (!Array.isArray(arr)) return [];
+    return arr
+      .filter((t) => t && typeof t.author === "string" && typeof t.text === "string")
+      .map((t) => ({
+        author: t.author.trim(),
+        text: t.text.trim(),
+        rating: Math.min(5, Math.max(1, Math.round(Number(t.rating) || 5))),
+      }))
+      .filter((t) => t.author.length > 0 && t.text.length > 0);
+  } catch {
+    return [];
+  }
+}
+
+function parseFaq(raw?: string): { question: string; answer: string }[] {
+  try {
+    const arr = JSON.parse(raw ?? "[]");
+    if (!Array.isArray(arr)) return [];
+    return arr
+      .filter((f) => f && typeof f.question === "string" && typeof f.answer === "string")
+      .map((f) => ({ question: f.question.trim(), answer: f.answer.trim() }))
+      .filter((f) => f.question.length > 0 && f.answer.length > 0);
+  } catch {
+    return [];
+  }
+}
+
+function parseSeasonalPricing(raw?: string): { label: string; priceEur: number }[] {
+  try {
+    const arr = JSON.parse(raw ?? "[]");
+    if (!Array.isArray(arr)) return [];
+    return arr
+      .filter((s) => s && typeof s.label === "string")
+      .map((s) => ({ label: s.label.trim(), priceEur: Math.max(0, Math.round(Number(s.priceEur) || 0)) }))
+      .filter((s) => s.label.length > 0);
+  } catch {
+    return [];
+  }
+}
+
+function parseImageCategories(raw?: string): Record<string, string> {
+  try {
+    const obj = JSON.parse(raw ?? "{}");
+    if (!obj || typeof obj !== "object" || Array.isArray(obj)) return {};
+    const out: Record<string, string> = {};
+    for (const [k, v] of Object.entries(obj)) {
+      if (typeof k === "string" && typeof v === "string" && v.trim()) out[k] = v.trim();
+    }
+    return out;
+  } catch {
+    return {};
   }
 }
 
@@ -227,6 +302,14 @@ export async function createPropertyAction(
     hostName: formData.get("hostName") ?? "",
     hostNote: formData.get("hostNote") ?? "",
     mapUrl: formData.get("mapUrl") ?? "",
+    testimonials: formData.get("testimonials") ?? "[]",
+    faq: formData.get("faq") ?? "[]",
+    imageCategories: formData.get("imageCategories") ?? "{}",
+    videoUrl: formData.get("videoUrl") ?? "",
+    seasonalPricing: formData.get("seasonalPricing") ?? "[]",
+    availabilityUrl: formData.get("availabilityUrl") ?? "",
+    hostPhoto: formData.get("hostPhoto") ?? "",
+    reviewBadges: formData.get("reviewBadges") ?? "",
   });
   if (!parsed.success) {
     return { error: parsed.error.issues[0]?.message ?? "Provjeri unesene podatke." };
@@ -248,6 +331,14 @@ export async function createPropertyAction(
       hostName: parsed.data.hostName?.trim() || null,
       hostNote: parsed.data.hostNote?.trim() || null,
       mapUrl: parsed.data.mapUrl?.trim() || null,
+      testimonials: parseTestimonials(parsed.data.testimonials),
+      faq: parseFaq(parsed.data.faq),
+      imageCategories: parseImageCategories(parsed.data.imageCategories),
+      videoUrl: parsed.data.videoUrl?.trim() || null,
+      seasonalPricing: parseSeasonalPricing(parsed.data.seasonalPricing),
+      availabilityUrl: parsed.data.availabilityUrl?.trim() || null,
+      hostPhoto: parsed.data.hostPhoto?.trim() || null,
+      reviewBadges: parseAmenities(parsed.data.reviewBadges ?? ""),
     });
   } catch {
     return { error: "Ta adresa (slug) je već zauzeta — odaberi drugu." };
@@ -289,6 +380,14 @@ export async function updatePropertyAction(
     hostName: formData.get("hostName") ?? "",
     hostNote: formData.get("hostNote") ?? "",
     mapUrl: formData.get("mapUrl") ?? "",
+    testimonials: formData.get("testimonials") ?? "[]",
+    faq: formData.get("faq") ?? "[]",
+    imageCategories: formData.get("imageCategories") ?? "{}",
+    videoUrl: formData.get("videoUrl") ?? "",
+    seasonalPricing: formData.get("seasonalPricing") ?? "[]",
+    availabilityUrl: formData.get("availabilityUrl") ?? "",
+    hostPhoto: formData.get("hostPhoto") ?? "",
+    reviewBadges: formData.get("reviewBadges") ?? "",
   });
   if (!parsed.success) {
     return { error: parsed.error.issues[0]?.message ?? "Provjeri unesene podatke." };
@@ -310,6 +409,14 @@ export async function updatePropertyAction(
       hostName: parsed.data.hostName?.trim() || null,
       hostNote: parsed.data.hostNote?.trim() || null,
       mapUrl: parsed.data.mapUrl?.trim() || null,
+      testimonials: parseTestimonials(parsed.data.testimonials),
+      faq: parseFaq(parsed.data.faq),
+      imageCategories: parseImageCategories(parsed.data.imageCategories),
+      videoUrl: parsed.data.videoUrl?.trim() || null,
+      seasonalPricing: parseSeasonalPricing(parsed.data.seasonalPricing),
+      availabilityUrl: parsed.data.availabilityUrl?.trim() || null,
+      hostPhoto: parsed.data.hostPhoto?.trim() || null,
+      reviewBadges: parseAmenities(parsed.data.reviewBadges ?? ""),
     });
   } catch {
     return { error: "Ta adresa (slug) je već zauzeta — odaberi drugu." };
