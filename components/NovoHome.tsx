@@ -25,6 +25,17 @@ export type StudyProject = {
   externalUrl?: string;
 };
 
+/** Fizički proizvod (npr. 3D printana pločica s NFC oznakom) — upit ide mailom. */
+export type ProductCard = {
+  id: number;
+  name: string;
+  tagline: string;
+  description: string;
+  priceEur: number | null;
+  images: string[];
+  features: string[];
+};
+
 const SERVICES = ["BREND IDENTITET", "DIGITALNI DIZAJN", "WEB & PRODUKT", "FILM & MOTION", "MARKETING"];
 
 type NovoHomeProps = {
@@ -34,12 +45,13 @@ type NovoHomeProps = {
   instagramHandle: string;
   city: string;
   projects: StudyProject[];
+  products: ProductCard[];
 };
 
-type View = "home" | "studies" | "office";
+type View = "home" | "studies" | "office" | "products";
 
 /* ------------------------------------------------------------------ */
-/* Halftone placeholder (kad vikendica još nema uploadanih slika)      */
+/* Halftone placeholder (kad vikendica/proizvod još nema uploadanih slika) */
 /* ------------------------------------------------------------------ */
 
 function hashStr(s: string) {
@@ -71,6 +83,23 @@ function ProjectImage({ src, alt, className }: { src?: string; alt: string; clas
       <text x="20" y="472" fontFamily="var(--font-jetbrains-mono), monospace" fontSize="13" letterSpacing="2" fill="rgba(0,0,0,0.4)">
         {alt}
       </text>
+    </svg>
+  );
+}
+
+/* Geometrijska strelica za minimiziranje — umjesto fontovnog znaka, da se
+   uvijek okreće čisto i centrirano oko svog središta bez obzira na font. */
+function Chevron({ up }: { up: boolean }) {
+  return (
+    <svg
+      className={up ? "fw-chevron fw-chevron-up" : "fw-chevron"}
+      viewBox="0 0 12 12"
+      width="10"
+      height="10"
+      fill="none"
+      aria-hidden="true"
+    >
+      <path d="M3 4.5L6 7.5L9 4.5" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
     </svg>
   );
 }
@@ -155,7 +184,7 @@ function FloatingWindow({
               onClick={onToggleMinimize}
               aria-label="Minimiziraj"
             >
-              <span className={minimized ? "fw-chevron fw-chevron-up" : "fw-chevron"}>⌄</span>
+              <Chevron up={minimized} />
             </button>
           )}
           {onClose && (
@@ -238,6 +267,50 @@ function ProjectContent({ project }: { project: StudyProject }) {
   );
 }
 
+/* Sadržaj pop-up prozora proizvoda: galerija + značajke + upit mailom
+   koji automatski predloži naslov, količinu i naziv vikendice/firme. */
+function ProductContent({ product, contactEmail }: { product: ProductCard; contactEmail: string }) {
+  const [i, setI] = useState(0);
+  const images = product.images.length > 0 ? product.images : [undefined];
+  const total = images.length;
+  const advance = () => setI((v) => (v + 1) % total);
+
+  const subject = `Upit — ${product.name}`;
+  const body = `Pozdrav,\n\nZanima me proizvod: ${product.name}.\n\nKoličina: \nNaziv vikendice / firme: \n\nHvala!`;
+  const mailHref = `mailto:${contactEmail}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+
+  return (
+    <div className="proj-viewport">
+      <button className="proj-image-btn" onClick={advance} aria-label="Sljedeća slika">
+        <ProjectImage src={images[i]} alt={product.name} className="proj-img" />
+      </button>
+      <div className="proj-info">
+        <p className="proj-desc">{product.description}</p>
+        {product.features.length > 0 && (
+          <div className="product-features">
+            {product.features.map((f) => (
+              <span key={f} className="product-feature-chip mono">
+                {f}
+              </span>
+            ))}
+          </div>
+        )}
+        <div className="proj-meta">
+          <span className="mono muted">{product.priceEur != null ? `od ${product.priceEur} €` : "na upit"}</span>
+          <span className="mono muted">
+            {i + 1}/{total}
+          </span>
+        </div>
+        <div className="proj-actions">
+          <a href={mailHref} className="mono link">
+            POŠALJI UPIT ↗
+          </a>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 /* ------------------------------------------------------------------ */
 /* Glavna komponenta                                                    */
 /* ------------------------------------------------------------------ */
@@ -253,6 +326,7 @@ export default function NovoHome({
   instagramHandle,
   city,
   projects,
+  products,
 }: NovoHomeProps) {
   const [view, setView] = useState<View>("home");
   const zCounter = useRef(10);
@@ -261,6 +335,9 @@ export default function NovoHome({
   const [exhibitReady, setExhibitReady] = useState(false);
   const [projectWindows, setProjectWindows] = useState<
     { key: string; project: StudyProject; x: number; y: number; z: number; minimized: boolean }[]
+  >([]);
+  const [productWindows, setProductWindows] = useState<
+    { key: string; product: ProductCard; x: number; y: number; z: number; minimized: boolean }[]
   >([]);
   const [coords, setCoords] = useState({ x: 0, y: 0 });
 
@@ -296,7 +373,7 @@ export default function NovoHome({
           w.project.id === project.id ? { ...w, z: ++zCounter.current, minimized: false } : w
         );
       }
-      const count = wins.length;
+      const count = wins.length + productWindows.length;
       const vw = typeof window !== "undefined" ? window.innerWidth : 1200;
       const vh = typeof window !== "undefined" ? window.innerHeight : 800;
       const baseX = Math.min(220 + count * 36, Math.max(vw - 280, 60));
@@ -313,6 +390,32 @@ export default function NovoHome({
     setProjectWindows((wins) => wins.map((w) => (w.key === key ? { ...w, minimized: !w.minimized } : w)));
   const focusProject = (key: string) =>
     setProjectWindows((wins) => wins.map((w) => (w.key === key ? { ...w, z: ++zCounter.current } : w)));
+
+  const openProduct = (product: ProductCard) => {
+    setProductWindows((wins) => {
+      const existing = wins.find((w) => w.product.id === product.id);
+      if (existing) {
+        return wins.map((w) =>
+          w.product.id === product.id ? { ...w, z: ++zCounter.current, minimized: false } : w
+        );
+      }
+      const count = wins.length + projectWindows.length;
+      const vw = typeof window !== "undefined" ? window.innerWidth : 1200;
+      const vh = typeof window !== "undefined" ? window.innerHeight : 800;
+      const baseX = Math.min(220 + count * 36, Math.max(vw - 280, 60));
+      const baseY = Math.min(100 + count * 36, Math.max(vh - 420, 70));
+      return [
+        ...wins,
+        { key: `p-${product.id}-${Date.now()}`, product, x: baseX, y: baseY, z: ++zCounter.current, minimized: false },
+      ];
+    });
+  };
+
+  const closeProduct = (key: string) => setProductWindows((wins) => wins.filter((w) => w.key !== key));
+  const toggleMinimizeProduct = (key: string) =>
+    setProductWindows((wins) => wins.map((w) => (w.key === key ? { ...w, minimized: !w.minimized } : w)));
+  const focusProduct = (key: string) =>
+    setProductWindows((wins) => wins.map((w) => (w.key === key ? { ...w, z: ++zCounter.current } : w)));
 
   const exhibitImages =
     projects.length > 0
@@ -335,19 +438,25 @@ export default function NovoHome({
 
       <nav className="novo-os-nav">
         <button className={view === "home" ? "novo-os-navbtn active" : "novo-os-navbtn"} onClick={() => setView("home")}>
-          HOME
+          POČETNA
         </button>
         <button
           className={view === "studies" ? "novo-os-navbtn active" : "novo-os-navbtn"}
           onClick={() => setView("studies")}
         >
-          STUDIES
+          RADOVI
+        </button>
+        <button
+          className={view === "products" ? "novo-os-navbtn active" : "novo-os-navbtn"}
+          onClick={() => setView("products")}
+        >
+          PROIZVODI
         </button>
         <button
           className={view === "office" ? "novo-os-navbtn active" : "novo-os-navbtn"}
           onClick={() => setView("office")}
         >
-          OFFICE
+          STUDIO
         </button>
       </nav>
 
@@ -365,7 +474,7 @@ export default function NovoHome({
                 ))}
               </div>
               <button className="novo-os-cta mono" onClick={() => setView("studies")}>
-                POGLEDAJ PROJEKTE ↗
+                POGLEDAJ RADOVE ↗
               </button>
             </div>
           </div>
@@ -373,16 +482,16 @@ export default function NovoHome({
 
         {view === "studies" && (
           <div className="novo-os-panel">
-            <h2 className="section-title">STUDIES</h2>
+            <h2 className="section-title">RADOVI</h2>
             <div className="studies-head">
-              <span>NO.</span>
-              <span>NAME</span>
+              <span>BR.</span>
+              <span>NAZIV</span>
               <span className="col-cat">INFO</span>
-              <span>YEAR</span>
+              <span>GODINA</span>
             </div>
             <div className="studies-scroll">
               {projects.length === 0 && (
-                <p className="studies-empty">Još nema dodanih projekata — dodaj prvi u /admin.</p>
+                <p className="studies-empty">Još nema dodanih radova — dodaj prvi u /admin.</p>
               )}
               {projects.map((p, i) => (
                 <button key={p.id} className="studies-row" onClick={() => openProject(p)}>
@@ -398,9 +507,39 @@ export default function NovoHome({
           </div>
         )}
 
+        {view === "products" && (
+          <div className="novo-os-panel">
+            <h2 className="section-title">PROIZVODI</h2>
+            {products.length === 0 ? (
+              <p className="studies-empty">
+                Uskoro dostupno — 3D printane pločice s NFC oznakama za vikendice i firme.
+              </p>
+            ) : (
+              <div className="products-scroll">
+                <div className="products-grid">
+                  {products.map((p) => (
+                    <button key={p.id} className="product-card" onClick={() => openProduct(p)}>
+                      <div className="product-card-img">
+                        <ProjectImage src={p.images[0]} alt={p.name} className="product-card-thumb" />
+                      </div>
+                      <div className="product-card-body">
+                        <span className="product-card-name">{p.name}</span>
+                        <span className="product-card-tagline">{p.tagline}</span>
+                        <span className="product-card-price mono">
+                          {p.priceEur != null ? `od ${p.priceEur} €` : "na upit"}
+                        </span>
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
         {view === "office" && (
           <div className="novo-os-panel">
-            <h2 className="section-title">OFFICE</h2>
+            <h2 className="section-title">STUDIO</h2>
             <div className="office-grid">
               <div className="office-col">
                 <p className="office-text">{officeText}</p>
@@ -414,15 +553,15 @@ export default function NovoHome({
               </div>
               <div className="office-col office-contact">
                 <div className="office-block">
-                  <span className="mono muted">STUDIO</span>
+                  <span className="mono muted">LOKACIJA</span>
                   <span>{city}</span>
                 </div>
                 <div className="office-block">
-                  <span className="mono muted">INQUIRE</span>
+                  <span className="mono muted">UPIT</span>
                   <a href={`mailto:${contactEmail}`}>{contactEmail}</a>
                 </div>
                 <div className="office-block">
-                  <span className="mono muted">ONLINE</span>
+                  <span className="mono muted">PRATI NAS</span>
                   <a href={instaUrl} target="_blank" rel="noreferrer">
                     {instagramHandle}
                   </a>
@@ -435,17 +574,17 @@ export default function NovoHome({
 
       <aside className="novo-os-side">
         <div className="novo-os-side-block">
-          <span className="mono muted">INQUIRE</span>
+          <span className="mono muted">UPIT</span>
           <a href={`mailto:${contactEmail}`}>{contactEmail}</a>
         </div>
         <div className="novo-os-side-block">
-          <span className="mono muted">ONLINE</span>
+          <span className="mono muted">PRATI NAS</span>
           <a href={instaUrl} target="_blank" rel="noreferrer">
             {instagramHandle}
           </a>
         </div>
         <div className="novo-os-side-block">
-          <span className="mono muted">STUDIO</span>
+          <span className="mono muted">LOKACIJA</span>
           <span>{city}</span>
         </div>
       </aside>
@@ -457,7 +596,7 @@ export default function NovoHome({
 
       {exhibitReady && (
         <FloatingWindow
-          title="EXHIBIT"
+          title="GALERIJA"
           x={exhibit.x}
           y={exhibit.y}
           z={exhibit.z}
@@ -486,7 +625,23 @@ export default function NovoHome({
           <ProjectContent project={w.project} />
         </FloatingWindow>
       ))}
+
+      {productWindows.map((w) => (
+        <FloatingWindow
+          key={w.key}
+          title={w.product.name.toUpperCase()}
+          x={w.x}
+          y={w.y}
+          z={w.z}
+          onFocus={() => focusProduct(w.key)}
+          onClose={() => closeProduct(w.key)}
+          minimized={w.minimized}
+          onToggleMinimize={() => toggleMinimizeProduct(w.key)}
+          width={260}
+        >
+          <ProductContent product={w.product} contactEmail={contactEmail} />
+        </FloatingWindow>
+      ))}
     </div>
   );
 }
-
