@@ -425,6 +425,7 @@ export async function updatePropertyAction(
   revalidatePath("/");
   revalidatePath(`/${parsed.data.slug}`);
   revalidatePath("/admin");
+  revalidatePath(`/admin/properties/${id}`);
   return { success: true };
 }
 
