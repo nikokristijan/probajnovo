@@ -224,6 +224,9 @@ export default async function PropertyPage({
             <div className="stay-polaroid" key={src + i}>
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img src={src} alt="" />
+              {property.imageCategories[src] && (
+                <div className="stay-polaroid-cap">{property.imageCategories[src]}</div>
+              )}
             </div>
           ))}
         </div>
