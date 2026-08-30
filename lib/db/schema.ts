@@ -53,7 +53,7 @@ export const properties = pgTable("properties", {
   published: boolean("published").notNull().default(true),
   /** Ako je true, vikendica se pojavljuje i u STUDIES popisu na naslovnici (opt-in, ne automatski). */
   showInStudies: boolean("show_in_studies").notNull().default(false),
-  /** Vizualni layout stranice vikendice: "classic" | "editorial" | "raw". */
+  /** Vizualni layout stranice vikendice: "classic" | "editorial" | "raw" | "apple". */
   layoutStyle: text("layout_style").notNull().default("classic"),
   /** Tamna varijanta boja za stranicu vikendice. */
   darkMode: boolean("dark_mode").notNull().default(false),
