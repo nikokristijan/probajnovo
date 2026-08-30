@@ -165,7 +165,7 @@ const PropertySchema = z.object({
     }),
   published: z.coerce.boolean(),
   showInStudies: z.coerce.boolean(),
-  layoutStyle: z.enum(["classic", "editorial", "raw"]).default("classic"),
+  layoutStyle: z.enum(["classic", "editorial", "raw", "apple"]).default("classic"),
   darkMode: z.coerce.boolean(),
   checkInTime: z.string().optional(),
   checkOutTime: z.string().optional(),
