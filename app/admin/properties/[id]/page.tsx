@@ -28,7 +28,12 @@ const boundAction = updatePropertyAction.bind(null, numericId);
   <h1 className="text-xl font-bold">Uredi: {property.name}</h1>
   <DeletePropertyButton id={property.id} name={property.name} />
   </div>
-  <PropertyForm property={property} action={boundAction} submitLabel="Spremi izmjene" />
+  <PropertyForm
+    key={`${property.id}-${property.updatedAt.getTime()}`}
+    property={property}
+    action={boundAction}
+    submitLabel="Spremi izmjene"
+  />
   </div>
   );
   }
