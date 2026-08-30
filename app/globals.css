@@ -286,7 +286,15 @@ html.novo-lock-scroll body {
    ===================================================================== */
 .stay {
   --accent: #b5502e;
-  --accent-dark: color-mix(in srgb, var(--accent) 70%, black);
+  /* Tri "sigurne" varijante akcentne boje, svaka za drugu podlogu — accentColor
+     je slobodan odabir admina (može biti bilo koja nijansa), pa je čitljivost
+     inače prepuštena slučaju. --accent-dark i --accent-on-ink su svjesni tamne
+     varijante (.stay-dark ih niže preračunava), --accent-glow je fiksna
+     posvijetljena verzija za elemente koji sjede na UVIJEK tamnoj podlozi
+     (raw terminal hero, apple hero/dock) bez obzira na prekidač tamne teme. */
+  --accent-dark: color-mix(in srgb, var(--accent) 70%, black);      /* sigurno na --paper/--plaster */
+  --accent-on-ink: color-mix(in srgb, var(--accent) 55%, white 45%); /* sigurno na --ink */
+  --accent-glow: color-mix(in srgb, var(--accent) 45%, white 55%);  /* sigurno na fiksno tamnoj podlozi */
   --ink: #2b2016;
   --paper: #fbf7ee;
   --plaster: #efe7d4;
@@ -385,8 +393,8 @@ html.novo-lock-scroll body {
 .stay-alt { background: var(--plaster); }
 .stay-amenities { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 12px; margin-top: 18px; }
 .stay-amenity { display: flex; align-items: center; gap: 10px; background: var(--paper); border: 1px solid #e7dcc3; border-radius: 10px; padding: 12px 14px; font-size: 14px; font-weight: 700; transition: transform 0.15s ease, border-color 0.15s ease; }
-.stay-amenity:hover { transform: translateY(-2px); border-color: var(--accent); }
-.stay-amenity svg { color: var(--accent); flex-shrink: 0; }
+.stay-amenity:hover { transform: translateY(-2px); border-color: var(--accent-dark); }
+.stay-amenity svg { color: var(--accent-dark); flex-shrink: 0; }
 
 .stay-book { display: flex; flex-wrap: wrap; gap: 20px; align-items: center; justify-content: space-between; background: var(--accent); color: var(--paper); border-radius: 18px; padding: 26px clamp(20px, 4vw, 36px); }
 .stay-book .price { font-family: var(--font-zilla-slab), serif; font-size: 32px; font-weight: 600; }
@@ -400,7 +408,7 @@ html.novo-lock-scroll body {
 
 .stay-foot { background: var(--ink); color: #c9bba0; text-align: center; padding: 22px; font-size: 12.5px; }
 .stay-foot .credit { margin-top: 6px; color: #9a8c71; }
-.stay-foot .credit a { color: var(--accent); font-weight: 700; text-decoration: none; }
+.stay-foot .credit a { color: var(--accent-on-ink); font-weight: 700; text-decoration: none; }
 
 /* Sticky mobile CTA — samo na malim ekranima, ostavlja prostora na dnu stranice */
 .stay-mobile-cta { display: none; }
@@ -427,19 +435,29 @@ html.novo-lock-scroll body {
 
 .stay-rules { list-style: none; margin: 18px 0 0; padding: 0; display: flex; flex-direction: column; gap: 10px; max-width: 60ch; }
 .stay-rules li { position: relative; padding-left: 22px; font-size: 14.5px; line-height: 1.6; color: #4a4030; }
-.stay-rules li::before { content: "—"; position: absolute; left: 0; color: var(--accent); font-weight: 700; }
+.stay-rules li::before { content: "—"; position: absolute; left: 0; color: var(--accent-dark); font-weight: 700; }
 
 .stay-host { display: flex; align-items: center; gap: 20px; background: var(--paper); border: 1px solid #e7dcc3; border-radius: 14px; padding: 22px 26px; max-width: 60ch; transition: transform 0.2s ease; }
 .stay-host:hover { transform: translateY(-2px); }
-.stay-host-photo { width: 68px; height: 68px; border-radius: 50%; object-fit: cover; flex-shrink: 0; border: 2px solid var(--accent); }
+.stay-host-photo { width: 68px; height: 68px; border-radius: 50%; object-fit: cover; flex-shrink: 0; border: 2px solid var(--accent-dark); }
 .stay-host-name { font-family: var(--font-zilla-slab), Georgia, serif; font-size: 19px; font-weight: 600; margin-bottom: 6px; }
 .stay-host-note { margin: 0; font-size: 14.5px; line-height: 1.7; color: #4a4030; font-style: italic; }
 
 .stay-map-link { display: inline-flex; align-items: center; gap: 6px; margin-top: 16px; background: var(--accent); color: var(--paper); font-weight: 700; font-size: 13.5px; padding: 11px 20px; border-radius: 999px; text-decoration: none; transition: transform 0.15s ease, box-shadow 0.15s ease; }
 .stay-map-link:hover { transform: translateY(-2px); box-shadow: 0 8px 18px color-mix(in srgb, var(--accent) 45%, transparent); }
 
-/* Tamna varijanta — samo mijenja tokene, ostatak CSS-a se automatski prilagodi */
-.stay-dark { --ink: #f2ede1; --paper: #15120f; --plaster: #211c17; --dim: #a89c86; }
+/* Tamna varijanta — samo mijenja tokene, ostatak CSS-a se automatski prilagodi.
+   --accent-dark se ovdje PRERAČUNA da miješa s bijelom umjesto s crnom: to je
+   token koji koristimo za tekst/rubove/sjene "na trenutnoj paper/plaster
+   podlozi" — kad se ta podloga zbog tamne varijante zapravo zatamni, boja se
+   automatski posvijetli umjesto da ostane pretamna i nečitljiva. Isti token
+   se koristi u SVIM layoutima (eyebrow, oznake, cijena po sezoni, raw sjene),
+   pa se popravak automatski primijeni posvuda. */
+.stay-dark {
+  --ink: #f2ede1; --paper: #15120f; --plaster: #211c17; --dim: #a89c86;
+  --accent-dark: color-mix(in srgb, var(--accent) 55%, white 45%); /* --paper je sad tamna → posvijetli */
+  --accent-on-ink: color-mix(in srgb, var(--accent) 70%, black);   /* --ink je sad svijetla → potamni */
+}
 .stay-dark .stay-nav { border-bottom-color: #33291d; }
 .stay-dark .stay-stats { border-bottom-color: #33291d; }
 .stay-dark .stay-amenity, .stay-dark .stay-host { border-color: #33291d; }
@@ -449,12 +467,19 @@ html.novo-lock-scroll body {
    CLASSIC — "obiteljski putni dnevnik": rukom pisan pečat od povjerenja
    preko hero fotografije + polaroidi koji vise preko ruba banner slike.
    ===================================================================== */
+/* Pečat je "organski" oblik (blago nepravilan krug), a ne strogi krug fiksne
+   veličine — tekst (property.reviewBadges[0], slobodan unos admina) može biti
+   kratak ("4.9 ★") ili duži ("4.9 na Google recenzijama"), pa se oblik širi
+   s min-width/height + paddingom umjesto da reže tekst. */
 .stay-stamp {
-  position: absolute; top: clamp(16px, 3vw, 26px); right: clamp(16px, 3vw, 26px); z-index: 2;
-  width: 74px; height: 74px; border-radius: 50%; border: 2px dashed rgba(255,255,255,0.78);
-  display: flex; align-items: center; justify-content: center; text-align: center; padding: 8px;
-  font-family: var(--font-zilla-slab), Georgia, serif; font-style: italic; color: #fff;
-  font-size: 12px; line-height: 1.15; transform: rotate(7deg);
+  position: absolute; top: clamp(14px, 3vw, 24px); right: clamp(14px, 3vw, 24px); z-index: 2;
+  min-width: 92px; min-height: 92px; max-width: 130px;
+  border-radius: 48% 52% 51% 49% / 45% 48% 52% 55%;
+  border: 2px dashed rgba(255,255,255,0.8);
+  display: flex; align-items: center; justify-content: center; text-align: center; padding: 14px 12px;
+  font-family: var(--font-caveat), cursive; font-weight: 700; color: #fff;
+  font-size: clamp(15px, 2.4vw, 19px); line-height: 1.05; transform: rotate(7deg);
+  text-shadow: 0 1px 3px rgba(0,0,0,0.25);
 }
 .stay-classic .stay-hero, .stay-classic .stay-banner { position: relative; }
 
@@ -463,7 +488,7 @@ html.novo-lock-scroll body {
   padding: 0 clamp(20px, 5vw, 56px); margin-top: -44px;
 }
 .stay-polaroid {
-  background: #fff; padding: 7px 7px 18px; width: 104px; flex-shrink: 0; position: relative;
+  background: #fff; padding: 7px 7px 8px; width: 104px; flex-shrink: 0; position: relative;
   box-shadow: 0 12px 26px rgba(43,32,22,0.2); transition: transform 0.2s ease;
 }
 .stay-polaroid:hover { transform: translateY(-4px) rotate(0deg) !important; }
@@ -477,19 +502,30 @@ html.novo-lock-scroll body {
 .stay-polaroid:nth-child(3) { transform: rotate(-1.5deg); }
 .stay-polaroid:nth-child(3)::before { transform: translateX(-50%) rotate(-8deg); }
 .stay-polaroid img { width: 100%; aspect-ratio: 1 / 1; object-fit: cover; display: block; }
+/* Rukom pisan potpis ispod polaroida — koristi kategoriju te slike ako je
+   admin postavio (property.imageCategories), inače se ne prikazuje ništa. */
+.stay-polaroid-cap {
+  font-family: var(--font-caveat), cursive; font-weight: 700; font-size: 16px;
+  color: #4a4030; text-align: center; padding-top: 5px; line-height: 1.1;
+}
 .stay-dark .stay-polaroid { background: #211c17; }
-@media (max-width: 640px) { .stay-polaroid { width: 78px; } .stay-classic-polaroids { gap: 8px; margin-top: -30px; } }
+.stay-dark .stay-polaroid-cap { color: #d8cbae; }
+@media (max-width: 640px) { .stay-polaroid { width: 78px; } .stay-classic-polaroids { gap: 8px; margin-top: -30px; } .stay-stamp { min-width: 76px; min-height: 76px; font-size: 14px; } }
 
 /* =====================================================================
    EDITORIAL — magazinski layout: veliki naslovi, drop-cap, pull-quote,
    vertikalna "kralježnica" s imenom uz hero i rukom ocrtan citat.
    ===================================================================== */
 .stay-editorial .stay-hero h1, .stay-editorial .stay-banner-overlay h1 { font-size: clamp(36px, 7.5vw, 64px); letter-spacing: -0.02em; }
-.stay-editorial .stay-eyebrow { font-size: 12px; letter-spacing: 0.2em; }
+.stay-editorial .stay-nav { border-bottom: 3px solid var(--ink); backdrop-filter: none; }
+.stay-editorial .stay-nav-brand { font-size: 16px; }
+.stay-editorial .stay-nav-cta { border-radius: 0; }
+.stay-editorial .stay-eyebrow { font-size: 12px; letter-spacing: 0.2em; font-family: var(--font-jetbrains-mono), monospace; border-bottom: 1px solid #e7dcc3; padding-bottom: 10px; }
 .stay-editorial .stay-about { max-width: 78ch; position: relative; }
-.stay-dropcap::first-letter { font-family: var(--font-zilla-slab), Georgia, serif; font-size: 3.6em; font-weight: 700; float: left; line-height: 0.8; padding: 6px 8px 0 0; color: var(--accent); }
+.stay-editorial .stay-gallery-img, .stay-editorial .stay-gallery-item { border-radius: 2px; }
+.stay-dropcap::first-letter { font-family: var(--font-zilla-slab), Georgia, serif; font-size: 3.6em; font-weight: 700; float: left; line-height: 0.8; padding: 6px 8px 0 0; color: var(--accent-dark); }
 .stay-pullquote { padding: 10px clamp(20px, 5vw, 56px) clamp(20px, 4vw, 40px); position: relative; }
-.stay-pullquote blockquote { margin: 0; font-family: var(--font-zilla-slab), Georgia, serif; font-size: clamp(24px, 4vw, 38px); font-weight: 600; line-height: 1.3; color: var(--accent-dark); border-left: 4px solid var(--accent); padding-left: 24px; max-width: 60ch; }
+.stay-pullquote blockquote { margin: 0; font-family: var(--font-zilla-slab), Georgia, serif; font-size: clamp(24px, 4vw, 38px); font-weight: 600; line-height: 1.3; color: var(--accent-dark); border-left: 4px solid var(--accent-dark); padding-left: 24px; max-width: 60ch; }
 .stay-editorial .stay-gallery { grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); }
 .stay-editorial .stay-gallery-item:nth-child(3n+1) { grid-column: span 1; }
 
@@ -517,40 +553,54 @@ html.novo-lock-scroll body {
 }
 .stay-editorial .stay-about > * { position: relative; z-index: 1; }
 
-/* Rukom ocrtan krug uz citat — kao da ga je urednik istaknuo olovkom */
+/* Rukom ocrtan krug uz citat — kao da ga je urednik istaknuo olovkom.
+   Koristi mask (ne background-image) da boja bude var(--accent-dark), tj.
+   stvarna boja TE vikendice — SVG unutar data-URI-ja inače ne može čitati
+   CSS varijable, pa bi inače uvijek bio isti fiksni rust-orange za sve. */
 .stay-editorial .stay-pullquote::before {
   content: ""; position: absolute; top: -6px; right: clamp(20px, 6vw, 70px);
-  width: 74px; height: 32px; opacity: 0.6; pointer-events: none;
-  background: no-repeat center / contain url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 90 40'%3E%3Cpath d='M6 24 C 4 8, 40 2, 70 10 C 92 16, 78 34, 40 32 C 18 31, 4 30, 6 24 Z' fill='none' stroke='%23b5502e' stroke-width='2.4' stroke-linecap='round'/%3E%3C/svg%3E");
+  width: 74px; height: 32px; opacity: 0.65; pointer-events: none;
+  background-color: var(--accent-dark);
+  -webkit-mask: no-repeat center / contain url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 90 40'%3E%3Cpath d='M6 24 C 4 8, 40 2, 70 10 C 92 16, 78 34, 40 32 C 18 31, 4 30, 6 24 Z' fill='none' stroke='black' stroke-width='2.4' stroke-linecap='round'/%3E%3C/svg%3E");
+  mask: no-repeat center / contain url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 90 40'%3E%3Cpath d='M6 24 C 4 8, 40 2, 70 10 C 92 16, 78 34, 40 32 C 18 31, 4 30, 6 24 Z' fill='none' stroke='black' stroke-width='2.4' stroke-linecap='round'/%3E%3C/svg%3E");
 }
 @media (max-width: 640px) { .stay-editorial .stay-pullquote::before { display: none; } }
 
 /* =====================================================================
    RAW — brutalist: mono, oštri rubovi, marquee traka, grid pozadina.
    ===================================================================== */
-.stay-raw { font-family: var(--font-jetbrains-mono), monospace; }
+.stay-raw { font-family: var(--font-jetbrains-mono), monospace; --raw-ink: #201a12; }
 .stay-raw h1, .stay-raw h2, .stay-raw h3 { font-family: var(--font-jetbrains-mono), monospace; text-transform: uppercase; letter-spacing: -0.01em; }
 .stay-raw .stay-nav { border-bottom: 2px solid var(--ink); backdrop-filter: none; background: var(--paper); }
 .stay-raw .stay-nav-cta, .stay-raw .stay-book a.bookbtn, .stay-raw .stay-map-link { border-radius: 0; }
 /* VAŽNO: .stay-hero (nema banner slike) smije dobiti puni ink fon, ali
    .stay-banner-overlay sjedi PREKO stvarne fotografije — puni fon bi je posve
    sakrio (to je bio bug "banner ne radi u raw layoutu"). Overlay ostaje
-   proziran gradijent, samo pojačan/kontrastniji za raw estetiku. */
-.stay-raw .stay-hero { background: var(--ink); background-image: repeating-linear-gradient(45deg, color-mix(in srgb, var(--paper) 6%, transparent) 0 2px, transparent 2px 14px); }
+   proziran gradijent, samo pojačan/kontrastniji za raw estetiku.
+   Pozadina koristi --raw-ink (FIKSNO tamna), ne --ink — --ink se zamijeni s
+   --paper u tamnoj varijanti sajta, pa bi terminal hero inače ispao svijetao
+   kad admin uključi tamnu temu. Tekst je već bijel/paper, pa ostaje čitljiv. */
+.stay-raw .stay-hero { background: var(--raw-ink); background-image: repeating-linear-gradient(45deg, rgba(255,255,255,0.05) 0 2px, transparent 2px 14px); }
 .stay-raw .stay-banner-overlay { background: linear-gradient(0deg, rgba(0,0,0,0.82) 0%, rgba(0,0,0,0.35) 55%, rgba(0,0,0,0.05) 100%); }
 .stay-raw .stay-banner { position: relative; }
 .stay-raw .stay-banner::before {
   content: ""; position: absolute; inset: 0; z-index: 1; pointer-events: none; mix-blend-mode: overlay; opacity: 0.5;
   background-image: repeating-linear-gradient(0deg, rgba(255,255,255,0.06) 0 1px, transparent 1px 3px);
 }
-.stay-raw .stay-hero .loc::before, .stay-raw .stay-banner-overlay .loc::before { content: "root@novo:~$ "; opacity: 0.5; }
+.stay-raw .stay-hero .loc::before, .stay-raw .stay-banner-overlay .loc::before { content: "root@novo:~$ "; opacity: 0.6; }
 .stay-raw .stay-hero h1::after, .stay-raw .stay-banner-overlay h1::after {
-  content: "_"; color: var(--accent); animation: stay-raw-blink 1s steps(1) infinite;
+  /* --accent-glow: uvijek posvijetljena verzija akcentne boje — hero je fiksno
+     taman pa kursor treba biti čitljiv bez obzira koliko je accentColor tamna. */
+  content: "_"; color: var(--accent-glow); animation: stay-raw-blink 1s steps(1) infinite;
 }
 @keyframes stay-raw-blink { 50% { opacity: 0; } }
 @media (prefers-reduced-motion: reduce) { .stay-raw .stay-hero h1::after, .stay-raw .stay-banner-overlay h1::after { animation: none; } }
-.stay-raw .stay-stat, .stay-raw .stay-amenity, .stay-raw .stay-hour, .stay-raw .stay-host { border-radius: 0; border: 2px solid var(--ink); box-shadow: 4px 4px 0 var(--accent); background: var(--paper); }
-.stay-raw .stay-stat:hover, .stay-raw .stay-amenity:hover { transform: translate(-2px, -2px); box-shadow: 6px 6px 0 var(--accent); }
+/* --accent-dark je "sigurna na --paper" varijanta (u tamnoj temi se sama
+   posvijetli) — koristimo je umjesto sirovog --accent na svim mjestima gdje
+   akcentna boja sjedi kao rub/sjena na --paper podlozi, da ostane vidljiva
+   bez obzira je li accentColor svijetla ili tamna nijansa. */
+.stay-raw .stay-stat, .stay-raw .stay-amenity, .stay-raw .stay-hour, .stay-raw .stay-host { border-radius: 0; border: 2px solid var(--ink); box-shadow: 4px 4px 0 var(--accent-dark); background: var(--paper); }
+.stay-raw .stay-stat:hover, .stay-raw .stay-amenity:hover { transform: translate(-2px, -2px); box-shadow: 6px 6px 0 var(--accent-dark); }
 .stay-raw .stay-gallery-item, .stay-raw .stay-gallery-img { border-radius: 0; }
 .stay-raw .stay-book { border-radius: 0; border: 2px solid var(--ink); position: relative; }
 .stay-raw .stay-book::before {
@@ -558,7 +608,7 @@ html.novo-lock-scroll body {
   border: 2px solid var(--ink); color: var(--accent-dark); font-weight: 700; font-size: 10px; padding: 0 7px;
 }
 .stay-raw .stay-eyebrow { font-family: var(--font-jetbrains-mono), monospace; }
-.stay-raw .stay-eyebrow::before { content: "§ "; color: var(--accent); }
+.stay-raw .stay-eyebrow::before { content: "§ "; color: var(--accent-dark); }
 .stay-raw .stay-rules li::before { content: ">"; }
 .stay-raw .stay-mobile-cta a { border-radius: 0; }
 
@@ -634,7 +684,7 @@ html.novo-lock-scroll body {
 .stay-editorial .stay-testimonial p { font-family: var(--font-zilla-slab), Georgia, serif; font-size: 16px; }
 
 .stay-raw .stay-testimonial, .stay-raw .stay-faq-item, .stay-raw .stay-season-row, .stay-raw .stay-video-frame { border-radius: 0; }
-.stay-raw .stay-testimonial, .stay-raw .stay-faq-item { border: 2px solid var(--ink); box-shadow: 4px 4px 0 var(--accent); background: var(--paper); }
+.stay-raw .stay-testimonial, .stay-raw .stay-faq-item { border: 2px solid var(--ink); box-shadow: 4px 4px 0 var(--accent-dark); background: var(--paper); }
 .stay-raw .stay-badge { border-radius: 0; border: 2px solid var(--ink); background: var(--paper); }
 .stay-raw .stay-avail-link { border-radius: 0; }
 
@@ -648,12 +698,20 @@ html.novo-lock-scroll body {
    Ispod fotografije stranica se vraća na čist, svijetli sadržaj (paper/plaster
    tokeni), baš kao stvarne apple.com stranice — ne jedna duga hrpa stakla.
    ===================================================================== */
-.stay-apple { --apple-ink: #101014; }
+.stay-apple {
+  --apple-ink: #101014;
+  /* Cijeli layout prelazi na Inter — jedini font na stranici koji stvarno
+     sliči sistemskom San Francisco fontu; Classic/Editorial koriste
+     Karla/Zilla Slab, Raw koristi JetBrains Mono, pa je ovo dio onoga
+     što Apple treba vizualno odvojiti od ostalih, ne samo hero pozadina. */
+  font-family: var(--font-inter), -apple-system, "Segoe UI", sans-serif;
+}
+.stay-apple h1, .stay-apple h2, .stay-apple h3 { font-family: var(--font-inter), -apple-system, sans-serif; letter-spacing: -0.02em; }
 .stay-apple .stay-nav {
   background: rgba(16,16,20,0.42); backdrop-filter: blur(20px) saturate(180%); -webkit-backdrop-filter: blur(20px) saturate(180%);
   border-bottom: 1px solid rgba(255,255,255,0.14);
 }
-.stay-apple .stay-nav-brand { color: #fff; }
+.stay-apple .stay-nav-brand { color: #fff; font-weight: 700; }
 .stay-apple .stay-nav-cta {
   background: rgba(255,255,255,0.16); backdrop-filter: blur(14px) saturate(180%); -webkit-backdrop-filter: blur(14px) saturate(180%);
   border: 1px solid rgba(255,255,255,0.28); color: #fff; box-shadow: inset 0 1px 0 rgba(255,255,255,0.35);
@@ -667,7 +725,8 @@ html.novo-lock-scroll body {
   color: #fff;
 }
 .stay-apple .stay-hero .loc, .stay-apple .stay-hero p { color: #fff; }
-.stay-apple .stay-hero h1, .stay-apple .stay-banner-overlay h1 { letter-spacing: -0.03em; }
+.stay-apple .stay-hero h1, .stay-apple .stay-banner-overlay h1 { letter-spacing: -0.03em; font-weight: 700; }
+.stay-apple .stay-banner-overlay { color: #fff; }
 
 /* Statistike "plutaju" preko dna fotografije/heroja kao staklene kartice —
    jedino mjesto uz navigaciju i dock traku gdje koristimo pravi liquid glass. */
@@ -681,12 +740,30 @@ html.novo-lock-scroll body {
 }
 .stay-apple .stay-stat:hover { transform: translateY(-2px); box-shadow: inset 0 1px 0 rgba(255,255,255,0.35), 0 16px 32px rgba(0,0,0,0.3); }
 
-.stay-apple .stay-eyebrow { color: color-mix(in srgb, var(--accent) 78%, black 12%); }
-.stay-apple .stay-gallery-img, .stay-apple .stay-gallery-item { border-radius: 20px; }
-.stay-apple .stay-amenity, .stay-apple .stay-testimonial, .stay-apple .stay-faq-item, .stay-apple .stay-host, .stay-apple .stay-season-row {
-  border-radius: 20px; border-color: transparent; box-shadow: 0 2px 16px rgba(43,32,22,0.06);
+/* Eyebrow bez brojčane oznake i s puno širim razmakom — Apple stil naslova
+   sekcije ("PREGLED", "GALERIJA"...), vidljivo drugačije od Classic/Editorial
+   brojčanih eyebrowa. */
+.stay-apple .stay-eyebrow { color: var(--accent-dark); font-weight: 700; letter-spacing: 0.22em; font-size: 11.5px; }
+.stay-apple .stay-eyebrow-no { display: none; }
+
+/* "O objektu" postaje zaobljeni svijetli panel — Apple stranice grade sadržaj
+   iz jasno omeđenih zaobljenih blokova, ne iz gole proze na pozadini stranice
+   (to je bila razlika koja je Apple činila "Classic s malo izmjena"). */
+.stay-apple .stay-about {
+  background: var(--plaster); border-radius: 28px; padding: clamp(26px, 4vw, 44px);
+  margin: clamp(30px, 5vw, 48px) clamp(20px, 5vw, 56px);
+  max-width: none;
 }
+
+.stay-apple .stay-gallery-img, .stay-apple .stay-gallery-item { border-radius: 24px; }
+.stay-apple .stay-amenity, .stay-apple .stay-testimonial, .stay-apple .stay-faq-item, .stay-apple .stay-host, .stay-apple .stay-season-row {
+  border-radius: 24px; border-color: transparent; box-shadow: 0 2px 18px rgba(43,32,22,0.07);
+}
+.stay-apple .stay-alt { background: color-mix(in srgb, var(--accent) 6%, var(--paper)); }
 .stay-apple .stay-badge { border-radius: 999px; background: color-mix(in srgb, var(--accent) 12%, var(--plaster)); }
+.stay-apple .stay-faq-item summary::after, .stay-apple .stay-stars .on { color: var(--accent-dark); }
+.stay-apple .stay-video-frame { border-radius: 24px; }
+.stay-apple .stay-hour, .stay-apple .stay-badge { box-shadow: none; }
 
 /* Traka za rezervaciju kao plutajući "dock" — tamno staklo na dnu stranice,
    zatvara luk s tamnom navigacijom na vrhu. */
@@ -696,6 +773,7 @@ html.novo-lock-scroll body {
 }
 .stay-apple .stay-book .price, .stay-apple .stay-book p { color: #fff; }
 .stay-apple .stay-book a.bookbtn { background: #fff; color: var(--apple-ink); }
+@media (max-width: 640px) { .stay-apple .stay-about { margin: 24px 16px; border-radius: 22px; padding: 22px; } }
 .stay-apple .stay-avail-link { border-color: rgba(255,255,255,0.4); color: #fff; }
 .stay-apple .stay-mobile-cta a {
   background: rgba(16,16,20,0.92); backdrop-filter: blur(16px) saturate(180%); -webkit-backdrop-filter: blur(16px) saturate(180%);

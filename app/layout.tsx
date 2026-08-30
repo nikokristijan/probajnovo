@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Space_Grotesk, JetBrains_Mono, Zilla_Slab, Karla } from "next/font/google";
+import { Space_Grotesk, JetBrains_Mono, Zilla_Slab, Karla, Caveat, Inter } from "next/font/google";
 import "./globals.css";
 
 const spaceGrotesk = Space_Grotesk({
@@ -22,6 +22,18 @@ const karla = Karla({
   subsets: ["latin"],
   weight: ["400", "500", "600", "700"],
 });
+/** Rukom pisani font — Classic pečat i potpisi ispod polaroida (stay layout). */
+const caveat = Caveat({
+  variable: "--font-caveat",
+  subsets: ["latin"],
+  weight: ["600", "700"],
+});
+/** Apple layout — bliže sistemskom San Francisco fontu nego Space Grotesk/Karla. */
+const inter = Inter({
+  variable: "--font-inter",
+  subsets: ["latin"],
+  weight: ["400", "500", "600", "700", "800"],
+});
 
 export const metadata: Metadata = {
   title: "NOVO",
@@ -35,7 +47,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html
       lang="hr"
-      className={`${spaceGrotesk.variable} ${jetbrainsMono.variable} ${zillaSlab.variable} ${karla.variable}`}
+      className={`${spaceGrotesk.variable} ${jetbrainsMono.variable} ${zillaSlab.variable} ${karla.variable} ${caveat.variable} ${inter.variable}`}
       >
     <body>{children}</body>
     </html>
