@@ -5,6 +5,16 @@ import type { ActionState } from "@/lib/actions";
 import type { Property, Testimonial, FaqItem, SeasonalPrice } from "@/lib/db/schema";
 import ImageUploader from "./ImageUploader";
 
+/** Prigušeni, "tonalni" tonovi umjesto šarenog neona — Apple hero pozadina
+    (radial gradient mesh u CSS-u) izvodi se iz accentColor, pa ovo samo
+    ubrzava biranje boje koja tamo dobro izgleda. Nije novo polje u bazi. */
+const APPLE_COLOR_PRESETS: { label: string; value: string }[] = [
+  { label: "Kamen", value: "#8f8272" },
+  { label: "Noć", value: "#3d4a72" },
+  { label: "Maslina", value: "#7c7a49" },
+  { label: "Terakota", value: "#b5502e" },
+];
+
 type PropertyAction = (
   prevState: ActionState,
   formData: FormData
@@ -262,6 +272,31 @@ export default function PropertyForm({
             Tamna varijanta boja
           </label>
         </div>
+
+        {values.layoutStyle === "apple" && (
+          <div className="flex flex-col gap-2">
+            <span className="text-sm font-medium">
+              Boja pozadine za Apple stil — nekoliko prigušenih tonova (klikni za primjenu na &quot;Boja stranice&quot; gore)
+            </span>
+            <div className="flex flex-wrap gap-2">
+              {APPLE_COLOR_PRESETS.map((preset) => (
+                <button
+                  key={preset.value}
+                  type="button"
+                  onClick={() => set("accentColor", preset.value)}
+                  className="flex items-center gap-2 rounded-full border border-black/15 bg-white pl-1.5 pr-3 py-1.5 text-xs font-medium hover:border-black/30"
+                  title={preset.value}
+                >
+                  <span
+                    className="h-5 w-5 rounded-full border border-black/10"
+                    style={{ background: preset.value }}
+                  />
+                  {preset.label}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
         <label className="flex items-center gap-2 text-sm font-medium">
           <input
             type="checkbox"
