@@ -83,6 +83,12 @@ export const properties = pgTable("properties", {
   hostPhoto: text("host_photo"),
   /** Kratke oznake povjerenja — jedna po retku (npr. "4.9 na Google recenzijama"). */
   reviewBadges: jsonb("review_badges").$type<string[]>().notNull().default([]),
+  /** Favicon vikendice (URL na Vercel Blob) — tab-ikona u pregledniku. Null = koristi NOVO logo (favicon-orange.png). */
+  faviconUrl: text("favicon_url"),
+  /** Vlastita domena (npr. "vila-marija.com") umjesto <slug>.novo.hr. Null = nema.
+      Ovo polje samo bilježi namjeru vlasnika — stvarno povezivanje domene (dodavanje
+      na Vercel + CNAME kod vlasnikovog DNS registratora) radi se ručno, izvan ove app. */
+  customDomain: text("custom_domain").unique(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
