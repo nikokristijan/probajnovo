@@ -220,6 +220,46 @@ html.novo-lock-scroll body {
 .link { display: inline-flex; align-items: center; gap: 4px; color: #000; text-decoration: underline; font-size: 11px; width: fit-content; transition: color 0.15s ease; }
 .link:hover { color: var(--novo-orange); }
 
+/* Cijeli zaslon proizvoda — klikom na ikonu širenja u prozoru proizvod
+   "postane" vlastita stranica preko cijelog ekrana umjesto malog prozora. */
+.product-full {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  background: #fff;
+  color: #000;
+  display: flex;
+  flex-direction: column;
+  animation: product-full-in 0.3s cubic-bezier(.16,.84,.44,1) both;
+}
+@keyframes product-full-in { from { opacity: 0; transform: scale(0.98); } to { opacity: 1; transform: scale(1); } }
+.product-full-topbar {
+  display: flex; align-items: center; justify-content: space-between; flex-shrink: 0;
+  padding: 14px 20px; border-bottom: 1px solid rgba(0,0,0,0.1);
+}
+.product-full-brand { font-size: 11px; letter-spacing: 0.12em; }
+.product-full-topbar .fw-btn { width: 30px; height: 30px; border: 1px solid rgba(0,0,0,0.12); border-radius: 6px; }
+.product-full-topbar .fw-btn:last-child { font-size: 16px; }
+.product-full-scroll { overflow-y: auto; flex: 1; min-height: 0; }
+.product-full-body { max-width: 980px; margin: 0 auto; padding: 32px 20px 80px; display: grid; grid-template-columns: 1fr; gap: 24px; }
+@media (min-width: 860px) { .product-full-body { grid-template-columns: 1.15fr 1fr; padding: 48px 32px 100px; gap: 40px; align-items: start; } }
+.product-full-hero { aspect-ratio: 4 / 3; background: #efefef; overflow: hidden; border-radius: 4px; }
+.product-full-hero-img { width: 100%; height: 100%; object-fit: cover; filter: grayscale(1); transition: filter 0.4s ease; }
+.product-full-hero:hover .product-full-hero-img { filter: grayscale(0.15); }
+.product-full-thumbs { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+.product-full-thumb { width: 56px; height: 56px; padding: 0; border: 2px solid transparent; border-radius: 3px; overflow: hidden; cursor: pointer; opacity: 0.55; transition: opacity 0.15s ease, border-color 0.15s ease; }
+.product-full-thumb:hover { opacity: 0.85; }
+.product-full-thumb.active { opacity: 1; border-color: var(--novo-orange); }
+.product-full-thumb-img { width: 100%; height: 100%; object-fit: cover; filter: grayscale(1); }
+.product-full-thumb.active .product-full-thumb-img { filter: grayscale(0); }
+.product-full-info { display: flex; flex-direction: column; gap: 14px; padding-top: 4px; }
+.product-full-info h1 { font-family: var(--font-space-grotesk), sans-serif; font-size: clamp(24px, 3.4vw, 34px); font-weight: 600; letter-spacing: -0.01em; margin: 0; }
+.product-full-tagline { font-family: var(--font-space-grotesk), sans-serif; font-size: 15px; color: rgba(0,0,0,0.6); margin: 0; }
+.product-full-desc { font-family: var(--font-jetbrains-mono), monospace; font-size: 12.5px; line-height: 1.7; color: rgba(0,0,0,0.75); margin: 0; white-space: pre-line; }
+.product-full-actions { display: flex; align-items: center; gap: 18px; flex-wrap: wrap; margin-top: 8px; padding-top: 18px; border-top: 1px solid rgba(0,0,0,0.1); }
+.product-full-price { font-size: 15px; color: var(--novo-blue); }
+@media (max-width: 720px) { .product-full-body { padding: 20px 16px 60px; } }
+
 /* PROIZVODI — kartice proizvoda (npr. 3D printane pločice s NFC oznakama) */
 .products-scroll { overflow-y: auto; min-height: 0; flex: 1; }
 .products-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 14px; padding-bottom: 8px; }
@@ -290,8 +330,7 @@ html.novo-lock-scroll body {
   backdrop-filter: blur(10px);
   border-bottom: 1px solid #e7dcc3;
 }
-.stay-nav-brand { font-family: var(--font-space-grotesk), sans-serif; font-weight: 700; letter-spacing: -0.02em; color: var(--ink); text-decoration: none; font-size: 14px; }
-.stay-nav-brand:hover { color: var(--accent); }
+.stay-nav-brand { font-family: var(--font-space-grotesk), sans-serif; font-weight: 700; letter-spacing: -0.02em; color: var(--ink); text-decoration: none; font-size: 14px; cursor: default; user-select: none; }
 .stay-nav-cta {
   background: var(--accent); color: var(--paper); font-weight: 700; font-size: 12.5px;
   padding: 9px 18px; border-radius: 999px; text-decoration: none; white-space: nowrap;
@@ -307,7 +346,7 @@ html.novo-lock-scroll body {
 .stay-hero p { margin: 0; font-size: 16px; color: #fff; opacity: .92; font-family: var(--font-karla), sans-serif; max-width: 46ch; }
 
 .stay-banner { position: relative; height: clamp(260px, 42vw, 440px); overflow: hidden; }
-.stay-banner img { width: 100%; height: 100%; object-fit: cover; animation: stay-banner-zoom 8s ease-out both; }
+.stay-banner img { width: 100%; height: 100%; object-fit: cover; animation: stay-banner-zoom 8s ease-out; will-change: transform; }
 @keyframes stay-banner-zoom { from { transform: scale(1.06); } to { transform: scale(1); } }
 .stay-banner-overlay { position: absolute; inset: 0; display: flex; flex-direction: column; justify-content: flex-end; padding: clamp(20px, 5vw, 56px); background: linear-gradient(0deg, rgba(0,0,0,0.55), rgba(0,0,0,0) 60%); color: #fff; animation: stay-hero-in 0.7s cubic-bezier(.16,.84,.44,1) both; }
 .stay-banner-overlay .loc { font-size: 12px; font-weight: 700; letter-spacing: .14em; text-transform: uppercase; opacity: .9; font-family: var(--font-karla), sans-serif; }
@@ -345,8 +384,9 @@ html.novo-lock-scroll body {
 
 .stay-alt { background: var(--plaster); }
 .stay-amenities { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 12px; margin-top: 18px; }
-.stay-amenity { background: var(--paper); border: 1px solid #e7dcc3; border-radius: 10px; padding: 12px 14px; font-size: 14px; font-weight: 700; transition: transform 0.15s ease, border-color 0.15s ease; }
+.stay-amenity { display: flex; align-items: center; gap: 10px; background: var(--paper); border: 1px solid #e7dcc3; border-radius: 10px; padding: 12px 14px; font-size: 14px; font-weight: 700; transition: transform 0.15s ease, border-color 0.15s ease; }
 .stay-amenity:hover { transform: translateY(-2px); border-color: var(--accent); }
+.stay-amenity svg { color: var(--accent); flex-shrink: 0; }
 
 .stay-book { display: flex; flex-wrap: wrap; gap: 20px; align-items: center; justify-content: space-between; background: var(--accent); color: var(--paper); border-radius: 18px; padding: 26px clamp(20px, 4vw, 36px); }
 .stay-book .price { font-family: var(--font-zilla-slab), serif; font-size: 32px; font-weight: 600; }
@@ -354,6 +394,9 @@ html.novo-lock-scroll body {
 .stay-book p { margin: 6px 0 0; font-size: 13px; opacity: .9; font-family: var(--font-karla), sans-serif; }
 .stay-book a.bookbtn { background: var(--paper); color: var(--accent-dark); font-weight: 700; font-size: 14.5px; padding: 13px 24px; border-radius: 999px; text-decoration: none; white-space: nowrap; display: inline-block; transition: transform 0.15s ease, box-shadow 0.15s ease; }
 .stay-book a.bookbtn:hover { transform: translateY(-2px); box-shadow: 0 10px 24px rgba(0,0,0,0.2); }
+.stay-book-actions { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; }
+.stay-avail-link { background: transparent; color: var(--paper); font-weight: 700; font-size: 14.5px; padding: 13px 22px; border-radius: 999px; text-decoration: none; white-space: nowrap; display: inline-block; border: 1.5px solid color-mix(in srgb, var(--paper) 55%, transparent); transition: transform 0.15s ease, border-color 0.15s ease, background 0.15s ease; }
+.stay-avail-link:hover { transform: translateY(-2px); border-color: var(--paper); background: rgba(255,255,255,0.08); }
 
 .stay-foot { background: var(--ink); color: #c9bba0; text-align: center; padding: 22px; font-size: 12.5px; }
 .stay-foot .credit { margin-top: 6px; color: #9a8c71; }
@@ -386,8 +429,9 @@ html.novo-lock-scroll body {
 .stay-rules li { position: relative; padding-left: 22px; font-size: 14.5px; line-height: 1.6; color: #4a4030; }
 .stay-rules li::before { content: "—"; position: absolute; left: 0; color: var(--accent); font-weight: 700; }
 
-.stay-host { background: var(--paper); border: 1px solid #e7dcc3; border-radius: 14px; padding: 22px 26px; max-width: 60ch; transition: transform 0.2s ease; }
+.stay-host { display: flex; align-items: center; gap: 20px; background: var(--paper); border: 1px solid #e7dcc3; border-radius: 14px; padding: 22px 26px; max-width: 60ch; transition: transform 0.2s ease; }
 .stay-host:hover { transform: translateY(-2px); }
+.stay-host-photo { width: 68px; height: 68px; border-radius: 50%; object-fit: cover; flex-shrink: 0; border: 2px solid var(--accent); }
 .stay-host-name { font-family: var(--font-zilla-slab), Georgia, serif; font-size: 19px; font-weight: 600; margin-bottom: 6px; }
 .stay-host-note { margin: 0; font-size: 14.5px; line-height: 1.7; color: #4a4030; font-style: italic; }
 
@@ -439,6 +483,74 @@ html.novo-lock-scroll body {
 @media (prefers-reduced-motion: reduce) { .stay-marquee-track { animation: none; } }
 
 /* =====================================================================
+   VIKENDICA — dodatni sadržajni blokovi (recenzije, FAQ, video, sezonski
+   cjenik, grupirana galerija, oznake povjerenja, stagger scroll animacije).
+   ===================================================================== */
+[data-parallax] { will-change: transform; }
+
+.stay-badges { display: flex; flex-wrap: wrap; gap: 8px; padding: 16px clamp(20px, 5vw, 56px) 0; }
+.stay-badge { font-family: var(--font-karla), sans-serif; font-size: 11.5px; font-weight: 700; letter-spacing: 0.03em; background: var(--plaster); color: var(--accent-dark); border-radius: 999px; padding: 7px 14px; }
+
+.stay-video-frame { position: relative; width: 100%; max-width: 900px; aspect-ratio: 16 / 9; border-radius: 14px; overflow: hidden; background: var(--ink); box-shadow: 0 14px 34px rgba(0,0,0,0.14); }
+.stay-video-frame iframe { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; }
+
+.stay-testimonials { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 16px; margin-top: 18px; }
+.stay-testimonial { background: var(--paper); border: 1px solid #e7dcc3; border-radius: 14px; padding: 22px 24px; display: flex; flex-direction: column; gap: 10px; transition: transform 0.2s ease, box-shadow 0.2s ease; }
+.stay-testimonial:hover { transform: translateY(-3px); box-shadow: 0 14px 28px rgba(43,32,22,0.1); }
+.stay-testimonial p { margin: 0; font-size: 14.5px; line-height: 1.7; color: #4a4030; font-style: italic; }
+.stay-testimonial-author { font-size: 12.5px; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; color: var(--accent-dark); }
+.stay-stars { display: flex; gap: 2px; font-size: 14px; color: #d8cbae; letter-spacing: 1px; }
+.stay-stars .on { color: var(--accent); }
+
+.stay-faq { display: flex; flex-direction: column; gap: 10px; max-width: 74ch; margin-top: 18px; }
+.stay-faq-item { background: var(--paper); border: 1px solid #e7dcc3; border-radius: 12px; padding: 4px 20px; transition: border-color 0.15s ease; }
+.stay-faq-item[open] { border-color: var(--accent); }
+.stay-faq-item summary { cursor: pointer; list-style: none; padding: 16px 0; font-weight: 700; font-size: 15px; display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.stay-faq-item summary::-webkit-details-marker { display: none; }
+.stay-faq-item summary::after { content: "+"; font-size: 20px; font-weight: 400; color: var(--accent); transition: transform 0.2s ease; flex-shrink: 0; }
+.stay-faq-item[open] summary::after { transform: rotate(45deg); }
+.stay-faq-item p { margin: 0 0 18px; font-size: 14.5px; line-height: 1.7; color: #4a4030; }
+
+.stay-season-table { display: flex; flex-direction: column; gap: 8px; margin-top: 18px; max-width: 60ch; }
+.stay-season-row { display: flex; align-items: center; justify-content: space-between; gap: 16px; background: var(--plaster); border-radius: 10px; padding: 14px 20px; font-size: 14.5px; font-weight: 700; transition: transform 0.15s ease; }
+.stay-season-row:hover { transform: translateX(4px); }
+.stay-season-price { font-family: var(--font-zilla-slab), Georgia, serif; font-size: 17px; color: var(--accent-dark); }
+
+.stay-gallery-groups { display: flex; flex-direction: column; gap: 28px; }
+.stay-gallery-group-label { font-family: var(--font-karla), sans-serif; font-size: 11px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; color: var(--dim); margin-bottom: 12px; }
+
+/* Stagger — djeca gridova "kaskadno" isplivaju umjesto svih odjednom */
+.reveal-visible .stay-amenities > *,
+.reveal-visible .stay-testimonials > *,
+.reveal-visible .stay-faq > *,
+.reveal-visible .stay-season-table > * {
+  animation: stay-stagger-in 0.6s cubic-bezier(.16,.84,.44,1) both;
+}
+.reveal-visible .stay-amenities > *:nth-child(1), .reveal-visible .stay-testimonials > *:nth-child(1), .reveal-visible .stay-faq > *:nth-child(1), .reveal-visible .stay-season-table > *:nth-child(1) { animation-delay: 0.03s; }
+.reveal-visible .stay-amenities > *:nth-child(2), .reveal-visible .stay-testimonials > *:nth-child(2), .reveal-visible .stay-faq > *:nth-child(2), .reveal-visible .stay-season-table > *:nth-child(2) { animation-delay: 0.08s; }
+.reveal-visible .stay-amenities > *:nth-child(3), .reveal-visible .stay-testimonials > *:nth-child(3), .reveal-visible .stay-faq > *:nth-child(3), .reveal-visible .stay-season-table > *:nth-child(3) { animation-delay: 0.13s; }
+.reveal-visible .stay-amenities > *:nth-child(4), .reveal-visible .stay-testimonials > *:nth-child(4), .reveal-visible .stay-faq > *:nth-child(4), .reveal-visible .stay-season-table > *:nth-child(4) { animation-delay: 0.18s; }
+.reveal-visible .stay-amenities > *:nth-child(5), .reveal-visible .stay-testimonials > *:nth-child(5), .reveal-visible .stay-faq > *:nth-child(5), .reveal-visible .stay-season-table > *:nth-child(5) { animation-delay: 0.23s; }
+.reveal-visible .stay-amenities > *:nth-child(n+6), .reveal-visible .stay-testimonials > *:nth-child(n+6), .reveal-visible .stay-faq > *:nth-child(n+6), .reveal-visible .stay-season-table > *:nth-child(n+6) { animation-delay: 0.28s; }
+@keyframes stay-stagger-in { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: translateY(0); } }
+@media (prefers-reduced-motion: reduce) {
+  .reveal-visible .stay-amenities > *, .reveal-visible .stay-testimonials > *, .reveal-visible .stay-faq > *, .reveal-visible .stay-season-table > * { animation: none; }
+}
+
+.stay-dark .stay-badge { background: #211c17; }
+.stay-dark .stay-testimonial, .stay-dark .stay-faq-item { border-color: #33291d; }
+.stay-dark .stay-season-row { background: #211c17; }
+.stay-dark .stay-video-frame { box-shadow: 0 14px 34px rgba(0,0,0,0.4); }
+
+.stay-editorial .stay-testimonials { grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); }
+.stay-editorial .stay-testimonial p { font-family: var(--font-zilla-slab), Georgia, serif; font-size: 16px; }
+
+.stay-raw .stay-testimonial, .stay-raw .stay-faq-item, .stay-raw .stay-season-row, .stay-raw .stay-video-frame { border-radius: 0; }
+.stay-raw .stay-testimonial, .stay-raw .stay-faq-item { border: 2px solid var(--ink); box-shadow: 4px 4px 0 var(--accent); background: var(--paper); }
+.stay-raw .stay-badge { border-radius: 0; border: 2px solid var(--ink); background: var(--paper); }
+.stay-raw .stay-avail-link { border-radius: 0; }
+
+/* =====================================================================
    ADMIN — jednostavno, funkcionalno sučelje (Tailwind za layout/forme).
    ===================================================================== */
 .admin-quicklink { font-size: 13px; font-weight: 600; border: 1px solid rgba(0,0,0,0.12); border-radius: 999px; padding: 8px 16px; background: #fff; text-decoration: none; color: #000; transition: border-color 0.15s ease, color 0.15s ease; }
@@ -455,3 +567,8 @@ html.novo-lock-scroll body {
   background: #fff;
 }
 .admin-input:focus { border-color: #0000c3; }
+.admin-repeat-row { display: flex; flex-direction: column; gap: 8px; border: 1px solid rgba(0,0,0,0.1); border-radius: 10px; padding: 12px; background: #fff; }
+.admin-repeat-add { align-self: flex-start; font-size: 13px; font-weight: 600; border: 1px dashed rgba(0,0,0,0.25); border-radius: 999px; padding: 8px 16px; background: transparent; cursor: pointer; transition: border-color 0.15s ease, color 0.15s ease; }
+.admin-repeat-add:hover { border-color: #ff7f00; color: #ff7f00; }
+.admin-repeat-remove { align-self: flex-start; font-size: 12px; font-weight: 600; color: #b3261e; background: transparent; border: none; cursor: pointer; padding: 2px 0; text-decoration: underline; }
+.admin-repeat-remove:hover { color: #7a1a15; }
