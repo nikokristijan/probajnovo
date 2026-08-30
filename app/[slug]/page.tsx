@@ -131,9 +131,12 @@ export default async function PropertyPage({
     notFound();
   }
 
-  const layout = property.layoutStyle === "editorial" || property.layoutStyle === "raw"
-    ? property.layoutStyle
-    : "classic";
+  const layout =
+    property.layoutStyle === "editorial" ||
+    property.layoutStyle === "raw" ||
+    property.layoutStyle === "apple"
+      ? property.layoutStyle
+      : "classic";
   const stayClass = `stay stay-${layout}${property.darkMode ? " stay-dark" : ""}`;
   const accentStyle = { "--accent": property.accentColor } as React.CSSProperties;
   const contactEmail = property.contactEmail || agency?.contactEmail || "hello@novo.studio";
@@ -156,6 +159,9 @@ export default async function PropertyPage({
   // koje se stvarno prikazuju za ovu vikendicu (evaluira se redom kroz JSX).
   let sectionNo = 0;
   const eyebrowNo = () => String(++sectionNo).padStart(2, "0");
+  // "O objektu" je uvijek prva numerirana sekcija — izvučeno unaprijed jer
+  // editorial layout treba isti broj i za div-atribut (pozadinski "duh" broj) i za eyebrow.
+  const aboutNo = eyebrowNo();
 
   return (
     <div className={stayClass} style={accentStyle}>
@@ -182,7 +188,15 @@ export default async function PropertyPage({
         <div className="stay-banner">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src={effectiveBanner} alt={property.name} data-parallax />
+          {layout === "editorial" && (
+            <div className="stay-spine" aria-hidden="true">
+              {property.name}
+            </div>
+          )}
           <div className="stay-banner-overlay">
+            {layout === "classic" && property.reviewBadges.length > 0 && (
+              <div className="stay-stamp">{property.reviewBadges[0]}</div>
+            )}
             <div className="loc">{property.location}</div>
             <h1>{property.name}</h1>
             <p>{property.tagline}</p>
@@ -190,9 +204,28 @@ export default async function PropertyPage({
         </div>
       ) : (
         <div className="stay-hero">
+          {layout === "editorial" && (
+            <div className="stay-spine" aria-hidden="true">
+              {property.name}
+            </div>
+          )}
+          {layout === "classic" && property.reviewBadges.length > 0 && (
+            <div className="stay-stamp">{property.reviewBadges[0]}</div>
+          )}
           <div className="loc">{property.location}</div>
           <h1>{property.name}</h1>
           <p>{property.tagline}</p>
+        </div>
+      )}
+
+      {layout === "classic" && gallery.length > 0 && (
+        <div className="stay-classic-polaroids" aria-hidden="true">
+          {gallery.slice(0, 3).map((src, i) => (
+            <div className="stay-polaroid" key={src + i}>
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={src} alt="" />
+            </div>
+          ))}
         </div>
       )}
 
@@ -213,9 +246,9 @@ export default async function PropertyPage({
         </div>
       )}
 
-      <RevealSection className="stay-section stay-about">
+      <RevealSection className="stay-section stay-about" data-secno={aboutNo}>
         <h2 className="stay-eyebrow">
-          <span className="stay-eyebrow-no">{eyebrowNo()}</span>O objektu
+          <span className="stay-eyebrow-no">{aboutNo}</span>O objektu
         </h2>
         <p className={layout === "editorial" ? "stay-dropcap" : undefined}>
           {property.description}
