@@ -27,7 +27,7 @@ type FormValues = {
   contactEmail: string;
   published: boolean;
   showInStudies: boolean;
-  layoutStyle: "classic" | "editorial" | "raw";
+  layoutStyle: "classic" | "editorial" | "raw" | "apple";
   darkMode: boolean;
   checkInTime: string;
   checkOutTime: string;
@@ -246,9 +246,10 @@ export default function PropertyForm({
               onChange={(e) => set("layoutStyle", e.target.value as FormValues["layoutStyle"])}
               className="admin-input"
             >
-              <option value="classic">Classic — čisto, uravnoteženo</option>
+              <option value="classic">Classic — obiteljski, topao pečat i polaroidi</option>
               <option value="editorial">Editorial — magazinski, veliki naslovi</option>
               <option value="raw">Raw — brutalist, mono, oštro</option>
+              <option value="apple">Apple — stakleno, mekano, minimalno</option>
             </select>
           </Field>
           <label className="flex items-center gap-2 text-sm font-medium mt-auto pb-2">
