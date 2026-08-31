@@ -406,6 +406,42 @@ html.novo-lock-scroll body {
 .stay-avail-link { background: transparent; color: var(--paper); font-weight: 700; font-size: 14.5px; padding: 13px 22px; border-radius: 999px; text-decoration: none; white-space: nowrap; display: inline-block; border: 1.5px solid color-mix(in srgb, var(--paper) 55%, transparent); transition: transform 0.15s ease, border-color 0.15s ease, background 0.15s ease; }
 .stay-avail-link:hover { transform: translateY(-2px); border-color: var(--paper); background: rgba(255,255,255,0.08); }
 
+/* Obrazac za upit (InquiryForm) — prvi javni input/textarea stil na stranici
+   (dosad je kontakt bio isključivo mailto/tel/WhatsApp linkovi), usklađen s
+   postojećim --accent/--paper/--ink tokenima i .stay-dark/.stay-raw temama. */
+.stay-inquiry-form { display: flex; flex-direction: column; gap: 14px; max-width: 640px; }
+.stay-inquiry-row { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+@media (max-width: 560px) { .stay-inquiry-row { grid-template-columns: 1fr; } }
+.stay-inquiry-field { display: flex; flex-direction: column; gap: 6px; font-size: 13px; font-weight: 700; color: var(--accent-dark); }
+.stay-inquiry-field input,
+.stay-inquiry-field textarea {
+  font: inherit; font-family: var(--font-karla), sans-serif; font-weight: 400; font-size: 14.5px;
+  color: var(--ink); background: var(--paper); border: 1.5px solid #e7dcc3; border-radius: 10px;
+  padding: 11px 14px; resize: vertical; transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+.stay-inquiry-field input:focus,
+.stay-inquiry-field textarea:focus {
+  outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 20%, transparent);
+}
+.stay-dark .stay-inquiry-field input,
+.stay-dark .stay-inquiry-field textarea { border-color: #33291d; }
+/* Honeypot — vizualno i za čitače zaslona uklonjeno, ali i dalje popunjivo
+   za botove koji ne poštuju CSS (svrha zamke). */
+.stay-inquiry-hp { position: absolute; width: 1px; height: 1px; overflow: hidden; opacity: 0; pointer-events: none; }
+.stay-inquiry-submit {
+  align-self: flex-start; border: none; cursor: pointer; font-family: var(--font-karla), sans-serif;
+  background: var(--accent); color: var(--paper); font-weight: 700; font-size: 14.5px;
+  padding: 13px 26px; border-radius: 999px; transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+.stay-inquiry-submit:hover:not(:disabled) { transform: translateY(-2px); box-shadow: 0 10px 24px color-mix(in srgb, var(--accent) 45%, transparent); }
+.stay-inquiry-submit:disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
+.stay-inquiry-error { margin: 0; font-size: 13.5px; font-weight: 700; color: #b3261e; }
+.stay-dark .stay-inquiry-error { color: #ff8a80; }
+.stay-inquiry-done {
+  background: var(--plaster); border: 1.5px solid var(--accent); border-radius: 12px;
+  padding: 18px 20px; font-size: 14.5px; font-weight: 700; color: var(--accent-dark); max-width: 640px;
+}
+
 .stay-foot { background: var(--ink); color: #c9bba0; text-align: center; padding: 22px; font-size: 12.5px; }
 .stay-foot .credit { margin-top: 6px; color: #9a8c71; }
 .stay-foot .credit a { color: var(--accent-on-ink); font-weight: 700; text-decoration: none; }
@@ -572,7 +608,8 @@ html.novo-lock-scroll body {
 .stay-raw { font-family: var(--font-jetbrains-mono), monospace; --raw-ink: #201a12; }
 .stay-raw h1, .stay-raw h2, .stay-raw h3 { font-family: var(--font-jetbrains-mono), monospace; text-transform: uppercase; letter-spacing: -0.01em; }
 .stay-raw .stay-nav { border-bottom: 2px solid var(--ink); backdrop-filter: none; background: var(--paper); }
-.stay-raw .stay-nav-cta, .stay-raw .stay-book a.bookbtn, .stay-raw .stay-map-link { border-radius: 0; }
+.stay-raw .stay-nav-cta, .stay-raw .stay-book a.bookbtn, .stay-raw .stay-map-link, .stay-raw .stay-inquiry-submit { border-radius: 0; }
+.stay-raw .stay-inquiry-field input, .stay-raw .stay-inquiry-field textarea, .stay-raw .stay-inquiry-done { border-radius: 0; }
 /* VAŽNO: .stay-hero (nema banner slike) smije dobiti puni ink fon, ali
    .stay-banner-overlay sjedi PREKO stvarne fotografije — puni fon bi je posve
    sakrio (to je bio bug "banner ne radi u raw layoutu"). Overlay ostaje
