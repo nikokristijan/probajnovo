@@ -50,13 +50,16 @@ import {
   createReservation,
   deleteReservation,
   setReservationPaid,
+  setReservationDeposit,
+  markReservationConfirmationSent,
   createExpense,
   deleteExpense,
   createSale,
   deleteSale,
   SALE_CATEGORIES,
+  logActivity,
 } from "@/lib/db/queries";
-import { sendInquiryNotification, sendGuestConfirmation } from "@/lib/email";
+import { sendInquiryNotification, sendGuestConfirmation, sendReservationConfirmation, sendInquiryReply } from "@/lib/email";
 import { resolveCoordinates, geoMissWarning } from "@/lib/geocode";
 import type { AdminUser, Inquiry } from "@/lib/db/schema";
 
@@ -1153,6 +1156,41 @@ export async function markInquiryRepliedAction(id: number) {
   revalidatePath("/admin/inquiries");
 }
 
+/** Brzi odgovor gostu izravno iz admina (umjesto ručno mailom/telefonom) —
+    "message" dolazi iz predloška ili slobodnog teksta na app/admin/inquiries
+    (vidi components/admin/QuickReplyForm). Šalje se na inquiry.email preko
+    Resend (vidi lib/email.ts sendInquiryReply) i automatski označava
+    odgovoreno. "Best effort" kao i ostali mailovi — ako Resend nije
+    postavljen ili slanje ne uspije, javljamo grešku nazad da admin zna da
+    NIJE poslano (za razliku od notifikacija koje su tihe, ovo gost čeka). */
+export async function sendInquiryReplyAction(
+  id: number,
+  _prevState: ActionState,
+  formData: FormData
+): Promise<ActionState> {
+  const admin = await requireAdminOrOwner();
+  const inquiry = await getInquiryById(id);
+  if (!inquiry) redirect("/admin/inquiries");
+  await assertInquiryAccess(admin, inquiry);
+
+  const message = String(formData.get("message") || "").trim();
+  if (!message) return { error: "Poruka ne smije biti prazna." };
+
+  const sent = await sendInquiryReply({
+    to: inquiry.email,
+    guestName: inquiry.name,
+    sourceName: inquiry.sourceName,
+    message,
+  });
+  if (!sent) {
+    return { error: "Slanje nije uspjelo (provjeri je li Resend povezan) — pokušaj ponovno ili odgovori ručno." };
+  }
+
+  await markInquiryReplied(id);
+  revalidatePath("/admin/inquiries");
+  return { success: true };
+}
+
 export async function deleteInquiryAction(id: number) {
   // Brisanje ostaje samo za pune admine (vlasnik ne smije ništa trajno uklanjati).
   await requireAdmin();
@@ -1349,6 +1387,8 @@ const ReservationSchema = z.object({
   checkOut: z.string().regex(DATE_RE, "Datum odlaska nije ispravan."),
   priceEur: z.coerce.number().int().min(0, "Cijena ne smije biti negativna."),
   paid: z.coerce.boolean(),
+  guestCount: z.coerce.number().int().min(1).optional(),
+  depositEur: z.coerce.number().int().min(0).optional(),
   note: z.string().optional(),
 });
 
@@ -1369,6 +1409,8 @@ export async function createReservationAction(
     checkOut: formData.get("checkOut"),
     priceEur: formData.get("priceEur"),
     paid: formData.get("paid"),
+    guestCount: formData.get("guestCount") || undefined,
+    depositEur: formData.get("depositEur") || undefined,
     note: formData.get("note"),
   });
   if (!parsed.success) {
@@ -1378,7 +1420,7 @@ export async function createReservationAction(
     return { error: "Datum odlaska mora biti nakon datuma dolaska." };
   }
 
-  const { overlappingDates } = await createReservation({
+  const { reservation, overlappingDates } = await createReservation({
     propertyId,
     guestName: parsed.data.guestName,
     phone: parsed.data.phone || null,
@@ -1387,12 +1429,40 @@ export async function createReservationAction(
     checkOut: parsed.data.checkOut,
     priceEur: parsed.data.priceEur,
     paid: parsed.data.paid,
+    guestCount: parsed.data.guestCount ?? null,
+    depositEur: parsed.data.depositEur ?? null,
     note: parsed.data.note || null,
   });
+  await logActivity({
+    adminEmail: admin.email,
+    action: "created_reservation",
+    targetLabel: `${parsed.data.guestName} (${parsed.data.checkIn} → ${parsed.data.checkOut})`,
+    propertyId,
+  });
+
+  // Jedan dohvat vikendice za oboje ispod: upozorenje o kapacitetu (NE
+  // blokira spremanje, samo upozorava, isto kao overlappingDates ispod) i
+  // automatska email potvrda gostu ako je upisan email — "best effort",
+  // vidi lib/email.ts komentar (nikad ne smije srušiti spremanje rezervacije).
+  const property = await getPropertyById(propertyId);
+  const capacityWarning =
+    parsed.data.guestCount != null && !!property && parsed.data.guestCount > property.capacityGuests;
+
+  if (parsed.data.email && property) {
+    await sendReservationConfirmation({
+      to: parsed.data.email,
+      guestName: parsed.data.guestName,
+      propertyName: property.name,
+      checkIn: parsed.data.checkIn,
+      checkOut: parsed.data.checkOut,
+    });
+    await markReservationConfirmationSent(reservation.id);
+  }
 
   revalidatePath("/admin/rezervacije");
   revalidatePath("/admin/kalendar");
   revalidatePath("/admin");
+  revalidatePath("/admin/vikendice");
   // redirect() umjesto { success: true } — isprazni formu za sljedeći unos
   // (isti razlog kao redirect("/admin") u createStudyAction/createProductAction).
   // Ako se neki od odabranih dana već preklapao s postojećim blokiranim danom
@@ -1400,16 +1470,21 @@ export async function createReservationAction(
   // ?overlap=N na redirect da stranica prikaže upozorenje o mogućoj
   // dvostrukoj rezervaciji. Rezervacija se SVEJEDNO spremi — ovo je
   // upozorenje, ne blokada, jer vlasnik ponekad ispravlja pogrešan unos.
-  redirect(overlappingDates.length > 0 ? `${redirectTo}&overlap=${overlappingDates.length}` : redirectTo);
+  const params: string[] = [];
+  if (overlappingDates.length > 0) params.push(`overlap=${overlappingDates.length}`);
+  if (capacityWarning) params.push("capacityWarning=1");
+  redirect(params.length > 0 ? `${redirectTo}&${params.join("&")}` : redirectTo);
 }
 
-export async function deleteReservationAction(propertyId: number, id: number) {
+export async function deleteReservationAction(propertyId: number, id: number, guestName: string) {
   const admin = await requireAdminOrOwner();
   await assertPropertyAccess(admin, propertyId);
   await deleteReservation(id);
+  await logActivity({ adminEmail: admin.email, action: "deleted_reservation", targetLabel: guestName, propertyId });
   revalidatePath("/admin/rezervacije");
   revalidatePath("/admin/kalendar");
   revalidatePath("/admin");
+  revalidatePath("/admin/vikendice");
 }
 
 /** Označi/odznači je li vlasnik stvarno naplatio — SAMO plaćene rezervacije
@@ -1426,14 +1501,31 @@ export async function toggleReservationPaidAction(
   revalidatePath("/admin");
 }
 
+/** Postavlja/briše kaparu — informativno, vidi reservations.depositEur u
+    schema.ts. Obična (ne useActionState) forma kao toggleReservationPaidAction
+    gore — bez prikaza greške, negativan/neispravan unos se tiho ignorira jer
+    je input type="number" min={0} već sprječava na klijentu. */
+export async function setReservationDepositAction(propertyId: number, id: number, formData: FormData) {
+  const admin = await requireAdminOrOwner();
+  await assertPropertyAccess(admin, propertyId);
+  const raw = formData.get("depositEur");
+  const depositEur = raw && String(raw).trim() !== "" ? Number(raw) : null;
+  if (depositEur != null && (!Number.isFinite(depositEur) || depositEur < 0)) return;
+  await setReservationDeposit(id, depositEur);
+  revalidatePath("/admin/rezervacije");
+}
+
 /* ---------------------------------------------------------------- */
 /* Troškovi (opcionalno, za neto zaradu) — vidi app/admin/rezervacije. */
 /* ---------------------------------------------------------------- */
+
+const EXPENSE_CATEGORIES = ["čišćenje", "održavanje", "režije", "ostalo"] as const;
 
 const ExpenseSchema = z.object({
   description: z.string().min(1, "Opis je obavezan."),
   amountEur: z.coerce.number().int().min(0, "Iznos ne smije biti negativan."),
   date: z.string().regex(DATE_RE, "Datum nije ispravan."),
+  category: z.enum(EXPENSE_CATEGORIES).default("ostalo"),
 });
 
 export async function createExpenseAction(
@@ -1449,22 +1541,30 @@ export async function createExpenseAction(
     description: formData.get("description"),
     amountEur: formData.get("amountEur"),
     date: formData.get("date"),
+    category: formData.get("category") || "ostalo",
   });
   if (!parsed.success) {
     return { error: parsed.error.issues[0]?.message ?? "Provjeri unesene podatke." };
   }
 
   await createExpense({ propertyId, ...parsed.data });
+  await logActivity({
+    adminEmail: admin.email,
+    action: "created_expense",
+    targetLabel: `${parsed.data.description} (${parsed.data.amountEur} €)`,
+    propertyId,
+  });
   revalidatePath("/admin/rezervacije");
   revalidatePath("/admin");
   // redirect() umjesto { success: true } — isprazni formu za sljedeći unos.
   redirect(redirectTo);
 }
 
-export async function deleteExpenseAction(propertyId: number, id: number) {
+export async function deleteExpenseAction(propertyId: number, id: number, description: string) {
   const admin = await requireAdminOrOwner();
   await assertPropertyAccess(admin, propertyId);
   await deleteExpense(id);
+  await logActivity({ adminEmail: admin.email, action: "deleted_expense", targetLabel: description, propertyId });
   revalidatePath("/admin/rezervacije");
   revalidatePath("/admin");
 }
