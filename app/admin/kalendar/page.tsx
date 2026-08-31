@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { getCurrentAdminRecord } from "@/lib/auth";
 import { listPropertiesForAdmin, listBlockedDates, listReservationsForProperty } from "@/lib/db/queries";
 import { toggleBlockedDateAction, blockDateRangeAction } from "@/lib/actions";
+import { currentYearMonthZagreb } from "@/lib/date";
 
 const MONTH_NAMES = [
   "Siječanj", "Veljača", "Ožujak", "Travanj", "Svibanj", "Lipanj",
@@ -46,9 +47,9 @@ export default async function AdminCalendarPage({
   const selectedId = sp.property ? Number(sp.property) : properties[0].id;
   const property = properties.find((p) => p.id === selectedId) ?? properties[0];
 
-  const now = new Date();
-  const year = sp.year ? Number(sp.year) : now.getFullYear();
-  const month = sp.month ? Number(sp.month) : now.getMonth() + 1; // 1-12
+  const nowZagreb = currentYearMonthZagreb();
+  const year = sp.year ? Number(sp.year) : nowZagreb.year;
+  const month = sp.month ? Number(sp.month) : nowZagreb.month; // 1-12
 
   const firstOfMonth = new Date(Date.UTC(year, month - 1, 1));
   const daysInMonth = new Date(Date.UTC(year, month, 0)).getUTCDate();
@@ -104,7 +105,7 @@ export default async function AdminCalendarPage({
           {properties.map((p) => (
             <Link
               key={p.id}
-              href={linkFor({ property: p.id, year: now.getFullYear(), month: now.getMonth() + 1 })}
+              href={linkFor({ property: p.id, year: nowZagreb.year, month: nowZagreb.month })}
               className={
                 "text-xs font-semibold px-3 py-1.5 rounded-full border " +
                 (p.id === property.id
