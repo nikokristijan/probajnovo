@@ -111,6 +111,27 @@ function videoEmbedSrc(url: string): string | null {
   }
 }
 
+/** Gradi OpenStreetMap embed URL (bez API ključa) oko dane koordinate — vidi lib/geocode.ts
+    za kako se latitude/longitude dobivaju iz unesene adrese. Delta određuje koliko je
+    "zumirano" — 0.006° je otprilike 650m radijusa, dovoljno blizu za jasan pin vikendice. */
+function osmEmbedSrc(latitude: string, longitude: string): string | null {
+  const lat = Number(latitude);
+  const lng = Number(longitude);
+  if (!Number.isFinite(lat) || !Number.isFinite(lng)) return null;
+  const delta = 0.006;
+  const bbox = [lng - delta, lat - delta, lng + delta, lat + delta].join("%2C");
+  return `https://www.openstreetmap.org/export/embed.html?bbox=${bbox}&layer=mapnik&marker=${lat}%2C${lng}`;
+}
+
+/** Poveznica na cijelu (ne-ugrađenu) OpenStreetMap stranicu za istu koordinatu — koristi se
+    kao "Otvori na karti" fallback kad admin nije ručno postavio vlastiti mapUrl. */
+function osmLinkHref(latitude: string, longitude: string): string | null {
+  const lat = Number(latitude);
+  const lng = Number(longitude);
+  if (!Number.isFinite(lat) || !Number.isFinite(lng)) return null;
+  return `https://www.openstreetmap.org/?mlat=${lat}&mlon=${lng}#map=16/${lat}/${lng}`;
+}
+
 /** Sitna ikona uz sadržaj (amenity) — prepoznaje uobičajene hrvatske riječi, inače prikazuje generičku kvačicu. */
 function AmenityIcon({ label }: { label: string }) {
   const l = label.toLowerCase();
@@ -529,16 +550,37 @@ export function PropertyView({
         </RevealSection>
       )}
 
-      {property.mapUrl && (
-        <RevealSection className="stay-section stay-alt">
-          <h2 className="stay-eyebrow">
-            <span className="stay-eyebrow-no">{eyebrowNo()}</span>{L("Lokacija", "Location")}
-          </h2>
-          <a className="stay-map-link" href={property.mapUrl} target="_blank" rel="noreferrer" data-magnetic>
-            {L("Otvori na karti ↗", "Open in maps ↗")}
-          </a>
-        </RevealSection>
-      )}
+      {(property.mapUrl || (property.latitude && property.longitude)) && (() => {
+        const embedSrc =
+          property.latitude && property.longitude
+            ? osmEmbedSrc(property.latitude, property.longitude)
+            : null;
+        const linkHref =
+          property.mapUrl ||
+          (property.latitude && property.longitude
+            ? osmLinkHref(property.latitude, property.longitude)
+            : null);
+        return (
+          <RevealSection className="stay-section stay-alt">
+            <h2 className="stay-eyebrow">
+              <span className="stay-eyebrow-no">{eyebrowNo()}</span>{L("Lokacija", "Location")}
+            </h2>
+            {embedSrc && (
+              <iframe
+                src={embedSrc}
+                className="stay-map-embed"
+                loading="lazy"
+                title={L("Karta lokacije", "Location map")}
+              />
+            )}
+            {linkHref && (
+              <a className="stay-map-link" href={linkHref} target="_blank" rel="noreferrer" data-magnetic>
+                {L("Otvori na karti ↗", "Open in maps ↗")}
+              </a>
+            )}
+          </RevealSection>
+        );
+      })()}
 
       {property.seasonalPricing.length > 0 && (
         <RevealSection className="stay-section">
