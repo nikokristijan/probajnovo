@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { getPropertyBySlug, getCompanyBySlug, getAgency } from "@/lib/db/queries";
+import { getPropertyBySlug, getCompanyBySlug, getAgency, listBlockedDates } from "@/lib/db/queries";
 import type { Agency, Property, Company } from "@/lib/db/schema";
 import RevealSection from "@/components/RevealSection";
 import GalleryLightbox from "@/components/GalleryLightbox";
@@ -132,6 +132,98 @@ function osmLinkHref(latitude: string, longitude: string): string | null {
   return `https://www.openstreetmap.org/?mlat=${lat}&mlon=${lng}#map=16/${lat}/${lng}`;
 }
 
+const MONTH_NAMES: Record<"hr" | "en", string[]> = {
+  hr: ["Siječanj", "Veljača", "Ožujak", "Travanj", "Svibanj", "Lipanj", "Srpanj", "Kolovoz", "Rujan", "Listopad", "Studeni", "Prosinac"],
+  en: ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"],
+};
+const WEEKDAY_LABELS: Record<"hr" | "en", string[]> = {
+  hr: ["Pon", "Uto", "Sri", "Čet", "Pet", "Sub", "Ned"],
+  en: ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"],
+};
+
+function pad2(n: number): string {
+  return String(n).padStart(2, "0");
+}
+
+/** Ponedjeljkom počinje tjedan — JS getDay() vraća 0 za nedjelju, vidi isti
+    obrazac u app/admin/kalendar/page.tsx (interna, uređivačka verzija). */
+function mondayIndex(date: Date): number {
+  return (date.getDay() + 6) % 7;
+}
+
+/** Čitanjem-only kalendar dostupnosti za gosta — zamjenjuje stari vanjski
+    "Provjeri dostupnost" gumb (property.availabilityUrl). Prikazuje tekući i
+    sljedeći mjesec; crveno/puno = zauzeto (ručno ili automatski iz
+    Booking.com/Airbnb iCal-a, vidi lib/ical.ts), prazno = slobodno. Gost ne
+    klika ništa — za rezervaciju i dalje šalje upit ispod. */
+function AvailabilityCalendar({
+  blockedDates,
+  lang,
+}: {
+  blockedDates: { date: string }[];
+  lang: "hr" | "en";
+}) {
+  const blocked = new Set(blockedDates.map((b) => b.date));
+  const now = new Date();
+  // Datumska aritmetika ide isključivo preko Date objekata (ne ručnim
+  // zbrajanjem godine/mjeseca) da prijelaz iz prosinca u siječanj sljedeće
+  // godine ispadne točan i za prikazani naslov i za dateStr niže.
+  const months = [0, 1].map((offset) => {
+    const firstOfMonth = new Date(Date.UTC(now.getFullYear(), now.getMonth() + offset, 1));
+    const year = firstOfMonth.getUTCFullYear();
+    const month0 = firstOfMonth.getUTCMonth(); // uvijek 0-11, već "normaliziran" prijelazom gore
+    const daysInMonth = new Date(Date.UTC(year, month0 + 1, 0)).getUTCDate();
+    const leadingBlanks = mondayIndex(firstOfMonth);
+    const cells: (number | null)[] = [
+      ...Array.from({ length: leadingBlanks }, () => null),
+      ...Array.from({ length: daysInMonth }, (_, i) => i + 1),
+    ];
+    return { year, month0, cells };
+  });
+
+  return (
+    <div className="stay-avail-cal">
+      {months.map(({ year, month0, cells }) => (
+        <div className="stay-avail-month" key={`${year}-${month0}`}>
+          <div className="stay-avail-month-title">
+            {MONTH_NAMES[lang][month0]} {year}
+          </div>
+          <div className="stay-avail-grid">
+            {WEEKDAY_LABELS[lang].map((w) => (
+              <span className="stay-avail-weekday" key={w}>
+                {w}
+              </span>
+            ))}
+            {cells.map((day, i) => {
+              if (day === null) return <span key={`b-${i}`} />;
+              const dateStr = `${year}-${pad2(month0 + 1)}-${pad2(day)}`;
+              const isBlocked = blocked.has(dateStr);
+              return (
+                <span
+                  key={dateStr}
+                  className={isBlocked ? "stay-avail-day stay-avail-blocked" : "stay-avail-day"}
+                >
+                  {day}
+                </span>
+              );
+            })}
+          </div>
+        </div>
+      ))}
+      <div className="stay-avail-legend">
+        <span>
+          <i className="stay-avail-dot" />
+          {lang === "en" ? "Available" : "Slobodno"}
+        </span>
+        <span>
+          <i className="stay-avail-dot stay-avail-dot-blocked" />
+          {lang === "en" ? "Booked" : "Zauzeto"}
+        </span>
+      </div>
+    </div>
+  );
+}
+
 /** Sitna ikona uz sadržaj (amenity) — prepoznaje uobičajene hrvatske riječi, inače prikazuje generičku kvačicu. */
 function AmenityIcon({ label }: { label: string }) {
   const l = label.toLowerCase();
@@ -223,7 +315,7 @@ export default async function SlugPage({
   notFound();
 }
 
-export function PropertyView({
+export async function PropertyView({
   property,
   agency,
   lang = "hr",
@@ -232,6 +324,16 @@ export function PropertyView({
   agency: Agency | null;
   lang?: "hr" | "en";
 }) {
+  // Best-effort — isti duh kao lib/geocode.ts i lib/ical.ts: ako dohvat
+  // blokiranih datuma padne, gost jednostavno ne vidi kalendar dostupnosti
+  // (umjesto da mu cijela stranica vikendice ne uspije učitati).
+  let blockedDates: { date: string }[] = [];
+  try {
+    blockedDates = await listBlockedDates(property.id);
+  } catch (err) {
+    console.error("[PropertyView] listBlockedDates nije uspio:", err);
+  }
+
   // Sitni pomoćnik za par desetaka fiksnih UI natpisa (naslovi sekcija, gumbi…)
   // — vidi lib/translate.ts za veći, DeepL-prevedeni gostov sadržaj (opis,
   // sadržaji, kućni red, FAQ, bilješka domaćina), koji se prevodi PRIJE nego
@@ -599,6 +701,7 @@ export function PropertyView({
       )}
 
       <RevealSection className="stay-section">
+        <AvailabilityCalendar blockedDates={blockedDates} lang={lang} />
         <div className="stay-book">
           <div>
             <div className="price">
@@ -607,17 +710,6 @@ export function PropertyView({
             <p>{L("Odgovaramo unutar 24h", "We reply within 24h")}</p>
           </div>
           <div className="stay-book-actions">
-            {property.availabilityUrl && (
-              <a
-                className="stay-avail-link"
-                href={property.availabilityUrl}
-                target="_blank"
-                rel="noreferrer"
-                data-magnetic
-              >
-                {L("Provjeri dostupnost ↗", "Check availability ↗")}
-              </a>
-            )}
             {telHref && (
               <a className="stay-avail-link" href={telHref} data-magnetic>
                 {L("Nazovite", "Call")}
