@@ -970,8 +970,10 @@ export async function createInquiryAction(
         message: parsed.data.message.trim(),
       });
     }
-  } catch {
-    // ignoriraj — vidi komentar gore
+  } catch (err) {
+    // Ne rušimo odgovor korisniku (upit je već spremljen iznad), ali
+    // logiramo grešku da je vidimo u Vercel Runtime Logs radi dijagnostike.
+    console.error("[createInquiryAction] slanje email obavijesti nije uspjelo:", err);
   }
 
   revalidatePath("/admin/inquiries");

@@ -24,7 +24,10 @@ export async function sendInquiryNotification(params: {
 
   try {
     const resend = new Resend(apiKey);
-    await resend.emails.send({
+    // Resend SDK ne baca uvijek iznimku na neuspjeh — kod npr. sandboxed
+    // posiljatelja (onboarding@resend.dev) ili neverificirane domene vraca
+    // { error } bez throw-a, pa to eksplicitno provjeravamo ispod.
+    const { error } = await resend.emails.send({
       from: FROM_ADDRESS,
       to: [params.to],
       replyTo: params.email,
@@ -43,8 +46,13 @@ export async function sendInquiryNotification(params: {
         </div>
       `,
     });
-  } catch {
-    // Tiho zanemari — vidi komentar gore. Upit ostaje spremljen bez obzira na ovo.
+    if (error) {
+      console.error("[sendInquiryNotification] Resend je vratio gresku:", error);
+    }
+  } catch (err) {
+    // Tiho zanemari za korisnika — vidi komentar gore. Upit ostaje spremljen
+    // bez obzira na ovo. Logiramo gresku radi dijagnostike u Vercel logovima.
+    console.error("[sendInquiryNotification] Resend slanje nije uspjelo:", err);
   }
 }
 
