@@ -26,6 +26,9 @@ import {
   createProduct,
   updateProduct,
   deleteProduct,
+  createInquiry,
+  markInquiryRead,
+  deleteInquiry,
   getAdminById,
   listAdmins,
   createAdmin,
@@ -882,6 +885,86 @@ export async function deleteProductAction(id: number) {
   revalidatePath("/");
   revalidatePath("/admin");
   redirect("/admin");
+}
+
+/* ---------------------------------------------------------------- */
+/* Upiti (javni obrazac na stranici vikendice/firme/agencije)        */
+/* ---------------------------------------------------------------- */
+
+const InquirySchema = z.object({
+  source: z.enum(["property", "company", "agency"]),
+  sourceId: z.string().optional(),
+  sourceName: z.string().min(1),
+  name: z.string().min(1, "Unesi ime i prezime."),
+  email: z.string().email("Unesi ispravan email."),
+  phone: z.string().optional(),
+  message: z
+    .string()
+    .min(1, "Poruka ne smije biti prazna.")
+    .max(4000, "Poruka je predugačka."),
+  // Honeypot — botovi ovo skriveno polje često popune, pravi posjetitelji ga
+  // ne vide (sakriveno CSS-om) pa ostaje prazno.
+  website: z.string().optional(),
+});
+
+export async function createInquiryAction(
+  _prevState: ActionState,
+  formData: FormData
+): Promise<ActionState> {
+  const parsed = InquirySchema.safeParse({
+    source: formData.get("source"),
+    sourceId: formData.get("sourceId") ?? "",
+    sourceName: formData.get("sourceName"),
+    name: formData.get("name"),
+    email: formData.get("email"),
+    phone: formData.get("phone") ?? "",
+    message: formData.get("message"),
+    website: formData.get("website") ?? "",
+  });
+  if (!parsed.success) {
+    return { error: parsed.error.issues[0]?.message ?? "Provjeri unesene podatke." };
+  }
+
+  // Bota se pretvaramo da je poruka poslana (ne odajemo da smo ga prepoznali),
+  // ali ništa ne spremamo u bazu.
+  if (parsed.data.website && parsed.data.website.trim().length > 0) {
+    return { success: true };
+  }
+
+  try {
+    await createInquiry({
+      source: parsed.data.source,
+      sourceId: parsed.data.sourceId ? Number(parsed.data.sourceId) || null : null,
+      sourceName: parsed.data.sourceName.trim(),
+      name: parsed.data.name.trim(),
+      email: parsed.data.email.trim(),
+      phone: parsed.data.phone?.trim() || null,
+      message: parsed.data.message.trim(),
+    });
+  } catch (err) {
+    if (isMissingTableError(err)) {
+      return {
+        error: "Slanje upita trenutno nije dostupno — kontaktiraj nas izravno mailom, molimo.",
+      };
+    }
+    return { error: "Slanje nije uspjelo — pokušaj ponovno." };
+  }
+
+  revalidatePath("/admin/inquiries");
+  return { success: true };
+}
+
+export async function markInquiryReadAction(id: number) {
+  await requireAdmin();
+  await markInquiryRead(id);
+  revalidatePath("/admin/inquiries");
+}
+
+export async function deleteInquiryAction(id: number) {
+  await requireAdmin();
+  await deleteInquiry(id);
+  revalidatePath("/admin/inquiries");
+  redirect("/admin/inquiries");
 }
 
 /* ---------------------------------------------------------------- */
