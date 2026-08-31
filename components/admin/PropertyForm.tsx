@@ -55,6 +55,7 @@ type FormValues = {
   videoUrl: string;
   seasonalPricing: SeasonalPrice[];
   availabilityUrl: string;
+  icalUrl: string;
   reviewBadges: string;
   faviconUrl: string;
   customDomain: string;
@@ -95,6 +96,7 @@ function initialValues(property?: Property): FormValues {
     videoUrl: property?.videoUrl ?? "",
     seasonalPricing: property?.seasonalPricing ?? [],
     availabilityUrl: property?.availabilityUrl ?? "",
+    icalUrl: property?.icalUrl ?? "",
     reviewBadges: property?.reviewBadges?.join("\n") ?? "",
     faviconUrl: property?.faviconUrl ?? "",
     customDomain: property?.customDomain ?? "",
@@ -490,6 +492,20 @@ export default function PropertyForm({
             />
           </Field>
         </div>
+        <Field label="iCal poveznica za automatski kalendar (opcionalno)">
+          <input
+            name="icalUrl"
+            value={values.icalUrl}
+            onChange={(e) => set("icalUrl", e.target.value)}
+            placeholder="https://www.airbnb.com/calendar/ical/….ics"
+            className="admin-input"
+          />
+          <p className="text-xs text-black/50 mt-1">
+            &bdquo;Export Calendar&rdquo; link iz Booking.com/Airbnb oglasa (ako ga vikendica ima) — jednom
+            dnevno automatski povlačimo zauzete datume u kalendar (/admin/kalendar), ne treba ih
+            ručno unositi.
+          </p>
+        </Field>
       </div>
 
       <div className="border border-black/10 rounded-xl p-4 flex flex-col gap-4 bg-black/[0.02]">
