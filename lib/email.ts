@@ -99,6 +99,55 @@ export async function sendGuestConfirmation(params: {
   }
 }
 
+/**
+ * Tjedni pregled novih upita — šalje se agenciji (agency.contactEmail), ne
+ * pojedinim vlasnicima, jer je ovo nadzorni pregled preko svih vikendica/
+ * firmi (vidi app/api/cron/weekly-digest i vercel.json, jednom tjedno).
+ * Namjerno odvojeno od sendInquiryNotification: taj šalje odmah po upitu
+ * pojedinom vlasniku, ovaj je tjedni zbroj za agenciju — različita
+ * publika, pa i različiti "best effort" no-op ako nema upita ili nema
+ * RESEND_API_KEY (ne šalje prazan email kad tjedan nema nijedan upit).
+ */
+export async function sendWeeklyDigest(params: {
+  to: string;
+  sinceLabel: string;
+  totalCount: number;
+  groups: { sourceName: string; count: number }[];
+}): Promise<void> {
+  const apiKey = process.env.RESEND_API_KEY;
+  if (!apiKey) return;
+  if (params.totalCount === 0) return; // Nema smisla slati prazan tjedni pregled.
+
+  try {
+    const resend = new Resend(apiKey);
+    const rows = params.groups
+      .sort((a, b) => b.count - a.count)
+      .map(
+        (g) =>
+          `<tr><td style="padding: 6px 0; border-bottom: 1px solid #eee;">${escapeHtml(g.sourceName)}</td><td style="padding: 6px 0; border-bottom: 1px solid #eee; text-align: right; font-weight: 600;">${g.count}</td></tr>`
+      )
+      .join("");
+    const { error } = await resend.emails.send({
+      from: FROM_ADDRESS,
+      to: [params.to],
+      subject: `Tjedni pregled upita — ${params.totalCount} ${params.totalCount === 1 ? "novi upit" : "novih upita"}`,
+      html: `
+        <div style="font-family: sans-serif; max-width: 480px; margin: 0 auto;">
+          <h2 style="margin: 0 0 4px;">Tjedni pregled upita</h2>
+          <p style="color: #666; margin: 0 0 20px; font-size: 14px;">${escapeHtml(params.sinceLabel)} — ukupno ${params.totalCount}</p>
+          <table style="width: 100%; border-collapse: collapse; font-size: 14px;">${rows}</table>
+          <p style="font-size: 13px; color: #999; margin-top: 20px;">Puni pregled u adminu: /admin/inquiries</p>
+        </div>
+      `,
+    });
+    if (error) {
+      console.error("[sendWeeklyDigest] Resend je vratio gresku:", error);
+    }
+  } catch (err) {
+    console.error("[sendWeeklyDigest] Resend slanje nije uspjelo:", err);
+  }
+}
+
 function escapeHtml(s: string): string {
   return s
     .replace(/&/g, "&amp;")

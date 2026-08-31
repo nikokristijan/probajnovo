@@ -109,9 +109,10 @@ export async function loginAction(
 
   const token = await createSessionToken({ adminId: admin.id, email: admin.email });
   await setSessionCookie(token);
-  // Vlasnik (role="owner") nema pristup punom /admin panelu — vidi requireAdmin ispod —
-  // pa ga odmah šaljemo na njegov ograničeni pregled upita umjesto na /admin.
-  redirect(admin.role === "owner" ? "/admin/inquiries" : "/admin");
+  // Vlasnik (role="owner") nema pristup punom /admin panelu — vidi requireAdmin ispod
+  // — ali /admin sad prikazuje njegov vlastiti (ograničen, read-only) dashboard umjesto
+  // punog pregleda, pa svi idu na istu adresu nakon prijave (vidi app/admin/page.tsx).
+  redirect("/admin");
 }
 
 export async function logoutAction() {
