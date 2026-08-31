@@ -1,11 +1,9 @@
-import { redirect } from "next/navigation";
-import { getCurrentAdmin } from "@/lib/auth";
+import { requireFullAdmin } from "@/lib/auth";
 import { createStudyAction } from "@/lib/actions";
 import StudyForm from "@/components/admin/StudyForm";
 
 export default async function NewStudyPage() {
-  const admin = await getCurrentAdmin();
-  if (!admin) redirect("/admin/login");
+  await requireFullAdmin();
 
   return (
     <div>
