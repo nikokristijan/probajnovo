@@ -1,5 +1,5 @@
-import { redirect, notFound } from "next/navigation";
-import { getCurrentAdmin } from "@/lib/auth";
+import { notFound } from "next/navigation";
+import { requireFullAdmin } from "@/lib/auth";
 import { getPropertyById } from "@/lib/db/queries";
 import { updatePropertyAction } from "@/lib/actions";
 import PropertyForm from "@/components/admin/PropertyForm";
@@ -10,8 +10,7 @@ export default async function EditPropertyPage({
 }: {
   params: Promise<{ id: string }>;
 }) {
-  const admin = await getCurrentAdmin();
-  if (!admin) redirect("/admin/login");
+  await requireFullAdmin();
 
 const { id } = await params;
   const numericId = Number(id);
