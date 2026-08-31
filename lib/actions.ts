@@ -47,6 +47,14 @@ const RESERVED_SLUGS = new Set([
   "_next",
 ]);
 
+/** Postgres 42P01 ("relation does not exist") — kod živi na `.cause` kod Drizzle grešaka, ne na samoj grešci. */
+function isMissingTableError(err: unknown): boolean {
+  if (!err || typeof err !== "object") return false;
+  if ("code" in err && (err as { code?: string }).code === "42P01") return true;
+  const cause = (err as { cause?: unknown }).cause;
+  return Boolean(cause && typeof cause === "object" && "code" in cause && (cause as { code?: string }).code === "42P01");
+}
+
 /* ---------------------------------------------------------------- */
 /* Prijava / odjava                                                  */
 /* ---------------------------------------------------------------- */
@@ -640,7 +648,7 @@ export async function createCompanyAction(
       customDomain: normalizeDomain(parsed.data.customDomain),
     });
   } catch (err) {
-    if (err && typeof err === "object" && "code" in err && (err as { code?: string }).code === "42P01") {
+    if (isMissingTableError(err)) {
       return { error: "Baza još nema tablicu za firme — pokreni SQL migraciju (poslana zasebno) pa pokušaj ponovno." };
     }
     return { error: "Ta adresa (slug) ili domena je već zauzeta — odaberi drugu." };
@@ -690,7 +698,7 @@ export async function updateCompanyAction(
       customDomain: normalizeDomain(parsed.data.customDomain),
     });
   } catch (err) {
-    if (err && typeof err === "object" && "code" in err && (err as { code?: string }).code === "42P01") {
+    if (isMissingTableError(err)) {
       return { error: "Baza još nema tablicu za firme — pokreni SQL migraciju (poslana zasebno) pa pokušaj ponovno." };
     }
     return { error: "Ta adresa (slug) ili domena je već zauzeta — odaberi drugu." };
