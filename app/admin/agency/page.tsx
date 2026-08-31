@@ -1,11 +1,9 @@
-import { redirect } from "next/navigation";
-import { getCurrentAdmin } from "@/lib/auth";
+import { requireFullAdmin } from "@/lib/auth";
 import { getAgency } from "@/lib/db/queries";
 import AgencyForm from "@/components/admin/AgencyForm";
 
 export default async function AdminAgencyPage() {
-const admin = await getCurrentAdmin();
-if (!admin) redirect("/admin/login");
+await requireFullAdmin();
 
 const agency = await getAgency();
 if (!agency) {
