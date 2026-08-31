@@ -1,7 +1,8 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { getPropertyBySlug, getCompanyBySlug, getAgency, listBlockedDates } from "@/lib/db/queries";
+import { getPropertyBySlug, getCompanyBySlug, getAgency, listBlockedDates, recordPageView } from "@/lib/db/queries";
+import { todayDateStringZagreb } from "@/lib/date";
 import type { Agency, Property, Company } from "@/lib/db/schema";
 import RevealSection from "@/components/RevealSection";
 import GalleryLightbox from "@/components/GalleryLightbox";
@@ -225,11 +226,19 @@ export default async function SlugPage({
   const [property, agency] = await Promise.all([getPropertyBySlug(slug), getAgency()]);
 
   if (property && property.published) {
+    // Best-effort, samo-rolani brojač pregleda (vidi lib/db/schema.ts
+    // pageViews) — nikad ne smije srušiti prikaz stranice gostu.
+    recordPageView("property", property.id, todayDateStringZagreb()).catch((err) =>
+      console.error("[SlugPage] recordPageView nije uspio:", err)
+    );
     return <PropertyView property={property} agency={agency} />;
   }
 
   const company = await getCompanyBySlug(slug);
   if (company && company.published) {
+    recordPageView("company", company.id, todayDateStringZagreb()).catch((err) =>
+      console.error("[SlugPage] recordPageView nije uspio:", err)
+    );
     return <CompanyView company={company} agency={agency} />;
   }
 
