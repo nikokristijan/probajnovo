@@ -39,6 +39,19 @@ export type ProductCard = {
 
 const SERVICES = ["BREND IDENTITET", "DIGITALNI DIZAJN", "WEB & PRODUKT", "FILM & MOTION", "MARKETING"];
 
+/**
+ * Svaka vikendica/firma ima svoju wildcard poddomenu "<slug>.<APEX_HOST>" (vidi
+ * proxy.ts) — s glavne NOVO stranice "CIJELA STRANICA" mora voditi baš tamo,
+ * ne na interni /<slug> put, da adresna traka gosta odmah pokaže poddomenu.
+ * Radi automatski za svaku BUDUĆU vikendicu/firmu čim dobije slug — nema
+ * dodatnog koraka po unosu. Dok APEX_HOST nije postavljen (lokalni razvoj),
+ * pada natrag na interni /<slug> put.
+ */
+const APEX_HOST = process.env.NEXT_PUBLIC_APEX_HOST || "";
+function propertyUrl(slug: string) {
+  return APEX_HOST ? `https://${slug}.${APEX_HOST}` : `/${slug}`;
+}
+
 type NovoHomeProps = {
   heroTitle: string;
   officeText: string;
@@ -294,7 +307,7 @@ function ProjectContent({ project }: { project: StudyProject }) {
             </a>
           )}
           {project.kind === "vikendica" && project.slug && (
-            <a href={`/${project.slug}`} className="mono link">
+            <a href={propertyUrl(project.slug)} className="mono link">
               CIJELA STRANICA ↗
             </a>
           )}
