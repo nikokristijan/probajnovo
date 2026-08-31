@@ -456,6 +456,27 @@ export async function listCompaniesForAdmin(admin: { id: number; role: string })
   return db.select().from(companies).where(inArray(companies.id, ids));
 }
 
+/** Upiti na koje ovaj admin ima pristup — vlasnik SAMO svojih dodijeljenih
+    vikendica/firmi (nikad agencijske upite ni tuđe vikendice), puni admin sve.
+    Zajednička funkcija za app/admin/inquiries i CSV izvoz
+    (app/api/admin/inquiries/export) da ta dva mjesta ne mogu razjediniti (drift). */
+export async function listInquiriesForAdmin(admin: { id: number; role: string }) {
+  const all = await listInquiries();
+  if (admin.role !== "owner") return all;
+
+  const [ownedProperties, ownedCompanies] = await Promise.all([
+    listPropertiesForAdmin(admin),
+    listCompaniesForAdmin(admin),
+  ]);
+  const propertyIds = new Set(ownedProperties.map((p) => p.id));
+  const companyIds = new Set(ownedCompanies.map((c) => c.id));
+  return all.filter(
+    (i) =>
+      (i.source === "property" && i.sourceId != null && propertyIds.has(i.sourceId)) ||
+      (i.source === "company" && i.sourceId != null && companyIds.has(i.sourceId))
+  );
+}
+
 /* ---------------------------------------------------------------- */
 /* Blokirani datumi (kalendar dostupnosti) — vidi app/admin/kalendar  */
 /* i lib/ical.ts.                                                     */
@@ -488,6 +509,31 @@ export async function removeManualBlockedDate(propertyId: number, date: string) 
         eq(propertyBlockedDates.source, "manual")
       )
     );
+}
+
+/** Blokira SVE dane u ["YYYY-MM-DD" rasponu] odjednom (uključivo oba kraja) —
+    za "Blokiraj raspon" u /admin/kalendar, umjesto klikanja dan po dan.
+    Ponovno koristi addManualBlockedDate (isti "preskoči ako već postoji"
+    dedup), pa ne diramo dane koji su već ical-blokirani niti dupliciramo
+    postojeće ručne. Datumi se generiraju kao obični stringovi (ne Date
+    aritmetika) da izbjegnemo probleme s vremenskim zonama oko ponoći. */
+export async function blockManualDateRange(propertyId: number, startDate: string, endDate: string) {
+  const dates = datesInRange(startDate, endDate);
+  for (const date of dates) {
+    await addManualBlockedDate(propertyId, date);
+  }
+  return dates.length;
+}
+
+function datesInRange(startDate: string, endDate: string): string[] {
+  const dates: string[] = [];
+  let cursor = new Date(`${startDate}T00:00:00Z`);
+  const end = new Date(`${endDate}T00:00:00Z`);
+  while (cursor.getTime() <= end.getTime()) {
+    dates.push(cursor.toISOString().slice(0, 10));
+    cursor = new Date(cursor.getTime() + 24 * 60 * 60 * 1000);
+  }
+  return dates;
 }
 
 /** Zamijeni SVE "ical"-izvorne blokirane datume za ovu vikendicu novim popisom
