@@ -2,6 +2,7 @@
 
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
+import { headers } from "next/headers";
 import bcrypt from "bcryptjs";
 import { z } from "zod";
 import {
@@ -30,7 +31,9 @@ import {
   updateProduct,
   deleteProduct,
   createInquiry,
+  countRecentInquiriesByIp,
   markInquiryRead,
+  markInquiryReplied,
   deleteInquiry,
   getAdminById,
   listAdmins,
@@ -39,7 +42,7 @@ import {
   countAdmins,
   updateAdminPassword,
 } from "@/lib/db/queries";
-import { sendInquiryNotification } from "@/lib/email";
+import { sendInquiryNotification, sendGuestConfirmation } from "@/lib/email";
 
 export type ActionState = { error?: string; success?: boolean } | undefined;
 
@@ -916,6 +919,18 @@ const InquirySchema = z.object({
   website: z.string().optional(),
 });
 
+/** Max broj upita dopušten s iste IP adrese unutar prozora ispod — jednostavna zaštita od spama. */
+const INQUIRY_RATE_LIMIT_MAX = 5;
+const INQUIRY_RATE_LIMIT_WINDOW_MINUTES = 10;
+
+/** Prva vrijednost iz x-forwarded-for je klijentova stvarna IP adresa (Vercel je postavlja). */
+async function getClientIp(): Promise<string | null> {
+  const h = await headers();
+  const forwarded = h.get("x-forwarded-for");
+  if (forwarded) return forwarded.split(",")[0]!.trim();
+  return h.get("x-real-ip");
+}
+
 export async function createInquiryAction(
   _prevState: ActionState,
   formData: FormData
@@ -941,6 +956,15 @@ export async function createInquiryAction(
   }
 
   const sourceId = parsed.data.sourceId ? Number(parsed.data.sourceId) || null : null;
+  const ip = await getClientIp();
+
+  if (ip) {
+    const since = new Date(Date.now() - INQUIRY_RATE_LIMIT_WINDOW_MINUTES * 60 * 1000);
+    const recentCount = await countRecentInquiriesByIp(ip, since);
+    if (recentCount >= INQUIRY_RATE_LIMIT_MAX) {
+      return { error: "Poslano je previše upita u kratkom vremenu — pokušaj ponovno za koji minut." };
+    }
+  }
 
   try {
     await createInquiry({
@@ -951,6 +975,7 @@ export async function createInquiryAction(
       email: parsed.data.email.trim(),
       phone: parsed.data.phone?.trim() || null,
       message: parsed.data.message.trim(),
+      ip,
     });
   } catch (err) {
     if (isMissingTableError(err)) {
@@ -961,8 +986,8 @@ export async function createInquiryAction(
     return { error: "Slanje nije uspjelo — pokušaj ponovno." };
   }
 
-  // Email obavijest vlasniku — "best effort", nikad ne smije srušiti odgovor
-  // korisniku (upit je već sigurno spremljen iznad, bez obzira na ovo).
+  // Email obavijest vlasniku i potvrda gostu — "best effort", nikad ne smije
+  // srušiti odgovor korisniku (upit je već sigurno spremljen iznad).
   try {
     const recipient = await resolveInquiryRecipient(parsed.data.source, sourceId);
     if (recipient) {
@@ -979,6 +1004,16 @@ export async function createInquiryAction(
     // Ne rušimo odgovor korisniku (upit je već spremljen iznad), ali
     // logiramo grešku da je vidimo u Vercel Runtime Logs radi dijagnostike.
     console.error("[createInquiryAction] slanje email obavijesti nije uspjelo:", err);
+  }
+
+  try {
+    await sendGuestConfirmation({
+      to: parsed.data.email.trim(),
+      sourceName: parsed.data.sourceName.trim(),
+      name: parsed.data.name.trim(),
+    });
+  } catch (err) {
+    console.error("[createInquiryAction] slanje potvrde gostu nije uspjelo:", err);
   }
 
   revalidatePath("/admin/inquiries");
@@ -1007,6 +1042,12 @@ async function resolveInquiryRecipient(
 export async function markInquiryReadAction(id: number) {
   await requireAdmin();
   await markInquiryRead(id);
+  revalidatePath("/admin/inquiries");
+}
+
+export async function markInquiryRepliedAction(id: number) {
+  await requireAdmin();
+  await markInquiryReplied(id);
   revalidatePath("/admin/inquiries");
 }
 

@@ -56,6 +56,49 @@ export async function sendInquiryNotification(params: {
   }
 }
 
+/**
+ * Kratka potvrda gostu odmah nakon slanja upita ("primili smo, javljamo se
+ * uskoro") — šalje se na email koji je gost sam upisao u obrazac, s prave
+ * verificirane domene. Isto "best effort" ponašanje kao gore: ako
+ * RESEND_API_KEY nije postavljen ili slanje ne uspije, tiho ne radi ništa —
+ * upit je već spremljen i vlasnik je već (pokušano) obaviješten prije nego
+ * se ovo pozove, pa gostova potvrda nikad ne smije srušiti odgovor.
+ */
+export async function sendGuestConfirmation(params: {
+  to: string;
+  sourceName: string;
+  name: string;
+}): Promise<void> {
+  const apiKey = process.env.RESEND_API_KEY;
+  if (!apiKey) return;
+
+  try {
+    const resend = new Resend(apiKey);
+    const { error } = await resend.emails.send({
+      from: FROM_ADDRESS,
+      to: [params.to],
+      subject: `Primili smo tvoj upit — ${params.sourceName}`,
+      html: `
+        <div style="font-family: sans-serif; max-width: 480px; margin: 0 auto;">
+          <h2 style="margin: 0 0 4px;">Hvala, ${escapeHtml(params.name)}!</h2>
+          <p style="color: #444; font-size: 14.5px; line-height: 1.5; margin: 0 0 16px;">
+            Primili smo tvoj upit za <strong>${escapeHtml(params.sourceName)}</strong> i javit ćemo
+            ti se najkasnije u roku 24h.
+          </p>
+          <p style="font-size: 13px; color: #999; margin: 0;">
+            Ovo je automatska potvrda — ne treba odgovarati na ovaj mail.
+          </p>
+        </div>
+      `,
+    });
+    if (error) {
+      console.error("[sendGuestConfirmation] Resend je vratio gresku:", error);
+    }
+  } catch (err) {
+    console.error("[sendGuestConfirmation] Resend slanje nije uspjelo:", err);
+  }
+}
+
 function escapeHtml(s: string): string {
   return s
     .replace(/&/g, "&amp;")
