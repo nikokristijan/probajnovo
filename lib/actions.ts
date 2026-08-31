@@ -48,20 +48,12 @@ import {
   removeManualBlockedDate,
 } from "@/lib/db/queries";
 import { sendInquiryNotification, sendGuestConfirmation } from "@/lib/email";
-import { resolveCoordinates } from "@/lib/geocode";
+import { resolveCoordinates, geoMissWarning } from "@/lib/geocode";
 import type { AdminUser, Inquiry } from "@/lib/db/schema";
 
 export type ActionState =
   | { error?: string; success?: boolean; warning?: string }
   | undefined;
-
-/** Poruka kad je adresa unesena ali Nominatim (ni uz fallback na šire
- *  verzije adrese) nije uspio pronaći koordinate — vidi lib/geocode.ts.
- *  Izvezeno i za app/admin/properties/[id]/page.tsx (?geo=miss slučaj nakon
- *  kreiranja nove vikendice, vidi createPropertyAction ispod). */
-export function geoMissWarning(address: string): string {
-  return `Vikendica je spremljena, ali karta se nije mogla automatski pronaći za adresu "${address}" — OpenStreetMap je nije prepoznao. Probaj dodati ime mjesta/grada (npr. "…, Vrsar") ili ručno upiši poveznicu pod "Poveznica na mapu" ispod.`;
-}
 
 const RESERVED_SLUGS = new Set([
   "admin",

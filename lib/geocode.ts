@@ -17,6 +17,17 @@
 
 export type Coordinates = { latitude: string; longitude: string };
 
+/** Poruka kad je adresa unesena ali Nominatim (ni uz fallback na šire
+ *  verzije adrese) nije uspio pronaći koordinate.
+ *  Namjerno NIJE u lib/actions.ts: taj file ima "use server" na vrhu, pa
+ *  Next.js tretira SVAKI export iz njega kao Server Action i traži da bude
+ *  async funkcija — geoMissWarning je obična sinkrona funkcija, pa build
+ *  pada ako je izvezena odande. Zato živi ovdje (lib/geocode.ts nema
+ *  "use server") i lib/actions.ts je samo poziva/re-eksportira po potrebi. */
+export function geoMissWarning(address: string): string {
+  return `Vikendica je spremljena, ali karta se nije mogla automatski pronaći za adresu "${address}" — OpenStreetMap je nije prepoznao. Probaj dodati ime mjesta/grada (npr. "…, Vrsar") ili ručno upiši poveznicu pod "Poveznica na mapu" ispod.`;
+}
+
 export async function geocodeAddress(address: string): Promise<Coordinates | null> {
   const trimmed = address.trim();
   if (!trimmed) return null;
