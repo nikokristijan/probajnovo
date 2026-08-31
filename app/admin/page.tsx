@@ -1,14 +1,15 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getCurrentAdminRecord } from "@/lib/auth";
-import { listProperties, listStudies, listProducts } from "@/lib/db/queries";
+import { listProperties, listCompanies, listStudies, listProducts } from "@/lib/db/queries";
 
 export default async function AdminDashboard() {
   const admin = await getCurrentAdminRecord();
   if (!admin) redirect("/admin/login");
 
-  const [properties, studies, products] = await Promise.all([
+  const [properties, companies, studies, products] = await Promise.all([
     listProperties(),
+    listCompanies(),
     listStudies(),
     listProducts(),
   ]);
@@ -17,10 +18,11 @@ export default async function AdminDashboard() {
 
   return (
     <div className="flex flex-col gap-12">
-      <section className="grid grid-cols-2 sm:grid-cols-5 gap-3">
+      <section className="grid grid-cols-2 sm:grid-cols-6 gap-3">
         <StatCard label="Vikendice" value={properties.length} />
         <StatCard label="Objavljeno" value={publishedCount} />
         <StatCard label="U Studies popisu" value={inStudiesCount} />
+        <StatCard label="Firme" value={companies.length} />
         <StatCard label="Studies unosi" value={studies.length} />
         <StatCard label="Proizvodi" value={products.length} />
       </section>
@@ -32,6 +34,9 @@ export default async function AdminDashboard() {
         <div className="flex flex-wrap gap-2">
           <Link href="/admin/properties/new" className="admin-quicklink">
             + Nova vikendica
+          </Link>
+          <Link href="/admin/companies/new" className="admin-quicklink">
+            + Nova firma
           </Link>
           <Link href="/admin/studies/new" className="admin-quicklink">
             + Novi Study
@@ -100,6 +105,56 @@ export default async function AdminDashboard() {
                     {p.published ? "objavljeno" : "skriveno"}
                   </span>
                 </div>
+              </Link>
+            ))}
+          </div>
+        )}
+      </section>
+
+      <section id="firme">
+        <div className="flex items-center justify-between mb-6">
+          <div>
+            <h1 className="text-xl font-bold">Firme</h1>
+            <p className="text-xs text-black/50 mt-0.5">
+              Pune vlastite stranice za firme/obrte — isti princip kao vikendice (galerija,
+              recenzije, poddomena i vlastita domena), bez booking polja.
+            </p>
+          </div>
+          <Link
+            href="/admin/companies/new"
+            className="rounded-full bg-black text-white text-sm font-semibold px-4 py-2 shrink-0"
+          >
+            + Dodaj firmu
+          </Link>
+        </div>
+
+        {companies.length === 0 ? (
+          <p className="text-sm text-black/60">
+            Još nema dodanih firmi. Klikni &ldquo;Dodaj firmu&rdquo; da napraviš prvu.
+          </p>
+        ) : (
+          <div className="flex flex-col gap-2">
+            {companies.map((c) => (
+              <Link
+                key={c.id}
+                href={`/admin/companies/${c.id}`}
+                className="flex items-center justify-between border border-black/10 rounded-xl px-4 py-3 bg-white hover:border-[#0000c3]/40"
+              >
+                <div>
+                  <div className="font-semibold text-sm">{c.name}</div>
+                  <div className="text-xs text-black/50 mt-0.5">
+                    probajnovo.vercel.app/{c.slug} · {c.location} · {c.layoutStyle}
+                    {c.darkMode ? " · dark" : ""}
+                  </div>
+                </div>
+                <span
+                  className={
+                    "text-xs font-semibold px-2.5 py-1 rounded-full " +
+                    (c.published ? "bg-green-100 text-green-700" : "bg-black/5 text-black/50")
+                  }
+                >
+                  {c.published ? "objavljeno" : "skriveno"}
+                </span>
               </Link>
             ))}
           </div>
