@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
+import Link from "next/link";
 import { getCurrentAdminRecord } from "@/lib/auth";
-import { listInquiries, listPropertiesForAdmin, listCompaniesForAdmin } from "@/lib/db/queries";
+import { listInquiriesForAdmin, listPropertiesForAdmin, listCompaniesForAdmin } from "@/lib/db/queries";
 import { markInquiryReadAction, markInquiryRepliedAction } from "@/lib/actions";
 import DeleteInquiryButton from "@/components/admin/DeleteInquiryButton";
 
@@ -14,11 +15,10 @@ export default async function AdminInquiriesPage() {
   const admin = await getCurrentAdminRecord();
   if (!admin) redirect("/admin/login");
 
-  const allInquiries = await listInquiries();
-
   // Vlasnik vidi SAMO upite svojih vikendica/firmi (admin_access) — nikad agencijske
   // upite (source="agency") ni tuđe vikendice. Puni admin vidi sve, kao dosad.
-  let inquiries = allInquiries;
+  const inquiries = await listInquiriesForAdmin(admin);
+
   // Ime(na) dodijeljene vikendice/firme za naslov ispod ("Upiti — Sokak bez
   // imena") — bez ovoga generički naslov "Upiti" zna zbunjivati vlasnika koji
   // upravlja samo jednom vikendicom (djeluje kao da su prikazani upiti svih).
@@ -28,13 +28,6 @@ export default async function AdminInquiriesPage() {
       listPropertiesForAdmin(admin),
       listCompaniesForAdmin(admin),
     ]);
-    const propertyIds = new Set(ownedProperties.map((p) => p.id));
-    const companyIds = new Set(ownedCompanies.map((c) => c.id));
-    inquiries = allInquiries.filter(
-      (i) =>
-        (i.source === "property" && i.sourceId != null && propertyIds.has(i.sourceId)) ||
-        (i.source === "company" && i.sourceId != null && companyIds.has(i.sourceId))
-    );
     const names = [...ownedProperties.map((p) => p.name), ...ownedCompanies.map((c) => c.name)];
     ownerScopeLabel = names.length > 0 ? names.join(", ") : null;
   }
@@ -43,13 +36,23 @@ export default async function AdminInquiriesPage() {
 
   return (
     <div>
-      <div className="flex items-center justify-between mb-1">
+      <div className="flex items-center justify-between mb-1 gap-3 flex-wrap">
         <h1 className="text-xl font-bold">{ownerScopeLabel ? `Upiti — ${ownerScopeLabel}` : "Upiti"}</h1>
-        {unreadCount > 0 && (
-          <span className="text-xs font-semibold px-2.5 py-1 rounded-full bg-[#ff7f00]/10 text-[#ff7f00]">
-            {unreadCount} nepročitano
-          </span>
-        )}
+        <div className="flex items-center gap-2">
+          {unreadCount > 0 && (
+            <span className="text-xs font-semibold px-2.5 py-1 rounded-full bg-[#ff7f00]/10 text-[#ff7f00]">
+              {unreadCount} nepročitano
+            </span>
+          )}
+          {inquiries.length > 0 && (
+            <Link
+              href="/api/admin/inquiries/export"
+              className="text-xs font-semibold px-3 py-1.5 rounded-full border border-black/15 hover:border-black/40"
+            >
+              Izvezi CSV
+            </Link>
+          )}
+        </div>
       </div>
       <p className="text-sm text-black/60 mb-6">
         {admin.role === "owner"
