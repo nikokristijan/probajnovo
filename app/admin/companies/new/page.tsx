@@ -1,11 +1,9 @@
-import { redirect } from "next/navigation";
-import { getCurrentAdmin } from "@/lib/auth";
+import { requireFullAdmin } from "@/lib/auth";
 import { createCompanyAction } from "@/lib/actions";
 import CompanyForm from "@/components/admin/CompanyForm";
 
 export default async function NewCompanyPage() {
-  const admin = await getCurrentAdmin();
-  if (!admin) redirect("/admin/login");
+  await requireFullAdmin();
 
   return (
     <div>
