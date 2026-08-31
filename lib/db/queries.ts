@@ -79,7 +79,16 @@ await db.delete(properties).where(eq(properties.id, id));
  * više nikad ne aktivira (tablica postoji), pa ga nije potrebno uklanjati.
  */
 function isMissingCompaniesTable(err: unknown): boolean {
-  return Boolean(err && typeof err === "object" && "code" in err && (err as { code?: string }).code === "42P01");
+  // Drizzle baca vlastitu "Failed query" grešku čiji je `.code` prazan — pravi
+  // Postgres kod (42P01) živi na `.cause` (postgres.js greška), ne na samoj
+  // bačenoj grešci. Provjeravamo oboje da uhvatimo pravi uzrok.
+  if (!err || typeof err !== "object") return false;
+  if ("code" in err && (err as { code?: string }).code === "42P01") return true;
+  const cause = (err as { cause?: unknown }).cause;
+  if (cause && typeof cause === "object" && "code" in cause && (cause as { code?: string }).code === "42P01") {
+    return true;
+  }
+  return false;
 }
 
 /**
