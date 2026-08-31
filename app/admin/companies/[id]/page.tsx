@@ -1,5 +1,5 @@
-import { redirect, notFound } from "next/navigation";
-import { getCurrentAdmin } from "@/lib/auth";
+import { notFound } from "next/navigation";
+import { requireFullAdmin } from "@/lib/auth";
 import { getCompanyById } from "@/lib/db/queries";
 import { updateCompanyAction } from "@/lib/actions";
 import CompanyForm from "@/components/admin/CompanyForm";
@@ -10,8 +10,7 @@ export default async function EditCompanyPage({
 }: {
   params: Promise<{ id: string }>;
 }) {
-  const admin = await getCurrentAdmin();
-  if (!admin) redirect("/admin/login");
+  await requireFullAdmin();
 
   const { id } = await params;
   const numericId = Number(id);
