@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getPropertyBySlug, getCompanyBySlug, getAgency, listBlockedDates, recordPageView } from "@/lib/db/queries";
@@ -382,8 +383,15 @@ export async function PropertyView({
 
       {effectiveBanner ? (
         <div className="stay-banner">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={effectiveBanner} alt={property.name} data-parallax />
+          <Image
+            src={effectiveBanner}
+            alt={property.name}
+            data-parallax
+            fill
+            sizes="100vw"
+            style={{ objectFit: "cover" }}
+            priority
+          />
           {layout === "editorial" && (
             <div className="stay-spine" aria-hidden="true">
               {property.name}
@@ -418,8 +426,7 @@ export async function PropertyView({
         <div className="stay-classic-polaroids" aria-hidden="true">
           {gallery.slice(0, 3).map((src, i) => (
             <div className="stay-polaroid" key={src + i}>
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={src} alt="" loading="lazy" decoding="async" />
+              <Image src={src} alt="" width={300} height={300} sizes="104px" />
               {property.imageCategories[src] && (
                 <div className="stay-polaroid-cap">{property.imageCategories[src]}</div>
               )}
@@ -584,13 +591,13 @@ export async function PropertyView({
           </h2>
           <div className="stay-host">
             {property.hostPhoto && (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img
+              <Image
                 src={property.hostPhoto}
                 alt={property.hostName ?? L("Domaćin", "Host")}
                 className="stay-host-photo"
-                loading="lazy"
-                decoding="async"
+                width={68}
+                height={68}
+                sizes="68px"
               />
             )}
             <div>
@@ -814,8 +821,15 @@ function CompanyView({ company, agency }: { company: Company; agency: Agency | n
 
       {effectiveBanner ? (
         <div className="stay-banner">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={effectiveBanner} alt={company.name} data-parallax />
+          <Image
+            src={effectiveBanner}
+            alt={company.name}
+            data-parallax
+            fill
+            sizes="100vw"
+            style={{ objectFit: "cover" }}
+            priority
+          />
           {layout === "editorial" && (
             <div className="stay-spine" aria-hidden="true">
               {company.name}
@@ -850,8 +864,7 @@ function CompanyView({ company, agency }: { company: Company; agency: Agency | n
         <div className="stay-classic-polaroids" aria-hidden="true">
           {gallery.slice(0, 3).map((src, i) => (
             <div className="stay-polaroid" key={src + i}>
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={src} alt="" loading="lazy" decoding="async" />
+              <Image src={src} alt="" width={300} height={300} sizes="104px" />
               {company.imageCategories[src] && (
                 <div className="stay-polaroid-cap">{company.imageCategories[src]}</div>
               )}
