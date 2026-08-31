@@ -1,7 +1,12 @@
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import { getCurrentAdminRecord } from "@/lib/auth";
-import { listInquiriesForAdmin, listPropertiesForAdmin, listCompaniesForAdmin } from "@/lib/db/queries";
+import {
+  listInquiriesForAdmin,
+  listPropertiesForAdmin,
+  listCompaniesForAdmin,
+  getPropertyById,
+} from "@/lib/db/queries";
 import { markInquiryReadAction, markInquiryRepliedAction } from "@/lib/actions";
 import DeleteInquiryButton from "@/components/admin/DeleteInquiryButton";
 
@@ -11,13 +16,27 @@ const SOURCE_LABEL: Record<string, string> = {
   agency: "NOVO (agencija)",
 };
 
-export default async function AdminInquiriesPage() {
+export default async function AdminInquiriesPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ property?: string }>;
+}) {
   const admin = await getCurrentAdminRecord();
   if (!admin) redirect("/admin/login");
 
   // Vlasnik vidi SAMO upite svojih vikendica/firmi (admin_access) — nikad agencijske
   // upite (source="agency") ni tuđe vikendice. Puni admin vidi sve, kao dosad.
-  const inquiries = await listInquiriesForAdmin(admin);
+  let inquiries = await listInquiriesForAdmin(admin);
+
+  // ?property=ID — filtrira na upite JEDNE vikendice, iz app/admin/vikendice/[id]
+  // huba za pune admine (Kalendar/Rezervacije/Upiti grupirani po vikendici da
+  // nav ne bude krcat, vidi app/admin/layout.tsx).
+  const sp = await searchParams;
+  const filterPropertyId = sp.property ? Number(sp.property) : null;
+  const filterProperty = filterPropertyId ? await getPropertyById(filterPropertyId) : null;
+  if (filterPropertyId) {
+    inquiries = inquiries.filter((i) => i.source === "property" && i.sourceId === filterPropertyId);
+  }
 
   // Ime(na) dodijeljene vikendice/firme za naslov ispod ("Upiti — Sokak bez
   // imena") — bez ovoga generički naslov "Upiti" zna zbunjivati vlasnika koji
@@ -33,11 +52,20 @@ export default async function AdminInquiriesPage() {
   }
 
   const unreadCount = inquiries.filter((i) => !i.read).length;
+  const pageTitle = filterProperty ? `Upiti — ${filterProperty.name}` : ownerScopeLabel ? `Upiti — ${ownerScopeLabel}` : "Upiti";
 
   return (
     <div>
-      <div className="flex items-center justify-between mb-1 gap-3 flex-wrap">
-        <h1 className="text-xl font-bold">{ownerScopeLabel ? `Upiti — ${ownerScopeLabel}` : "Upiti"}</h1>
+      {filterProperty && (
+        <Link
+          href={`/admin/vikendice/${filterProperty.id}`}
+          className="text-xs font-semibold text-black/40 hover:text-[#ff7f00]"
+        >
+          ← {filterProperty.name}
+        </Link>
+      )}
+      <div className="flex items-center justify-between mb-1 gap-3 flex-wrap mt-1">
+        <h1 className="text-xl font-bold">{pageTitle}</h1>
         <div className="flex items-center gap-2">
           {unreadCount > 0 && (
             <span className="text-xs font-semibold px-2.5 py-1 rounded-full bg-[#ff7f00]/10 text-[#ff7f00]">
@@ -55,11 +83,13 @@ export default async function AdminInquiriesPage() {
         </div>
       </div>
       <p className="text-sm text-black/60 mb-6">
-        {admin.role === "owner"
-          ? ownerScopeLabel
-            ? `Upiti poslani putem obrasca na stranici ${ownerScopeLabel}.`
-            : "Nemaš dodijeljenu nijednu vikendicu/firmu — javi se glavnom adminu."
-          : "Upiti poslani putem obrasca na stranicama vikendica i firmi."}
+        {filterProperty
+          ? `Upiti poslani putem obrasca na stranici ${filterProperty.name}.`
+          : admin.role === "owner"
+            ? ownerScopeLabel
+              ? `Upiti poslani putem obrasca na stranici ${ownerScopeLabel}.`
+              : "Nemaš dodijeljenu nijednu vikendicu/firmu — javi se glavnom adminu."
+            : "Upiti poslani putem obrasca na stranicama vikendica i firmi."}
       </p>
 
       {inquiries.length === 0 ? (
