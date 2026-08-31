@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
+import Image from "next/image";
 
 /**
  * Galerija slika vikendice — klik otvara lightbox s navigacijom lijevo/desno.
@@ -58,8 +59,14 @@ export default function GalleryLightbox({
         onClick={() => setOpen(index)}
         aria-label={`Otvori sliku ${index + 1}`}
       >
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src={src} alt={alt} className="stay-gallery-img" loading="lazy" decoding="async" />
+        <Image
+          src={src}
+          alt={alt}
+          className="stay-gallery-img"
+          width={800}
+          height={600}
+          sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
+        />
       </button>
     );
   }
@@ -117,11 +124,13 @@ export default function GalleryLightbox({
                 ‹
               </button>
             )}
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
+            <Image
               src={images[open]}
               alt={alt}
               className="stay-lightbox-img"
+              width={1600}
+              height={1200}
+              sizes="92vw"
               onClick={(e) => e.stopPropagation()}
             />
             {images.length > 1 && (
