@@ -34,8 +34,8 @@ function EarningsCard({ label, value }: { label: string; value: number }) {
  * Puna knjiga rezervacija po vikendici — zamjena za vlasnikovu bilježnicu
  * (vidi task #73-79). Za svaku vikendicu: unos gosta/datuma/cijene/statusa
  * plaćanja, automatsko blokiranje kalendara (vidi lib/db/queries.ts
- * createReservation), zarada po mjesecu (samo rezervacije OZNAČENE plaćenim
- * u tom mjesecu — gotovinska baza, vidi getMonthlyEarnings) i opcionalni
+ * createReservation), zarada po mjesecu (samo plaćene rezervacije čiji je
+ * datum dolaska u tom mjesecu, vidi getMonthlyEarnings) i opcionalni
  * troškovi za neto zaradu.
  */
 export default async function AdminReservationsPage({
@@ -164,8 +164,8 @@ export default async function AdminReservationsPage({
           <EarningsCard label="Neto zarada" value={earnings.netEur} />
         </div>
         <p className="text-xs text-black/40 -mt-1">
-          Bruto broji rezervacije OZNAČENE plaćenim u ovom mjesecu (ne datum dolaska gosta) — plaćanje
-          unaprijed odmah ulazi u zaradu mjeseca u kojem je stvarno primljeno.
+          Bruto broji samo PLAĆENE rezervacije čiji je datum dolaska gosta u ovom mjesecu — zarada
+          prati kad gost stvarno boravi, bez obzira kad je označeno plaćeno.
         </p>
       </section>
 
