@@ -2,7 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getCurrentAdminRecord } from "@/lib/auth";
 import { listPropertiesForAdmin, listBlockedDates } from "@/lib/db/queries";
-import { toggleBlockedDateAction } from "@/lib/actions";
+import { toggleBlockedDateAction, blockDateRangeAction } from "@/lib/actions";
 
 const MONTH_NAMES = [
   "Siječanj", "Veljača", "Ožujak", "Travanj", "Svibanj", "Lipanj",
@@ -179,6 +179,35 @@ export default async function AdminCalendarPage({
           </span>
         </div>
       </div>
+
+      {/* Blokiranje cijelog raspona odjednom — umjesto klikanja dan po dan
+          gore, npr. za cijeli tjedan rezervacije unesene izvan sustava. */}
+      <form
+        action={blockDateRangeAction.bind(null, property.id, linkFor({}))}
+        className="border border-black/10 rounded-xl p-5 bg-white max-w-xl flex flex-col gap-3"
+      >
+        <span className="text-sm font-semibold">Blokiraj raspon datuma</span>
+        <p className="text-xs text-black/50 -mt-2">
+          Označi cijeli raspon zauzetim odjednom (npr. tjedan rezerviran telefonom), umjesto
+          klikanja svakog dana posebno gore.
+        </p>
+        <div className="flex items-end gap-3 flex-wrap">
+          <label className="flex flex-col gap-1 text-xs font-medium text-black/60">
+            Od
+            <input type="date" name="start" required className="admin-input" />
+          </label>
+          <label className="flex flex-col gap-1 text-xs font-medium text-black/60">
+            Do
+            <input type="date" name="end" required className="admin-input" />
+          </label>
+          <button
+            type="submit"
+            className="rounded-full bg-black text-white text-sm font-semibold px-4 py-2 h-fit"
+          >
+            Blokiraj
+          </button>
+        </div>
+      </form>
     </div>
   );
 }
