@@ -7,6 +7,7 @@ import RevealSection from "@/components/RevealSection";
 import GalleryLightbox from "@/components/GalleryLightbox";
 import StayInteractions from "@/components/StayInteractions";
 import InquiryForm from "@/components/InquiryForm";
+import AvailabilityCalendar from "@/components/AvailabilityCalendar";
 
 export const revalidate = 0;
 
@@ -88,6 +89,18 @@ function jsonLdProps(data: Record<string, unknown>): { __html: string } {
   return { __html: JSON.stringify(data).replace(/</g, "\\u003c") };
 }
 
+/** property.checkInTime/checkOutTime su slobodan tekst ("od 10:00", "poslije 15h"…), ne
+    strogi format — za JSON-LD schema.org checkinTime/checkoutTime treba "HH:MM" (ili
+    "HH:MM:SS"), pa iz slobodnog teksta izvučemo prvi prepoznatljivi "HH:MM" obrazac.
+    Ako ga nema (npr. "poslije podneva"), vraćamo null i to polje jednostavno izostavljamo
+    iz JSON-LD-a — bolje nikakav podatak nego neispravan format koji Google odbaci. */
+function extractTimeHHMM(text: string | null): string | null {
+  if (!text) return null;
+  const m = text.match(/([01]?\d|2[0-3]):([0-5]\d)/);
+  if (!m) return null;
+  return `${m[1].padStart(2, "0")}:${m[2]}`;
+}
+
 /** Prepoznaje YouTube/Vimeo poveznice i vraća embed URL; inače null (pa se prikaže kao obična poveznica). */
 function videoEmbedSrc(url: string): string | null {
   try {
@@ -130,98 +143,6 @@ function osmLinkHref(latitude: string, longitude: string): string | null {
   const lng = Number(longitude);
   if (!Number.isFinite(lat) || !Number.isFinite(lng)) return null;
   return `https://www.openstreetmap.org/?mlat=${lat}&mlon=${lng}#map=16/${lat}/${lng}`;
-}
-
-const MONTH_NAMES: Record<"hr" | "en", string[]> = {
-  hr: ["Siječanj", "Veljača", "Ožujak", "Travanj", "Svibanj", "Lipanj", "Srpanj", "Kolovoz", "Rujan", "Listopad", "Studeni", "Prosinac"],
-  en: ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"],
-};
-const WEEKDAY_LABELS: Record<"hr" | "en", string[]> = {
-  hr: ["Pon", "Uto", "Sri", "Čet", "Pet", "Sub", "Ned"],
-  en: ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"],
-};
-
-function pad2(n: number): string {
-  return String(n).padStart(2, "0");
-}
-
-/** Ponedjeljkom počinje tjedan — JS getDay() vraća 0 za nedjelju, vidi isti
-    obrazac u app/admin/kalendar/page.tsx (interna, uređivačka verzija). */
-function mondayIndex(date: Date): number {
-  return (date.getDay() + 6) % 7;
-}
-
-/** Čitanjem-only kalendar dostupnosti za gosta — zamjenjuje stari vanjski
-    "Provjeri dostupnost" gumb (property.availabilityUrl). Prikazuje tekući i
-    sljedeći mjesec; crveno/puno = zauzeto (ručno ili automatski iz
-    Booking.com/Airbnb iCal-a, vidi lib/ical.ts), prazno = slobodno. Gost ne
-    klika ništa — za rezervaciju i dalje šalje upit ispod. */
-function AvailabilityCalendar({
-  blockedDates,
-  lang,
-}: {
-  blockedDates: { date: string }[];
-  lang: "hr" | "en";
-}) {
-  const blocked = new Set(blockedDates.map((b) => b.date));
-  const now = new Date();
-  // Datumska aritmetika ide isključivo preko Date objekata (ne ručnim
-  // zbrajanjem godine/mjeseca) da prijelaz iz prosinca u siječanj sljedeće
-  // godine ispadne točan i za prikazani naslov i za dateStr niže.
-  const months = [0, 1].map((offset) => {
-    const firstOfMonth = new Date(Date.UTC(now.getFullYear(), now.getMonth() + offset, 1));
-    const year = firstOfMonth.getUTCFullYear();
-    const month0 = firstOfMonth.getUTCMonth(); // uvijek 0-11, već "normaliziran" prijelazom gore
-    const daysInMonth = new Date(Date.UTC(year, month0 + 1, 0)).getUTCDate();
-    const leadingBlanks = mondayIndex(firstOfMonth);
-    const cells: (number | null)[] = [
-      ...Array.from({ length: leadingBlanks }, () => null),
-      ...Array.from({ length: daysInMonth }, (_, i) => i + 1),
-    ];
-    return { year, month0, cells };
-  });
-
-  return (
-    <div className="stay-avail-cal">
-      {months.map(({ year, month0, cells }) => (
-        <div className="stay-avail-month" key={`${year}-${month0}`}>
-          <div className="stay-avail-month-title">
-            {MONTH_NAMES[lang][month0]} {year}
-          </div>
-          <div className="stay-avail-grid">
-            {WEEKDAY_LABELS[lang].map((w) => (
-              <span className="stay-avail-weekday" key={w}>
-                {w}
-              </span>
-            ))}
-            {cells.map((day, i) => {
-              if (day === null) return <span key={`b-${i}`} />;
-              const dateStr = `${year}-${pad2(month0 + 1)}-${pad2(day)}`;
-              const isBlocked = blocked.has(dateStr);
-              return (
-                <span
-                  key={dateStr}
-                  className={isBlocked ? "stay-avail-day stay-avail-blocked" : "stay-avail-day"}
-                >
-                  {day}
-                </span>
-              );
-            })}
-          </div>
-        </div>
-      ))}
-      <div className="stay-avail-legend">
-        <span>
-          <i className="stay-avail-dot" />
-          {lang === "en" ? "Available" : "Slobodno"}
-        </span>
-        <span>
-          <i className="stay-avail-dot stay-avail-dot-blocked" />
-          {lang === "en" ? "Booked" : "Zauzeto"}
-        </span>
-      </div>
-    </div>
-  );
 }
 
 /** Sitna ikona uz sadržaj (amenity) — prepoznaje uobičajene hrvatske riječi, inače prikazuje generičku kvačicu. */
@@ -376,6 +297,10 @@ export async function PropertyView({
   const aboutNo = eyebrowNo();
 
   const propertyImages = [effectiveBanner, ...gallery].filter((s): s is string => Boolean(s));
+  const propertyCheckinTime = extractTimeHHMM(property.checkInTime);
+  const propertyCheckoutTime = extractTimeHHMM(property.checkOutTime);
+  const propertyLat = property.latitude ? Number(property.latitude) : null;
+  const propertyLng = property.longitude ? Number(property.longitude) : null;
   const propertyJsonLd: Record<string, unknown> = {
     "@context": "https://schema.org",
     "@type": "LodgingBusiness",
@@ -385,11 +310,26 @@ export async function PropertyView({
     ...(propertyImages.length > 0 ? { image: propertyImages } : {}),
     address: {
       "@type": "PostalAddress",
+      ...(property.address ? { streetAddress: property.address } : {}),
       addressLocality: property.location,
       addressCountry: "HR",
     },
+    ...(propertyLat != null && propertyLng != null && Number.isFinite(propertyLat) && Number.isFinite(propertyLng)
+      ? { geo: { "@type": "GeoCoordinates", latitude: propertyLat, longitude: propertyLng } }
+      : {}),
     priceRange: `${property.priceFromEur} EUR`,
     ...(property.phone ? { telephone: property.phone } : {}),
+    ...(propertyCheckinTime ? { checkinTime: propertyCheckinTime } : {}),
+    ...(propertyCheckoutTime ? { checkoutTime: propertyCheckoutTime } : {}),
+    ...(property.amenities.length > 0
+      ? {
+          amenityFeature: property.amenities.map((name) => ({
+            "@type": "LocationFeatureSpecification",
+            name,
+            value: true,
+          })),
+        }
+      : {}),
   };
   if (property.testimonials.length > 0) {
     propertyJsonLd.aggregateRating = {
