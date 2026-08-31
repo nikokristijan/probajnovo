@@ -8,11 +8,13 @@ import {
   products,
   adminUsers,
   inquiries,
+  propertyTranslationsEn,
   type NewProperty,
   type NewCompany,
   type NewStudy,
   type NewProduct,
   type NewInquiry,
+  type NewPropertyTranslationEn,
 } from "./schema";
 
 const AGENCY_ROW_ID = 1;
@@ -68,6 +70,47 @@ return row;
 
 export async function deleteProperty(id: number) {
 await db.delete(properties).where(eq(properties.id, id));
+}
+
+/** Isti razlog kao isMissingCompaniesTable ispod — tablica s prijevodima može zaostajati iza migracije. */
+function isMissingTranslationsTable(err: unknown): boolean {
+  if (!err || typeof err !== "object") return false;
+  if ("code" in err && (err as { code?: string }).code === "42P01") return true;
+  const cause = (err as { cause?: unknown }).cause;
+  return Boolean(cause && typeof cause === "object" && "code" in cause && (cause as { code?: string }).code === "42P01");
+}
+
+export async function getPropertyTranslationEn(propertyId: number) {
+  try {
+    const rows = await db
+      .select()
+      .from(propertyTranslationsEn)
+      .where(eq(propertyTranslationsEn.propertyId, propertyId))
+      .limit(1);
+    return rows[0] ?? null;
+  } catch (err) {
+    if (isMissingTranslationsTable(err)) return null;
+    throw err;
+  }
+}
+
+/** Upsert po propertyId (jedan red po vikendici) — vidi lib/translate.ts za kad se ovo poziva. */
+export async function savePropertyTranslationEn(
+  propertyId: number,
+  data: Omit<NewPropertyTranslationEn, "propertyId" | "id">
+) {
+  try {
+    await db
+      .insert(propertyTranslationsEn)
+      .values({ propertyId, ...data })
+      .onConflictDoUpdate({
+        target: propertyTranslationsEn.propertyId,
+        set: { ...data, updatedAt: new Date() },
+      });
+  } catch (err) {
+    if (isMissingTranslationsTable(err)) return; // tiho odustani — vidi komentar gore
+    throw err;
+  }
 }
 
 /**

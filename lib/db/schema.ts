@@ -218,6 +218,28 @@ export const inquiries = pgTable("inquiries", {
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
+/**
+ * Keširan automatski (DeepL) prijevod vikendice na engleski, dostupan na
+ * /en/[slug]. Jedan red po vikendici — `sourceHash` je hash hrvatskog
+ * teksta korištenog za prijevod; kad admin promijeni opis/sadržaje/itd.,
+ * hash se ne poklapa pa se red tiho ponovno prevede i prepiše (vidi
+ * lib/translate.ts). Samo polja koja gost stvarno čita kao slobodan tekst —
+ * ime, lokacija, cijena, recenzije (ostaju izvorne) i sl. NISU ovdje.
+ */
+export const propertyTranslationsEn = pgTable("property_translations_en", {
+  id: serial("id").primaryKey(),
+  propertyId: integer("property_id").notNull().unique(),
+  sourceHash: text("source_hash").notNull(),
+  tagline: text("tagline"),
+  description: text("description"),
+  amenities: jsonb("amenities").$type<string[]>(),
+  houseRules: jsonb("house_rules").$type<string[]>(),
+  faq: jsonb("faq").$type<{ question: string; answer: string }[]>(),
+  hostNote: text("host_note"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
 export const adminUsers = pgTable("admin_users", {
   id: serial("id").primaryKey(),
   email: text("email").notNull().unique(),
@@ -239,3 +261,5 @@ export type NewProduct = typeof products.$inferInsert;
 export type AdminUser = typeof adminUsers.$inferSelect;
 export type Inquiry = typeof inquiries.$inferSelect;
 export type NewInquiry = typeof inquiries.$inferInsert;
+export type PropertyTranslationEn = typeof propertyTranslationsEn.$inferSelect;
+export type NewPropertyTranslationEn = typeof propertyTranslationsEn.$inferInsert;
