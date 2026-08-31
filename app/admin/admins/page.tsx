@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getCurrentAdminRecord } from "@/lib/auth";
-import { listAdmins } from "@/lib/db/queries";
+import { listAdmins, getAdminAccessGrants, listProperties, listCompanies } from "@/lib/db/queries";
 import DeleteAdminButton from "@/components/admin/DeleteAdminButton";
 
 export default async function AdminsPage() {
@@ -9,7 +9,31 @@ export default async function AdminsPage() {
   if (!me) redirect("/admin/login");
   if (!me.isSuperAdmin) redirect("/admin");
 
-  const admins = await listAdmins();
+  const [admins, properties, companies] = await Promise.all([
+    listAdmins(),
+    listProperties(),
+    listCompanies(),
+  ]);
+  const propertyNameById = new Map(properties.map((p) => [p.id, p.name]));
+  const companyNameById = new Map(companies.map((c) => [c.id, c.name]));
+
+  // Za "owner" retke odmah dohvatimo koje su im vikendice/firme dodijeljene, da
+  // ih prikažemo uz email (mala tablica pa nema smisla paralelizirati/optimizirati).
+  const accessByAdminId = new Map<number, string[]>();
+  for (const a of admins) {
+    if (a.role !== "owner") continue;
+    const grants = await getAdminAccessGrants(a.id);
+    const names = grants
+      .map((g) =>
+        g.propertyId != null
+          ? propertyNameById.get(g.propertyId)
+          : g.companyId != null
+            ? companyNameById.get(g.companyId)
+            : null
+      )
+      .filter((n): n is string => !!n);
+    accessByAdminId.set(a.id, names);
+  }
 
   return (
     <div className="flex flex-col gap-8">
@@ -44,8 +68,17 @@ export default async function AdminsPage() {
                 )}
               </div>
               <div className="text-xs text-black/50 mt-0.5">
-                {a.isSuperAdmin ? "Glavni admin" : "Admin"} · dodan{" "}
+                {a.isSuperAdmin ? "Glavni admin" : a.role === "owner" ? "Vlasnik" : "Admin"} · dodan{" "}
                 {a.createdAt.toLocaleDateString("hr-HR")}
+                {a.role === "owner" && (
+                  <>
+                    {" "}
+                    ·{" "}
+                    {(accessByAdminId.get(a.id) ?? []).length > 0
+                      ? accessByAdminId.get(a.id)!.join(", ")
+                      : "nema dodijeljenih vikendica/firmi"}
+                  </>
+                )}
               </div>
             </div>
             {a.isSuperAdmin ? (
