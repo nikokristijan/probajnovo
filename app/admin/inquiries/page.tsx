@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
 import { getCurrentAdminRecord } from "@/lib/auth";
 import { listInquiries } from "@/lib/db/queries";
-import { markInquiryReadAction } from "@/lib/actions";
+import { markInquiryReadAction, markInquiryRepliedAction } from "@/lib/actions";
 import DeleteInquiryButton from "@/components/admin/DeleteInquiryButton";
 
 const SOURCE_LABEL: Record<string, string> = {
@@ -52,6 +52,11 @@ export default async function AdminInquiriesPage() {
                     <span className="font-semibold text-sm">{i.name}</span>
                     <span className="text-xs text-black/40">{i.email}</span>
                     {i.phone && <span className="text-xs text-black/40">· {i.phone}</span>}
+                    {i.replied && (
+                      <span className="text-[11px] font-semibold px-2 py-0.5 rounded-full bg-green-600/10 text-green-700">
+                        Odgovoreno
+                      </span>
+                    )}
                   </div>
                   <div className="text-xs text-black/50 mt-0.5">
                     {SOURCE_LABEL[i.source] ?? i.source} · {i.sourceName} ·{" "}
@@ -66,6 +71,16 @@ export default async function AdminInquiriesPage() {
                         className="text-xs font-semibold text-[#0000c3] border border-[#0000c3]/20 rounded-full px-3 py-1.5 hover:bg-[#0000c3]/5"
                       >
                         Označi pročitano
+                      </button>
+                    </form>
+                  )}
+                  {!i.replied && (
+                    <form action={markInquiryRepliedAction.bind(null, i.id)}>
+                      <button
+                        type="submit"
+                        className="text-xs font-semibold text-green-700 border border-green-700/20 rounded-full px-3 py-1.5 hover:bg-green-700/5"
+                      >
+                        Označi odgovoreno
                       </button>
                     </form>
                   )}
