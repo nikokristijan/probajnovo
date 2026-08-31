@@ -599,15 +599,21 @@ export async function createReservation(data: {
   // slobodan za sljedećeg gosta (standardna booking konvencija, isto kao
   // Booking.com/Airbnb iCal koje već sync-amo). Datumi koji su već blokirani
   // (ručno, ical ili druga rezervacija) se preskaču, isti dedup obrazac kao
-  // addManualBlockedDate gore.
+  // addManualBlockedDate gore — te preskočene datume vraćamo pozivatelju kao
+  // `overlappingDates` da createReservationAction može upozoriti vlasnika na
+  // moguću dvostruku rezervaciju (vidi lib/actions.ts).
   const nights = datesInRange(data.checkIn, data.checkOut).slice(0, -1);
+  const overlappingDates: string[] = [];
   for (const date of nights) {
     const existing = await db
       .select({ id: propertyBlockedDates.id })
       .from(propertyBlockedDates)
       .where(and(eq(propertyBlockedDates.propertyId, data.propertyId), eq(propertyBlockedDates.date, date)))
       .limit(1);
-    if (existing.length > 0) continue;
+    if (existing.length > 0) {
+      overlappingDates.push(date);
+      continue;
+    }
     await db.insert(propertyBlockedDates).values({
       propertyId: data.propertyId,
       date,
@@ -616,7 +622,7 @@ export async function createReservation(data: {
     });
   }
 
-  return reservation;
+  return { reservation, overlappingDates };
 }
 
 /** Briše rezervaciju i SAMO blokirane dane koji joj pripadaju (preko
