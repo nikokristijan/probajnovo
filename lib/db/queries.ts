@@ -668,21 +668,18 @@ export async function deleteExpense(id: number) {
   await db.delete(expenses).where(eq(expenses.id, id));
 }
 
-function monthPrefixOf(d: Date): string {
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
-}
-
 /** Zarada za mjesec (monthPrefix format "YYYY-MM") preko svih zadanih
-    vikendica — bruto je zbroj cijena SAMO plaćenih rezervacija OZNAČENIH
-    plaćenim u tom mjesecu (paidAt), po vlasnikovom izričitom pravilu ("kad
-    oznaci da je placeno uracuna se u zaradu"). Namjerno gotovinska baza, ne
-    checkIn/checkOut — rezervacija za sljedeći mjesec plaćena unaprijed danas
-    ulazi u OVOMJESEČNU zaradu, jer je novac stigao sad. Neto dodatno
-    oduzima troškove čiji `date` pada u taj mjesec (opcionalno polje, vidi
-    expenses gore — tu OSTAJE datum troška, ne datum unosa, da vlasnik može
-    unaprijed upisati budući trošak bez da odmah utječe na tekući mjesec).
-    Koristi se na vlasnikovom dashboardu (app/admin/page.tsx) i
-    /admin/rezervacije. */
+    vikendica — bruto je zbroj cijena SAMO plaćenih rezervacija čiji je
+    datum dolaska (checkIn) u tom mjesecu: zarada prati kad gost STVARNO
+    BORAVI, ne kad je vlasnik stigao označiti plaćeno (npr. rezervacija za
+    12.–14.9. plaćena unaprijed u kolovozu i dalje ulazi u zaradu RUJNA, ne
+    kolovoza). "paid" je i dalje uvjet ("kad oznaci da je placeno uracuna se
+    u zaradu") — neplaćene rezervacije se nikad ne broje, bez obzira na
+    checkIn. Neto dodatno oduzima troškove čiji `date` pada u taj mjesec
+    (opcionalno polje, vidi expenses gore). Koristi se na vlasnikovom
+    dashboardu (app/admin/page.tsx) i /admin/rezervacije, koja ima ← →
+    navigaciju po mjesecima da vlasnik vidi zaradu za bilo koji mjesec, ne
+    samo tekući. */
 export async function getMonthlyEarnings(propertyIds: number[], monthPrefix: string) {
   if (propertyIds.length === 0) return { grossEur: 0, expensesEur: 0, netEur: 0 };
 
@@ -692,7 +689,7 @@ export async function getMonthlyEarnings(propertyIds: number[], monthPrefix: str
   ]);
 
   const grossEur = allReservations
-    .filter((r) => r.paid && r.paidAt && monthPrefixOf(new Date(r.paidAt)) === monthPrefix)
+    .filter((r) => r.paid && r.checkIn.startsWith(monthPrefix))
     .reduce((sum, r) => sum + r.priceEur, 0);
   const expensesEur = allExpenses
     .filter((e) => e.date.startsWith(monthPrefix))

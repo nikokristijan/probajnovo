@@ -307,14 +307,12 @@ export const propertyBlockedDates = pgTable("property_blocked_dates", {
  * Puna knjiga rezervacija po vikendici — zamjena za vlasnikovu bilježnicu
  * (vidi app/admin/rezervacije). Vlasnik ručno upisuje gosta, datume i cijenu;
  * `paid` označava je li vlasnik stvarno naplatio — SAMO plaćene rezervacije
- * ulaze u "zaradu ovaj mjesec" na dashboardu (vidi lib/db/queries.ts
- * getMonthlyEarnings). Obračun je na gotovinskoj bazi: broji se MJESEC U
- * KOJEM JE OZNAČENO PLAĆENO (paidAt), NE mjesec dolaska/odlaska gosta — npr.
- * rezervacija za sljedeći mjesec plaćena unaprijed danas ulazi u OVOMJESEČNU
- * zaradu, jer je novac stvarno stigao sad (vlasnikovo pravilo: "kad oznaci
- * da je placeno uracuna se u zaradu"). Kreiranje rezervacije automatski
- * blokira datume boravka u property_blocked_dates (source "reservation")
- * da se poklapa s kalendarom.
+ * ulaze u zaradu (vidi lib/db/queries.ts getMonthlyEarnings), i to u zaradu
+ * MJESECA DOLASKA GOSTA (checkIn) — zarada prati kad gost stvarno boravi,
+ * ne kad je vlasnik stigao označiti plaćeno. Npr. rezervacija 12.–14.9.
+ * plaćena unaprijed u kolovozu ulazi u zaradu RUJNA, ne kolovoza. Kreiranje
+ * rezervacije automatski blokira datume boravka u property_blocked_dates
+ * (source "reservation") da se poklapa s kalendarom.
  */
 export const reservations = pgTable("reservations", {
   id: serial("id").primaryKey(),
@@ -329,8 +327,9 @@ export const reservations = pgTable("reservations", {
   /** Je li vlasnik stvarno naplatio — vidi komentar gore, presudno za obračun zarade. */
   paid: boolean("paid").notNull().default(false),
   /** Kad je zadnji put označeno plaćenim (postavlja se u setReservationPaid/
-      createReservation) — mjerodavno za "u kojem mjesecu ulazi u zaradu",
-      ne checkIn. Null dok nije (još) plaćeno. */
+      createReservation) — čisto informativno (npr. buduća "plaćeno dana X"
+      oznaka), NE koristi se za obračun zarade (vidi getMonthlyEarnings, koji
+      broji po checkIn mjesecu). Null dok nije (još) plaćeno. */
   paidAt: timestamp("paid_at"),
   note: text("note"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
