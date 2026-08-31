@@ -98,6 +98,9 @@ export default async function AdminLayout({ children }: { children: React.ReactN
                 <Link href="/admin/prodaja" className="hover:text-[#ff7f00]">
                   Prodaja
                 </Link>
+                <Link href="/admin/aktivnost" className="hover:text-[#ff7f00]">
+                  Aktivnost
+                </Link>
                 {admin.isSuperAdmin && (
                   <Link href="/admin/admins" className="hover:text-[#ff7f00]">
                     Admini
