@@ -7,9 +7,8 @@ import {
   listExpensesForProperty,
   getMonthlyEarnings,
 } from "@/lib/db/queries";
-import { toggleReservationPaidAction } from "@/lib/actions";
 import ReservationForm from "@/components/admin/ReservationForm";
-import DeleteReservationButton from "@/components/admin/DeleteReservationButton";
+import ReservationsTable from "@/components/admin/ReservationsTable";
 import ExpenseForm from "@/components/admin/ExpenseForm";
 import DeleteExpenseButton from "@/components/admin/DeleteExpenseButton";
 
@@ -35,13 +34,14 @@ function EarningsCard({ label, value }: { label: string; value: number }) {
  * Puna knjiga rezervacija po vikendici — zamjena za vlasnikovu bilježnicu
  * (vidi task #73-79). Za svaku vikendicu: unos gosta/datuma/cijene/statusa
  * plaćanja, automatsko blokiranje kalendara (vidi lib/db/queries.ts
- * createReservation), zarada ovaj mjesec (samo plaćene rezervacije, po
- * vlasnikovom pravilu) i opcionalni troškovi za neto zaradu.
+ * createReservation), zarada po mjesecu (samo rezervacije OZNAČENE plaćenim
+ * u tom mjesecu — gotovinska baza, vidi getMonthlyEarnings) i opcionalni
+ * troškovi za neto zaradu.
  */
 export default async function AdminReservationsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ property?: string }>;
+  searchParams: Promise<{ property?: string; year?: string; month?: string; overlap?: string }>;
 }) {
   const admin = await getCurrentAdminRecord();
   if (!admin) redirect("/admin/login");
@@ -71,9 +71,24 @@ export default async function AdminReservationsPage({
     listExpensesForProperty(property.id),
   ]);
 
+  // Mjesec za koji se prikazuje zarada — podrazumijevano tekući, ali
+  // navigacija ← → (linkFor ispod) omogućuje pregled bilo kojeg mjeseca, ne
+  // samo trenutnog (isti obrazac kao app/admin/kalendar).
   const now = new Date();
-  const monthPrefix = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+  const year = sp.year ? Number(sp.year) : now.getFullYear();
+  const month = sp.month ? Number(sp.month) : now.getMonth() + 1; // 1-12
+  const monthPrefix = `${year}-${String(month).padStart(2, "0")}`;
+  const isCurrentMonth = year === now.getFullYear() && month === now.getMonth() + 1;
   const earnings = await getMonthlyEarnings([property.id], monthPrefix);
+
+  const prevMonth = month === 1 ? 12 : month - 1;
+  const prevYear = month === 1 ? year - 1 : year;
+  const nextMonth = month === 12 ? 1 : month + 1;
+  const nextYear = month === 12 ? year + 1 : year;
+  const monthLinkFor = (y: number, m: number) =>
+    `/admin/rezervacije?property=${property.id}&year=${y}&month=${m}`;
+
+  const overlapCount = sp.overlap ? Number(sp.overlap) : 0;
 
   return (
     <div className="flex flex-col gap-6">
@@ -108,67 +123,67 @@ export default async function AdminReservationsPage({
         </div>
       )}
 
-      <section className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-        <EarningsCard label={`Naplaćeno u ${MONTH_NAMES[now.getMonth()]}u (bruto)`} value={earnings.grossEur} />
-        <EarningsCard label="Troškovi ovaj mjesec" value={earnings.expensesEur} />
-        <EarningsCard label="Neto zarada ovaj mjesec" value={earnings.netEur} />
+      {overlapCount > 0 && (
+        <p className="text-sm text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
+          Upozorenje: {overlapCount}{" "}
+          {overlapCount === 1 ? "od odabranih dana za ovu rezervaciju je" : "od odabranih dana za ovu rezervaciju su"}{" "}
+          već bio zauzet prije spremanja (ručno, iCal ili druga rezervacija) — rezervacija je svejedno
+          spremljena, provjeri{" "}
+          <Link href={`/admin/kalendar?property=${property.id}`} className="underline">
+            kalendar
+          </Link>{" "}
+          da nije došlo do dvostruke rezervacije.
+        </p>
+      )}
+
+      <section className="flex flex-col gap-3">
+        <div className="flex items-center justify-between">
+          <span className="text-xs font-semibold uppercase tracking-wide text-black/40">
+            Zarada — {MONTH_NAMES[month - 1]} {year}
+          </span>
+          <div className="flex items-center gap-2">
+            <Link href={monthLinkFor(prevYear, prevMonth)} className="admin-quicklink">
+              ← Prošli
+            </Link>
+            {!isCurrentMonth && (
+              <Link
+                href={`/admin/rezervacije?property=${property.id}`}
+                className="text-xs font-semibold text-[#ff7f00]"
+              >
+                Ovaj mjesec
+              </Link>
+            )}
+            <Link href={monthLinkFor(nextYear, nextMonth)} className="admin-quicklink">
+              Sljedeći →
+            </Link>
+          </div>
+        </div>
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+          <EarningsCard label="Naplaćeno (bruto)" value={earnings.grossEur} />
+          <EarningsCard label="Troškovi" value={earnings.expensesEur} />
+          <EarningsCard label="Neto zarada" value={earnings.netEur} />
+        </div>
+        <p className="text-xs text-black/40 -mt-1">
+          Bruto broji rezervacije OZNAČENE plaćenim u ovom mjesecu (ne datum dolaska gosta) — plaćanje
+          unaprijed odmah ulazi u zaradu mjeseca u kojem je stvarno primljeno.
+        </p>
       </section>
 
       <section className="flex flex-col gap-3">
-        <h2 className="text-xs font-semibold uppercase tracking-wide text-black/40">
-          Sve rezervacije
-        </h2>
-        {reservations.length === 0 ? (
-          <p className="text-sm text-black/60">Još nema unesenih rezervacija za ovu vikendicu.</p>
-        ) : (
-          <div className="overflow-x-auto border border-black/10 rounded-xl bg-white">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="text-left text-xs text-black/40 border-b border-black/10">
-                  <th className="px-4 py-2.5 font-semibold">Gost</th>
-                  <th className="px-4 py-2.5 font-semibold">Dolazak</th>
-                  <th className="px-4 py-2.5 font-semibold">Odlazak</th>
-                  <th className="px-4 py-2.5 font-semibold">Cijena</th>
-                  <th className="px-4 py-2.5 font-semibold">Status</th>
-                  <th className="px-4 py-2.5 font-semibold">Kontakt / napomena</th>
-                  <th className="px-4 py-2.5 font-semibold"></th>
-                </tr>
-              </thead>
-              <tbody>
-                {reservations.map((r) => (
-                  <tr key={r.id} className="border-b border-black/5 last:border-0 align-top">
-                    <td className="px-4 py-3 font-semibold whitespace-nowrap">{r.guestName}</td>
-                    <td className="px-4 py-3 whitespace-nowrap">{formatDate(r.checkIn)}</td>
-                    <td className="px-4 py-3 whitespace-nowrap">{formatDate(r.checkOut)}</td>
-                    <td className="px-4 py-3 whitespace-nowrap tabular-nums">{r.priceEur} €</td>
-                    <td className="px-4 py-3 whitespace-nowrap">
-                      <form action={toggleReservationPaidAction.bind(null, property.id, r.id, r.paid)}>
-                        <button
-                          type="submit"
-                          className={
-                            "text-[11px] font-semibold px-2.5 py-1 rounded-full " +
-                            (r.paid
-                              ? "bg-green-600/10 text-green-700"
-                              : "bg-[#ff7f00]/10 text-[#ff7f00]")
-                          }
-                        >
-                          {r.paid ? "Plaćeno" : "Čeka se"}
-                        </button>
-                      </form>
-                    </td>
-                    <td className="px-4 py-3 text-black/60 text-xs max-w-[220px]">
-                      {[r.phone, r.email].filter(Boolean).join(" · ")}
-                      {r.note && <div className="mt-1 whitespace-pre-wrap">{r.note}</div>}
-                    </td>
-                    <td className="px-4 py-3 text-right">
-                      <DeleteReservationButton propertyId={property.id} id={r.id} guestName={r.guestName} />
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
+        <div className="flex items-center justify-between flex-wrap gap-2">
+          <h2 className="text-xs font-semibold uppercase tracking-wide text-black/40">
+            Sve rezervacije
+          </h2>
+          {reservations.length > 0 && (
+            <a
+              href={`/api/admin/reservations/export?property=${property.id}`}
+              className="text-xs font-semibold px-3 py-1.5 rounded-full border border-black/15 hover:border-black/40"
+            >
+              Izvezi CSV
+            </a>
+          )}
+        </div>
+        <ReservationsTable propertyId={property.id} reservations={reservations} />
       </section>
 
       <ReservationForm propertyId={property.id} redirectTo={redirectTo} />
