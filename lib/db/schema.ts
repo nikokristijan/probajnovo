@@ -294,7 +294,53 @@ export const propertyBlockedDates = pgTable("property_blocked_dates", {
   propertyId: integer("property_id").notNull(),
   /** "YYYY-MM-DD", jedan red po blokiranom danu (jednostavnije za upit/UI nego raspon). */
   date: text("date").notNull(),
+  /** "manual" | "ical" | "reservation" — vidi lib/db/queries.ts createReservation/deleteReservation. */
   source: text("source").notNull().default("manual"),
+  /** Postavljeno samo kad je source "reservation" — omogućuje brisanje TOČNO onih blokiranih
+      dana koji pripadaju jednoj rezervaciji (vidi reservations tablicu ispod) kad se ta
+      rezervacija obriše, bez diranja ručnih/ical redaka za iste datume. */
+  reservationId: integer("reservation_id"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+/**
+ * Puna knjiga rezervacija po vikendici — zamjena za vlasnikovu bilježnicu
+ * (vidi app/admin/rezervacije). Vlasnik ručno upisuje gosta, datume i cijenu;
+ * `paid` označava je li vlasnik stvarno naplatio — SAMO plaćene rezervacije
+ * ulaze u "zaradu ovaj mjesec" na dashboardu (vidi lib/db/queries.ts
+ * getMonthlyEarnings), po izričitom pravilu vlasnika, ne po datumu dolaska/
+ * odlaska. Kreiranje rezervacije automatski blokira datume boravka u
+ * property_blocked_dates (source "reservation") da se poklapa s kalendarom.
+ */
+export const reservations = pgTable("reservations", {
+  id: serial("id").primaryKey(),
+  propertyId: integer("property_id").notNull(),
+  guestName: text("guest_name").notNull(),
+  phone: text("phone"),
+  email: text("email"),
+  /** "YYYY-MM-DD", isti format kao property_blocked_dates.date. */
+  checkIn: text("check_in").notNull(),
+  checkOut: text("check_out").notNull(),
+  priceEur: integer("price_eur").notNull(),
+  /** Je li vlasnik stvarno naplatio — vidi komentar gore, presudno za obračun zarade. */
+  paid: boolean("paid").notNull().default(false),
+  note: text("note"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+/**
+ * Opcionalni troškovi po vikendici (čišćenje, održavanje i sl.) — vlasnik ih
+ * ne mora koristiti, ali ako ih unese, dashboard prikazuje i neto zaradu
+ * (bruto od plaćenih rezervacija − troškovi tog mjeseca). Vidi
+ * lib/db/queries.ts getMonthlyEarnings.
+ */
+export const expenses = pgTable("expenses", {
+  id: serial("id").primaryKey(),
+  propertyId: integer("property_id").notNull(),
+  description: text("description").notNull(),
+  amountEur: integer("amount_eur").notNull(),
+  /** "YYYY-MM-DD" */
+  date: text("date").notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
@@ -314,3 +360,7 @@ export type Inquiry = typeof inquiries.$inferSelect;
 export type NewInquiry = typeof inquiries.$inferInsert;
 export type PropertyTranslationEn = typeof propertyTranslationsEn.$inferSelect;
 export type NewPropertyTranslationEn = typeof propertyTranslationsEn.$inferInsert;
+export type Reservation = typeof reservations.$inferSelect;
+export type NewReservation = typeof reservations.$inferInsert;
+export type Expense = typeof expenses.$inferSelect;
+export type NewExpense = typeof expenses.$inferInsert;

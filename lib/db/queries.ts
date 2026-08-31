@@ -11,6 +11,8 @@ import {
   propertyBlockedDates,
   inquiries,
   propertyTranslationsEn,
+  reservations,
+  expenses,
   type NewProperty,
   type NewCompany,
   type NewStudy,
@@ -556,4 +558,119 @@ export async function getPropertiesWithIcalUrl() {
     .select({ id: properties.id, icalUrl: properties.icalUrl })
     .from(properties);
   return rows.filter((r): r is { id: number; icalUrl: string } => !!r.icalUrl);
+}
+
+/* ---------------------------------------------------------------- */
+/* Rezervacije (puna knjiga rezervacija) — zamjena za vlasnikovu       */
+/* bilježnicu, vidi app/admin/rezervacije. Kreiranje rezervacije       */
+/* automatski blokira noćenja u kalendaru (property_blocked_dates,     */
+/* source "reservation"), brisanje ih precizno uklanja preko           */
+/* reservationId — vidi lib/db/schema.ts komentare.                    */
+/* ---------------------------------------------------------------- */
+
+export async function listReservationsForProperty(propertyId: number) {
+  return db
+    .select()
+    .from(reservations)
+    .where(eq(reservations.propertyId, propertyId))
+    .orderBy(asc(reservations.checkIn));
+}
+
+export async function createReservation(data: {
+  propertyId: number;
+  guestName: string;
+  phone: string | null;
+  email: string | null;
+  checkIn: string;
+  checkOut: string;
+  priceEur: number;
+  paid: boolean;
+  note: string | null;
+}) {
+  const [reservation] = await db.insert(reservations).values(data).returning();
+
+  // Blokiraj noćenja: checkIn do dan PRIJE checkOut — dan odjave ostaje
+  // slobodan za sljedećeg gosta (standardna booking konvencija, isto kao
+  // Booking.com/Airbnb iCal koje već sync-amo). Datumi koji su već blokirani
+  // (ručno, ical ili druga rezervacija) se preskaču, isti dedup obrazac kao
+  // addManualBlockedDate gore.
+  const nights = datesInRange(data.checkIn, data.checkOut).slice(0, -1);
+  for (const date of nights) {
+    const existing = await db
+      .select({ id: propertyBlockedDates.id })
+      .from(propertyBlockedDates)
+      .where(and(eq(propertyBlockedDates.propertyId, data.propertyId), eq(propertyBlockedDates.date, date)))
+      .limit(1);
+    if (existing.length > 0) continue;
+    await db.insert(propertyBlockedDates).values({
+      propertyId: data.propertyId,
+      date,
+      source: "reservation",
+      reservationId: reservation.id,
+    });
+  }
+
+  return reservation;
+}
+
+/** Briše rezervaciju i SAMO blokirane dane koji joj pripadaju (preko
+    reservationId) — ručno/ical blokirani dani za iste datume ostaju netaknuti. */
+export async function deleteReservation(id: number) {
+  await db.delete(propertyBlockedDates).where(eq(propertyBlockedDates.reservationId, id));
+  await db.delete(reservations).where(eq(reservations.id, id));
+}
+
+export async function setReservationPaid(id: number, paid: boolean) {
+  await db.update(reservations).set({ paid }).where(eq(reservations.id, id));
+}
+
+/* ---------------------------------------------------------------- */
+/* Troškovi (opcionalno, za neto zaradu) — vidi app/admin/rezervacije. */
+/* ---------------------------------------------------------------- */
+
+export async function listExpensesForProperty(propertyId: number) {
+  return db
+    .select()
+    .from(expenses)
+    .where(eq(expenses.propertyId, propertyId))
+    .orderBy(desc(expenses.date));
+}
+
+export async function createExpense(data: {
+  propertyId: number;
+  description: string;
+  amountEur: number;
+  date: string;
+}) {
+  const [expense] = await db.insert(expenses).values(data).returning();
+  return expense;
+}
+
+export async function deleteExpense(id: number) {
+  await db.delete(expenses).where(eq(expenses.id, id));
+}
+
+/** Zarada za mjesec (monthPrefix format "YYYY-MM") preko svih zadanih
+    vikendica — bruto je zbroj cijena SAMO plaćenih rezervacija čiji je
+    datum dolaska (checkIn) u tom mjesecu, po vlasnikovom izričitom pravilu
+    ("kad oznaci da je placeno uracuna se u zaradu"). Neto dodatno oduzima
+    troškove upisane u tom mjesecu (opcionalno polje, vidi expenses gore).
+    Koristi se na vlasnikovom dashboardu (app/admin/page.tsx) i
+    /admin/rezervacije. */
+export async function getMonthlyEarnings(propertyIds: number[], monthPrefix: string) {
+  if (propertyIds.length === 0) return { grossEur: 0, expensesEur: 0, netEur: 0 };
+
+  const [allReservations, allExpenses] = await Promise.all([
+    db.select().from(reservations).where(inArray(reservations.propertyId, propertyIds)),
+    db.select().from(expenses).where(inArray(expenses.propertyId, propertyIds)),
+  ]);
+
+  const grossEur = allReservations
+    .filter((r) => r.paid && r.checkIn.startsWith(monthPrefix))
+    .reduce((sum, r) => sum + r.priceEur, 0);
+  const expensesEur = allExpenses
+    .filter((e) => e.date.startsWith(monthPrefix))
+    .reduce((sum, e) => sum + e.amountEur, 0);
+
+  return { grossEur, expensesEur, netEur: grossEur - expensesEur };
 }
