@@ -639,7 +639,10 @@ export async function createCompanyAction(
       faviconUrl: parsed.data.faviconUrl?.trim() || null,
       customDomain: normalizeDomain(parsed.data.customDomain),
     });
-  } catch {
+  } catch (err) {
+    if (err && typeof err === "object" && "code" in err && (err as { code?: string }).code === "42P01") {
+      return { error: "Baza još nema tablicu za firme — pokreni SQL migraciju (poslana zasebno) pa pokušaj ponovno." };
+    }
     return { error: "Ta adresa (slug) ili domena je već zauzeta — odaberi drugu." };
   }
 
@@ -686,7 +689,10 @@ export async function updateCompanyAction(
       faviconUrl: parsed.data.faviconUrl?.trim() || null,
       customDomain: normalizeDomain(parsed.data.customDomain),
     });
-  } catch {
+  } catch (err) {
+    if (err && typeof err === "object" && "code" in err && (err as { code?: string }).code === "42P01") {
+      return { error: "Baza još nema tablicu za firme — pokreni SQL migraciju (poslana zasebno) pa pokušaj ponovno." };
+    }
     return { error: "Ta adresa (slug) ili domena je već zauzeta — odaberi drugu." };
   }
 
