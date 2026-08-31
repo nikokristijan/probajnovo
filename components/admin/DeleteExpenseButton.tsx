@@ -13,7 +13,7 @@ export default function DeleteExpenseButton({
 }) {
   return (
     <form
-      action={deleteExpenseAction.bind(null, propertyId, id)}
+      action={deleteExpenseAction.bind(null, propertyId, id, description)}
       onSubmit={(e) => {
         if (!confirm(`Sigurno želiš obrisati trošak "${description}"?`)) {
           e.preventDefault();

@@ -22,10 +22,19 @@ export default function ExpenseForm({
   return (
     <form action={action} className="border border-black/10 rounded-xl p-5 bg-white flex flex-col gap-3">
       <span className="text-sm font-semibold">Novi trošak</span>
-      <div className="grid sm:grid-cols-3 gap-3">
+      <div className="grid sm:grid-cols-4 gap-3">
         <label className="flex flex-col gap-1 text-xs font-medium text-black/60 sm:col-span-1">
           Opis
           <input name="description" required className="admin-input" placeholder="npr. Čišćenje" />
+        </label>
+        <label className="flex flex-col gap-1 text-xs font-medium text-black/60">
+          Kategorija
+          <select name="category" className="admin-input" defaultValue="ostalo">
+            <option value="čišćenje">Čišćenje</option>
+            <option value="održavanje">Održavanje</option>
+            <option value="režije">Režije</option>
+            <option value="ostalo">Ostalo</option>
+          </select>
         </label>
         <label className="flex flex-col gap-1 text-xs font-medium text-black/60">
           Iznos (€)

@@ -537,6 +537,7 @@ export default function PropertyForm({
         <TestimonialsEditor
           value={values.testimonials}
           onChange={(v) => set("testimonials", v)}
+          propertyName={values.name}
         />
       </div>
 
@@ -672,16 +673,40 @@ function ImageCategoriesEditor({
   );
 }
 
+/** "Kopiraj za Instagram" — formatira recenziju kao gotov Instagram caption
+    (citat + zvijezdice + ime + hashtagovi) i kopira u međuspremnik, bez
+    stvarnog auto-objavljivanja (nema Instagram API integracije). */
+function instagramCaption(t: Testimonial, propertyName: string): string {
+  const stars = "⭐".repeat(Math.max(1, Math.min(5, t.rating)));
+  return `${stars}\n\n"${t.text}"\n\n— ${t.author || "Gost"}, ${propertyName}\n\n#${propertyName.replace(/\s+/g, "")} #vikendica #odmor`;
+}
+
 function TestimonialsEditor({
   value,
   onChange,
+  propertyName,
 }: {
   value: Testimonial[];
   onChange: (v: Testimonial[]) => void;
+  propertyName: string;
 }) {
+  const [copiedIndex, setCopiedIndex] = useState<number | null>(null);
+
   function update(i: number, patch: Partial<Testimonial>) {
     onChange(value.map((t, idx) => (idx === i ? { ...t, ...patch } : t)));
   }
+
+  async function copyForInstagram(i: number, t: Testimonial) {
+    try {
+      await navigator.clipboard.writeText(instagramCaption(t, propertyName || "vikendica"));
+      setCopiedIndex(i);
+      setTimeout(() => setCopiedIndex((cur) => (cur === i ? null : cur)), 2000);
+    } catch {
+      // Clipboard API može biti nedostupan (npr. bez HTTPS-a lokalno) — tiho
+      // ne radi ništa, admin može ručno kopirati tekst iz textarea.
+    }
+  }
+
   return (
     <div className="flex flex-col gap-3">
       {value.map((t, i) => (
@@ -713,13 +738,18 @@ function TestimonialsEditor({
             value={t.text}
             onChange={(e) => update(i, { text: e.target.value })}
           />
-          <button
-            type="button"
-            onClick={() => onChange(value.filter((_, idx) => idx !== i))}
-            className="admin-repeat-remove"
-          >
-            Ukloni recenziju
-          </button>
+          <div className="flex items-center gap-3">
+            <button type="button" onClick={() => copyForInstagram(i, t)} className="admin-repeat-add">
+              {copiedIndex === i ? "Kopirano!" : "Kopiraj za Instagram"}
+            </button>
+            <button
+              type="button"
+              onClick={() => onChange(value.filter((_, idx) => idx !== i))}
+              className="admin-repeat-remove"
+            >
+              Ukloni recenziju
+            </button>
+          </div>
         </div>
       ))}
       <button

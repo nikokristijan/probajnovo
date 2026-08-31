@@ -13,7 +13,7 @@ export default function DeleteReservationButton({
 }) {
   return (
     <form
-      action={deleteReservationAction.bind(null, propertyId, id)}
+      action={deleteReservationAction.bind(null, propertyId, id, guestName)}
       onSubmit={(e) => {
         if (!confirm(`Sigurno želiš obrisati rezervaciju za "${guestName}"? Blokirani dani u kalendaru za ovu rezervaciju će se osloboditi.`)) {
           e.preventDefault();

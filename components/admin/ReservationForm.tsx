@@ -12,9 +12,11 @@ import { createReservationAction, type ActionState } from "@/lib/actions";
 export default function ReservationForm({
   propertyId,
   redirectTo,
+  capacityGuests,
 }: {
   propertyId: number;
   redirectTo: string;
+  capacityGuests?: number;
 }) {
   const [state, action, pending] = useActionState<ActionState, FormData>(
     createReservationAction.bind(null, propertyId, redirectTo),
@@ -48,6 +50,14 @@ export default function ReservationForm({
         <label className="flex flex-col gap-1 text-xs font-medium text-black/60">
           Odlazak
           <input name="checkOut" type="date" required className="admin-input" />
+        </label>
+        <label className="flex flex-col gap-1 text-xs font-medium text-black/60">
+          Broj gostiju (opcionalno){capacityGuests != null ? ` — kapacitet ${capacityGuests}` : ""}
+          <input name="guestCount" type="number" min={1} step={1} className="admin-input" />
+        </label>
+        <label className="flex flex-col gap-1 text-xs font-medium text-black/60">
+          Kapara (€, opcionalno)
+          <input name="depositEur" type="number" min={0} step={1} className="admin-input" />
         </label>
       </div>
       <label className="flex flex-col gap-1 text-xs font-medium text-black/60">
