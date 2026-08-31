@@ -36,6 +36,7 @@ type FormValues = {
   images: string[];
   bannerImage: string;
   contactEmail: string;
+  phone: string;
   published: boolean;
   showInStudies: boolean;
   layoutStyle: "classic" | "editorial" | "raw" | "apple";
@@ -74,6 +75,7 @@ function initialValues(property?: Property): FormValues {
     images: property?.images ?? [],
     bannerImage: property?.bannerImage ?? "",
     contactEmail: property?.contactEmail ?? "",
+    phone: property?.phone ?? "",
     published: property?.published ?? true,
     showInStudies: property?.showInStudies ?? false,
     layoutStyle: (property?.layoutStyle as FormValues["layoutStyle"]) ?? "classic",
@@ -512,16 +514,36 @@ export default function PropertyForm({
         <span className="text-xs text-black/50">Prikazuju se kao sitni chipovi pri vrhu stranice.</span>
       </Field>
 
-      <Field label="Kontakt email za ovu vikendicu (opcionalno)">
-        <input
-          name="contactEmail"
-          type="email"
-          value={values.contactEmail}
-          onChange={(e) => set("contactEmail", e.target.value)}
-          placeholder="Ostavi prazno za zadani email agencije"
-          className="admin-input"
-        />
-      </Field>
+      <div className="border border-black/10 rounded-xl p-4 flex flex-col gap-4 bg-black/[0.02]">
+        <span className="text-sm font-semibold">Kontakt vlasnika</span>
+        <div className="grid grid-cols-2 gap-4">
+          <Field label="Email vlasnika za ovu vikendicu (opcionalno)">
+            <input
+              name="contactEmail"
+              type="email"
+              value={values.contactEmail}
+              onChange={(e) => set("contactEmail", e.target.value)}
+              placeholder="Ostavi prazno za zadani email agencije"
+              className="admin-input"
+            />
+          </Field>
+          <Field label="Telefon vlasnika (opcionalno)">
+            <input
+              name="phone"
+              value={values.phone}
+              onChange={(e) => set("phone", e.target.value)}
+              placeholder="+385 91 234 5678"
+              className="admin-input"
+            />
+          </Field>
+        </div>
+        <span className="text-xs text-black/50">
+          Email gore prima i &quot;Kontaktirajte nas&quot; upite i automatsku obavijest o svakom
+          novom upitu s ove stranice — nije potrebno posebno polje za to. Telefon uključuje
+          &quot;Nazovite&quot; i WhatsApp gumb na stranici vikendice (ostaje skriven dok ga ne
+          upišeš).
+        </span>
+      </div>
 
       <label className="flex items-center gap-2 text-sm font-medium">
         <input
