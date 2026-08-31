@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import Image from "next/image";
 
 /* ------------------------------------------------------------------ */
 /* Tipovi                                                              */
@@ -64,7 +65,7 @@ const BG_SHADES = ["#eee", "#e6e6e6", "#dedede", "#f1f1f1", "#e2e2e2"];
 function ProjectImage({ src, alt, className }: { src?: string; alt: string; className?: string }) {
   if (src) {
     // eslint-disable-next-line @next/next/no-img-element
-    return <img src={src} alt={alt} className={className} />;
+    return <img src={src} alt={alt} className={className} loading="lazy" decoding="async" />;
   }
   const seed = alt || "novo";
   const hash = hashStr(seed);
@@ -574,8 +575,14 @@ export default function NovoHome({
     <div className="novo-os">
       <div className="novo-os-topbar">
         <div className="novo-os-brand">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/novo-logo.png" alt="NOVO" className="novo-os-logo-img" />
+          <Image
+            src="/novo-logo.png"
+            alt="NOVO"
+            className="novo-os-logo-img"
+            width={1474}
+            height={497}
+            priority
+          />
         </div>
         <span className="novo-os-coords mono muted">
           {coords.x}(X), {coords.y}(Y)

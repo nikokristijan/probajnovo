@@ -59,7 +59,7 @@ export default function GalleryLightbox({
         aria-label={`Otvori sliku ${index + 1}`}
       >
         {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src={src} alt={alt} className="stay-gallery-img" />
+        <img src={src} alt={alt} className="stay-gallery-img" loading="lazy" decoding="async" />
       </button>
     );
   }
