@@ -47,6 +47,11 @@ import {
   addManualBlockedDate,
   removeManualBlockedDate,
   blockManualDateRange,
+  createReservation,
+  deleteReservation,
+  setReservationPaid,
+  createExpense,
+  deleteExpense,
 } from "@/lib/db/queries";
 import { sendInquiryNotification, sendGuestConfirmation } from "@/lib/email";
 import { resolveCoordinates, geoMissWarning } from "@/lib/geocode";
@@ -1319,4 +1324,139 @@ export async function blockDateRangeAction(
   await blockManualDateRange(propertyId, start, end);
   revalidatePath("/admin/kalendar");
   redirect(redirectTo);
+}
+
+/* ---------------------------------------------------------------- */
+/* Rezervacije (puna knjiga rezervacija) — vidi app/admin/rezervacije. */
+/* Zamjena za vlasnikovu bilježnicu: gost, datumi, cijena, status       */
+/* plaćanja. Kreiranje automatski blokira noćenja u kalendaru (vidi     */
+/* lib/db/queries.ts createReservation), brisanje ih uklanja.           */
+/* ---------------------------------------------------------------- */
+
+const ReservationSchema = z.object({
+  guestName: z.string().min(1, "Ime gosta je obavezno."),
+  phone: z.string().optional(),
+  email: z
+    .string()
+    .optional()
+    .refine((v) => !v || z.string().email().safeParse(v).success, {
+      message: "Email gosta mora biti ispravan email.",
+    }),
+  checkIn: z.string().regex(DATE_RE, "Datum dolaska nije ispravan."),
+  checkOut: z.string().regex(DATE_RE, "Datum odlaska nije ispravan."),
+  priceEur: z.coerce.number().int().min(0, "Cijena ne smije biti negativna."),
+  paid: z.coerce.boolean(),
+  note: z.string().optional(),
+});
+
+export async function createReservationAction(
+  propertyId: number,
+  redirectTo: string,
+  _prevState: ActionState,
+  formData: FormData
+): Promise<ActionState> {
+  const admin = await requireAdminOrOwner();
+  await assertPropertyAccess(admin, propertyId);
+
+  const parsed = ReservationSchema.safeParse({
+    guestName: formData.get("guestName"),
+    phone: formData.get("phone"),
+    email: formData.get("email"),
+    checkIn: formData.get("checkIn"),
+    checkOut: formData.get("checkOut"),
+    priceEur: formData.get("priceEur"),
+    paid: formData.get("paid"),
+    note: formData.get("note"),
+  });
+  if (!parsed.success) {
+    return { error: parsed.error.issues[0]?.message ?? "Provjeri unesene podatke." };
+  }
+  if (parsed.data.checkOut <= parsed.data.checkIn) {
+    return { error: "Datum odlaska mora biti nakon datuma dolaska." };
+  }
+
+  await createReservation({
+    propertyId,
+    guestName: parsed.data.guestName,
+    phone: parsed.data.phone || null,
+    email: parsed.data.email || null,
+    checkIn: parsed.data.checkIn,
+    checkOut: parsed.data.checkOut,
+    priceEur: parsed.data.priceEur,
+    paid: parsed.data.paid,
+    note: parsed.data.note || null,
+  });
+
+  revalidatePath("/admin/rezervacije");
+  revalidatePath("/admin/kalendar");
+  revalidatePath("/admin");
+  // redirect() umjesto { success: true } — isprazni formu za sljedeći unos
+  // (isti razlog kao redirect("/admin") u createStudyAction/createProductAction).
+  redirect(redirectTo);
+}
+
+export async function deleteReservationAction(propertyId: number, id: number) {
+  const admin = await requireAdminOrOwner();
+  await assertPropertyAccess(admin, propertyId);
+  await deleteReservation(id);
+  revalidatePath("/admin/rezervacije");
+  revalidatePath("/admin/kalendar");
+  revalidatePath("/admin");
+}
+
+/** Označi/odznači je li vlasnik stvarno naplatio — SAMO plaćene rezervacije
+    ulaze u "zaradu ovaj mjesec" na dashboardu (vidi getMonthlyEarnings). */
+export async function toggleReservationPaidAction(
+  propertyId: number,
+  id: number,
+  currentlyPaid: boolean
+) {
+  const admin = await requireAdminOrOwner();
+  await assertPropertyAccess(admin, propertyId);
+  await setReservationPaid(id, !currentlyPaid);
+  revalidatePath("/admin/rezervacije");
+  revalidatePath("/admin");
+}
+
+/* ---------------------------------------------------------------- */
+/* Troškovi (opcionalno, za neto zaradu) — vidi app/admin/rezervacije. */
+/* ---------------------------------------------------------------- */
+
+const ExpenseSchema = z.object({
+  description: z.string().min(1, "Opis je obavezan."),
+  amountEur: z.coerce.number().int().min(0, "Iznos ne smije biti negativan."),
+  date: z.string().regex(DATE_RE, "Datum nije ispravan."),
+});
+
+export async function createExpenseAction(
+  propertyId: number,
+  redirectTo: string,
+  _prevState: ActionState,
+  formData: FormData
+): Promise<ActionState> {
+  const admin = await requireAdminOrOwner();
+  await assertPropertyAccess(admin, propertyId);
+
+  const parsed = ExpenseSchema.safeParse({
+    description: formData.get("description"),
+    amountEur: formData.get("amountEur"),
+    date: formData.get("date"),
+  });
+  if (!parsed.success) {
+    return { error: parsed.error.issues[0]?.message ?? "Provjeri unesene podatke." };
+  }
+
+  await createExpense({ propertyId, ...parsed.data });
+  revalidatePath("/admin/rezervacije");
+  revalidatePath("/admin");
+  // redirect() umjesto { success: true } — isprazni formu za sljedeći unos.
+  redirect(redirectTo);
+}
+
+export async function deleteExpenseAction(propertyId: number, id: number) {
+  const admin = await requireAdminOrOwner();
+  await assertPropertyAccess(admin, propertyId);
+  await deleteExpense(id);
+  revalidatePath("/admin/rezervacije");
+  revalidatePath("/admin");
 }
