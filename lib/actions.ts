@@ -55,6 +55,7 @@ const RESERVED_SLUGS = new Set([
   "sitemap.xml",
   "favicon.ico",
   "_next",
+  "en", // /en/[slug] — auto-prijevod vikendica, vidi app/en/[slug]/page.tsx
 ]);
 
 /** Postgres 42P01 ("relation does not exist") — kod živi na `.cause` kod Drizzle grešaka, ne na samoj grešci. */
