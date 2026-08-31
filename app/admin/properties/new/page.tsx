@@ -1,11 +1,9 @@
-import { redirect } from "next/navigation";
-import { getCurrentAdmin } from "@/lib/auth";
+import { requireFullAdmin } from "@/lib/auth";
 import { createPropertyAction } from "@/lib/actions";
 import PropertyForm from "@/components/admin/PropertyForm";
 
 export default async function NewPropertyPage() {
-const admin = await getCurrentAdmin();
-if (!admin) redirect("/admin/login");
+await requireFullAdmin();
 
 return (
 <div>
