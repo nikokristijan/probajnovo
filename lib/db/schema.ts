@@ -308,9 +308,13 @@ export const propertyBlockedDates = pgTable("property_blocked_dates", {
  * (vidi app/admin/rezervacije). Vlasnik ručno upisuje gosta, datume i cijenu;
  * `paid` označava je li vlasnik stvarno naplatio — SAMO plaćene rezervacije
  * ulaze u "zaradu ovaj mjesec" na dashboardu (vidi lib/db/queries.ts
- * getMonthlyEarnings), po izričitom pravilu vlasnika, ne po datumu dolaska/
- * odlaska. Kreiranje rezervacije automatski blokira datume boravka u
- * property_blocked_dates (source "reservation") da se poklapa s kalendarom.
+ * getMonthlyEarnings). Obračun je na gotovinskoj bazi: broji se MJESEC U
+ * KOJEM JE OZNAČENO PLAĆENO (paidAt), NE mjesec dolaska/odlaska gosta — npr.
+ * rezervacija za sljedeći mjesec plaćena unaprijed danas ulazi u OVOMJESEČNU
+ * zaradu, jer je novac stvarno stigao sad (vlasnikovo pravilo: "kad oznaci
+ * da je placeno uracuna se u zaradu"). Kreiranje rezervacije automatski
+ * blokira datume boravka u property_blocked_dates (source "reservation")
+ * da se poklapa s kalendarom.
  */
 export const reservations = pgTable("reservations", {
   id: serial("id").primaryKey(),
@@ -324,6 +328,10 @@ export const reservations = pgTable("reservations", {
   priceEur: integer("price_eur").notNull(),
   /** Je li vlasnik stvarno naplatio — vidi komentar gore, presudno za obračun zarade. */
   paid: boolean("paid").notNull().default(false),
+  /** Kad je zadnji put označeno plaćenim (postavlja se u setReservationPaid/
+      createReservation) — mjerodavno za "u kojem mjesecu ulazi u zaradu",
+      ne checkIn. Null dok nije (još) plaćeno. */
+  paidAt: timestamp("paid_at"),
   note: text("note"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });

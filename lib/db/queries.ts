@@ -587,7 +587,13 @@ export async function createReservation(data: {
   paid: boolean;
   note: string | null;
 }) {
-  const [reservation] = await db.insert(reservations).values(data).returning();
+  // Ako je odmah označeno plaćenim pri unosu (checkbox "Već plaćeno"), postavi
+  // paidAt SAD — isti trenutak koji setReservationPaid koristi za naknadno
+  // označavanje, vidi getMonthlyEarnings (gotovinska baza, ne checkIn).
+  const [reservation] = await db
+    .insert(reservations)
+    .values({ ...data, paidAt: data.paid ? new Date() : null })
+    .returning();
 
   // Blokiraj noćenja: checkIn do dan PRIJE checkOut — dan odjave ostaje
   // slobodan za sljedećeg gosta (standardna booking konvencija, isto kao
@@ -620,8 +626,14 @@ export async function deleteReservation(id: number) {
   await db.delete(reservations).where(eq(reservations.id, id));
 }
 
+/** Postavlja paidAt na SAD kad se označi plaćenim, čisti ga kad se odznači —
+    vidi getMonthlyEarnings (obračun po mjesecu u kojem je OZNAČENO plaćeno,
+    ne po checkIn/checkOut). */
 export async function setReservationPaid(id: number, paid: boolean) {
-  await db.update(reservations).set({ paid }).where(eq(reservations.id, id));
+  await db
+    .update(reservations)
+    .set({ paid, paidAt: paid ? new Date() : null })
+    .where(eq(reservations.id, id));
 }
 
 /* ---------------------------------------------------------------- */
@@ -650,11 +662,19 @@ export async function deleteExpense(id: number) {
   await db.delete(expenses).where(eq(expenses.id, id));
 }
 
+function monthPrefixOf(d: Date): string {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+}
+
 /** Zarada za mjesec (monthPrefix format "YYYY-MM") preko svih zadanih
-    vikendica — bruto je zbroj cijena SAMO plaćenih rezervacija čiji je
-    datum dolaska (checkIn) u tom mjesecu, po vlasnikovom izričitom pravilu
-    ("kad oznaci da je placeno uracuna se u zaradu"). Neto dodatno oduzima
-    troškove upisane u tom mjesecu (opcionalno polje, vidi expenses gore).
+    vikendica — bruto je zbroj cijena SAMO plaćenih rezervacija OZNAČENIH
+    plaćenim u tom mjesecu (paidAt), po vlasnikovom izričitom pravilu ("kad
+    oznaci da je placeno uracuna se u zaradu"). Namjerno gotovinska baza, ne
+    checkIn/checkOut — rezervacija za sljedeći mjesec plaćena unaprijed danas
+    ulazi u OVOMJESEČNU zaradu, jer je novac stigao sad. Neto dodatno
+    oduzima troškove čiji `date` pada u taj mjesec (opcionalno polje, vidi
+    expenses gore — tu OSTAJE datum troška, ne datum unosa, da vlasnik može
+    unaprijed upisati budući trošak bez da odmah utječe na tekući mjesec).
     Koristi se na vlasnikovom dashboardu (app/admin/page.tsx) i
     /admin/rezervacije. */
 export async function getMonthlyEarnings(propertyIds: number[], monthPrefix: string) {
@@ -666,7 +686,7 @@ export async function getMonthlyEarnings(propertyIds: number[], monthPrefix: str
   ]);
 
   const grossEur = allReservations
-    .filter((r) => r.paid && r.checkIn.startsWith(monthPrefix))
+    .filter((r) => r.paid && r.paidAt && monthPrefixOf(new Date(r.paidAt)) === monthPrefix)
     .reduce((sum, r) => sum + r.priceEur, 0);
   const expensesEur = allExpenses
     .filter((e) => e.date.startsWith(monthPrefix))
