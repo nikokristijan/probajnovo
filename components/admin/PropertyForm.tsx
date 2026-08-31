@@ -111,15 +111,22 @@ export default function PropertyForm({
   property,
   action,
   submitLabel,
+  initialWarning,
 }: {
   property?: Property;
   action: PropertyAction;
   submitLabel: string;
+  /** Upozorenje o kartu koje dolazi s URL-a (?geo=miss) nakon kreiranja nove
+   *  vikendice — vidi createPropertyAction. Prikazano dok se forma prvi put
+   *  ne pošalje, nakon čega preuzima state.warning (isti mehanizam za
+   *  update). */
+  initialWarning?: string;
 }) {
   const [state, formAction, pending] = useActionState<ActionState, FormData>(
     action,
     undefined
   );
+  const warning = state ? state.warning : initialWarning;
   const [values, setValues] = useState<FormValues>(() => initialValues(property));
 
   function set<K extends keyof FormValues>(key: K, value: FormValues[K]) {
@@ -602,6 +609,11 @@ export default function PropertyForm({
 
       {state?.error && <p className="text-sm text-red-600">{state.error}</p>}
       {state?.success && <p className="text-sm text-green-700">Spremljeno.</p>}
+      {warning && (
+        <p className="text-sm text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
+          {warning}
+        </p>
+      )}
 
       <button
         type="submit"
