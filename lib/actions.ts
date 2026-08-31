@@ -12,13 +12,16 @@ import {
 } from "@/lib/auth";
 import {
   findAdminByEmail,
+  getAgency,
   updateAgency,
   createProperty,
   updateProperty,
   deleteProperty,
+  getPropertyById,
   createCompany,
   updateCompany,
   deleteCompany,
+  getCompanyById,
   isSlugTaken,
   createStudy,
   updateStudy,
@@ -36,6 +39,7 @@ import {
   countAdmins,
   updateAdminPassword,
 } from "@/lib/db/queries";
+import { sendInquiryNotification } from "@/lib/email";
 
 export type ActionState = { error?: string; success?: boolean } | undefined;
 
@@ -931,10 +935,12 @@ export async function createInquiryAction(
     return { success: true };
   }
 
+  const sourceId = parsed.data.sourceId ? Number(parsed.data.sourceId) || null : null;
+
   try {
     await createInquiry({
       source: parsed.data.source,
-      sourceId: parsed.data.sourceId ? Number(parsed.data.sourceId) || null : null,
+      sourceId,
       sourceName: parsed.data.sourceName.trim(),
       name: parsed.data.name.trim(),
       email: parsed.data.email.trim(),
@@ -950,8 +956,45 @@ export async function createInquiryAction(
     return { error: "Slanje nije uspjelo — pokušaj ponovno." };
   }
 
+  // Email obavijest vlasniku — "best effort", nikad ne smije srušiti odgovor
+  // korisniku (upit je već sigurno spremljen iznad, bez obzira na ovo).
+  try {
+    const recipient = await resolveInquiryRecipient(parsed.data.source, sourceId);
+    if (recipient) {
+      await sendInquiryNotification({
+        to: recipient,
+        sourceName: parsed.data.sourceName.trim(),
+        name: parsed.data.name.trim(),
+        email: parsed.data.email.trim(),
+        phone: parsed.data.phone?.trim() || null,
+        message: parsed.data.message.trim(),
+      });
+    }
+  } catch {
+    // ignoriraj — vidi komentar gore
+  }
+
   revalidatePath("/admin/inquiries");
   return { success: true };
+}
+
+/** Kontakt-email vikendice/firme na koji ide obavijest o novom upitu; pada
+    natrag na agencijski email ako specifičan nije postavljen (isti lanac
+    fallbackova kao za "Pošaljite upit" mailto gumbe na /[slug] stranici). */
+async function resolveInquiryRecipient(
+  source: "property" | "company" | "agency",
+  sourceId: number | null
+): Promise<string | null> {
+  const agency = await getAgency();
+  if (source === "property" && sourceId) {
+    const property = await getPropertyById(sourceId);
+    if (property?.contactEmail) return property.contactEmail;
+  }
+  if (source === "company" && sourceId) {
+    const company = await getCompanyById(sourceId);
+    if (company?.contactEmail) return company.contactEmail;
+  }
+  return agency?.contactEmail || null;
 }
 
 export async function markInquiryReadAction(id: number) {
