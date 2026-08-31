@@ -48,6 +48,7 @@ type FormValues = {
   hostNote: string;
   hostPhoto: string;
   mapUrl: string;
+  address: string;
   testimonials: Testimonial[];
   faq: FaqItem[];
   imageCategories: Record<string, string>;
@@ -87,6 +88,7 @@ function initialValues(property?: Property): FormValues {
     hostNote: property?.hostNote ?? "",
     hostPhoto: property?.hostPhoto ?? "",
     mapUrl: property?.mapUrl ?? "",
+    address: property?.address ?? "",
     testimonials: property?.testimonials ?? [],
     faq: property?.faq ?? [],
     imageCategories: property?.imageCategories ?? {},
@@ -379,7 +381,20 @@ export default function PropertyForm({
             </Field>
           </div>
         </div>
-        <Field label="Poveznica na mapu (Google Maps i sl., opcionalno)">
+        <Field label="Adresa (za automatsku kartu na stranici)">
+          <input
+            name="address"
+            value={values.address}
+            onChange={(e) => set("address", e.target.value)}
+            placeholder="npr. Bukovlje 45, Slavonski Brod"
+            className="admin-input"
+          />
+          <p className="text-xs text-black/50 mt-1">
+            Unesi punu adresu i stranica će automatski prikazati ugrađenu kartu (OpenStreetMap,
+            besplatno) — ne treba ništa ručno tražiti/kopirati.
+          </p>
+        </Field>
+        <Field label="Poveznica na mapu (opcionalno)">
           <input
             name="mapUrl"
             value={values.mapUrl}
@@ -387,6 +402,10 @@ export default function PropertyForm({
             placeholder="https://maps.google.com/…"
             className="admin-input"
           />
+          <p className="text-xs text-black/50 mt-1">
+            Koristi se za gumb &quot;Otvori na karti&quot;. Ostavi prazno i, ako je adresa
+            popunjena, automatski se koristi OpenStreetMap poveznica.
+          </p>
         </Field>
       </div>
 
