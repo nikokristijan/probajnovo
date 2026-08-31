@@ -1,11 +1,27 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import Link from "next/link";
 import { getCurrentAdminRecord } from "@/lib/auth";
 import { logoutAction } from "@/lib/actions";
+import PwaRegister from "@/components/admin/PwaRegister";
 
 export const metadata: Metadata = {
   title: "NOVO — admin",
   robots: { index: false, follow: false },
+  // PWA — omogućuje "Dodaj na početni zaslon" / "Instaliraj aplikaciju" za
+  // /admin na mobitelu, vidi public/admin-manifest.json i PwaRegister.tsx.
+  manifest: "/admin-manifest.json",
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "default",
+    title: "NOVO admin",
+  },
+  icons: {
+    apple: "/apple-touch-icon.png",
+  },
+};
+
+export const viewport: Viewport = {
+  themeColor: "#ff7f00",
 };
 
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
@@ -13,6 +29,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
 
   return (
     <div className="admin-shell">
+      <PwaRegister />
       <header className="flex items-center justify-between px-6 py-4 border-b border-black/10 bg-white flex-wrap gap-3">
         <span className="font-bold tracking-tight">
           NOVO <span className="text-[#ff7f00]">admin</span>
