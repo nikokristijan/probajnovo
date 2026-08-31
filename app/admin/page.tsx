@@ -1,11 +1,9 @@
 import Link from "next/link";
-import { redirect } from "next/navigation";
-import { getCurrentAdminRecord } from "@/lib/auth";
+import { requireFullAdmin } from "@/lib/auth";
 import { listProperties, listCompanies, listStudies, listProducts, countUnreadInquiries } from "@/lib/db/queries";
 
 export default async function AdminDashboard() {
-  const admin = await getCurrentAdminRecord();
-  if (!admin) redirect("/admin/login");
+  const admin = await requireFullAdmin();
 
   const [properties, companies, studies, products, unreadInquiries] = await Promise.all([
     listProperties(),

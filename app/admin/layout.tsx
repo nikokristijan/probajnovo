@@ -19,22 +19,39 @@ export default async function AdminLayout({ children }: { children: React.ReactN
         </span>
         {admin && (
           <nav className="flex items-center gap-5 text-sm flex-wrap">
-            <Link href="/admin" className="hover:text-[#ff7f00]">
-              Pregled
-            </Link>
-            <Link href="/admin/agency" className="hover:text-[#ff7f00]">
-              Sadržaj agencije
-            </Link>
-            <Link href="/admin#firme" className="hover:text-[#ff7f00]">
-              Firme
-            </Link>
-            <Link href="/admin/inquiries" className="hover:text-[#ff7f00]">
-              Upiti
-            </Link>
-            {admin.isSuperAdmin && (
-              <Link href="/admin/admins" className="hover:text-[#ff7f00]">
-                Admini
-              </Link>
+            {admin.role === "owner" ? (
+              // Vlasnik ima samo ograničen pregled — ne smije uređivati stranicu.
+              <>
+                <Link href="/admin/inquiries" className="hover:text-[#ff7f00]">
+                  Upiti
+                </Link>
+                <Link href="/admin/kalendar" className="hover:text-[#ff7f00]">
+                  Kalendar
+                </Link>
+              </>
+            ) : (
+              <>
+                <Link href="/admin" className="hover:text-[#ff7f00]">
+                  Pregled
+                </Link>
+                <Link href="/admin/agency" className="hover:text-[#ff7f00]">
+                  Sadržaj agencije
+                </Link>
+                <Link href="/admin#firme" className="hover:text-[#ff7f00]">
+                  Firme
+                </Link>
+                <Link href="/admin/inquiries" className="hover:text-[#ff7f00]">
+                  Upiti
+                </Link>
+                <Link href="/admin/kalendar" className="hover:text-[#ff7f00]">
+                  Kalendar
+                </Link>
+                {admin.isSuperAdmin && (
+                  <Link href="/admin/admins" className="hover:text-[#ff7f00]">
+                    Admini
+                  </Link>
+                )}
+              </>
             )}
             <Link href="/admin/settings" className="hover:text-[#ff7f00]">
               Postavke
@@ -47,6 +64,11 @@ export default async function AdminLayout({ children }: { children: React.ReactN
               {admin.isSuperAdmin && (
                 <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-[#ff7f00]/10 text-[#ff7f00]">
                   glavni
+                </span>
+              )}
+              {admin.role === "owner" && (
+                <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-black/5 text-black/50">
+                  vlasnik
                 </span>
               )}
             </span>
