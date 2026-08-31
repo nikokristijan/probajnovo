@@ -202,7 +202,20 @@ export default async function SlugPage({
   notFound();
 }
 
-function PropertyView({ property, agency }: { property: Property; agency: Agency | null }) {
+export function PropertyView({
+  property,
+  agency,
+  lang = "hr",
+}: {
+  property: Property;
+  agency: Agency | null;
+  lang?: "hr" | "en";
+}) {
+  // Sitni pomoćnik za par desetaka fiksnih UI natpisa (naslovi sekcija, gumbi…)
+  // — vidi lib/translate.ts za veći, DeepL-prevedeni gostov sadržaj (opis,
+  // sadržaji, kućni red, FAQ, bilješka domaćina), koji se prevodi PRIJE nego
+  // stigne ovamo (property.tagline itd. je već engleski kad je lang="en").
+  const L = (hr: string, en: string) => (lang === "en" ? en : hr);
   const layout =
     property.layoutStyle === "editorial" ||
     property.layoutStyle === "raw" ||
@@ -225,8 +238,8 @@ function PropertyView({ property, agency }: { property: Property; agency: Agency
 
   const marqueeItems = [
     property.location,
-    `od ${property.priceFromEur} €/noć`,
-    `${property.capacityGuests} gostiju`,
+    `${L("od", "from")} ${property.priceFromEur} €${L("/noć", "/night")}`,
+    `${property.capacityGuests} ${L("gostiju", "guests")}`,
     property.tagline,
     ...property.amenities.slice(0, 4),
   ].filter(Boolean);
@@ -272,9 +285,17 @@ function PropertyView({ property, agency }: { property: Property; agency: Agency
 
       <header className="stay-nav">
         <span className="stay-nav-brand">NOVO</span>
-        <a className="stay-nav-cta" href={mailHref} data-magnetic>
-          Pošaljite upit
-        </a>
+        <div className="stay-nav-right">
+          <a
+            className="stay-lang-switch"
+            href={lang === "en" ? `/${property.slug}` : `/en/${property.slug}`}
+          >
+            {lang === "en" ? "HR" : "EN"}
+          </a>
+          <a className="stay-nav-cta" href={mailHref} data-magnetic>
+            {L("Pošaljite upit", "Send an inquiry")}
+          </a>
+        </div>
       </header>
 
       {layout === "raw" && marqueeItems.length > 0 && (
@@ -336,10 +357,10 @@ function PropertyView({ property, agency }: { property: Property; agency: Agency
       )}
 
       <div className="stay-stats">
-        <div className="stay-stat">{property.capacityGuests} gostiju</div>
-        <div className="stay-stat">{property.bedrooms} spavaće sobe</div>
+        <div className="stay-stat">{property.capacityGuests} {L("gostiju", "guests")}</div>
+        <div className="stay-stat">{property.bedrooms} {L("spavaće sobe", "bedrooms")}</div>
         <div className="stay-stat">{property.distanceFromCenter}</div>
-        <div className="stay-stat">od {property.priceFromEur} €/noć</div>
+        <div className="stay-stat">{L("od", "from")} {property.priceFromEur} €{L("/noć", "/night")}</div>
       </div>
 
       {property.reviewBadges.length > 0 && (
@@ -354,7 +375,7 @@ function PropertyView({ property, agency }: { property: Property; agency: Agency
 
       <RevealSection className="stay-section stay-about" data-secno={aboutNo}>
         <h2 className="stay-eyebrow">
-          <span className="stay-eyebrow-no">{aboutNo}</span>O objektu
+          <span className="stay-eyebrow-no">{aboutNo}</span>{L("O objektu", "About")}
         </h2>
         <p className={layout === "editorial" ? "stay-dropcap" : undefined}>
           {property.description}
@@ -372,7 +393,7 @@ function PropertyView({ property, agency }: { property: Property; agency: Agency
       {gallery.length > 0 && (
         <RevealSection className="stay-section">
           <h2 className="stay-eyebrow">
-            <span className="stay-eyebrow-no">{eyebrowNo()}</span>Galerija
+            <span className="stay-eyebrow-no">{eyebrowNo()}</span>{L("Galerija", "Gallery")}
           </h2>
           <GalleryLightbox images={gallery} alt={property.name} categories={property.imageCategories} />
         </RevealSection>
@@ -381,7 +402,7 @@ function PropertyView({ property, agency }: { property: Property; agency: Agency
       {property.videoUrl && (
         <RevealSection className="stay-section stay-alt">
           <h2 className="stay-eyebrow">
-            <span className="stay-eyebrow-no">{eyebrowNo()}</span>Video
+            <span className="stay-eyebrow-no">{eyebrowNo()}</span>{L("Video", "Video")}
           </h2>
           {embedSrc ? (
             <div className="stay-video-frame">
@@ -394,7 +415,7 @@ function PropertyView({ property, agency }: { property: Property; agency: Agency
             </div>
           ) : (
             <a className="stay-map-link" href={property.videoUrl} target="_blank" rel="noreferrer" data-magnetic>
-              Pogledajte video ↗
+              {L("Pogledajte video ↗", "Watch video ↗")}
             </a>
           )}
         </RevealSection>
@@ -403,7 +424,7 @@ function PropertyView({ property, agency }: { property: Property; agency: Agency
       {property.amenities.length > 0 && (
         <RevealSection className="stay-section stay-alt">
           <h2 className="stay-eyebrow">
-            <span className="stay-eyebrow-no">{eyebrowNo()}</span>Sadržaji
+            <span className="stay-eyebrow-no">{eyebrowNo()}</span>{L("Sadržaji", "Amenities")}
           </h2>
           <div className="stay-amenities">
             {property.amenities.map((a) => (
@@ -419,18 +440,18 @@ function PropertyView({ property, agency }: { property: Property; agency: Agency
       {(property.checkInTime || property.checkOutTime) && (
         <RevealSection className="stay-section">
           <h2 className="stay-eyebrow">
-            <span className="stay-eyebrow-no">{eyebrowNo()}</span>Prijava &amp; odjava
+            <span className="stay-eyebrow-no">{eyebrowNo()}</span>{L("Prijava & odjava", "Check-in & check-out")}
           </h2>
           <div className="stay-hours">
             {property.checkInTime && (
               <div className="stay-hour">
-                <span className="stay-hour-label mono">PRIJAVA</span>
+                <span className="stay-hour-label mono">{L("PRIJAVA", "CHECK-IN")}</span>
                 <span className="stay-hour-value">{property.checkInTime}</span>
               </div>
             )}
             {property.checkOutTime && (
               <div className="stay-hour">
-                <span className="stay-hour-label mono">ODJAVA</span>
+                <span className="stay-hour-label mono">{L("ODJAVA", "CHECK-OUT")}</span>
                 <span className="stay-hour-value">{property.checkOutTime}</span>
               </div>
             )}
@@ -441,7 +462,7 @@ function PropertyView({ property, agency }: { property: Property; agency: Agency
       {property.houseRules.length > 0 && (
         <RevealSection className="stay-section stay-alt">
           <h2 className="stay-eyebrow">
-            <span className="stay-eyebrow-no">{eyebrowNo()}</span>Kućni red
+            <span className="stay-eyebrow-no">{eyebrowNo()}</span>{L("Kućni red", "House rules")}
           </h2>
           <ul className="stay-rules">
             {property.houseRules.map((r) => (
@@ -454,7 +475,7 @@ function PropertyView({ property, agency }: { property: Property; agency: Agency
       {property.testimonials.length > 0 && (
         <RevealSection className="stay-section">
           <h2 className="stay-eyebrow">
-            <span className="stay-eyebrow-no">{eyebrowNo()}</span>Što kažu gosti
+            <span className="stay-eyebrow-no">{eyebrowNo()}</span>{L("Što kažu gosti", "What guests say")}
           </h2>
           <div className="stay-testimonials">
             {property.testimonials.map((t, i) => (
@@ -471,7 +492,7 @@ function PropertyView({ property, agency }: { property: Property; agency: Agency
       {property.faq.length > 0 && (
         <RevealSection className="stay-section stay-alt">
           <h2 className="stay-eyebrow">
-            <span className="stay-eyebrow-no">{eyebrowNo()}</span>Često postavljana pitanja
+            <span className="stay-eyebrow-no">{eyebrowNo()}</span>{L("Često postavljana pitanja", "Frequently asked questions")}
           </h2>
           <div className="stay-faq">
             {property.faq.map((f, i) => (
@@ -487,14 +508,14 @@ function PropertyView({ property, agency }: { property: Property; agency: Agency
       {(property.hostName || property.hostNote) && (
         <RevealSection className="stay-section">
           <h2 className="stay-eyebrow">
-            <span className="stay-eyebrow-no">{eyebrowNo()}</span>Domaćin
+            <span className="stay-eyebrow-no">{eyebrowNo()}</span>{L("Domaćin", "Host")}
           </h2>
           <div className="stay-host">
             {property.hostPhoto && (
               // eslint-disable-next-line @next/next/no-img-element
               <img
                 src={property.hostPhoto}
-                alt={property.hostName ?? "Domaćin"}
+                alt={property.hostName ?? L("Domaćin", "Host")}
                 className="stay-host-photo"
                 loading="lazy"
                 decoding="async"
@@ -511,10 +532,10 @@ function PropertyView({ property, agency }: { property: Property; agency: Agency
       {property.mapUrl && (
         <RevealSection className="stay-section stay-alt">
           <h2 className="stay-eyebrow">
-            <span className="stay-eyebrow-no">{eyebrowNo()}</span>Lokacija
+            <span className="stay-eyebrow-no">{eyebrowNo()}</span>{L("Lokacija", "Location")}
           </h2>
           <a className="stay-map-link" href={property.mapUrl} target="_blank" rel="noreferrer" data-magnetic>
-            Otvori na karti ↗
+            {L("Otvori na karti ↗", "Open in maps ↗")}
           </a>
         </RevealSection>
       )}
@@ -522,13 +543,13 @@ function PropertyView({ property, agency }: { property: Property; agency: Agency
       {property.seasonalPricing.length > 0 && (
         <RevealSection className="stay-section">
           <h2 className="stay-eyebrow">
-            <span className="stay-eyebrow-no">{eyebrowNo()}</span>Sezonski cjenik
+            <span className="stay-eyebrow-no">{eyebrowNo()}</span>{L("Sezonski cjenik", "Seasonal pricing")}
           </h2>
           <div className="stay-season-table">
             {property.seasonalPricing.map((s, i) => (
               <div className="stay-season-row" key={s.label + i}>
                 <span>{s.label}</span>
-                <span className="stay-season-price">{s.priceEur} € / noć</span>
+                <span className="stay-season-price">{s.priceEur} € {L("/ noć", "/ night")}</span>
               </div>
             ))}
           </div>
@@ -539,9 +560,9 @@ function PropertyView({ property, agency }: { property: Property; agency: Agency
         <div className="stay-book">
           <div>
             <div className="price">
-              {property.priceFromEur} € <small>/ noćenje</small>
+              {property.priceFromEur} € <small>{L("/ noćenje", "/ night")}</small>
             </div>
-            <p>Odgovaramo unutar 24h</p>
+            <p>{L("Odgovaramo unutar 24h", "We reply within 24h")}</p>
           </div>
           <div className="stay-book-actions">
             {property.availabilityUrl && (
@@ -552,12 +573,12 @@ function PropertyView({ property, agency }: { property: Property; agency: Agency
                 rel="noreferrer"
                 data-magnetic
               >
-                Provjeri dostupnost ↗
+                {L("Provjeri dostupnost ↗", "Check availability ↗")}
               </a>
             )}
             {telHref && (
               <a className="stay-avail-link" href={telHref} data-magnetic>
-                Nazovite
+                {L("Nazovite", "Call")}
               </a>
             )}
             {waHref && (
@@ -566,7 +587,7 @@ function PropertyView({ property, agency }: { property: Property; agency: Agency
               </a>
             )}
             <a className="bookbtn" href={mailHref} data-magnetic>
-              Pošaljite upit
+              {L("Pošaljite upit", "Send an inquiry")}
             </a>
           </div>
         </div>
@@ -574,20 +595,20 @@ function PropertyView({ property, agency }: { property: Property; agency: Agency
 
       <RevealSection className="stay-section stay-alt">
         <h2 className="stay-eyebrow">
-          <span className="stay-eyebrow-no">{eyebrowNo()}</span>Pošaljite upit
+          <span className="stay-eyebrow-no">{eyebrowNo()}</span>{L("Pošaljite upit", "Send an inquiry")}
         </h2>
-        <InquiryForm source="property" sourceId={property.id} sourceName={property.name} />
+        <InquiryForm source="property" sourceId={property.id} sourceName={property.name} lang={lang} />
       </RevealSection>
 
       <footer className="stay-foot">
         {property.name} · {property.location}
         <div className="credit">
-          Stranicu pokreće <Link href="/">NOVO</Link>
+          {L("Stranicu pokreće", "Site by")} <Link href="/">NOVO</Link>
         </div>
       </footer>
 
       <div className="stay-mobile-cta">
-        <a href={mailHref}>Pošaljite upit</a>
+        <a href={mailHref}>{L("Pošaljite upit", "Send an inquiry")}</a>
       </div>
     </div>
   );
