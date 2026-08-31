@@ -64,6 +64,25 @@ export default function ImageUploader({
   const inputRef = useRef<HTMLInputElement>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // Redoslijed slika povlačenjem mišem — samo za galerije (multiple), redoslijed
+  // niza `value` JE redoslijed prikaza na stranici vikendice/firme, pa je ovo
+  // dovoljno (nema posebnog "position" polja koje bi trebalo ažurirati).
+  const [dragIndex, setDragIndex] = useState<number | null>(null);
+  const [overIndex, setOverIndex] = useState<number | null>(null);
+
+  function handleDrop(targetIndex: number) {
+    if (dragIndex === null || dragIndex === targetIndex) {
+      setDragIndex(null);
+      setOverIndex(null);
+      return;
+    }
+    const next = [...value];
+    const [moved] = next.splice(dragIndex, 1);
+    next.splice(targetIndex, 0, moved);
+    onChange(next);
+    setDragIndex(null);
+    setOverIndex(null);
+  }
 
   async function handleFiles(files: FileList | null) {
     if (!files || files.length === 0) return;
@@ -102,10 +121,31 @@ export default function ImageUploader({
           {value.map((url, i) => (
             <div
               key={url + i}
-              className="relative w-20 h-20 rounded-lg overflow-hidden border border-black/10 bg-black/5"
+              draggable={multiple}
+              onDragStart={multiple ? () => setDragIndex(i) : undefined}
+              onDragOver={
+                multiple
+                  ? (e) => {
+                      e.preventDefault();
+                      if (overIndex !== i) setOverIndex(i);
+                    }
+                  : undefined
+              }
+              onDragLeave={multiple ? () => setOverIndex((cur) => (cur === i ? null : cur)) : undefined}
+              onDrop={multiple ? (e) => { e.preventDefault(); handleDrop(i); } : undefined}
+              onDragEnd={multiple ? () => { setDragIndex(null); setOverIndex(null); } : undefined}
+              className={
+                "relative w-20 h-20 rounded-lg overflow-hidden border bg-black/5 " +
+                (multiple ? "cursor-grab active:cursor-grabbing " : "") +
+                (overIndex === i && dragIndex !== null && dragIndex !== i
+                  ? "border-black border-2"
+                  : "border-black/10") +
+                (dragIndex === i ? " opacity-40" : "")
+              }
+              title={multiple ? "Povuci da promijeniš redoslijed" : undefined}
             >
               {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={url} alt="" className="w-full h-full object-cover" />
+              <img src={url} alt="" className="w-full h-full object-cover pointer-events-none" />
               <button
                 type="button"
                 onClick={() => removeAt(i)}
@@ -117,6 +157,9 @@ export default function ImageUploader({
             </div>
           ))}
         </div>
+      )}
+      {multiple && value.length > 1 && (
+        <span className="text-xs text-black/40 -mt-1">Povuci sliku da promijeniš redoslijed prikaza.</span>
       )}
 
       <label className="self-start rounded-full border border-black/20 px-4 py-2 text-sm cursor-pointer hover:border-black transition-colors">
