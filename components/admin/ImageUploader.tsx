@@ -4,6 +4,40 @@ import { useRef, useState } from "react";
 import { upload } from "@vercel/blob/client";
 
 /**
+ * Izreže sliku na kvadrat (centrirano) i smanji je na `size` × `size`
+ * piksela, izlaz kao PNG File. Koristi se za favicon: admini inače uploadaju
+ * punu fotografiju s telefona (nekoliko MB, tisuće piksela u širinu), a
+ * preglednik takvu sliku kao tab-ikonu ili jako sporo dekodira ili je uopće
+ * ne prikaže — otud "custom favicon ne radi" iako je link na sliku ispravan.
+ * `imageOrientation: "from-image"` poštuje EXIF rotaciju (česta kod fotki s
+ * telefona) da izrezani kvadrat ne ispadne zarotiran.
+ */
+async function resizeImageToSquare(file: File, size: number): Promise<File> {
+  try {
+    const bitmap = await createImageBitmap(file, { imageOrientation: "from-image" });
+    const side = Math.min(bitmap.width, bitmap.height);
+    const sx = (bitmap.width - side) / 2;
+    const sy = (bitmap.height - side) / 2;
+
+    const canvas = document.createElement("canvas");
+    canvas.width = size;
+    canvas.height = size;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return file;
+
+    ctx.drawImage(bitmap, sx, sy, side, side, 0, 0, size, size);
+    const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, "image/png"));
+    if (!blob) return file;
+
+    return new File([blob], "favicon.png", { type: "image/png" });
+  } catch {
+    // Ako iz nekog razloga ne uspije (npr. stariji preglednik bez
+    // createImageBitmap), radije uploadaj original nego da upload padne.
+    return file;
+  }
+}
+
+/**
  * Upload slika izravno iz preglednika u Vercel Blob (mimo servera, pa nema
  * limita veličine kao kod Server Actiona). Radi i za jednu sliku (banner)
  * i za više slika odjednom (galerija) — razlika je samo u `multiple` propu.
@@ -14,12 +48,18 @@ export default function ImageUploader({
   multiple = false,
   value,
   onChange,
+  resizeToSquare,
 }: {
   label: string;
   helpText?: string;
   multiple?: boolean;
   value: string[];
   onChange: (urls: string[]) => void;
+  /** Kad je postavljeno (npr. 256), svaka slika se prije uploada izreže na
+   *  kvadrat i smanji na tu veličinu u pikselima — vidi resizeImageToSquare
+   *  iznad. Koristi se samo za favicon; galerija/banner žele punu kvalitetu
+   *  pa ovo ne postavljaju. */
+  resizeToSquare?: number;
 }) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [busy, setBusy] = useState(false);
@@ -32,7 +72,8 @@ export default function ImageUploader({
     try {
       const uploaded: string[] = [];
       for (const file of Array.from(files)) {
-        const blob = await upload(file.name, file, {
+        const toUpload = resizeToSquare ? await resizeImageToSquare(file, resizeToSquare) : file;
+        const blob = await upload(toUpload.name, toUpload, {
           access: "public",
           handleUploadUrl: "/api/blob/upload",
         });

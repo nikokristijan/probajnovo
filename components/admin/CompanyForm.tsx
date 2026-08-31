@@ -334,9 +334,10 @@ export default function CompanyForm({
         </span>
         <ImageUploader
           label="Favicon (tab-ikona u pregledniku)"
-          helpText="Kvadratna slika, idealno 512×512px. Ako ne uploadaš, koristi se NOVO logo."
+          helpText="Bilo koja slika je OK — automatski se izreže na kvadrat i smanji. Ako ne uploadaš, koristi se NOVO logo."
           value={values.faviconUrl ? [values.faviconUrl] : []}
           onChange={(urls) => set("faviconUrl", urls[0] ?? "")}
+          resizeToSquare={256}
         />
         <Field label="Vlastita domena (opcionalno, npr. tvrtka.com)">
           <input
