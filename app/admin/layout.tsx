@@ -33,6 +33,12 @@ export default async function AdminLayout({ children }: { children: React.ReactN
   // izgleda identično kome god bio dodijeljen, pa nije jasno na prvi pogled
   // kojom stranicom vlasnik zapravo upravlja.
   let ownerLabel: string | null = null;
+  // "Pogledaj stranicu" u headeru dolje treba vlasnika odvesti na NJEGOVU
+  // vikendicu/firmu, ne na agencijsku naslovnicu (koja njemu ništa ne znači
+  // i nije njegova stranica) — prva dodijeljena vikendica ima prednost,
+  // firma tek ako vlasnik nema nijednu vikendicu. Null = vlasnik nema
+  // dodijeljenu nijednu stranicu, pa link ostaje na agencijskoj naslovnici.
+  let ownerPageHref: string | null = null;
   if (admin?.role === "owner") {
     const [ownedProperties, ownedCompanies] = await Promise.all([
       listPropertiesForAdmin(admin),
@@ -40,6 +46,8 @@ export default async function AdminLayout({ children }: { children: React.ReactN
     ]);
     const names = [...ownedProperties.map((p) => p.name), ...ownedCompanies.map((c) => c.name)];
     ownerLabel = names.length > 0 ? names.join(", ") : null;
+    const slug = ownedProperties[0]?.slug ?? ownedCompanies[0]?.slug;
+    ownerPageHref = slug ? `/${slug}` : null;
   }
 
   return (
@@ -99,7 +107,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
             <Link href="/admin/settings" className="hover:text-[#ff7f00]">
               Postavke
             </Link>
-            <Link href="/" className="hover:text-[#ff7f00]" target="_blank">
+            <Link href={ownerPageHref ?? "/"} className="hover:text-[#ff7f00]" target="_blank">
               Pogledaj stranicu ↗
             </Link>
             <span className="text-black/40 flex items-center gap-1.5">
