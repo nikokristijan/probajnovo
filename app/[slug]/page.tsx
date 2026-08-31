@@ -217,6 +217,10 @@ function PropertyView({ property, agency }: { property: Property; agency: Agency
   const effectiveBanner = property.bannerImage || property.images[0] || null;
   const gallery = property.images.filter((src) => src !== effectiveBanner);
   const mailHref = `mailto:${contactEmail}?subject=Upit — ${property.name}`;
+  const telHref = property.phone ? `tel:${property.phone.replace(/[^\d+]/g, "")}` : null;
+  const waHref = property.phone
+    ? `https://wa.me/${whatsAppNumber(property.phone)}?text=${encodeURIComponent(`Pozdrav! Imam upit vezan za ${property.name}.`)}`
+    : null;
   const embedSrc = property.videoUrl ? videoEmbedSrc(property.videoUrl) : null;
 
   const marqueeItems = [
@@ -249,6 +253,7 @@ function PropertyView({ property, agency }: { property: Property; agency: Agency
       addressCountry: "HR",
     },
     priceRange: `${property.priceFromEur} EUR`,
+    ...(property.phone ? { telephone: property.phone } : {}),
   };
   if (property.testimonials.length > 0) {
     propertyJsonLd.aggregateRating = {
@@ -548,6 +553,16 @@ function PropertyView({ property, agency }: { property: Property; agency: Agency
                 data-magnetic
               >
                 Provjeri dostupnost ↗
+              </a>
+            )}
+            {telHref && (
+              <a className="stay-avail-link" href={telHref} data-magnetic>
+                Nazovite
+              </a>
+            )}
+            {waHref && (
+              <a className="stay-avail-link" href={waHref} target="_blank" rel="noreferrer" data-magnetic>
+                WhatsApp
               </a>
             )}
             <a className="bookbtn" href={mailHref} data-magnetic>
