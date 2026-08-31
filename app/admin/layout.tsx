@@ -53,7 +53,12 @@ export default async function AdminLayout({ children }: { children: React.ReactN
           <nav className="flex items-center gap-5 text-sm flex-wrap">
             {admin.role === "owner" ? (
               // Vlasnik ima samo ograničen pregled — ne smije uređivati stranicu.
+              // /admin sad prikazuje njegov vlastiti dashboard (vidi app/admin/page.tsx),
+              // ne puni pregled kao za role="admin".
               <>
+                <Link href="/admin" className="hover:text-[#ff7f00]">
+                  Početna
+                </Link>
                 <Link href="/admin/inquiries" className="hover:text-[#ff7f00]">
                   Upiti
                 </Link>

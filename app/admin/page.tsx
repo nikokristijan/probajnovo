@@ -1,9 +1,27 @@
 import Link from "next/link";
-import { requireFullAdmin } from "@/lib/auth";
-import { listProperties, listCompanies, listStudies, listProducts, countUnreadInquiries } from "@/lib/db/queries";
+import { redirect } from "next/navigation";
+import { getCurrentAdminRecord } from "@/lib/auth";
+import {
+  listProperties,
+  listCompanies,
+  listStudies,
+  listProducts,
+  countUnreadInquiries,
+  listPropertiesForAdmin,
+  listCompaniesForAdmin,
+  listInquiriesForAdmin,
+  listBlockedDates,
+} from "@/lib/db/queries";
+import type { AdminUser } from "@/lib/db/schema";
 
 export default async function AdminDashboard() {
-  const admin = await requireFullAdmin();
+  // Prije se ovdje zvao requireFullAdmin() koji je vlasnika (role="owner")
+  // odmah preusmjeravao na /admin/inquiries — sad /admin grana na
+  // OwnerDashboard umjesto preusmjeravanja, pa loginAction vlasnika šalje
+  // ovamo (vidi lib/actions.ts loginAction).
+  const admin = await getCurrentAdminRecord();
+  if (!admin) redirect("/admin/login");
+  if (admin.role === "owner") return <OwnerDashboard admin={admin} />;
 
   const [properties, companies, studies, products, unreadInquiries] = await Promise.all([
     listProperties(),
@@ -286,5 +304,201 @@ function StatCard({ label, value }: { label: string; value: number }) {
       <div className="text-2xl font-bold tabular-nums">{value}</div>
       <div className="text-xs text-black/50 mt-0.5">{label}</div>
     </div>
+  );
+}
+
+/* ---------------------------------------------------------------- */
+/* Vlasnički (role="owner") dashboard — zamjena za stari redirect na  */
+/* /admin/inquiries: pozdrav imenom domaćina (property.hostName),     */
+/* brzi pregled (novi upiti, dana zauzeto ovaj mjesec), mini kalendar */
+/* prve dodijeljene vikendice i zadnja 3 upita. Vlasnik i dalje ne    */
+/* smije ništa uređivati ovdje — samo linkovi na /admin/kalendar i    */
+/* /admin/inquiries, gdje se sva stvarna radnja događa.               */
+/* ---------------------------------------------------------------- */
+
+async function OwnerDashboard({ admin }: { admin: AdminUser }) {
+  const [properties, companies, inquiries] = await Promise.all([
+    listPropertiesForAdmin(admin),
+    listCompaniesForAdmin(admin),
+    listInquiriesForAdmin(admin),
+  ]);
+
+  // Ime domaćina za pozdrav — izvučeno iz property.hostName prve dodijeljene
+  // vikendice koja ga ima postavljenog (vlasnik firme, bez vikendice, nema
+  // hostName polje pa pozdrav ostaje generički).
+  const hostName = properties.find((p) => p.hostName)?.hostName ?? null;
+
+  const pendingCount = inquiries.filter((i) => !i.read).length;
+  const recentInquiries = inquiries.slice(0, 3); // listInquiries već sortira desc(createdAt)
+
+  const now = new Date();
+  const monthPrefix = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+  const blockedByProperty = await Promise.all(properties.map((p) => listBlockedDates(p.id)));
+  // Zbroj zauzetih dana preko SVIH dodijeljenih vikendica ovaj mjesec (ne
+  // unique po datumu) — ako vlasnik ima dvije vikendice, svaka se broji
+  // zasebno, jer je ovo "koliko je noćenja zauzeto", ne "koliko dana u
+  // kalendaru postoji".
+  const daysBookedThisMonth = blockedByProperty
+    .flat()
+    .filter((b) => b.date.startsWith(monthPrefix)).length;
+
+  const firstProperty = properties[0] ?? null;
+  const pageCount = properties.length + companies.length;
+  const singleName = pageCount === 1 ? (properties[0]?.name ?? companies[0]?.name ?? null) : null;
+
+  return (
+    <div className="flex flex-col gap-8">
+      <div>
+        <h1 className="text-xl font-bold">Pozdrav{hostName ? `, ${hostName}` : ""}!</h1>
+        <p className="text-sm text-black/50 mt-1">
+          {pageCount === 0
+            ? "Nemaš dodijeljenu nijednu vikendicu ili firmu — javi se glavnom adminu."
+            : singleName
+              ? `Pregled za ${singleName}.`
+              : "Pregled tvojih dodijeljenih stranica."}
+        </p>
+      </div>
+
+      {pageCount > 0 && (
+        <section className="grid grid-cols-2 gap-3">
+          <StatCard label={pendingCount === 1 ? "Novi upit" : "Novih upita"} value={pendingCount} />
+          <StatCard label="Dana zauzeto ovaj mjesec" value={daysBookedThisMonth} />
+        </section>
+      )}
+
+      {firstProperty && <MiniCalendar propertyId={firstProperty.id} propertyName={firstProperty.name} blocked={blockedByProperty[0] ?? []} now={now} />}
+
+      {pageCount > 0 && (
+        <section>
+          <div className="flex items-center justify-between mb-3">
+            <h2 className="text-xs font-semibold uppercase tracking-wide text-black/40">
+              Zadnji upiti
+            </h2>
+            <Link href="/admin/inquiries" className="text-xs font-semibold text-[#ff7f00]">
+              Svi upiti →
+            </Link>
+          </div>
+          {recentInquiries.length === 0 ? (
+            <p className="text-sm text-black/60">Još nema upita.</p>
+          ) : (
+            <div className="flex flex-col gap-2">
+              {recentInquiries.map((i) => (
+                <Link
+                  key={i.id}
+                  href="/admin/inquiries"
+                  className="flex items-center justify-between border border-black/10 rounded-xl px-4 py-3 bg-white hover:border-[#ff7f00]/40"
+                >
+                  <div>
+                    <div className="font-semibold text-sm">{i.name}</div>
+                    <div className="text-xs text-black/50 mt-0.5">
+                      {i.sourceName} · {new Date(i.createdAt).toLocaleDateString("hr-HR")}
+                    </div>
+                  </div>
+                  {!i.read && (
+                    <span className="text-xs font-semibold px-2.5 py-1 rounded-full bg-[#ff7f00]/10 text-[#ff7f00] shrink-0">
+                      novo
+                    </span>
+                  )}
+                </Link>
+              ))}
+            </div>
+          )}
+        </section>
+      )}
+
+      {pageCount > 0 && (
+        <section>
+          <h2 className="text-xs font-semibold uppercase tracking-wide text-black/40 mb-3">
+            Brze radnje
+          </h2>
+          <div className="flex flex-wrap gap-2">
+            <Link href="/admin/kalendar" className="admin-quicklink">
+              Kalendar
+            </Link>
+            <Link href="/admin/inquiries" className="admin-quicklink">
+              Svi upiti
+            </Link>
+          </div>
+        </section>
+      )}
+    </div>
+  );
+}
+
+const MINI_MONTH_NAMES = [
+  "Siječanj", "Veljača", "Ožujak", "Travanj", "Svibanj", "Lipanj",
+  "Srpanj", "Kolovoz", "Rujan", "Listopad", "Studeni", "Prosinac",
+];
+const MINI_WEEKDAY_LABELS = ["Pon", "Uto", "Sri", "Čet", "Pet", "Sub", "Ned"];
+
+function miniPad2(n: number): string {
+  return String(n).padStart(2, "0");
+}
+
+function miniMondayIndex(date: Date): number {
+  return (date.getDay() + 6) % 7;
+}
+
+/** Sitan, čitanjem-only kalendar tekućeg mjeseca za prvu dodijeljenu
+    vikendicu — brzi pregled zauzetosti bez odlaska na puni /admin/kalendar
+    (gdje se dani mogu i uređivati). */
+function MiniCalendar({
+  propertyId,
+  propertyName,
+  blocked,
+  now,
+}: {
+  propertyId: number;
+  propertyName: string;
+  blocked: { date: string }[];
+  now: Date;
+}) {
+  const year = now.getFullYear();
+  const month = now.getMonth(); // 0-11
+  const firstOfMonth = new Date(Date.UTC(year, month, 1));
+  const daysInMonth = new Date(Date.UTC(year, month + 1, 0)).getUTCDate();
+  const leadingBlanks = miniMondayIndex(firstOfMonth);
+  const blockedSet = new Set(blocked.map((b) => b.date));
+  const cells: (number | null)[] = [
+    ...Array.from({ length: leadingBlanks }, () => null),
+    ...Array.from({ length: daysInMonth }, (_, i) => i + 1),
+  ];
+
+  return (
+    <section>
+      <div className="flex items-center justify-between mb-3">
+        <h2 className="text-xs font-semibold uppercase tracking-wide text-black/40">
+          {MINI_MONTH_NAMES[month]} — {propertyName}
+        </h2>
+        <Link href={`/admin/kalendar?property=${propertyId}`} className="text-xs font-semibold text-[#ff7f00]">
+          Puni kalendar →
+        </Link>
+      </div>
+      <div className="border border-black/10 rounded-xl p-4 bg-white max-w-xs">
+        <div className="grid grid-cols-7 gap-1 text-center">
+          {MINI_WEEKDAY_LABELS.map((w) => (
+            <div key={w} className="text-[10px] font-semibold text-black/40 py-0.5">
+              {w}
+            </div>
+          ))}
+          {cells.map((day, i) => {
+            if (day === null) return <div key={`b-${i}`} />;
+            const dateStr = `${year}-${miniPad2(month + 1)}-${miniPad2(day)}`;
+            const isBlocked = blockedSet.has(dateStr);
+            return (
+              <div
+                key={dateStr}
+                className={
+                  "aspect-square rounded-md text-[10px] font-semibold flex items-center justify-center " +
+                  (isBlocked ? "bg-red-500 text-white" : "bg-black/5")
+                }
+              >
+                {day}
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    </section>
   );
 }
