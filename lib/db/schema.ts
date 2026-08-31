@@ -371,3 +371,28 @@ export type Reservation = typeof reservations.$inferSelect;
 export type NewReservation = typeof reservations.$inferInsert;
 export type Expense = typeof expenses.$inferSelect;
 export type NewExpense = typeof expenses.$inferInsert;
+
+/**
+ * Zarada AGENCIJE (ne vikendica) — prodaja stranica, proizvoda, konzultacija
+ * i sl., vidi app/admin/prodaja. Potpuno odvojeno od reservations/expenses
+ * (koji su PO VIKENDICI za vlasnike) — ovo je samo za pune admine, ručni
+ * unos svake prodaje jer nema online naplate u sustavu. `category` je iz
+ * fiksnog popisa (vidi lib/actions.ts SaleSchema) radi jednostavne
+ * raščlambe/grafova po kategoriji.
+ */
+export const sales = pgTable("sales", {
+  id: serial("id").primaryKey(),
+  /** "stranica" | "proizvod" | "konzultacija" | "ostalo" */
+  category: text("category").notNull(),
+  /** Što je prodano (npr. "Izrada stranice — Sokak bez imena", "3D pločica x2"). */
+  item: text("item").notNull(),
+  buyerName: text("buyer_name"),
+  priceEur: integer("price_eur").notNull(),
+  /** "YYYY-MM-DD" */
+  date: text("date").notNull(),
+  note: text("note"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export type Sale = typeof sales.$inferSelect;
+export type NewSale = typeof sales.$inferInsert;

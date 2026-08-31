@@ -13,6 +13,7 @@ import {
   propertyTranslationsEn,
   reservations,
   expenses,
+  sales,
   type NewProperty,
   type NewCompany,
   type NewStudy,
@@ -696,4 +697,61 @@ export async function getMonthlyEarnings(propertyIds: number[], monthPrefix: str
     .reduce((sum, e) => sum + e.amountEur, 0);
 
   return { grossEur, expensesEur, netEur: grossEur - expensesEur };
+}
+
+/* ---------------------------------------------------------------- */
+/* Zarada agencije (prodaja stranica/proizvoda/usluga) — vidi         */
+/* app/admin/prodaja. Potpuno odvojeno od vikendica gore.             */
+/* ---------------------------------------------------------------- */
+
+export const SALE_CATEGORIES = ["stranica", "proizvod", "konzultacija", "ostalo"] as const;
+export type SaleCategory = (typeof SALE_CATEGORIES)[number];
+
+export async function listSales() {
+  return db.select().from(sales).orderBy(desc(sales.date));
+}
+
+export async function createSale(data: {
+  category: string;
+  item: string;
+  buyerName: string | null;
+  priceEur: number;
+  date: string;
+  note: string | null;
+}) {
+  const [sale] = await db.insert(sales).values(data).returning();
+  return sale;
+}
+
+export async function deleteSale(id: number) {
+  await db.delete(sales).where(eq(sales.id, id));
+}
+
+/** Zarada agencije za mjesec (monthPrefix "YYYY-MM") — ukupno, broj prodaja
+    i raščlamba po kategoriji, za /admin/prodaja (isti obrazac kao
+    getMonthlyEarnings za vikendice, ali bez koncepta "plaćeno" — svaka
+    unesena prodaja se odmah broji, nema gotovinske/računske razlike jer je
+    ovo ručni knjigovodstveni unos nakon što je novac već primljen). */
+export async function getSalesMonthlyEarnings(monthPrefix: string) {
+  const all = await listSales();
+  const inMonth = all.filter((s) => s.date.startsWith(monthPrefix));
+  const totalEur = inMonth.reduce((sum, s) => sum + s.priceEur, 0);
+  const byCategory: Record<string, number> = {};
+  for (const s of inMonth) {
+    byCategory[s.category] = (byCategory[s.category] ?? 0) + s.priceEur;
+  }
+  return { totalEur, count: inMonth.length, byCategory };
+}
+
+/** Zarada agencije po mjesecu za cijelu `year` (12 brojeva, siječanj→prosinac)
+    — za godišnji graf na /admin/prodaja. */
+export async function getSalesYearlyByMonth(year: number) {
+  const all = await listSales();
+  const totals = Array(12).fill(0) as number[];
+  for (const s of all) {
+    if (!s.date.startsWith(String(year))) continue;
+    const monthIdx = Number(s.date.slice(5, 7)) - 1;
+    if (monthIdx >= 0 && monthIdx < 12) totals[monthIdx] += s.priceEur;
+  }
+  return totals;
 }
