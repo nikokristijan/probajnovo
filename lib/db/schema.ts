@@ -49,8 +49,11 @@ export const properties = pgTable("properties", {
   images: jsonb("images").$type<string[]>().notNull().default([]),
   /** Naslovna/banner slika za vrh stranice vikendice i za STUDIES pop-up. Null = koristi prvu iz images. */
   bannerImage: text("banner_image"),
-  /** Email na koji ide "Kontaktirajte nas" za OVU vikendicu. Null = koristi agency.contactEmail. */
+  /** Email na koji ide "Kontaktirajte nas" za OVU vikendicu (isti email prima i obavijest o
+      novom upitu). Null = koristi agency.contactEmail. */
   contactEmail: text("contact_email"),
+  /** Telefon vlasnika/domaćina — omogućuje "Nazovite" i WhatsApp gumb na stranici vikendice. Null = gumbi se ne prikazuju. */
+  phone: text("phone"),
   published: boolean("published").notNull().default(true),
   /** Ako je true, vikendica se pojavljuje i u STUDIES popisu na naslovnici (opt-in, ne automatski). */
   showInStudies: boolean("show_in_studies").notNull().default(false),
