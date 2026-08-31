@@ -1375,7 +1375,7 @@ export async function createReservationAction(
     return { error: "Datum odlaska mora biti nakon datuma dolaska." };
   }
 
-  await createReservation({
+  const { overlappingDates } = await createReservation({
     propertyId,
     guestName: parsed.data.guestName,
     phone: parsed.data.phone || null,
@@ -1392,7 +1392,12 @@ export async function createReservationAction(
   revalidatePath("/admin");
   // redirect() umjesto { success: true } — isprazni formu za sljedeći unos
   // (isti razlog kao redirect("/admin") u createStudyAction/createProductAction).
-  redirect(redirectTo);
+  // Ako se neki od odabranih dana već preklapao s postojećim blokiranim danom
+  // (ručno, iCal ili druga rezervacija — vidi createReservation), dodaj
+  // ?overlap=N na redirect da stranica prikaže upozorenje o mogućoj
+  // dvostrukoj rezervaciji. Rezervacija se SVEJEDNO spremi — ovo je
+  // upozorenje, ne blokada, jer vlasnik ponekad ispravlja pogrešan unos.
+  redirect(overlappingDates.length > 0 ? `${redirectTo}&overlap=${overlappingDates.length}` : redirectTo);
 }
 
 export async function deleteReservationAction(propertyId: number, id: number) {
