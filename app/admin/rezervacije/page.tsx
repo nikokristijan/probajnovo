@@ -6,12 +6,23 @@ import {
   listReservationsForProperty,
   listExpensesForProperty,
   getMonthlyEarnings,
+  getOccupancyStats,
+  getExpenseCategoryBreakdown,
+  getYearlyEarningsByMonth,
 } from "@/lib/db/queries";
 import ReservationForm from "@/components/admin/ReservationForm";
 import ReservationsTable from "@/components/admin/ReservationsTable";
 import ExpenseForm from "@/components/admin/ExpenseForm";
 import DeleteExpenseButton from "@/components/admin/DeleteExpenseButton";
-import { currentYearMonthZagreb } from "@/lib/date";
+import YearlyBarChart from "@/components/admin/YearlyBarChart";
+import { currentYearMonthZagreb, todayDateStringZagreb } from "@/lib/date";
+
+const EXPENSE_CATEGORY_LABELS: Record<string, string> = {
+  "čišćenje": "Čišćenje",
+  "održavanje": "Održavanje",
+  "režije": "Režije",
+  "ostalo": "Ostalo",
+};
 
 const MONTH_NAMES = [
   "Siječanj", "Veljača", "Ožujak", "Travanj", "Svibanj", "Lipanj",
@@ -22,10 +33,12 @@ function formatDate(dateStr: string): string {
   return new Date(`${dateStr}T00:00:00Z`).toLocaleDateString("hr-HR", { timeZone: "UTC" });
 }
 
-function EarningsCard({ label, value }: { label: string; value: number }) {
+function EarningsCard({ label, value, unit = "€" }: { label: string; value: number; unit?: string }) {
   return (
     <div className="border border-black/10 rounded-xl px-4 py-3 bg-white">
-      <div className="text-2xl font-bold tabular-nums">{value} €</div>
+      <div className="text-2xl font-bold tabular-nums">
+        {value} {unit}
+      </div>
       <div className="text-xs text-black/50 mt-0.5">{label}</div>
     </div>
   );
@@ -42,7 +55,13 @@ function EarningsCard({ label, value }: { label: string; value: number }) {
 export default async function AdminReservationsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ property?: string; year?: string; month?: string; overlap?: string }>;
+  searchParams: Promise<{
+    property?: string;
+    year?: string;
+    month?: string;
+    overlap?: string;
+    capacityWarning?: string;
+  }>;
 }) {
   const admin = await getCurrentAdminRecord();
   if (!admin) redirect("/admin/login");
@@ -80,7 +99,13 @@ export default async function AdminReservationsPage({
   const month = sp.month ? Number(sp.month) : nowZagreb.month; // 1-12
   const monthPrefix = `${year}-${String(month).padStart(2, "0")}`;
   const isCurrentMonth = year === nowZagreb.year && month === nowZagreb.month;
-  const earnings = await getMonthlyEarnings([property.id], monthPrefix);
+  const [earnings, occupancy, expenseCategories, yearlyEarnings] = await Promise.all([
+    getMonthlyEarnings([property.id], monthPrefix),
+    getOccupancyStats(property.id, monthPrefix),
+    getExpenseCategoryBreakdown([property.id], monthPrefix),
+    getYearlyEarningsByMonth([property.id], year),
+  ]);
+  const today = todayDateStringZagreb();
 
   const prevMonth = month === 1 ? 12 : month - 1;
   const prevYear = month === 1 ? year - 1 : year;
@@ -90,6 +115,9 @@ export default async function AdminReservationsPage({
     `/admin/rezervacije?property=${property.id}&year=${y}&month=${m}`;
 
   const overlapCount = sp.overlap ? Number(sp.overlap) : 0;
+  const showCapacityWarning = sp.capacityWarning === "1";
+  const expenseCategoryEntries = Object.entries(expenseCategories).sort((a, b) => b[1] - a[1]);
+  const expenseCategoryMax = Math.max(1, ...expenseCategoryEntries.map(([, v]) => v));
 
   return (
     <div className="flex flex-col gap-6">
@@ -137,6 +165,13 @@ export default async function AdminReservationsPage({
         </p>
       )}
 
+      {showCapacityWarning && (
+        <p className="text-sm text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
+          Upozorenje: broj gostiju premašuje kapacitet vikendice ({property.capacityGuests}) — rezervacija je
+          svejedno spremljena.
+        </p>
+      )}
+
       <section className="flex flex-col gap-3">
         <div className="flex items-center justify-between">
           <span className="text-xs font-semibold uppercase tracking-wide text-black/40">
@@ -168,7 +203,37 @@ export default async function AdminReservationsPage({
           Bruto broji samo PLAĆENE rezervacije čiji je datum dolaska gosta u ovom mjesecu — zarada
           prati kad gost stvarno boravi, bez obzira kad je označeno plaćeno.
         </p>
+        <div className="grid grid-cols-2 gap-3">
+          <EarningsCard label="Popunjenost" value={occupancy.occupancyPct} unit="%" />
+          <EarningsCard label="Prosj. cijena/noć" value={occupancy.avgNightlyRateEur} />
+        </div>
       </section>
+
+      {expenseCategoryEntries.length > 0 && (
+        <section className="border border-black/10 rounded-xl p-5 bg-white flex flex-col gap-3">
+          <span className="text-xs font-semibold uppercase tracking-wide text-black/40">
+            Troškovi po kategoriji — {MONTH_NAMES[month - 1]}
+          </span>
+          <div className="flex flex-col gap-2">
+            {expenseCategoryEntries.map(([cat, value]) => (
+              <div key={cat} className="flex items-center gap-3">
+                <span className="text-xs w-24 shrink-0 text-black/60">
+                  {EXPENSE_CATEGORY_LABELS[cat] ?? cat}
+                </span>
+                <div className="flex-1 h-2 rounded-full bg-black/5 overflow-hidden">
+                  <div
+                    className="h-full rounded-full bg-red-400"
+                    style={{ width: `${(value / expenseCategoryMax) * 100}%` }}
+                  />
+                </div>
+                <span className="text-xs font-semibold tabular-nums w-16 text-right">{value} €</span>
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
+
+      <YearlyBarChart data={yearlyEarnings} year={year} color="#ff7f00" />
 
       <section className="flex flex-col gap-3">
         <div className="flex items-center justify-between flex-wrap gap-2">
@@ -176,18 +241,32 @@ export default async function AdminReservationsPage({
             Sve rezervacije
           </h2>
           {reservations.length > 0 && (
-            <a
-              href={`/api/admin/reservations/export?property=${property.id}`}
-              className="text-xs font-semibold px-3 py-1.5 rounded-full border border-black/15 hover:border-black/40"
-            >
-              Izvezi CSV
-            </a>
+            <div className="flex items-center gap-2">
+              <a
+                href={`/api/admin/reservations/export?property=${property.id}`}
+                className="text-xs font-semibold px-3 py-1.5 rounded-full border border-black/15 hover:border-black/40"
+              >
+                Izvezi CSV
+              </a>
+              <a
+                href={`/api/admin/reservations/export-year?property=${property.id}&year=${year}`}
+                className="text-xs font-semibold px-3 py-1.5 rounded-full border border-black/15 hover:border-black/40"
+              >
+                Godišnji izvještaj ({year})
+              </a>
+              <a
+                href={`/api/admin/backup?property=${property.id}`}
+                className="text-xs font-semibold px-3 py-1.5 rounded-full border border-black/15 hover:border-black/40"
+              >
+                Backup (JSON)
+              </a>
+            </div>
           )}
         </div>
-        <ReservationsTable propertyId={property.id} reservations={reservations} />
+        <ReservationsTable propertyId={property.id} reservations={reservations} today={today} />
       </section>
 
-      <ReservationForm propertyId={property.id} redirectTo={redirectTo} />
+      <ReservationForm propertyId={property.id} redirectTo={redirectTo} capacityGuests={property.capacityGuests} />
 
       <section className="flex flex-col gap-3">
         <h2 className="text-xs font-semibold uppercase tracking-wide text-black/40">
