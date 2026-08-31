@@ -71,6 +71,15 @@ export const properties = pgTable("properties", {
   hostNote: text("host_note"),
   /** Poveznica na Google Maps (ili sličnu) za prikaz lokacije. */
   mapUrl: text("map_url"),
+  /** Puna adresa (ulica, mjesto) — koristi se za automatsko geokodiranje (vidi lib/geocode.ts)
+      i prikaz ugrađene OpenStreetMap karte na stranici vikendice. Null = karta se ne prikazuje
+      (osim ako je mapUrl postavljen, tad se prikazuje samo poveznica "Otvori na karti"). */
+  address: text("address"),
+  /** Koordinate dobivene automatskim geokodiranjem `address` polja (best-effort, vidi
+      lib/geocode.ts) — spremaju se kao tekst radi jednostavnosti (koriste se samo za
+      sastavljanje OpenStreetMap embed URL-a, ne za matematiku). */
+  latitude: text("latitude"),
+  longitude: text("longitude"),
   /** Izjave/recenzije gostiju — kartice s imenom, tekstom i ocjenom 1-5. */
   testimonials: jsonb("testimonials").$type<Testimonial[]>().notNull().default([]),
   /** Često postavljana pitanja — prikazuju se kao harmonika (accordion). */
