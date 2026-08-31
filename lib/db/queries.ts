@@ -1,4 +1,4 @@
-import { eq, desc, asc } from "drizzle-orm";
+import { eq, desc, asc, and, gt } from "drizzle-orm";
 import { db } from "./index";
 import {
   agency,
@@ -278,8 +278,26 @@ export async function createInquiry(data: NewInquiry) {
   return row;
 }
 
+/** Broj upita s te IP adrese poslanih nakon `since` — jednostavan rate-limit protiv spama (vidi createInquiryAction). */
+export async function countRecentInquiriesByIp(ip: string, since: Date): Promise<number> {
+  try {
+    const rows = await db
+      .select({ id: inquiries.id })
+      .from(inquiries)
+      .where(and(eq(inquiries.ip, ip), gt(inquiries.createdAt, since)));
+    return rows.length;
+  } catch (err) {
+    if (isMissingInquiriesTable(err)) return 0;
+    throw err;
+  }
+}
+
 export async function markInquiryRead(id: number) {
   await db.update(inquiries).set({ read: true }).where(eq(inquiries.id, id));
+}
+
+export async function markInquiryReplied(id: number) {
+  await db.update(inquiries).set({ replied: true }).where(eq(inquiries.id, id));
 }
 
 export async function deleteInquiry(id: number) {

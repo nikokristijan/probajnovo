@@ -211,6 +211,10 @@ export const inquiries = pgTable("inquiries", {
   phone: text("phone"),
   message: text("message").notNull(),
   read: boolean("read").notNull().default(false),
+  /** Ručno označeno u adminu kad vlasnik odgovori gostu izvan sustava (mail/telefon). */
+  replied: boolean("replied").notNull().default(false),
+  /** IP adresa pošiljatelja (iz x-forwarded-for) — samo za jednostavan rate-limit protiv spama, ne prikazuje se nigdje. */
+  ip: text("ip"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
