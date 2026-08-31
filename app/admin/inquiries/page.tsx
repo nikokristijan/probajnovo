@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 import { getCurrentAdminRecord } from "@/lib/auth";
-import { listInquiries } from "@/lib/db/queries";
+import { listInquiries, getAdminAccessGrants } from "@/lib/db/queries";
 import { markInquiryReadAction, markInquiryRepliedAction } from "@/lib/actions";
 import DeleteInquiryButton from "@/components/admin/DeleteInquiryButton";
 
@@ -14,7 +14,22 @@ export default async function AdminInquiriesPage() {
   const admin = await getCurrentAdminRecord();
   if (!admin) redirect("/admin/login");
 
-  const inquiries = await listInquiries();
+  const allInquiries = await listInquiries();
+
+  // Vlasnik vidi SAMO upite svojih vikendica/firmi (admin_access) — nikad agencijske
+  // upite (source="agency") ni tuđe vikendice. Puni admin vidi sve, kao dosad.
+  let inquiries = allInquiries;
+  if (admin.role === "owner") {
+    const grants = await getAdminAccessGrants(admin.id);
+    const propertyIds = new Set(grants.map((g) => g.propertyId).filter((v): v is number => v != null));
+    const companyIds = new Set(grants.map((g) => g.companyId).filter((v): v is number => v != null));
+    inquiries = allInquiries.filter(
+      (i) =>
+        (i.source === "property" && i.sourceId != null && propertyIds.has(i.sourceId)) ||
+        (i.source === "company" && i.sourceId != null && companyIds.has(i.sourceId))
+    );
+  }
+
   const unreadCount = inquiries.filter((i) => !i.read).length;
 
   return (
@@ -84,7 +99,7 @@ export default async function AdminInquiriesPage() {
                       </button>
                     </form>
                   )}
-                  <DeleteInquiryButton id={i.id} name={i.name} />
+                  {admin.role !== "owner" && <DeleteInquiryButton id={i.id} name={i.name} />}
                 </div>
               </div>
               <p className="text-sm mt-3 whitespace-pre-wrap">{i.message}</p>
