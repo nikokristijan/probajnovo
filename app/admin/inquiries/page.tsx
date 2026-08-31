@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 import { getCurrentAdminRecord } from "@/lib/auth";
-import { listInquiries, getAdminAccessGrants } from "@/lib/db/queries";
+import { listInquiries, listPropertiesForAdmin, listCompaniesForAdmin } from "@/lib/db/queries";
 import { markInquiryReadAction, markInquiryRepliedAction } from "@/lib/actions";
 import DeleteInquiryButton from "@/components/admin/DeleteInquiryButton";
 
@@ -19,15 +19,24 @@ export default async function AdminInquiriesPage() {
   // Vlasnik vidi SAMO upite svojih vikendica/firmi (admin_access) — nikad agencijske
   // upite (source="agency") ni tuđe vikendice. Puni admin vidi sve, kao dosad.
   let inquiries = allInquiries;
+  // Ime(na) dodijeljene vikendice/firme za naslov ispod ("Upiti — Sokak bez
+  // imena") — bez ovoga generički naslov "Upiti" zna zbunjivati vlasnika koji
+  // upravlja samo jednom vikendicom (djeluje kao da su prikazani upiti svih).
+  let ownerScopeLabel: string | null = null;
   if (admin.role === "owner") {
-    const grants = await getAdminAccessGrants(admin.id);
-    const propertyIds = new Set(grants.map((g) => g.propertyId).filter((v): v is number => v != null));
-    const companyIds = new Set(grants.map((g) => g.companyId).filter((v): v is number => v != null));
+    const [ownedProperties, ownedCompanies] = await Promise.all([
+      listPropertiesForAdmin(admin),
+      listCompaniesForAdmin(admin),
+    ]);
+    const propertyIds = new Set(ownedProperties.map((p) => p.id));
+    const companyIds = new Set(ownedCompanies.map((c) => c.id));
     inquiries = allInquiries.filter(
       (i) =>
         (i.source === "property" && i.sourceId != null && propertyIds.has(i.sourceId)) ||
         (i.source === "company" && i.sourceId != null && companyIds.has(i.sourceId))
     );
+    const names = [...ownedProperties.map((p) => p.name), ...ownedCompanies.map((c) => c.name)];
+    ownerScopeLabel = names.length > 0 ? names.join(", ") : null;
   }
 
   const unreadCount = inquiries.filter((i) => !i.read).length;
@@ -35,7 +44,7 @@ export default async function AdminInquiriesPage() {
   return (
     <div>
       <div className="flex items-center justify-between mb-1">
-        <h1 className="text-xl font-bold">Upiti</h1>
+        <h1 className="text-xl font-bold">{ownerScopeLabel ? `Upiti — ${ownerScopeLabel}` : "Upiti"}</h1>
         {unreadCount > 0 && (
           <span className="text-xs font-semibold px-2.5 py-1 rounded-full bg-[#ff7f00]/10 text-[#ff7f00]">
             {unreadCount} nepročitano
@@ -43,7 +52,11 @@ export default async function AdminInquiriesPage() {
         )}
       </div>
       <p className="text-sm text-black/60 mb-6">
-        Upiti poslani putem obrasca na stranicama vikendica i firmi.
+        {admin.role === "owner"
+          ? ownerScopeLabel
+            ? `Upiti poslani putem obrasca na stranici ${ownerScopeLabel}.`
+            : "Nemaš dodijeljenu nijednu vikendicu/firmu — javi se glavnom adminu."
+          : "Upiti poslani putem obrasca na stranicama vikendica i firmi."}
       </p>
 
       {inquiries.length === 0 ? (
