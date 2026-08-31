@@ -6,6 +6,7 @@ import type { Agency, Property, Company } from "@/lib/db/schema";
 import RevealSection from "@/components/RevealSection";
 import GalleryLightbox from "@/components/GalleryLightbox";
 import StayInteractions from "@/components/StayInteractions";
+import InquiryForm from "@/components/InquiryForm";
 
 export const revalidate = 0;
 
@@ -36,6 +37,15 @@ export async function generateMetadata({
     };
   }
   return {};
+}
+
+/**
+ * Serijalizira JSON-LD objekt za <script type="application/ld+json">.
+ * Escapa "<" da spriječi da sadržaj (npr. korisnički opis) prerano zatvori
+ * <script> tag — standardna zaštita za dangerouslySetInnerHTML s JSON-om.
+ */
+function jsonLdProps(data: Record<string, unknown>): { __html: string } {
+  return { __html: JSON.stringify(data).replace(/</g, "\\u003c") };
 }
 
 /** Prepoznaje YouTube/Vimeo poveznice i vraća embed URL; inače null (pa se prikaže kao obična poveznica). */
@@ -185,8 +195,34 @@ function PropertyView({ property, agency }: { property: Property; agency: Agency
   // editorial layout treba isti broj i za div-atribut (pozadinski "duh" broj) i za eyebrow.
   const aboutNo = eyebrowNo();
 
+  const propertyImages = [effectiveBanner, ...gallery].filter((s): s is string => Boolean(s));
+  const propertyJsonLd: Record<string, unknown> = {
+    "@context": "https://schema.org",
+    "@type": "LodgingBusiness",
+    name: property.name,
+    description: property.description || property.tagline,
+    url: `https://www.probajnovo.com/${property.slug}`,
+    ...(propertyImages.length > 0 ? { image: propertyImages } : {}),
+    address: {
+      "@type": "PostalAddress",
+      addressLocality: property.location,
+      addressCountry: "HR",
+    },
+    priceRange: `${property.priceFromEur} EUR`,
+  };
+  if (property.testimonials.length > 0) {
+    propertyJsonLd.aggregateRating = {
+      "@type": "AggregateRating",
+      ratingValue: (
+        property.testimonials.reduce((sum, t) => sum + t.rating, 0) / property.testimonials.length
+      ).toFixed(1),
+      reviewCount: property.testimonials.length,
+    };
+  }
+
   return (
     <div className={stayClass} style={accentStyle}>
+      <script type="application/ld+json" dangerouslySetInnerHTML={jsonLdProps(propertyJsonLd)} />
       <StayInteractions />
 
       <header className="stay-nav">
@@ -245,7 +281,7 @@ function PropertyView({ property, agency }: { property: Property; agency: Agency
           {gallery.slice(0, 3).map((src, i) => (
             <div className="stay-polaroid" key={src + i}>
               {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={src} alt="" />
+              <img src={src} alt="" loading="lazy" decoding="async" />
               {property.imageCategories[src] && (
                 <div className="stay-polaroid-cap">{property.imageCategories[src]}</div>
               )}
@@ -411,7 +447,13 @@ function PropertyView({ property, agency }: { property: Property; agency: Agency
           <div className="stay-host">
             {property.hostPhoto && (
               // eslint-disable-next-line @next/next/no-img-element
-              <img src={property.hostPhoto} alt={property.hostName ?? "Domaćin"} className="stay-host-photo" />
+              <img
+                src={property.hostPhoto}
+                alt={property.hostName ?? "Domaćin"}
+                className="stay-host-photo"
+                loading="lazy"
+                decoding="async"
+              />
             )}
             <div>
               {property.hostName && <div className="stay-host-name">{property.hostName}</div>}
@@ -475,6 +517,13 @@ function PropertyView({ property, agency }: { property: Property; agency: Agency
         </div>
       </RevealSection>
 
+      <RevealSection className="stay-section stay-alt">
+        <h2 className="stay-eyebrow">
+          <span className="stay-eyebrow-no">{eyebrowNo()}</span>Pošaljite upit
+        </h2>
+        <InquiryForm source="property" sourceId={property.id} sourceName={property.name} />
+      </RevealSection>
+
       <footer className="stay-foot">
         {property.name} · {property.location}
         <div className="credit">
@@ -493,6 +542,19 @@ function PropertyView({ property, agency }: { property: Property; agency: Agency
     Ako redak sadrži ":", dio prije postaje sitna oznaka (kao PRIJAVA/ODJAVA
     kod vikendice), dio poslije glavna vrijednost — inače cijeli redak ide
     kao vrijednost bez oznake. */
+/**
+ * Normalizira hrvatski broj telefona u međunarodni format bez "+" (kakav
+ * wa.me linkovi traže). "091 234 5678" → "385912345678"; ako broj već ima
+ * pozivni broj (npr. počinje s "385" ili "00"), samo miče razmake/crtice.
+ * Nije 100% robusno za sve zemlje, ali pokriva realan slučaj (HR firme).
+ */
+function whatsAppNumber(phone: string): string {
+  let digits = phone.replace(/[^\d]/g, "");
+  if (digits.startsWith("00")) digits = digits.slice(2);
+  else if (digits.startsWith("0")) digits = "385" + digits.slice(1);
+  return digits;
+}
+
 function parseWorkingHoursLines(raw: string): { label: string | null; value: string }[] {
   return raw
     .split("\n")
@@ -521,6 +583,9 @@ function CompanyView({ company, agency }: { company: Company; agency: Agency | n
   const gallery = company.images.filter((src) => src !== effectiveBanner);
   const mailHref = `mailto:${contactEmail}?subject=Upit — ${company.name}`;
   const telHref = company.phone ? `tel:${company.phone.replace(/[^\d+]/g, "")}` : null;
+  const waHref = company.phone
+    ? `https://wa.me/${whatsAppNumber(company.phone)}?text=${encodeURIComponent(`Pozdrav! Imam upit vezan za ${company.name}.`)}`
+    : null;
   const embedSrc = company.videoUrl ? videoEmbedSrc(company.videoUrl) : null;
   const hoursLines = company.workingHours ? parseWorkingHoursLines(company.workingHours) : [];
 
@@ -540,8 +605,35 @@ function CompanyView({ company, agency }: { company: Company; agency: Agency | n
   const eyebrowNo = () => String(++sectionNo).padStart(2, "0");
   const aboutNo = eyebrowNo();
 
+  const companyImages = [effectiveBanner, ...gallery].filter((s): s is string => Boolean(s));
+  const companyJsonLd: Record<string, unknown> = {
+    "@context": "https://schema.org",
+    "@type": "LocalBusiness",
+    name: company.name,
+    description: company.description || company.tagline,
+    url: `https://www.probajnovo.com/${company.slug}`,
+    ...(companyImages.length > 0 ? { image: companyImages } : {}),
+    address: {
+      "@type": "PostalAddress",
+      ...(company.address ? { streetAddress: company.address } : {}),
+      addressLocality: company.location,
+      addressCountry: "HR",
+    },
+    ...(company.phone ? { telephone: company.phone } : {}),
+  };
+  if (company.testimonials.length > 0) {
+    companyJsonLd.aggregateRating = {
+      "@type": "AggregateRating",
+      ratingValue: (
+        company.testimonials.reduce((sum, t) => sum + t.rating, 0) / company.testimonials.length
+      ).toFixed(1),
+      reviewCount: company.testimonials.length,
+    };
+  }
+
   return (
     <div className={stayClass} style={accentStyle}>
+      <script type="application/ld+json" dangerouslySetInnerHTML={jsonLdProps(companyJsonLd)} />
       <StayInteractions />
 
       <header className="stay-nav">
@@ -600,7 +692,7 @@ function CompanyView({ company, agency }: { company: Company; agency: Agency | n
           {gallery.slice(0, 3).map((src, i) => (
             <div className="stay-polaroid" key={src + i}>
               {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={src} alt="" />
+              <img src={src} alt="" loading="lazy" decoding="async" />
               {company.imageCategories[src] && (
                 <div className="stay-polaroid-cap">{company.imageCategories[src]}</div>
               )}
@@ -798,11 +890,23 @@ function CompanyView({ company, agency }: { company: Company; agency: Agency | n
                 Nazovite
               </a>
             )}
+            {waHref && (
+              <a className="stay-avail-link" href={waHref} target="_blank" rel="noreferrer" data-magnetic>
+                WhatsApp
+              </a>
+            )}
             <a className="bookbtn" href={mailHref} data-magnetic>
               Pošaljite upit
             </a>
           </div>
         </div>
+      </RevealSection>
+
+      <RevealSection className="stay-section stay-alt">
+        <h2 className="stay-eyebrow">
+          <span className="stay-eyebrow-no">{eyebrowNo()}</span>Pošaljite upit
+        </h2>
+        <InquiryForm source="company" sourceId={company.id} sourceName={company.name} />
       </RevealSection>
 
       <footer className="stay-foot">
