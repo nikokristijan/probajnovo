@@ -1,11 +1,9 @@
-import { redirect } from "next/navigation";
-import { getCurrentAdmin } from "@/lib/auth";
+import { requireFullAdmin } from "@/lib/auth";
 import { createProductAction } from "@/lib/actions";
 import ProductForm from "@/components/admin/ProductForm";
 
 export default async function NewProductPage() {
-  const admin = await getCurrentAdmin();
-  if (!admin) redirect("/admin/login");
+  await requireFullAdmin();
 
   return (
     <div>
