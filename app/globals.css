@@ -405,9 +405,9 @@ html.novo-lock-scroll body {
 .stay-amenity:hover { transform: translateY(-2px); border-color: var(--accent-dark); }
 .stay-amenity svg { color: var(--accent-dark); flex-shrink: 0; }
 
-/* Kalendar dostupnosti (read-only, gost ne klika) — zamjena za stari vanjski
-   "Provjeri dostupnost" gumb, vidi AvailabilityCalendar u app/[slug]/page.tsx.
-   Stoji iznad .stay-book bara u istoj sekciji, koristi iste --ink/--paper/
+/* Kalendar dostupnosti (interaktivan — gost klika dolazak/odlazak, datumi se
+   upisuju u poruku upita), vidi components/AvailabilityCalendar.tsx. Stoji
+   iznad .stay-book bara u istoj sekciji, koristi iste --ink/--paper/
    --plaster/--accent tokene pa automatski prati .stay-dark temu. */
 .stay-avail-cal { margin-bottom: 22px; }
 /* Bez max-width, .stay-avail-grid (7 fluidnih 1fr kolona) razvuče dane na
@@ -428,6 +428,16 @@ html.novo-lock-scroll body {
 .stay-avail-dot { width: 9px; height: 9px; border-radius: 50%; background: var(--plaster); border: 1px solid color-mix(in srgb, var(--ink) 20%, transparent); display: inline-block; }
 .stay-avail-dot-blocked { background: color-mix(in srgb, var(--ink) 14%, transparent); border-color: transparent; }
 .stay-raw .stay-avail-day { border-radius: 0; }
+/* Slobodni dani su sad <button> (klikabilni), zauzeti ostaju <span> — reset
+   nasljeđenih button stilova (border/padding/font) da .stay-avail-day izgleda
+   isto kao prije, plus stanja odabira ispod. */
+.stay-avail-day-pick { border: none; padding: 0; font-family: inherit; appearance: none; cursor: pointer; transition: background 0.12s ease, color 0.12s ease; }
+.stay-avail-day-pick:hover { background: color-mix(in srgb, var(--accent) 22%, var(--plaster)); }
+.stay-avail-day-selected { background: var(--accent); color: var(--paper); }
+.stay-avail-day-selected:hover { background: var(--accent); }
+.stay-avail-day-inrange { background: color-mix(in srgb, var(--accent) 22%, var(--plaster)); }
+.stay-avail-hint { font-size: 12px; color: var(--dim, #8a7f6a); margin-top: 10px; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.stay-avail-clear { border: none; background: none; padding: 0; font: inherit; font-weight: 700; color: var(--accent-dark); cursor: pointer; text-decoration: underline; }
 
 .stay-book { display: flex; flex-wrap: wrap; gap: 20px; align-items: center; justify-content: space-between; background: var(--accent); color: var(--paper); border-radius: 18px; padding: 26px clamp(20px, 4vw, 36px); }
 .stay-book .price { font-family: var(--font-zilla-slab), serif; font-size: 32px; font-weight: 600; }
