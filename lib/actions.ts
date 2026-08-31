@@ -43,6 +43,7 @@ import {
   updateAdminPassword,
 } from "@/lib/db/queries";
 import { sendInquiryNotification, sendGuestConfirmation } from "@/lib/email";
+import { resolveCoordinates } from "@/lib/geocode";
 
 export type ActionState = { error?: string; success?: boolean } | undefined;
 
@@ -203,6 +204,7 @@ const PropertySchema = z.object({
     .refine((v) => !v || /^https?:\/\//i.test(v), {
       message: "Poveznica za mapu mora počinjati s http:// ili https://",
     }),
+  address: z.string().optional(),
   testimonials: z.string().optional(), // JSON niz {author,text,rating}, parsiramo dolje
   faq: z.string().optional(), // JSON niz {question,answer}, parsiramo dolje
   imageCategories: z.string().optional(), // JSON objekt url->kategorija, parsiramo dolje
@@ -350,6 +352,7 @@ export async function createPropertyAction(
     hostName: formData.get("hostName") ?? "",
     hostNote: formData.get("hostNote") ?? "",
     mapUrl: formData.get("mapUrl") ?? "",
+    address: formData.get("address") ?? "",
     testimonials: formData.get("testimonials") ?? "[]",
     faq: formData.get("faq") ?? "[]",
     imageCategories: formData.get("imageCategories") ?? "{}",
@@ -371,6 +374,9 @@ export async function createPropertyAction(
     return { error: `Adresa "${parsed.data.slug}" je već zauzeta (vikendica ili firma) — odaberi drugu.` };
   }
 
+  const address = parsed.data.address?.trim() || null;
+  const coords = await resolveCoordinates(address);
+
   try {
     await createProperty({
       ...parsed.data,
@@ -385,6 +391,9 @@ export async function createPropertyAction(
       hostName: parsed.data.hostName?.trim() || null,
       hostNote: parsed.data.hostNote?.trim() || null,
       mapUrl: parsed.data.mapUrl?.trim() || null,
+      address,
+      latitude: coords.latitude,
+      longitude: coords.longitude,
       testimonials: parseTestimonials(parsed.data.testimonials),
       faq: parseFaq(parsed.data.faq),
       imageCategories: parseImageCategories(parsed.data.imageCategories),
@@ -437,6 +446,7 @@ export async function updatePropertyAction(
     hostName: formData.get("hostName") ?? "",
     hostNote: formData.get("hostNote") ?? "",
     mapUrl: formData.get("mapUrl") ?? "",
+    address: formData.get("address") ?? "",
     testimonials: formData.get("testimonials") ?? "[]",
     faq: formData.get("faq") ?? "[]",
     imageCategories: formData.get("imageCategories") ?? "{}",
@@ -458,6 +468,10 @@ export async function updatePropertyAction(
     return { error: `Adresa "${parsed.data.slug}" je već zauzeta (vikendica ili firma) — odaberi drugu.` };
   }
 
+  const address = parsed.data.address?.trim() || null;
+  const existing = await getPropertyById(id);
+  const coords = await resolveCoordinates(address, existing ?? undefined);
+
   try {
     await updateProperty(id, {
       ...parsed.data,
@@ -472,6 +486,9 @@ export async function updatePropertyAction(
       hostName: parsed.data.hostName?.trim() || null,
       hostNote: parsed.data.hostNote?.trim() || null,
       mapUrl: parsed.data.mapUrl?.trim() || null,
+      address,
+      latitude: coords.latitude,
+      longitude: coords.longitude,
       testimonials: parseTestimonials(parsed.data.testimonials),
       faq: parseFaq(parsed.data.faq),
       imageCategories: parseImageCategories(parsed.data.imageCategories),
