@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import Link from "next/link";
 import { getCurrentAdminRecord } from "@/lib/auth";
 import { logoutAction } from "@/lib/actions";
+import { listPropertiesForAdmin, listCompaniesForAdmin } from "@/lib/db/queries";
 import PwaRegister from "@/components/admin/PwaRegister";
 
 export const metadata: Metadata = {
@@ -26,6 +27,20 @@ export const viewport: Viewport = {
 
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
   const admin = await getCurrentAdminRecord();
+
+  // Za vlasnika prikazujemo koju vikendicu/firmu upravlja odmah uz "vlasnik"
+  // značku u headeru (npr. "vlasnik · Sokak bez imena") — bez ovoga admin
+  // izgleda identično kome god bio dodijeljen, pa nije jasno na prvi pogled
+  // kojom stranicom vlasnik zapravo upravlja.
+  let ownerLabel: string | null = null;
+  if (admin?.role === "owner") {
+    const [ownedProperties, ownedCompanies] = await Promise.all([
+      listPropertiesForAdmin(admin),
+      listCompaniesForAdmin(admin),
+    ]);
+    const names = [...ownedProperties.map((p) => p.name), ...ownedCompanies.map((c) => c.name)];
+    ownerLabel = names.length > 0 ? names.join(", ") : null;
+  }
 
   return (
     <div className="admin-shell">
@@ -85,7 +100,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
               )}
               {admin.role === "owner" && (
                 <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-black/5 text-black/50">
-                  vlasnik
+                  vlasnik{ownerLabel ? ` · ${ownerLabel}` : ""}
                 </span>
               )}
             </span>
