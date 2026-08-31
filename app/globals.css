@@ -410,6 +410,13 @@ html.novo-lock-scroll body {
    Stoji iznad .stay-book bara u istoj sekciji, koristi iste --ink/--paper/
    --plaster/--accent tokene pa automatski prati .stay-dark temu. */
 .stay-avail-cal { margin-bottom: 22px; }
+/* Bez max-width, .stay-avail-grid (7 fluidnih 1fr kolona) razvuče dane na
+   cijelu širinu .stay-section-a — na širokom desktop ekranu to su ogromni
+   kvadrati. Mobitel je već uzak pa se to prirodno ne primjećuje, zato cap
+   ide tek od 640px na više (mobile izgled ostaje netaknut). */
+@media (min-width: 640px) {
+  .stay-avail-cal { max-width: 320px; }
+}
 .stay-avail-month + .stay-avail-month { margin-top: 18px; }
 .stay-avail-month-title { font-size: 13px; font-weight: 700; color: var(--accent-dark); margin-bottom: 10px; }
 .stay-avail-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; text-align: center; }
