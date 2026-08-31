@@ -18,22 +18,62 @@ export async function generateMetadata({
   params: Promise<Params>;
 }): Promise<Metadata> {
   const { slug } = await params;
+  const url = `https://www.probajnovo.com/${slug}`;
   const property = await getPropertyBySlug(slug);
   if (property && property.published) {
+    const title = `${property.name} — ${property.location}`;
+    const image = property.bannerImage || property.images[0];
     return {
-      title: `${property.name} — ${property.location}`,
+      title,
       description: property.tagline,
       robots: { index: true, follow: true },
       icons: { icon: property.faviconUrl || "/favicon-orange.png" },
+      // Kanonski URL + Open Graph/Twitter: pomaže Googleu i društvenim mrežama
+      // da OVU stranicu (naslov = ime vikendice, ne "NOVO") prepoznaju kao
+      // zaseban entitet, umjesto da signal razvodne apex/www/poddomena varijante.
+      alternates: { canonical: url },
+      openGraph: {
+        title,
+        description: property.tagline,
+        url,
+        siteName: "NOVO",
+        locale: "hr_HR",
+        type: "website",
+        ...(image ? { images: [{ url: image }] } : {}),
+      },
+      twitter: {
+        card: "summary_large_image",
+        title,
+        description: property.tagline,
+        ...(image ? { images: [image] } : {}),
+      },
     };
   }
   const company = await getCompanyBySlug(slug);
   if (company && company.published) {
+    const title = `${company.name} — ${company.location}`;
+    const image = company.bannerImage || company.images[0];
     return {
-      title: `${company.name} — ${company.location}`,
+      title,
       description: company.tagline,
       robots: { index: true, follow: true },
       icons: { icon: company.faviconUrl || "/favicon-orange.png" },
+      alternates: { canonical: url },
+      openGraph: {
+        title,
+        description: company.tagline,
+        url,
+        siteName: "NOVO",
+        locale: "hr_HR",
+        type: "website",
+        ...(image ? { images: [{ url: image }] } : {}),
+      },
+      twitter: {
+        card: "summary_large_image",
+        title,
+        description: company.tagline,
+        ...(image ? { images: [image] } : {}),
+      },
     };
   }
   return {};
