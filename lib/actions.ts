@@ -52,6 +52,9 @@ import {
   setReservationPaid,
   createExpense,
   deleteExpense,
+  createSale,
+  deleteSale,
+  SALE_CATEGORIES,
 } from "@/lib/db/queries";
 import { sendInquiryNotification, sendGuestConfirmation } from "@/lib/email";
 import { resolveCoordinates, geoMissWarning } from "@/lib/geocode";
@@ -1464,4 +1467,57 @@ export async function deleteExpenseAction(propertyId: number, id: number) {
   await deleteExpense(id);
   revalidatePath("/admin/rezervacije");
   revalidatePath("/admin");
+}
+
+/* ---------------------------------------------------------------- */
+/* Zarada agencije (prodaja stranica/proizvoda/usluga) — vidi         */
+/* app/admin/prodaja. Samo puni admini (requireAdmin), NE vlasnici —  */
+/* vlasnici vide samo svoje vikendice, ovo je agencijska knjiga.      */
+/* ---------------------------------------------------------------- */
+
+const SaleSchema = z.object({
+  category: z.enum(SALE_CATEGORIES, { message: "Odaberi kategoriju." }),
+  item: z.string().min(1, "Opis je obavezan."),
+  buyerName: z.string().optional(),
+  priceEur: z.coerce.number().int().min(0, "Iznos ne smije biti negativan."),
+  date: z.string().regex(DATE_RE, "Datum nije ispravan."),
+  note: z.string().optional(),
+});
+
+export async function createSaleAction(
+  redirectTo: string,
+  _prevState: ActionState,
+  formData: FormData
+): Promise<ActionState> {
+  await requireAdmin();
+
+  const parsed = SaleSchema.safeParse({
+    category: formData.get("category"),
+    item: formData.get("item"),
+    buyerName: formData.get("buyerName"),
+    priceEur: formData.get("priceEur"),
+    date: formData.get("date"),
+    note: formData.get("note"),
+  });
+  if (!parsed.success) {
+    return { error: parsed.error.issues[0]?.message ?? "Provjeri unesene podatke." };
+  }
+
+  await createSale({
+    category: parsed.data.category,
+    item: parsed.data.item,
+    buyerName: parsed.data.buyerName || null,
+    priceEur: parsed.data.priceEur,
+    date: parsed.data.date,
+    note: parsed.data.note || null,
+  });
+  revalidatePath("/admin/prodaja");
+  // redirect() umjesto { success: true } — isprazni formu za sljedeći unos.
+  redirect(redirectTo);
+}
+
+export async function deleteSaleAction(id: number) {
+  await requireAdmin();
+  await deleteSale(id);
+  revalidatePath("/admin/prodaja");
 }
