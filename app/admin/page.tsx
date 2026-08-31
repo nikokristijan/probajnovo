@@ -11,6 +11,7 @@ import {
   listCompaniesForAdmin,
   listInquiriesForAdmin,
   listBlockedDates,
+  getMonthlyEarnings,
 } from "@/lib/db/queries";
 import type { AdminUser } from "@/lib/db/schema";
 
@@ -298,10 +299,13 @@ export default async function AdminDashboard() {
   );
 }
 
-function StatCard({ label, value }: { label: string; value: number }) {
+function StatCard({ label, value, suffix }: { label: string; value: number; suffix?: string }) {
   return (
     <div className="border border-black/10 rounded-xl px-4 py-3 bg-white">
-      <div className="text-2xl font-bold tabular-nums">{value}</div>
+      <div className="text-2xl font-bold tabular-nums">
+        {value}
+        {suffix ?? ""}
+      </div>
       <div className="text-xs text-black/50 mt-0.5">{label}</div>
     </div>
   );
@@ -333,7 +337,10 @@ async function OwnerDashboard({ admin }: { admin: AdminUser }) {
 
   const now = new Date();
   const monthPrefix = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
-  const blockedByProperty = await Promise.all(properties.map((p) => listBlockedDates(p.id)));
+  const [blockedByProperty, earnings] = await Promise.all([
+    Promise.all(properties.map((p) => listBlockedDates(p.id))),
+    getMonthlyEarnings(properties.map((p) => p.id), monthPrefix),
+  ]);
   // Zbroj zauzetih dana preko SVIH dodijeljenih vikendica ovaj mjesec (ne
   // unique po datumu) — ako vlasnik ima dvije vikendice, svaka se broji
   // zasebno, jer je ovo "koliko je noćenja zauzeto", ne "koliko dana u
@@ -360,9 +367,10 @@ async function OwnerDashboard({ admin }: { admin: AdminUser }) {
       </div>
 
       {pageCount > 0 && (
-        <section className="grid grid-cols-2 gap-3">
+        <section className="grid grid-cols-2 sm:grid-cols-3 gap-3">
           <StatCard label={pendingCount === 1 ? "Novi upit" : "Novih upita"} value={pendingCount} />
           <StatCard label="Dana zauzeto ovaj mjesec" value={daysBookedThisMonth} />
+          <StatCard label="Zarada ovaj mjesec (neto)" value={earnings.netEur} suffix=" €" />
         </section>
       )}
 
@@ -412,6 +420,9 @@ async function OwnerDashboard({ admin }: { admin: AdminUser }) {
             Brze radnje
           </h2>
           <div className="flex flex-wrap gap-2">
+            <Link href="/admin/rezervacije" className="admin-quicklink">
+              Rezervacije
+            </Link>
             <Link href="/admin/kalendar" className="admin-quicklink">
               Kalendar
             </Link>

@@ -62,6 +62,9 @@ export default async function AdminLayout({ children }: { children: React.ReactN
                 <Link href="/admin/inquiries" className="hover:text-[#ff7f00]">
                   Upiti
                 </Link>
+                <Link href="/admin/rezervacije" className="hover:text-[#ff7f00]">
+                  Rezervacije
+                </Link>
                 <Link href="/admin/kalendar" className="hover:text-[#ff7f00]">
                   Kalendar
                 </Link>
@@ -79,6 +82,9 @@ export default async function AdminLayout({ children }: { children: React.ReactN
                 </Link>
                 <Link href="/admin/inquiries" className="hover:text-[#ff7f00]">
                   Upiti
+                </Link>
+                <Link href="/admin/rezervacije" className="hover:text-[#ff7f00]">
+                  Rezervacije
                 </Link>
                 <Link href="/admin/kalendar" className="hover:text-[#ff7f00]">
                   Kalendar
