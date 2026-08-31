@@ -405,6 +405,23 @@ html.novo-lock-scroll body {
 .stay-amenity:hover { transform: translateY(-2px); border-color: var(--accent-dark); }
 .stay-amenity svg { color: var(--accent-dark); flex-shrink: 0; }
 
+/* Kalendar dostupnosti (read-only, gost ne klika) — zamjena za stari vanjski
+   "Provjeri dostupnost" gumb, vidi AvailabilityCalendar u app/[slug]/page.tsx.
+   Stoji iznad .stay-book bara u istoj sekciji, koristi iste --ink/--paper/
+   --plaster/--accent tokene pa automatski prati .stay-dark temu. */
+.stay-avail-cal { margin-bottom: 22px; }
+.stay-avail-month + .stay-avail-month { margin-top: 18px; }
+.stay-avail-month-title { font-size: 13px; font-weight: 700; color: var(--accent-dark); margin-bottom: 10px; }
+.stay-avail-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; text-align: center; }
+.stay-avail-weekday { font-size: 10.5px; font-weight: 700; color: var(--dim, #8a7f6a); padding-bottom: 4px; }
+.stay-avail-day { display: flex; align-items: center; justify-content: center; aspect-ratio: 1; border-radius: 8px; font-size: 12.5px; font-weight: 600; background: var(--plaster); color: var(--ink); }
+.stay-avail-blocked { background: color-mix(in srgb, var(--ink) 14%, transparent); color: var(--dim, #8a7f6a); text-decoration: line-through; text-decoration-thickness: 1px; opacity: 0.75; }
+.stay-avail-legend { display: flex; gap: 18px; margin-top: 12px; font-size: 12px; color: var(--dim, #8a7f6a); }
+.stay-avail-legend span { display: inline-flex; align-items: center; gap: 6px; }
+.stay-avail-dot { width: 9px; height: 9px; border-radius: 50%; background: var(--plaster); border: 1px solid color-mix(in srgb, var(--ink) 20%, transparent); display: inline-block; }
+.stay-avail-dot-blocked { background: color-mix(in srgb, var(--ink) 14%, transparent); border-color: transparent; }
+.stay-raw .stay-avail-day { border-radius: 0; }
+
 .stay-book { display: flex; flex-wrap: wrap; gap: 20px; align-items: center; justify-content: space-between; background: var(--accent); color: var(--paper); border-radius: 18px; padding: 26px clamp(20px, 4vw, 36px); }
 .stay-book .price { font-family: var(--font-zilla-slab), serif; font-size: 32px; font-weight: 600; }
 .stay-book .price small { font-size: 14px; font-weight: 400; font-family: var(--font-karla), sans-serif; opacity: .85; }
