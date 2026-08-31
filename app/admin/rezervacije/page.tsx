@@ -11,6 +11,7 @@ import ReservationForm from "@/components/admin/ReservationForm";
 import ReservationsTable from "@/components/admin/ReservationsTable";
 import ExpenseForm from "@/components/admin/ExpenseForm";
 import DeleteExpenseButton from "@/components/admin/DeleteExpenseButton";
+import { currentYearMonthZagreb } from "@/lib/date";
 
 const MONTH_NAMES = [
   "Siječanj", "Veljača", "Ožujak", "Travanj", "Svibanj", "Lipanj",
@@ -74,11 +75,11 @@ export default async function AdminReservationsPage({
   // Mjesec za koji se prikazuje zarada — podrazumijevano tekući, ali
   // navigacija ← → (linkFor ispod) omogućuje pregled bilo kojeg mjeseca, ne
   // samo trenutnog (isti obrazac kao app/admin/kalendar).
-  const now = new Date();
-  const year = sp.year ? Number(sp.year) : now.getFullYear();
-  const month = sp.month ? Number(sp.month) : now.getMonth() + 1; // 1-12
+  const nowZagreb = currentYearMonthZagreb();
+  const year = sp.year ? Number(sp.year) : nowZagreb.year;
+  const month = sp.month ? Number(sp.month) : nowZagreb.month; // 1-12
   const monthPrefix = `${year}-${String(month).padStart(2, "0")}`;
-  const isCurrentMonth = year === now.getFullYear() && month === now.getMonth() + 1;
+  const isCurrentMonth = year === nowZagreb.year && month === nowZagreb.month;
   const earnings = await getMonthlyEarnings([property.id], monthPrefix);
 
   const prevMonth = month === 1 ? 12 : month - 1;
