@@ -32,6 +32,7 @@ import {
   deleteProduct,
   createInquiry,
   countRecentInquiriesByIp,
+  getInquiryById,
   markInquiryRead,
   markInquiryReplied,
   deleteInquiry,
@@ -41,9 +42,14 @@ import {
   deleteAdmin,
   countAdmins,
   updateAdminPassword,
+  hasAdminAccess,
+  setAdminAccess,
+  addManualBlockedDate,
+  removeManualBlockedDate,
 } from "@/lib/db/queries";
 import { sendInquiryNotification, sendGuestConfirmation } from "@/lib/email";
 import { resolveCoordinates } from "@/lib/geocode";
+import type { AdminUser, Inquiry } from "@/lib/db/schema";
 
 export type ActionState = { error?: string; success?: boolean } | undefined;
 
@@ -100,7 +106,9 @@ export async function loginAction(
 
   const token = await createSessionToken({ adminId: admin.id, email: admin.email });
   await setSessionCookie(token);
-  redirect("/admin");
+  // Vlasnik (role="owner") nema pristup punom /admin panelu — vidi requireAdmin ispod —
+  // pa ga odmah šaljemo na njegov ograničeni pregled upita umjesto na /admin.
+  redirect(admin.role === "owner" ? "/admin/inquiries" : "/admin");
 }
 
 export async function logoutAction() {
@@ -108,22 +116,61 @@ export async function logoutAction() {
   redirect("/admin/login");
 }
 
+/** Pročita punu bazu redak trenutnog admina (bilo koje uloge), ili preusmjeri na login. */
+async function requireAdminRow(): Promise<AdminUser> {
+  const session = await getCurrentAdmin();
+  if (!session) redirect("/admin/login");
+  const row = await getAdminById(session.adminId);
+  if (!row) redirect("/admin/login");
+  return row;
+}
+
+/** Puni admin (role="admin") — za sve akcije koje UREĐUJU sadržaj (vikendice, firme,
+    studies, proizvodi, agencija, admini, brisanje upita). Vlasnik (role="owner") se
+    ovdje zaustavlja i vraća na svoj pregled upita — vidi standing rule: vlasnik ne
+    smije ništa uređivati, samo gledati upite i kalendar svojih vikendica/firmi. */
 async function requireAdmin() {
-  const admin = await getCurrentAdmin();
-  if (!admin) {
-    redirect("/admin/login");
-  }
-  return admin;
+  const row = await requireAdminRow();
+  if (row.role === "owner") redirect("/admin/inquiries");
+  return { adminId: row.id, email: row.email };
 }
 
 /** Kao requireAdmin, ali dodatno provjeri je li ovaj admin glavni (super admin). */
 async function requireSuperAdmin() {
-  const admin = await requireAdmin();
-  const row = await getAdminById(admin.adminId);
-  if (!row || !row.isSuperAdmin) {
+  const row = await requireAdminRow();
+  if (row.role === "owner" || !row.isSuperAdmin) {
     redirect("/admin");
   }
-  return { ...admin, row };
+  return { adminId: row.id, email: row.email, row };
+}
+
+/** Puni admin ILI vlasnik — za akcije dopuštene i vlasniku, ali samo za NJEGOVE
+    vikendice/firme (uvijek prati s assertPropertyAccess/assertInquiryAccess
+    ispod da vlasnik ne vidi/mijenja tuđe). */
+async function requireAdminOrOwner(): Promise<AdminUser> {
+  return requireAdminRow();
+}
+
+/** Puni admini smiju uvijek; vlasnik samo ako mu je ova vikendica dodijeljena
+    (admin_access) — inače ga vraćamo na pregled upita. */
+async function assertPropertyAccess(admin: AdminUser, propertyId: number) {
+  if (admin.role === "owner" && !(await hasAdminAccess(admin.id, { propertyId }))) {
+    redirect("/admin/inquiries");
+  }
+}
+
+/** Isto kao assertPropertyAccess, ali za jedan konkretan upit — provjerava kojoj
+    vikendici/firmi upit pripada izravno preko hasAdminAccess (agencijski upiti,
+    source="agency", nisu nikad dostupni vlasniku). */
+async function assertInquiryAccess(admin: AdminUser, inquiry: Inquiry) {
+  if (admin.role !== "owner") return;
+  if (inquiry.source === "property" && inquiry.sourceId != null) {
+    if (await hasAdminAccess(admin.id, { propertyId: inquiry.sourceId })) return;
+  }
+  if (inquiry.source === "company" && inquiry.sourceId != null) {
+    if (await hasAdminAccess(admin.id, { companyId: inquiry.sourceId })) return;
+  }
+  redirect("/admin/inquiries");
 }
 
 /* ---------------------------------------------------------------- */
@@ -220,6 +267,12 @@ const PropertySchema = z.object({
     .optional()
     .refine((v) => !v || /^https?:\/\//i.test(v), {
       message: "Poveznica na dostupnost mora počinjati s http:// ili https://",
+    }),
+  icalUrl: z
+    .string()
+    .optional()
+    .refine((v) => !v || /^https?:\/\//i.test(v), {
+      message: "iCal poveznica mora počinjati s http:// ili https://",
     }),
   hostPhoto: z.string().optional(),
   reviewBadges: z.string().optional(), // jedan po retku, parsiramo kao amenities
@@ -359,6 +412,7 @@ export async function createPropertyAction(
     videoUrl: formData.get("videoUrl") ?? "",
     seasonalPricing: formData.get("seasonalPricing") ?? "[]",
     availabilityUrl: formData.get("availabilityUrl") ?? "",
+    icalUrl: formData.get("icalUrl") ?? "",
     hostPhoto: formData.get("hostPhoto") ?? "",
     reviewBadges: formData.get("reviewBadges") ?? "",
     faviconUrl: formData.get("faviconUrl") ?? "",
@@ -400,6 +454,7 @@ export async function createPropertyAction(
       videoUrl: parsed.data.videoUrl?.trim() || null,
       seasonalPricing: parseSeasonalPricing(parsed.data.seasonalPricing),
       availabilityUrl: parsed.data.availabilityUrl?.trim() || null,
+      icalUrl: parsed.data.icalUrl?.trim() || null,
       hostPhoto: parsed.data.hostPhoto?.trim() || null,
       reviewBadges: parseAmenities(parsed.data.reviewBadges ?? ""),
       faviconUrl: parsed.data.faviconUrl?.trim() || null,
@@ -453,6 +508,7 @@ export async function updatePropertyAction(
     videoUrl: formData.get("videoUrl") ?? "",
     seasonalPricing: formData.get("seasonalPricing") ?? "[]",
     availabilityUrl: formData.get("availabilityUrl") ?? "",
+    icalUrl: formData.get("icalUrl") ?? "",
     hostPhoto: formData.get("hostPhoto") ?? "",
     reviewBadges: formData.get("reviewBadges") ?? "",
     faviconUrl: formData.get("faviconUrl") ?? "",
@@ -495,6 +551,7 @@ export async function updatePropertyAction(
       videoUrl: parsed.data.videoUrl?.trim() || null,
       seasonalPricing: parseSeasonalPricing(parsed.data.seasonalPricing),
       availabilityUrl: parsed.data.availabilityUrl?.trim() || null,
+      icalUrl: parsed.data.icalUrl?.trim() || null,
       hostPhoto: parsed.data.hostPhoto?.trim() || null,
       reviewBadges: parseAmenities(parsed.data.reviewBadges ?? ""),
       faviconUrl: parsed.data.faviconUrl?.trim() || null,
@@ -1058,18 +1115,26 @@ async function resolveInquiryRecipient(
 }
 
 export async function markInquiryReadAction(id: number) {
-  await requireAdmin();
+  // Vlasnik smije označiti pročitano/odgovoreno SAMO na upitima svoje vikendice/firme.
+  const admin = await requireAdminOrOwner();
+  const inquiry = await getInquiryById(id);
+  if (!inquiry) redirect("/admin/inquiries");
+  await assertInquiryAccess(admin, inquiry);
   await markInquiryRead(id);
   revalidatePath("/admin/inquiries");
 }
 
 export async function markInquiryRepliedAction(id: number) {
-  await requireAdmin();
+  const admin = await requireAdminOrOwner();
+  const inquiry = await getInquiryById(id);
+  if (!inquiry) redirect("/admin/inquiries");
+  await assertInquiryAccess(admin, inquiry);
   await markInquiryReplied(id);
   revalidatePath("/admin/inquiries");
 }
 
 export async function deleteInquiryAction(id: number) {
+  // Brisanje ostaje samo za pune admine (vlasnik ne smije ništa trajno uklanjati).
   await requireAdmin();
   await deleteInquiry(id);
   revalidatePath("/admin/inquiries");
@@ -1083,6 +1148,9 @@ export async function deleteInquiryAction(id: number) {
 const AdminSchema = z.object({
   email: z.string().email({ message: "Unesi ispravan email." }),
   password: z.string().min(8, { message: "Lozinka mora imati barem 8 znakova." }),
+  role: z.enum(["admin", "owner"]).default("admin"),
+  propertyIds: z.array(z.coerce.number().int()).default([]),
+  companyIds: z.array(z.coerce.number().int()).default([]),
 });
 
 export async function createAdminAction(
@@ -1093,9 +1161,15 @@ export async function createAdminAction(
   const parsed = AdminSchema.safeParse({
     email: formData.get("email"),
     password: formData.get("password"),
+    role: formData.get("role") || "admin",
+    propertyIds: formData.getAll("propertyIds"),
+    companyIds: formData.getAll("companyIds"),
   });
   if (!parsed.success) {
     return { error: parsed.error.issues[0]?.message ?? "Provjeri unesene podatke." };
+  }
+  if (parsed.data.role === "owner" && parsed.data.propertyIds.length === 0 && parsed.data.companyIds.length === 0) {
+    return { error: "Odaberi barem jednu vikendicu ili firmu za vlasnički račun." };
   }
   const email = parsed.data.email.toLowerCase().trim();
   const existing = await findAdminByEmail(email);
@@ -1103,7 +1177,18 @@ export async function createAdminAction(
     return { error: "Već postoji admin s tim emailom." };
   }
   const passwordHash = await bcrypt.hash(parsed.data.password, 12);
-  await createAdmin({ email, passwordHash, isSuperAdmin: false });
+  const created = await createAdmin({
+    email,
+    passwordHash,
+    isSuperAdmin: false,
+    role: parsed.data.role,
+  });
+  if (parsed.data.role === "owner") {
+    await setAdminAccess(created.id, {
+      propertyIds: parsed.data.propertyIds,
+      companyIds: parsed.data.companyIds,
+    });
+  }
   revalidatePath("/admin/admins");
   redirect("/admin/admins");
 }
@@ -1145,7 +1230,8 @@ export async function changePasswordAction(
   _prevState: ActionState,
   formData: FormData
 ): Promise<ActionState> {
-  const admin = await requireAdmin();
+  // Promjena vlastite lozinke je dopuštena i vlasniku (owner), ne samo punom adminu.
+  const row = await requireAdminOrOwner();
   const parsed = ChangePasswordSchema.safeParse({
     currentPassword: formData.get("currentPassword"),
     newPassword: formData.get("newPassword"),
@@ -1155,17 +1241,37 @@ export async function changePasswordAction(
     return { error: parsed.error.issues[0]?.message ?? "Provjeri unesene podatke." };
   }
 
-  const row = await getAdminById(admin.adminId);
-  if (!row) {
-    return { error: "Račun nije pronađen." };
-  }
-
   const valid = await bcrypt.compare(parsed.data.currentPassword, row.passwordHash);
   if (!valid) {
     return { error: "Trenutna lozinka nije točna." };
   }
 
   const passwordHash = await bcrypt.hash(parsed.data.newPassword, 12);
-  await updateAdminPassword(admin.adminId, passwordHash);
+  await updateAdminPassword(row.id, passwordHash);
   return { success: true };
+}
+
+/* ---------------------------------------------------------------- */
+/* Kalendar dostupnosti — ručno blokiranje/deblokiranje datuma        */
+/* (vidi app/admin/kalendar). "ical"-izvorni datumi se ovdje ne diraju */
+/* — oni se upravljaju samo preko app/api/cron/sync-ical.             */
+/* ---------------------------------------------------------------- */
+
+const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
+
+export async function toggleBlockedDateAction(
+  propertyId: number,
+  date: string,
+  currentlyBlocked: boolean
+) {
+  const admin = await requireAdminOrOwner();
+  await assertPropertyAccess(admin, propertyId);
+  if (!DATE_RE.test(date)) redirect("/admin/kalendar");
+
+  if (currentlyBlocked) {
+    await removeManualBlockedDate(propertyId, date);
+  } else {
+    await addManualBlockedDate(propertyId, date);
+  }
+  revalidatePath("/admin/kalendar");
 }

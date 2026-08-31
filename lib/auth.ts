@@ -1,5 +1,6 @@
 import { SignJWT, jwtVerify } from "jose";
 import { cookies } from "next/headers";
+import { redirect } from "next/navigation";
 import { getAdminById } from "@/lib/db/queries";
 
 const COOKIE_NAME = "novo_admin_session";
@@ -74,6 +75,20 @@ export async function getCurrentAdminRecord() {
   const row = await getAdminById(session.adminId);
   if (!row) return null;
   return row;
+}
+
+/**
+ * Za Server Komponente (stranice) koje smiju uređivati sadržaj (vikendice,
+ * firme, studies, proizvodi, agencija, admini) — puni admini prolaze, vlasnik
+ * (role "owner", vidi admin_users.role) se preusmjerava na svoj ograničeni
+ * pregled upita, jer vlasnik ne smije uređivati stranicu (samo gleda upite
+ * i kalendar svoje vikendice/firme — vidi app/admin/kalendar).
+ */
+export async function requireFullAdmin() {
+  const admin = await getCurrentAdminRecord();
+  if (!admin) redirect("/admin/login");
+  if (admin.role === "owner") redirect("/admin/inquiries");
+  return admin;
 }
 
 export const SESSION_COOKIE_NAME = COOKIE_NAME;
