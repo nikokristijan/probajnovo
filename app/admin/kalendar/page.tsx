@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getCurrentAdminRecord } from "@/lib/auth";
-import { listPropertiesForAdmin, listBlockedDates } from "@/lib/db/queries";
+import { listPropertiesForAdmin, listBlockedDates, listReservationsForProperty } from "@/lib/db/queries";
 import { toggleBlockedDateAction, blockDateRangeAction } from "@/lib/actions";
 
 const MONTH_NAMES = [
@@ -54,8 +54,14 @@ export default async function AdminCalendarPage({
   const daysInMonth = new Date(Date.UTC(year, month, 0)).getUTCDate();
   const leadingBlanks = mondayIndex(firstOfMonth);
 
-  const blocked = await listBlockedDates(property.id);
-  const blockedByDate = new Map(blocked.map((b) => [b.date, b.source]));
+  const [blocked, reservations] = await Promise.all([
+    listBlockedDates(property.id),
+    listReservationsForProperty(property.id),
+  ]);
+  const blockedByDate = new Map(blocked.map((b) => [b.date, b]));
+  // Ime gosta za tooltip na rezervacijom-blokiranim danima (source "reservation") —
+  // vidi app/admin/rezervacije, propertyBlockedDates.reservationId.
+  const guestNameByReservationId = new Map(reservations.map((r) => [r.id, r.guestName]));
 
   const prevMonth = month === 1 ? 12 : month - 1;
   const prevYear = month === 1 ? year - 1 : year;
@@ -85,7 +91,11 @@ export default async function AdminCalendarPage({
         <h1 className="text-xl font-bold">{property.name} — kalendar dostupnosti</h1>
         <p className="text-xs text-black/50 mt-0.5">
           Klikni na dan da ga označiš zauzetim/slobodnim. Dani povučeni automatski iz
-          Booking.com/Airbnb (oznaka &bdquo;iCal&rdquo;) se ne mogu ručno deblokirati ovdje.
+          Booking.com/Airbnb (oznaka &bdquo;iCal&rdquo;) i dani iz{" "}
+          <Link href={`/admin/rezervacije?property=${property.id}`} className="underline">
+            rezervacija
+          </Link>{" "}
+          se ne mogu ručno deblokirati ovdje.
         </p>
       </div>
 
@@ -130,9 +140,11 @@ export default async function AdminCalendarPage({
           {cells.map((day, i) => {
             if (day === null) return <div key={`blank-${i}`} />;
             const dateStr = `${year}-${pad2(month)}-${pad2(day)}`;
-            const source = blockedByDate.get(dateStr);
+            const blockedRow = blockedByDate.get(dateStr);
+            const source = blockedRow?.source;
             const isBlocked = !!source;
             const isIcal = source === "ical";
+            const isReservation = source === "reservation";
 
             if (isIcal) {
               return (
@@ -140,6 +152,25 @@ export default async function AdminCalendarPage({
                   key={dateStr}
                   title="Automatski povučeno (iCal) — ne može se ručno deblokirati ovdje"
                   className="aspect-square rounded-lg text-xs font-semibold flex items-center justify-center bg-black/70 text-white"
+                >
+                  {day}
+                </div>
+              );
+            }
+
+            if (isReservation) {
+              const guestName =
+                blockedRow?.reservationId != null
+                  ? guestNameByReservationId.get(blockedRow.reservationId)
+                  : null;
+              return (
+                <div
+                  key={dateStr}
+                  title={
+                    (guestName ? `${guestName} — ` : "") +
+                    "iz rezervacije — ne može se ručno deblokirati ovdje, obriši rezervaciju"
+                  }
+                  className="aspect-square rounded-lg text-xs font-semibold flex items-center justify-center bg-[#0000c3] text-white"
                 >
                   {day}
                 </div>
@@ -176,6 +207,10 @@ export default async function AdminCalendarPage({
           <span className="flex items-center gap-1.5">
             <span className="w-2.5 h-2.5 rounded-full bg-black/70 inline-block" />
             iCal (auto)
+          </span>
+          <span className="flex items-center gap-1.5">
+            <span className="w-2.5 h-2.5 rounded-full bg-[#0000c3] inline-block" />
+            rezervacija
           </span>
         </div>
       </div>
