@@ -1,7 +1,8 @@
 import { notFound } from "next/navigation";
 import { requireFullAdmin } from "@/lib/auth";
 import { getPropertyById } from "@/lib/db/queries";
-import { updatePropertyAction, geoMissWarning } from "@/lib/actions";
+import { updatePropertyAction } from "@/lib/actions";
+import { geoMissWarning } from "@/lib/geocode";
 import PropertyForm from "@/components/admin/PropertyForm";
 import DeletePropertyButton from "@/components/admin/DeletePropertyButton";
 
