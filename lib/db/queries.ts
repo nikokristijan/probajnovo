@@ -3,10 +3,12 @@ import { db } from "./index";
 import {
   agency,
   properties,
+  companies,
   studies,
   products,
   adminUsers,
   type NewProperty,
+  type NewCompany,
   type NewStudy,
   type NewProduct,
 } from "./schema";
@@ -64,6 +66,62 @@ return row;
 
 export async function deleteProperty(id: number) {
 await db.delete(properties).where(eq(properties.id, id));
+}
+
+/**
+ * Slug provjera preko OBJE tablice (properties + companies) — dijele isti
+ * plošni /[slug] URL prostor, pa dvije različite stranice ne smiju dobiti
+ * isti slug. `excludeId`/`excludeTable` isključuju red koji se trenutno
+ * uređuje (da ne prijavi sukob sam sa sobom).
+ */
+export async function isSlugTaken(
+  slug: string,
+  exclude?: { table: "properties" | "companies"; id: number }
+) {
+  const [propRows, compRows] = await Promise.all([
+    db.select({ id: properties.id }).from(properties).where(eq(properties.slug, slug)),
+    db.select({ id: companies.id }).from(companies).where(eq(companies.slug, slug)),
+  ]);
+  const propTaken = propRows.some(
+    (r) => !(exclude?.table === "properties" && exclude.id === r.id)
+  );
+  const compTaken = compRows.some(
+    (r) => !(exclude?.table === "companies" && exclude.id === r.id)
+  );
+  return propTaken || compTaken;
+}
+
+export async function listCompanies({ onlyPublished = false } = {}) {
+const rows = await db.select().from(companies).orderBy(desc(companies.createdAt));
+return onlyPublished ? rows.filter((c) => c.published) : rows;
+}
+
+export async function getCompanyBySlug(slug: string) {
+const rows = await db.select().from(companies).where(eq(companies.slug, slug)).limit(1);
+return rows[0] ?? null;
+}
+
+export async function getCompanyById(id: number) {
+const rows = await db.select().from(companies).where(eq(companies.id, id)).limit(1);
+return rows[0] ?? null;
+}
+
+export async function createCompany(data: NewCompany) {
+const [row] = await db.insert(companies).values(data).returning();
+return row;
+}
+
+export async function updateCompany(id: number, data: Partial<NewCompany>) {
+const [row] = await db
+.update(companies)
+.set({ ...data, updatedAt: new Date() })
+.where(eq(companies.id, id))
+.returning();
+return row;
+}
+
+export async function deleteCompany(id: number) {
+await db.delete(companies).where(eq(companies.id, id));
 }
 
 export async function listStudies({ onlyPublished = false } = {}) {
@@ -145,6 +203,10 @@ const [row] = await db
 .values({ email: data.email, passwordHash: data.passwordHash, isSuperAdmin: data.isSuperAdmin ?? false })
 .returning();
 return row;
+}
+
+export async function updateAdminPassword(id: number, passwordHash: string) {
+await db.update(adminUsers).set({ passwordHash }).where(eq(adminUsers.id, id));
 }
 
 export async function deleteAdmin(id: number) {

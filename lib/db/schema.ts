@@ -25,6 +25,7 @@ export const agency = pgTable("agency", {
 export type Testimonial = { author: string; text: string; rating: number };
 export type FaqItem = { question: string; answer: string };
 export type SeasonalPrice = { label: string; priceEur: number };
+export type ServiceItem = { name: string; description: string; priceEur: number | null };
 
 /**
  * One row per vikendica (holiday cottage) site, served at /[slug].
@@ -94,6 +95,53 @@ export const properties = pgTable("properties", {
 });
 
 /**
+ * Jedan red po firmi/obrtu — puna vlastita stranica poput vikendice (properties),
+ * samo bez booking polja (cijena/noć, gosti, sobe, sezonski cjenik, dostupnost).
+ * Dijeli JEDAN plošni /[slug] URL prostor s properties (vikendicama) — isti slug
+ * ne smije postojati u obje tablice, jer poddomena/custom-domena sustav radi
+ * bez baze u middlewareu (samo <slug> → /<slug>), pa i firma i vikendica na kraju
+ * moraju biti dohvatljive na istoj adresi "probajnovo.com/<slug>" odnosno
+ * "<slug>.probajnovo.com" — middleware ne zna (i ne treba znati) je li iza toga
+ * vikendica ili firma, to razlučuje sama /[slug] stranica pokušavajući prvo
+ * properties pa onda companies.
+ */
+export const companies = pgTable("companies", {
+  id: serial("id").primaryKey(),
+  slug: text("slug").notNull().unique(),
+  name: text("name").notNull(),
+  /** Mjesto/regija prikazano uz naziv, npr. "Slavonski Brod · Slavonija". */
+  location: text("location").notNull(),
+  tagline: text("tagline").notNull(),
+  description: text("description").notNull(),
+  /** Usluge/proizvodi — naziv, opis (opcionalan) i cijena (opcionalna, null = "na upit"). */
+  services: jsonb("services").$type<ServiceItem[]>().notNull().default([]),
+  /** Radno vrijeme — slobodan tekst, po želji jedan redak po danu. Null = ne prikazuje se. */
+  workingHours: text("working_hours"),
+  phone: text("phone"),
+  /** Puna adresa (ulica, mjesto) za kontakt sekciju — odvojeno od kraćeg `location` prikaza uz naslov. */
+  address: text("address"),
+  instagramUrl: text("instagram_url"),
+  facebookUrl: text("facebook_url"),
+  accentColor: text("accent_color").notNull().default("#B5502E"),
+  images: jsonb("images").$type<string[]>().notNull().default([]),
+  bannerImage: text("banner_image"),
+  contactEmail: text("contact_email"),
+  published: boolean("published").notNull().default(true),
+  layoutStyle: text("layout_style").notNull().default("classic"),
+  darkMode: boolean("dark_mode").notNull().default(false),
+  mapUrl: text("map_url"),
+  testimonials: jsonb("testimonials").$type<Testimonial[]>().notNull().default([]),
+  faq: jsonb("faq").$type<FaqItem[]>().notNull().default([]),
+  imageCategories: jsonb("image_categories").$type<Record<string, string>>().notNull().default({}),
+  videoUrl: text("video_url"),
+  reviewBadges: jsonb("review_badges").$type<string[]>().notNull().default([]),
+  faviconUrl: text("favicon_url"),
+  customDomain: text("custom_domain").unique(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+/**
  * Opći portfolio unos agencije (brend identitet, digitalni dizajn, film...).
  * Odvojeno od `properties` (vikendica) jer nema booking-specifična polja
  * (cijena, gosti, sobe, kontakt) niti vlastitu stranicu — prikazuje se
@@ -153,6 +201,8 @@ export const adminUsers = pgTable("admin_users", {
 export type Agency = typeof agency.$inferSelect;
 export type Property = typeof properties.$inferSelect;
 export type NewProperty = typeof properties.$inferInsert;
+export type Company = typeof companies.$inferSelect;
+export type NewCompany = typeof companies.$inferInsert;
 export type Study = typeof studies.$inferSelect;
 export type NewStudy = typeof studies.$inferInsert;
 export type Product = typeof products.$inferSelect;
