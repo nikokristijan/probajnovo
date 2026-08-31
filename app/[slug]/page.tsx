@@ -1,7 +1,8 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { getPropertyBySlug, getAgency } from "@/lib/db/queries";
+import { getPropertyBySlug, getCompanyBySlug, getAgency } from "@/lib/db/queries";
+import type { Agency, Property, Company } from "@/lib/db/schema";
 import RevealSection from "@/components/RevealSection";
 import GalleryLightbox from "@/components/GalleryLightbox";
 import StayInteractions from "@/components/StayInteractions";
@@ -17,13 +18,24 @@ export async function generateMetadata({
 }): Promise<Metadata> {
   const { slug } = await params;
   const property = await getPropertyBySlug(slug);
-  if (!property || !property.published) return {};
-  return {
-    title: `${property.name} — ${property.location}`,
-    description: property.tagline,
-    robots: { index: true, follow: true },
-    icons: { icon: property.faviconUrl || "/favicon-orange.png" },
-  };
+  if (property && property.published) {
+    return {
+      title: `${property.name} — ${property.location}`,
+      description: property.tagline,
+      robots: { index: true, follow: true },
+      icons: { icon: property.faviconUrl || "/favicon-orange.png" },
+    };
+  }
+  const company = await getCompanyBySlug(slug);
+  if (company && company.published) {
+    return {
+      title: `${company.name} — ${company.location}`,
+      description: company.tagline,
+      robots: { index: true, follow: true },
+      icons: { icon: company.faviconUrl || "/favicon-orange.png" },
+    };
+  }
+  return {};
 }
 
 /** Prepoznaje YouTube/Vimeo poveznice i vraća embed URL; inače null (pa se prikaže kao obična poveznica). */
@@ -120,7 +132,7 @@ function StarRow({ rating }: { rating: number }) {
   );
 }
 
-export default async function PropertyPage({
+export default async function SlugPage({
   params,
 }: {
   params: Promise<Params>;
@@ -128,10 +140,19 @@ export default async function PropertyPage({
   const { slug } = await params;
   const [property, agency] = await Promise.all([getPropertyBySlug(slug), getAgency()]);
 
-  if (!property || !property.published) {
-    notFound();
+  if (property && property.published) {
+    return <PropertyView property={property} agency={agency} />;
   }
 
+  const company = await getCompanyBySlug(slug);
+  if (company && company.published) {
+    return <CompanyView company={company} agency={agency} />;
+  }
+
+  notFound();
+}
+
+function PropertyView({ property, agency }: { property: Property; agency: Agency | null }) {
   const layout =
     property.layoutStyle === "editorial" ||
     property.layoutStyle === "raw" ||
@@ -456,6 +477,336 @@ export default async function PropertyPage({
 
       <footer className="stay-foot">
         {property.name} · {property.location}
+        <div className="credit">
+          Stranicu pokreće <Link href="/">NOVO</Link>
+        </div>
+      </footer>
+
+      <div className="stay-mobile-cta">
+        <a href={mailHref}>Pošaljite upit</a>
+      </div>
+    </div>
+  );
+}
+
+/** Radno vrijeme je slobodan tekst, jedan redak po danu (npr. "Pon–Pet: 8–16").
+    Ako redak sadrži ":", dio prije postaje sitna oznaka (kao PRIJAVA/ODJAVA
+    kod vikendice), dio poslije glavna vrijednost — inače cijeli redak ide
+    kao vrijednost bez oznake. */
+function parseWorkingHoursLines(raw: string): { label: string | null; value: string }[] {
+  return raw
+    .split("\n")
+    .map((l) => l.trim())
+    .filter(Boolean)
+    .map((line) => {
+      const idx = line.indexOf(":");
+      if (idx > 0 && idx < line.length - 1) {
+        return { label: line.slice(0, idx).trim().toUpperCase(), value: line.slice(idx + 1).trim() };
+      }
+      return { label: null, value: line };
+    });
+}
+
+function CompanyView({ company, agency }: { company: Company; agency: Agency | null }) {
+  const layout =
+    company.layoutStyle === "editorial" ||
+    company.layoutStyle === "raw" ||
+    company.layoutStyle === "apple"
+      ? company.layoutStyle
+      : "classic";
+  const stayClass = `stay stay-${layout}${company.darkMode ? " stay-dark" : ""}`;
+  const accentStyle = { "--accent": company.accentColor } as React.CSSProperties;
+  const contactEmail = company.contactEmail || agency?.contactEmail || "hello@novo.studio";
+  const effectiveBanner = company.bannerImage || company.images[0] || null;
+  const gallery = company.images.filter((src) => src !== effectiveBanner);
+  const mailHref = `mailto:${contactEmail}?subject=Upit — ${company.name}`;
+  const telHref = company.phone ? `tel:${company.phone.replace(/[^\d+]/g, "")}` : null;
+  const embedSrc = company.videoUrl ? videoEmbedSrc(company.videoUrl) : null;
+  const hoursLines = company.workingHours ? parseWorkingHoursLines(company.workingHours) : [];
+
+  const statItems = [
+    company.phone,
+    hoursLines[0] ? (hoursLines[0].label ? `${hoursLines[0].label}: ${hoursLines[0].value}` : hoursLines[0].value) : null,
+    company.address,
+  ].filter((v): v is string => Boolean(v));
+
+  const marqueeItems = [
+    company.location,
+    company.tagline,
+    ...company.services.slice(0, 4).map((s) => s.name),
+  ].filter(Boolean);
+
+  let sectionNo = 0;
+  const eyebrowNo = () => String(++sectionNo).padStart(2, "0");
+  const aboutNo = eyebrowNo();
+
+  return (
+    <div className={stayClass} style={accentStyle}>
+      <StayInteractions />
+
+      <header className="stay-nav">
+        <span className="stay-nav-brand">NOVO</span>
+        <a className="stay-nav-cta" href={mailHref} data-magnetic>
+          Pošaljite upit
+        </a>
+      </header>
+
+      {layout === "raw" && marqueeItems.length > 0 && (
+        <div className="stay-marquee" aria-hidden="true">
+          <div className="stay-marquee-track">
+            {[...marqueeItems, ...marqueeItems].map((t, i) => (
+              <span key={i}>{t}</span>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {effectiveBanner ? (
+        <div className="stay-banner">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src={effectiveBanner} alt={company.name} data-parallax />
+          {layout === "editorial" && (
+            <div className="stay-spine" aria-hidden="true">
+              {company.name}
+            </div>
+          )}
+          <div className="stay-banner-overlay">
+            {layout === "classic" && company.reviewBadges.length > 0 && (
+              <div className="stay-stamp">{company.reviewBadges[0]}</div>
+            )}
+            <div className="loc">{company.location}</div>
+            <h1>{company.name}</h1>
+            <p>{company.tagline}</p>
+          </div>
+        </div>
+      ) : (
+        <div className="stay-hero">
+          {layout === "editorial" && (
+            <div className="stay-spine" aria-hidden="true">
+              {company.name}
+            </div>
+          )}
+          {layout === "classic" && company.reviewBadges.length > 0 && (
+            <div className="stay-stamp">{company.reviewBadges[0]}</div>
+          )}
+          <div className="loc">{company.location}</div>
+          <h1>{company.name}</h1>
+          <p>{company.tagline}</p>
+        </div>
+      )}
+
+      {layout === "classic" && gallery.length > 0 && (
+        <div className="stay-classic-polaroids" aria-hidden="true">
+          {gallery.slice(0, 3).map((src, i) => (
+            <div className="stay-polaroid" key={src + i}>
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={src} alt="" />
+              {company.imageCategories[src] && (
+                <div className="stay-polaroid-cap">{company.imageCategories[src]}</div>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+
+      {statItems.length > 0 && (
+        <div className="stay-stats">
+          {statItems.map((s, i) => (
+            <div className="stay-stat" key={s + i}>
+              {s}
+            </div>
+          ))}
+        </div>
+      )}
+
+      {company.reviewBadges.length > 0 && (
+        <div className="stay-badges">
+          {company.reviewBadges.map((b) => (
+            <span className="stay-badge" key={b}>
+              {b}
+            </span>
+          ))}
+        </div>
+      )}
+
+      <RevealSection className="stay-section stay-about" data-secno={aboutNo}>
+        <h2 className="stay-eyebrow">
+          <span className="stay-eyebrow-no">{aboutNo}</span>O nama
+        </h2>
+        <p className={layout === "editorial" ? "stay-dropcap" : undefined}>{company.description}</p>
+      </RevealSection>
+
+      {layout === "editorial" && (
+        <div className="stay-pullquote">
+          <RevealSection>
+            <blockquote>“{company.tagline}”</blockquote>
+          </RevealSection>
+        </div>
+      )}
+
+      {gallery.length > 0 && (
+        <RevealSection className="stay-section">
+          <h2 className="stay-eyebrow">
+            <span className="stay-eyebrow-no">{eyebrowNo()}</span>Galerija
+          </h2>
+          <GalleryLightbox images={gallery} alt={company.name} categories={company.imageCategories} />
+        </RevealSection>
+      )}
+
+      {company.videoUrl && (
+        <RevealSection className="stay-section stay-alt">
+          <h2 className="stay-eyebrow">
+            <span className="stay-eyebrow-no">{eyebrowNo()}</span>Video
+          </h2>
+          {embedSrc ? (
+            <div className="stay-video-frame">
+              <iframe
+                src={embedSrc}
+                title={`Video — ${company.name}`}
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                allowFullScreen
+              />
+            </div>
+          ) : (
+            <a className="stay-map-link" href={company.videoUrl} target="_blank" rel="noreferrer" data-magnetic>
+              Pogledajte video ↗
+            </a>
+          )}
+        </RevealSection>
+      )}
+
+      {company.services.length > 0 && (
+        <RevealSection className="stay-section stay-alt">
+          <h2 className="stay-eyebrow">
+            <span className="stay-eyebrow-no">{eyebrowNo()}</span>Usluge &amp; proizvodi
+          </h2>
+          <div className="stay-season-table">
+            {company.services.map((s, i) => (
+              <div className="stay-season-row" key={s.name + i}>
+                <span>
+                  {s.name}
+                  {s.description && (
+                    <>
+                      <br />
+                      <span style={{ fontWeight: 400, fontSize: "0.85em", opacity: 0.75 }}>
+                        {s.description}
+                      </span>
+                    </>
+                  )}
+                </span>
+                <span className="stay-season-price">
+                  {s.priceEur != null ? `${s.priceEur} €` : "na upit"}
+                </span>
+              </div>
+            ))}
+          </div>
+        </RevealSection>
+      )}
+
+      {hoursLines.length > 0 && (
+        <RevealSection className="stay-section">
+          <h2 className="stay-eyebrow">
+            <span className="stay-eyebrow-no">{eyebrowNo()}</span>Radno vrijeme
+          </h2>
+          <div className="stay-hours">
+            {hoursLines.map((h, i) => (
+              <div className="stay-hour" key={i}>
+                {h.label && <span className="stay-hour-label mono">{h.label}</span>}
+                <span className="stay-hour-value">{h.value}</span>
+              </div>
+            ))}
+          </div>
+        </RevealSection>
+      )}
+
+      {company.testimonials.length > 0 && (
+        <RevealSection className="stay-section stay-alt">
+          <h2 className="stay-eyebrow">
+            <span className="stay-eyebrow-no">{eyebrowNo()}</span>Što kažu klijenti
+          </h2>
+          <div className="stay-testimonials">
+            {company.testimonials.map((t, i) => (
+              <div className="stay-testimonial" key={t.author + i}>
+                <StarRow rating={t.rating} />
+                <p>“{t.text}”</p>
+                <div className="stay-testimonial-author">{t.author}</div>
+              </div>
+            ))}
+          </div>
+        </RevealSection>
+      )}
+
+      {company.faq.length > 0 && (
+        <RevealSection className="stay-section">
+          <h2 className="stay-eyebrow">
+            <span className="stay-eyebrow-no">{eyebrowNo()}</span>Često postavljana pitanja
+          </h2>
+          <div className="stay-faq">
+            {company.faq.map((f, i) => (
+              <details className="stay-faq-item" key={f.question + i}>
+                <summary>{f.question}</summary>
+                <p>{f.answer}</p>
+              </details>
+            ))}
+          </div>
+        </RevealSection>
+      )}
+
+      {(company.address || company.phone || company.mapUrl || company.instagramUrl || company.facebookUrl) && (
+        <RevealSection className="stay-section stay-alt">
+          <h2 className="stay-eyebrow">
+            <span className="stay-eyebrow-no">{eyebrowNo()}</span>Kontakt &amp; lokacija
+          </h2>
+          {(company.address || company.phone) && (
+            <p style={{ fontSize: 15.5, lineHeight: 1.8, color: "#4a4030", margin: 0 }}>
+              {company.address}
+              {company.address && company.phone && <br />}
+              {company.phone}
+            </p>
+          )}
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 12, marginTop: company.address || company.phone ? 4 : 0 }}>
+            {company.mapUrl && (
+              <a className="stay-map-link" href={company.mapUrl} target="_blank" rel="noreferrer" data-magnetic>
+                Otvori na karti ↗
+              </a>
+            )}
+            {company.instagramUrl && (
+              <a className="stay-map-link" href={company.instagramUrl} target="_blank" rel="noreferrer" data-magnetic>
+                Instagram ↗
+              </a>
+            )}
+            {company.facebookUrl && (
+              <a className="stay-map-link" href={company.facebookUrl} target="_blank" rel="noreferrer" data-magnetic>
+                Facebook ↗
+              </a>
+            )}
+          </div>
+        </RevealSection>
+      )}
+
+      <RevealSection className="stay-section">
+        <div className="stay-book">
+          <div>
+            <div className="price" style={{ fontSize: 22 }}>
+              {company.name}
+            </div>
+            <p>Odgovaramo unutar 24h</p>
+          </div>
+          <div className="stay-book-actions">
+            {telHref && (
+              <a className="stay-avail-link" href={telHref} data-magnetic>
+                Nazovite
+              </a>
+            )}
+            <a className="bookbtn" href={mailHref} data-magnetic>
+              Pošaljite upit
+            </a>
+          </div>
+        </div>
+      </RevealSection>
+
+      <footer className="stay-foot">
+        {company.name} · {company.location}
         <div className="credit">
           Stranicu pokreće <Link href="/">NOVO</Link>
         </div>
