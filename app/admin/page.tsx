@@ -1,23 +1,36 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getCurrentAdminRecord } from "@/lib/auth";
-import { listProperties, listCompanies, listStudies, listProducts } from "@/lib/db/queries";
+import { listProperties, listCompanies, listStudies, listProducts, countUnreadInquiries } from "@/lib/db/queries";
 
 export default async function AdminDashboard() {
   const admin = await getCurrentAdminRecord();
   if (!admin) redirect("/admin/login");
 
-  const [properties, companies, studies, products] = await Promise.all([
+  const [properties, companies, studies, products, unreadInquiries] = await Promise.all([
     listProperties(),
     listCompanies(),
     listStudies(),
     listProducts(),
+    countUnreadInquiries(),
   ]);
   const publishedCount = properties.filter((p) => p.published).length;
   const inStudiesCount = properties.filter((p) => p.showInStudies).length;
 
   return (
     <div className="flex flex-col gap-12">
+      {unreadInquiries > 0 && (
+        <Link
+          href="/admin/inquiries"
+          className="flex items-center justify-between border border-[#ff7f00]/40 bg-[#ff7f00]/5 rounded-xl px-4 py-3 hover:border-[#ff7f00]"
+        >
+          <span className="text-sm font-semibold">
+            {unreadInquiries} {unreadInquiries === 1 ? "novi upit čeka" : "novih upita čeka"}
+          </span>
+          <span className="text-sm text-[#ff7f00] font-semibold">Pogledaj →</span>
+        </Link>
+      )}
+
       <section className="grid grid-cols-2 sm:grid-cols-6 gap-3">
         <StatCard label="Vikendice" value={properties.length} />
         <StatCard label="Objavljeno" value={publishedCount} />
@@ -46,6 +59,9 @@ export default async function AdminDashboard() {
           </Link>
           <Link href="/admin/agency" className="admin-quicklink">
             Sadržaj agencije
+          </Link>
+          <Link href="/admin/inquiries" className="admin-quicklink">
+            Upiti
           </Link>
           {admin.isSuperAdmin && (
             <Link href="/admin/admins" className="admin-quicklink">
