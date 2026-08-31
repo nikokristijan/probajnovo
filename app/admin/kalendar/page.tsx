@@ -78,7 +78,11 @@ export default async function AdminCalendarPage({
   return (
     <div className="flex flex-col gap-6">
       <div>
-        <h1 className="text-xl font-bold">Kalendar dostupnosti</h1>
+        {/* Naslov uvijek uključuje ime vikendice (ne samo generički "Kalendar
+            dostupnosti") — jasno je čiji je kalendar i kad admin/vlasnik ima
+            samo jednu vikendicu, ne samo kad ih ima više i vidi se selektor
+            ispod. */}
+        <h1 className="text-xl font-bold">{property.name} — kalendar dostupnosti</h1>
         <p className="text-xs text-black/50 mt-0.5">
           Klikni na dan da ga označiš zauzetim/slobodnim. Dani povučeni automatski iz
           Booking.com/Airbnb (oznaka &bdquo;iCal&rdquo;) se ne mogu ručno deblokirati ovdje.
