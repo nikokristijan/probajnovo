@@ -69,6 +69,20 @@ await db.delete(properties).where(eq(properties.id, id));
 }
 
 /**
+ * Postgres greška 42P01 = "relation ... does not exist" — baca je SVAKI upit
+ * na `companies` dok admin ne pokrene SQL migraciju koja tu tablicu stvara
+ * (migracije se namjerno NE pokreću automatski iz aplikacije). Dok ta tablica
+ * ne postoji, čitanja iz nje tretiramo kao "nema firmi" umjesto da bacimo
+ * grešku — inače bi /admin i SVAKA javna /[slug] stranica (i za nepostojeći
+ * slug, koji inače treba samo prikazati 404) pukli s 500 greškom čim je ovaj
+ * kod live, a prije nego stigne migracija. Nakon migracije ovaj catch se
+ * više nikad ne aktivira (tablica postoji), pa ga nije potrebno uklanjati.
+ */
+function isMissingCompaniesTable(err: unknown): boolean {
+  return Boolean(err && typeof err === "object" && "code" in err && (err as { code?: string }).code === "42P01");
+}
+
+/**
  * Slug provjera preko OBJE tablice (properties + companies) — dijele isti
  * plošni /[slug] URL prostor, pa dvije različite stranice ne smiju dobiti
  * isti slug. `excludeId`/`excludeTable` isključuju red koji se trenutno
@@ -78,10 +92,16 @@ export async function isSlugTaken(
   slug: string,
   exclude?: { table: "properties" | "companies"; id: number }
 ) {
-  const [propRows, compRows] = await Promise.all([
-    db.select({ id: properties.id }).from(properties).where(eq(properties.slug, slug)),
-    db.select({ id: companies.id }).from(companies).where(eq(companies.slug, slug)),
-  ]);
+  const propRowsPromise = db.select({ id: properties.id }).from(properties).where(eq(properties.slug, slug));
+  const compRowsPromise = db
+    .select({ id: companies.id })
+    .from(companies)
+    .where(eq(companies.slug, slug))
+    .catch((err) => {
+      if (isMissingCompaniesTable(err)) return [];
+      throw err;
+    });
+  const [propRows, compRows] = await Promise.all([propRowsPromise, compRowsPromise]);
   const propTaken = propRows.some(
     (r) => !(exclude?.table === "properties" && exclude.id === r.id)
   );
@@ -92,18 +112,33 @@ export async function isSlugTaken(
 }
 
 export async function listCompanies({ onlyPublished = false } = {}) {
-const rows = await db.select().from(companies).orderBy(desc(companies.createdAt));
-return onlyPublished ? rows.filter((c) => c.published) : rows;
+  try {
+    const rows = await db.select().from(companies).orderBy(desc(companies.createdAt));
+    return onlyPublished ? rows.filter((c) => c.published) : rows;
+  } catch (err) {
+    if (isMissingCompaniesTable(err)) return [];
+    throw err;
+  }
 }
 
 export async function getCompanyBySlug(slug: string) {
-const rows = await db.select().from(companies).where(eq(companies.slug, slug)).limit(1);
-return rows[0] ?? null;
+  try {
+    const rows = await db.select().from(companies).where(eq(companies.slug, slug)).limit(1);
+    return rows[0] ?? null;
+  } catch (err) {
+    if (isMissingCompaniesTable(err)) return null;
+    throw err;
+  }
 }
 
 export async function getCompanyById(id: number) {
-const rows = await db.select().from(companies).where(eq(companies.id, id)).limit(1);
-return rows[0] ?? null;
+  try {
+    const rows = await db.select().from(companies).where(eq(companies.id, id)).limit(1);
+    return rows[0] ?? null;
+  } catch (err) {
+    if (isMissingCompaniesTable(err)) return null;
+    throw err;
+  }
 }
 
 export async function createCompany(data: NewCompany) {
