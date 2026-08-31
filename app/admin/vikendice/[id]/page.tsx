@@ -7,10 +7,11 @@ import {
   listBlockedDates,
   listReservationsForProperty,
   getMonthlyEarnings,
+  getPageViewCounts,
 } from "@/lib/db/queries";
 import { markInquiryReadAction, markInquiryRepliedAction } from "@/lib/actions";
 import MiniCalendar from "@/components/admin/MiniCalendar";
-import { currentYearMonthZagreb, todayDateStringZagreb } from "@/lib/date";
+import { currentYearMonthZagreb, todayDateStringZagreb, dateStringOffsetFromTodayZagreb } from "@/lib/date";
 
 function StatCard({ label, value, suffix }: { label: string; value: number; suffix?: string }) {
   return (
@@ -42,11 +43,12 @@ export default async function AdminVikendicaHubPage({ params }: { params: Promis
   const monthPrefix = `${nowZagreb.year}-${String(nowZagreb.month).padStart(2, "0")}`;
   const now = new Date(Date.UTC(nowZagreb.year, nowZagreb.month - 1, 1));
 
-  const [allInquiries, blocked, reservations, earnings] = await Promise.all([
+  const [allInquiries, blocked, reservations, earnings, pageViews] = await Promise.all([
     listInquiries(),
     listBlockedDates(propertyId),
     listReservationsForProperty(propertyId),
     getMonthlyEarnings([propertyId], monthPrefix),
+    getPageViewCounts("property", propertyId, dateStringOffsetFromTodayZagreb(-30)),
   ]);
   const inquiries = allInquiries.filter((i) => i.source === "property" && i.sourceId === propertyId);
   const pendingCount = inquiries.filter((i) => !i.read).length;
@@ -65,10 +67,11 @@ export default async function AdminVikendicaHubPage({ params }: { params: Promis
         <p className="text-sm text-black/50 mt-1">{property.location}</p>
       </div>
 
-      <section className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+      <section className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         <StatCard label={pendingCount === 1 ? "Novi upit" : "Novih upita"} value={pendingCount} />
         <StatCard label="Dana zauzeto ovaj mjesec" value={daysBookedThisMonth} />
         <StatCard label="Zarada ovaj mjesec (neto)" value={earnings.netEur} suffix=" €" />
+        <StatCard label="Pregleda stranice (30 dana)" value={pageViews.last30Days} />
       </section>
 
       <section className="flex flex-wrap gap-2">
