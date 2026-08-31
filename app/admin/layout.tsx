@@ -88,14 +88,15 @@ export default async function AdminLayout({ children }: { children: React.ReactN
                 <Link href="/admin#firme" className="hover:text-[#ff7f00]">
                   Firme
                 </Link>
-                <Link href="/admin/inquiries" className="hover:text-[#ff7f00]">
-                  Upiti
+                {/* Kalendar/Rezervacije/Upiti su grupirani pod jedan hub (bira se
+                    vikendica pa se tek onda vidi njen kalendar/rezervacije/upiti)
+                    umjesto tri zasebna taba koja su miješala sve vikendice odjednom
+                    i postajala krcata — vidi app/admin/vikendice. */}
+                <Link href="/admin/vikendice" className="hover:text-[#ff7f00]">
+                  Vikendice
                 </Link>
-                <Link href="/admin/rezervacije" className="hover:text-[#ff7f00]">
-                  Rezervacije
-                </Link>
-                <Link href="/admin/kalendar" className="hover:text-[#ff7f00]">
-                  Kalendar
+                <Link href="/admin/prodaja" className="hover:text-[#ff7f00]">
+                  Prodaja
                 </Link>
                 {admin.isSuperAdmin && (
                   <Link href="/admin/admins" className="hover:text-[#ff7f00]">
