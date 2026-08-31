@@ -13,20 +13,23 @@ export default function InquiryForm({
   source,
   sourceId,
   sourceName,
+  lang = "hr",
 }: {
   source: "property" | "company" | "agency";
   sourceId?: number | null;
   sourceName: string;
+  lang?: "hr" | "en";
 }) {
   const [state, formAction, pending] = useActionState<ActionState, FormData>(
     createInquiryAction,
     undefined
   );
+  const L = (hr: string, en: string) => (lang === "en" ? en : hr);
 
   if (state?.success) {
     return (
       <div className="stay-inquiry-done" role="status">
-        Hvala! Poruka je poslana — javljamo se uskoro.
+        {L("Hvala! Poruka je poslana — javljamo se uskoro.", "Thanks! Your message is on its way — we'll be in touch soon.")}
       </div>
     );
   }
@@ -40,14 +43,14 @@ export default function InquiryForm({
       {/* Honeypot — sakriveno od ljudi, botovi ga često ispune. */}
       <div className="stay-inquiry-hp" aria-hidden="true">
         <label>
-          Ne popunjavaj ovo polje
+          {L("Ne popunjavaj ovo polje", "Leave this field empty")}
           <input type="text" name="website" tabIndex={-1} autoComplete="off" />
         </label>
       </div>
 
       <div className="stay-inquiry-row">
         <label className="stay-inquiry-field">
-          <span>Ime i prezime</span>
+          <span>{L("Ime i prezime", "Full name")}</span>
           <input type="text" name="name" required maxLength={200} autoComplete="name" />
         </label>
         <label className="stay-inquiry-field">
@@ -57,19 +60,19 @@ export default function InquiryForm({
       </div>
 
       <label className="stay-inquiry-field">
-        <span>Telefon (opcionalno)</span>
+        <span>{L("Telefon (opcionalno)", "Phone (optional)")}</span>
         <input type="tel" name="phone" maxLength={40} autoComplete="tel" />
       </label>
 
       <label className="stay-inquiry-field">
-        <span>Poruka</span>
+        <span>{L("Poruka", "Message")}</span>
         <textarea name="message" required maxLength={4000} rows={4} />
       </label>
 
       {state?.error && <p className="stay-inquiry-error">{state.error}</p>}
 
       <button type="submit" className="stay-inquiry-submit" disabled={pending}>
-        {pending ? "Šalje se…" : "Pošalji poruku"}
+        {pending ? L("Šalje se…", "Sending…") : L("Pošalji poruku", "Send message")}
       </button>
     </form>
   );
