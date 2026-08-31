@@ -1,4 +1,4 @@
-import { eq, desc, asc, and, gt } from "drizzle-orm";
+import { eq, desc, asc, and, gt, inArray } from "drizzle-orm";
 import { db } from "./index";
 import {
   agency,
@@ -7,6 +7,8 @@ import {
   studies,
   products,
   adminUsers,
+  adminAccess,
+  propertyBlockedDates,
   inquiries,
   propertyTranslationsEn,
   type NewProperty,
@@ -361,10 +363,20 @@ export async function listAdmins() {
 return db.select().from(adminUsers).orderBy(adminUsers.createdAt);
 }
 
-export async function createAdmin(data: { email: string; passwordHash: string; isSuperAdmin?: boolean }) {
+export async function createAdmin(data: {
+  email: string;
+  passwordHash: string;
+  isSuperAdmin?: boolean;
+  role?: "admin" | "owner";
+}) {
 const [row] = await db
 .insert(adminUsers)
-.values({ email: data.email, passwordHash: data.passwordHash, isSuperAdmin: data.isSuperAdmin ?? false })
+.values({
+  email: data.email,
+  passwordHash: data.passwordHash,
+  isSuperAdmin: data.isSuperAdmin ?? false,
+  role: data.role ?? "admin",
+})
 .returning();
 return row;
 }
@@ -374,10 +386,128 @@ await db.update(adminUsers).set({ passwordHash }).where(eq(adminUsers.id, id));
 }
 
 export async function deleteAdmin(id: number) {
-await db.delete(adminUsers).where(eq(adminUsers.id, id));
+  // admin_access redci nemaju FK/cascade (jednostavnosti radi), pa ih ručno pospremimo
+  // prije brisanja admina da ne ostanu siročad.
+  await db.delete(adminAccess).where(eq(adminAccess.adminId, id));
+  await db.delete(adminUsers).where(eq(adminUsers.id, id));
 }
 
 export async function countAdmins() {
 const rows = await db.select().from(adminUsers);
 return rows.length;
+}
+
+/* ---------------------------------------------------------------- */
+/* Pristup vlasnika (admin_access) — koje vikendice/firme smije       */
+/* gledati koji "owner" admin_users redak (vidi lib/auth.ts,          */
+/* lib/actions.ts assertPropertyAccess/assertCompanyAccess).          */
+/* ---------------------------------------------------------------- */
+
+export async function getAdminAccessGrants(adminId: number) {
+  return db.select().from(adminAccess).where(eq(adminAccess.adminId, adminId));
+}
+
+export async function hasAdminAccess(
+  adminId: number,
+  target: { propertyId?: number; companyId?: number }
+): Promise<boolean> {
+  const grants = await getAdminAccessGrants(adminId);
+  if (target.propertyId != null) {
+    return grants.some((g) => g.propertyId === target.propertyId);
+  }
+  if (target.companyId != null) {
+    return grants.some((g) => g.companyId === target.companyId);
+  }
+  return false;
+}
+
+/** Zamijeni SVE dodjele pristupa za ovog admina novim popisom (koristi se pri
+    kreiranju vlasničkog računa — vidi createAdminAction). */
+export async function setAdminAccess(
+  adminId: number,
+  grants: { propertyIds: number[]; companyIds: number[] }
+) {
+  await db.delete(adminAccess).where(eq(adminAccess.adminId, adminId));
+  const rows = [
+    ...grants.propertyIds.map((propertyId) => ({ adminId, propertyId, companyId: null })),
+    ...grants.companyIds.map((companyId) => ({ adminId, companyId, propertyId: null })),
+  ];
+  if (rows.length > 0) {
+    await db.insert(adminAccess).values(rows);
+  }
+}
+
+/** Vikendice na koje ovaj admin (bilo koje uloge) ima pristup — za "admin" ulogu
+    su to SVE vikendice, za "owner" samo dodijeljene (vidi getAdminAccessGrants). */
+export async function listPropertiesForAdmin(admin: { id: number; role: string }) {
+  if (admin.role !== "owner") return listProperties();
+  const grants = await getAdminAccessGrants(admin.id);
+  const ids = grants.map((g) => g.propertyId).filter((id): id is number => id != null);
+  if (ids.length === 0) return [];
+  return db.select().from(properties).where(inArray(properties.id, ids));
+}
+
+/** Firme na koje ovaj admin ima pristup — isti duh kao listPropertiesForAdmin. */
+export async function listCompaniesForAdmin(admin: { id: number; role: string }) {
+  if (admin.role !== "owner") return listCompanies();
+  const grants = await getAdminAccessGrants(admin.id);
+  const ids = grants.map((g) => g.companyId).filter((id): id is number => id != null);
+  if (ids.length === 0) return [];
+  return db.select().from(companies).where(inArray(companies.id, ids));
+}
+
+/* ---------------------------------------------------------------- */
+/* Blokirani datumi (kalendar dostupnosti) — vidi app/admin/kalendar  */
+/* i lib/ical.ts.                                                     */
+/* ---------------------------------------------------------------- */
+
+export async function listBlockedDates(propertyId: number) {
+  return db
+    .select()
+    .from(propertyBlockedDates)
+    .where(eq(propertyBlockedDates.propertyId, propertyId));
+}
+
+export async function addManualBlockedDate(propertyId: number, date: string) {
+  const existing = await db
+    .select({ id: propertyBlockedDates.id })
+    .from(propertyBlockedDates)
+    .where(and(eq(propertyBlockedDates.propertyId, propertyId), eq(propertyBlockedDates.date, date)))
+    .limit(1);
+  if (existing.length > 0) return;
+  await db.insert(propertyBlockedDates).values({ propertyId, date, source: "manual" });
+}
+
+export async function removeManualBlockedDate(propertyId: number, date: string) {
+  await db
+    .delete(propertyBlockedDates)
+    .where(
+      and(
+        eq(propertyBlockedDates.propertyId, propertyId),
+        eq(propertyBlockedDates.date, date),
+        eq(propertyBlockedDates.source, "manual")
+      )
+    );
+}
+
+/** Zamijeni SVE "ical"-izvorne blokirane datume za ovu vikendicu novim popisom
+    (poziva se pri svakom cron sync-u — vidi app/api/cron/sync-ical). Ručno
+    uneseni ("manual") datumi se ne diraju. */
+export async function replaceIcalBlockedDates(propertyId: number, dates: string[]) {
+  await db
+    .delete(propertyBlockedDates)
+    .where(and(eq(propertyBlockedDates.propertyId, propertyId), eq(propertyBlockedDates.source, "ical")));
+  if (dates.length > 0) {
+    await db
+      .insert(propertyBlockedDates)
+      .values(dates.map((date) => ({ propertyId, date, source: "ical" as const })));
+  }
+}
+
+/** Sve vikendice koje imaju postavljen icalUrl — koristi cron endpoint da zna koje sync-ati. */
+export async function getPropertiesWithIcalUrl() {
+  const rows = await db
+    .select({ id: properties.id, icalUrl: properties.icalUrl })
+    .from(properties);
+  return rows.filter((r): r is { id: number; icalUrl: string } => !!r.icalUrl);
 }

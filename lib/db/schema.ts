@@ -92,6 +92,10 @@ export const properties = pgTable("properties", {
   seasonalPricing: jsonb("seasonal_pricing").$type<SeasonalPrice[]>().notNull().default([]),
   /** Poveznica na vanjski kalendar dostupnosti (Booking.com, Airbnb i sl.). */
   availabilityUrl: text("availability_url"),
+  /** iCal export link (Booking.com/Airbnb "Export Calendar") za automatsko povlačenje
+      zauzetih datuma — vidi lib/ical.ts i app/api/cron/sync-ical. Null = nema auto-sync-a,
+      kalendar u adminu tad prikazuje samo ručno unesene blokirane datume. */
+  icalUrl: text("ical_url"),
   /** Fotografija domaćina za karticu "Domaćin". */
   hostPhoto: text("host_photo"),
   /** Kratke oznake povjerenja — jedna po retku (npr. "4.9 na Google recenzijama"). */
@@ -255,6 +259,42 @@ export const adminUsers = pgTable("admin_users", {
   passwordHash: text("password_hash").notNull(),
   /** Glavni admin — jedini koji može dodavati/micati druge admine. */
   isSuperAdmin: boolean("is_super_admin").notNull().default(false),
+  /** "admin" = puni pristup (kao dosad), "owner" = vlasnik vikendice/firme —
+      vidi lib/auth.ts requireFullAdmin() i lib/actions.ts assertPropertyAccess/
+      assertCompanyAccess. Vlasnik smije samo gledati upite i kalendar SVOJIH
+      vikendica/firmi (dodijeljenih preko admin_access), ne smije ništa uređivati. */
+  role: text("role").notNull().default("admin"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+/**
+ * Koje vikendice/firme smije gledati koji vlasnički (role="owner") admin_users
+ * redak — jedan red po dodijeljenoj vikendici/firmi, admin može imati više
+ * redaka (više vikendica odjednom). Točno jedno od propertyId/companyId je
+ * postavljeno po retku. Puni adminima (role="admin") se ne provjerava ova
+ * tablica — oni imaju pristup svemu.
+ */
+export const adminAccess = pgTable("admin_access", {
+  id: serial("id").primaryKey(),
+  adminId: integer("admin_id").notNull(),
+  propertyId: integer("property_id"),
+  companyId: integer("company_id"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+/**
+ * Blokirani datumi po vikendici za "Kalendar" u adminu (vidi app/admin/kalendar).
+ * source "manual" = ručno kliknuto u adminu/kalendaru (admin ili vlasnik te
+ * vikendice); source "ical" = automatski povučeno iz properties.icalUrl (vidi
+ * lib/ical.ts + app/api/cron/sync-ical) — ical redci se brišu i ponovno
+ * upisuju pri svakom sync-u, ručni redci se ne diraju.
+ */
+export const propertyBlockedDates = pgTable("property_blocked_dates", {
+  id: serial("id").primaryKey(),
+  propertyId: integer("property_id").notNull(),
+  /** "YYYY-MM-DD", jedan red po blokiranom danu (jednostavnije za upit/UI nego raspon). */
+  date: text("date").notNull(),
+  source: text("source").notNull().default("manual"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
@@ -268,6 +308,8 @@ export type NewStudy = typeof studies.$inferInsert;
 export type Product = typeof products.$inferSelect;
 export type NewProduct = typeof products.$inferInsert;
 export type AdminUser = typeof adminUsers.$inferSelect;
+export type AdminAccess = typeof adminAccess.$inferSelect;
+export type PropertyBlockedDate = typeof propertyBlockedDates.$inferSelect;
 export type Inquiry = typeof inquiries.$inferSelect;
 export type NewInquiry = typeof inquiries.$inferInsert;
 export type PropertyTranslationEn = typeof propertyTranslationsEn.$inferSelect;
