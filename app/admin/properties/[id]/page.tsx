@@ -1,14 +1,16 @@
 import { notFound } from "next/navigation";
 import { requireFullAdmin } from "@/lib/auth";
 import { getPropertyById } from "@/lib/db/queries";
-import { updatePropertyAction } from "@/lib/actions";
+import { updatePropertyAction, geoMissWarning } from "@/lib/actions";
 import PropertyForm from "@/components/admin/PropertyForm";
 import DeletePropertyButton from "@/components/admin/DeletePropertyButton";
 
 export default async function EditPropertyPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ id: string }>;
+  searchParams: Promise<{ geo?: string }>;
 }) {
   await requireFullAdmin();
 
@@ -21,6 +23,12 @@ const property = await getPropertyById(numericId);
 
 const boundAction = updatePropertyAction.bind(null, numericId);
 
+  const sp = await searchParams;
+  // Postavljeno u createPropertyAction kad je adresa unesena pri kreiranju
+  // ali se karta nije mogla automatski pronaći — vidi geoMissWarning.
+  const initialWarning =
+    sp.geo === "miss" && property.address ? geoMissWarning(property.address) : undefined;
+
   return (
   <div>
   <div className="flex items-center justify-between mb-6">
@@ -32,8 +40,9 @@ const boundAction = updatePropertyAction.bind(null, numericId);
     property={property}
     action={boundAction}
     submitLabel="Spremi izmjene"
+    initialWarning={initialWarning}
   />
   </div>
   );
   }
-  
+
