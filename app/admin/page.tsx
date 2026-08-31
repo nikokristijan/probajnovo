@@ -14,6 +14,7 @@ import {
   getMonthlyEarnings,
 } from "@/lib/db/queries";
 import type { AdminUser } from "@/lib/db/schema";
+import { currentYearMonthZagreb } from "@/lib/date";
 
 export default async function AdminDashboard() {
   // Prije se ovdje zvao requireFullAdmin() koji je vlasnika (role="owner")
@@ -33,6 +34,14 @@ export default async function AdminDashboard() {
   ]);
   const publishedCount = properties.filter((p) => p.published).length;
   const inStudiesCount = properties.filter((p) => p.showInStudies).length;
+
+  // Zarada ovaj mjesec preko SVIH vikendica — isti izračun kao vlasnički
+  // dashboard i /admin/rezervacije (checkIn-mjesec, samo plaćene rezervacije,
+  // vidi lib/db/queries getMonthlyEarnings). "Ovaj mjesec" po hrvatskom
+  // vremenu (Europe/Zagreb), ne po UTC serverskom vremenu.
+  const nowZagreb = currentYearMonthZagreb();
+  const monthPrefix = `${nowZagreb.year}-${String(nowZagreb.month).padStart(2, "0")}`;
+  const earnings = await getMonthlyEarnings(properties.map((p) => p.id), monthPrefix);
 
   return (
     <div className="flex flex-col gap-12">
@@ -55,6 +64,22 @@ export default async function AdminDashboard() {
         <StatCard label="Firme" value={companies.length} />
         <StatCard label="Studies unosi" value={studies.length} />
         <StatCard label="Proizvodi" value={products.length} />
+      </section>
+
+      <section>
+        <div className="flex items-center justify-between mb-3">
+          <h2 className="text-xs font-semibold uppercase tracking-wide text-black/40">
+            Zarada ovaj mjesec — sve vikendice
+          </h2>
+          <Link href="/admin/rezervacije" className="text-xs font-semibold text-[#ff7f00]">
+            Rezervacije →
+          </Link>
+        </div>
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+          <StatCard label="Naplaćeno (bruto)" value={earnings.grossEur} suffix=" €" />
+          <StatCard label="Troškovi" value={earnings.expensesEur} suffix=" €" />
+          <StatCard label="Neto zarada" value={earnings.netEur} suffix=" €" />
+        </div>
       </section>
 
       <section>
@@ -335,8 +360,12 @@ async function OwnerDashboard({ admin }: { admin: AdminUser }) {
   const pendingCount = inquiries.filter((i) => !i.read).length;
   const recentInquiries = inquiries.slice(0, 3); // listInquiries već sortira desc(createdAt)
 
-  const now = new Date();
-  const monthPrefix = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+  const nowZagreb = currentYearMonthZagreb();
+  const monthPrefix = `${nowZagreb.year}-${String(nowZagreb.month).padStart(2, "0")}`;
+  // MiniCalendar niže samo čita .getFullYear()/.getMonth() iz ovog objekta pa
+  // ga gradimo preko Date.UTC iz Zagreb godine/mjeseca — golo `new Date()` bi
+  // oko ponoći opet vratilo UTC (server) mjesec, ne hrvatski.
+  const now = new Date(Date.UTC(nowZagreb.year, nowZagreb.month - 1, 1));
   const [blockedByProperty, earnings] = await Promise.all([
     Promise.all(properties.map((p) => listBlockedDates(p.id))),
     getMonthlyEarnings(properties.map((p) => p.id), monthPrefix),
