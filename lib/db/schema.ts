@@ -189,6 +189,28 @@ export const products = pgTable("products", {
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
 
+/**
+ * Upit poslan putem javnog obrasca na stranici vikendice/firme (ili s
+ * agencijske naslovnice). `sourceName` je snimka naziva u trenutku slanja —
+ * upit nije FK-om vezan na properties/companies jer izvor može biti i
+ * "agency" (bez retka u ijednoj tablici), a poruka treba ostati čitljiva i
+ * ako se vikendica/firma kasnije obriše ili joj se promijeni naziv.
+ */
+export const inquiries = pgTable("inquiries", {
+  id: serial("id").primaryKey(),
+  /** "property" | "company" | "agency" */
+  source: text("source").notNull(),
+  /** properties.id ili companies.id — null kad je source "agency". */
+  sourceId: integer("source_id"),
+  sourceName: text("source_name").notNull(),
+  name: text("name").notNull(),
+  email: text("email").notNull(),
+  phone: text("phone"),
+  message: text("message").notNull(),
+  read: boolean("read").notNull().default(false),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
 export const adminUsers = pgTable("admin_users", {
   id: serial("id").primaryKey(),
   email: text("email").notNull().unique(),
@@ -208,3 +230,5 @@ export type NewStudy = typeof studies.$inferInsert;
 export type Product = typeof products.$inferSelect;
 export type NewProduct = typeof products.$inferInsert;
 export type AdminUser = typeof adminUsers.$inferSelect;
+export type Inquiry = typeof inquiries.$inferSelect;
+export type NewInquiry = typeof inquiries.$inferInsert;

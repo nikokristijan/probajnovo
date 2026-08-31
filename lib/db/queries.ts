@@ -7,10 +7,12 @@ import {
   studies,
   products,
   adminUsers,
+  inquiries,
   type NewProperty,
   type NewCompany,
   type NewStudy,
   type NewProduct,
+  type NewInquiry,
 } from "./schema";
 
 const AGENCY_ROW_ID = 1;
@@ -225,6 +227,63 @@ return row;
 
 export async function deleteProduct(id: number) {
 await db.delete(products).where(eq(products.id, id));
+}
+
+/**
+ * Ista logika kao isMissingCompaniesTable gore (Postgres 42P01 = "relation
+ * does not exist"), zasebna provjera za `inquiries` jer ta tablica može
+ * zaostajati iza migracije neovisno o companies.
+ */
+function isMissingInquiriesTable(err: unknown): boolean {
+  if (!err || typeof err !== "object") return false;
+  if ("code" in err && (err as { code?: string }).code === "42P01") return true;
+  const cause = (err as { cause?: unknown }).cause;
+  if (cause && typeof cause === "object" && "code" in cause && (cause as { code?: string }).code === "42P01") {
+    return true;
+  }
+  return false;
+}
+
+export async function listInquiries() {
+  try {
+    return await db.select().from(inquiries).orderBy(desc(inquiries.createdAt));
+  } catch (err) {
+    if (isMissingInquiriesTable(err)) return [];
+    throw err;
+  }
+}
+
+export async function countUnreadInquiries() {
+  try {
+    const rows = await db.select({ id: inquiries.id }).from(inquiries).where(eq(inquiries.read, false));
+    return rows.length;
+  } catch (err) {
+    if (isMissingInquiriesTable(err)) return 0;
+    throw err;
+  }
+}
+
+export async function getInquiryById(id: number) {
+  try {
+    const rows = await db.select().from(inquiries).where(eq(inquiries.id, id)).limit(1);
+    return rows[0] ?? null;
+  } catch (err) {
+    if (isMissingInquiriesTable(err)) return null;
+    throw err;
+  }
+}
+
+export async function createInquiry(data: NewInquiry) {
+  const [row] = await db.insert(inquiries).values(data).returning();
+  return row;
+}
+
+export async function markInquiryRead(id: number) {
+  await db.update(inquiries).set({ read: true }).where(eq(inquiries.id, id));
+}
+
+export async function deleteInquiry(id: number) {
+  await db.delete(inquiries).where(eq(inquiries.id, id));
 }
 
 export async function findAdminByEmail(email: string) {
