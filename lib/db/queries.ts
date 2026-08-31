@@ -1,4 +1,4 @@
-import { eq, desc, asc, and, gt, inArray } from "drizzle-orm";
+import { eq, desc, asc, and, gt, inArray, isNull } from "drizzle-orm";
 import { db } from "./index";
 import {
   agency,
@@ -14,6 +14,8 @@ import {
   reservations,
   expenses,
   sales,
+  activityLog,
+  pageViews,
   type NewProperty,
   type NewCompany,
   type NewStudy,
@@ -586,6 +588,8 @@ export async function createReservation(data: {
   checkOut: string;
   priceEur: number;
   paid: boolean;
+  guestCount: number | null;
+  depositEur: number | null;
   note: string | null;
 }) {
   // Ako je odmah označeno plaćenim pri unosu (checkbox "Već plaćeno"), postavi
@@ -643,6 +647,42 @@ export async function setReservationPaid(id: number, paid: boolean) {
     .where(eq(reservations.id, id));
 }
 
+/** Postavlja kaparu (EUR) — informativno, ne dira `paid`/getMonthlyEarnings
+    (vidi komentar uz reservations.depositEur u schema.ts). null briše kaparu. */
+export async function setReservationDeposit(id: number, depositEur: number | null) {
+  await db.update(reservations).set({ depositEur }).where(eq(reservations.id, id));
+}
+
+export async function markReservationConfirmationSent(id: number) {
+  await db.update(reservations).set({ confirmationSentAt: new Date() }).where(eq(reservations.id, id));
+}
+
+/** Rezervacije čiji je checkIn TOČNO `dateStr` ("YYYY-MM-DD"), a podsjetnik
+    još nije poslan — za app/api/cron/reservation-reminders. */
+export async function listReservationsForReminderOn(dateStr: string) {
+  return db
+    .select()
+    .from(reservations)
+    .where(and(eq(reservations.checkIn, dateStr), isNull(reservations.reminderSentAt)));
+}
+
+export async function markReservationReminderSent(id: number) {
+  await db.update(reservations).set({ reminderSentAt: new Date() }).where(eq(reservations.id, id));
+}
+
+/** Rezervacije čiji je checkOut TOČNO `dateStr`, a zamolba za recenziju još
+    nije poslana — za app/api/cron/review-requests. */
+export async function listReservationsForReviewRequestOn(dateStr: string) {
+  return db
+    .select()
+    .from(reservations)
+    .where(and(eq(reservations.checkOut, dateStr), isNull(reservations.reviewRequestSentAt)));
+}
+
+export async function markReservationReviewRequestSent(id: number) {
+  await db.update(reservations).set({ reviewRequestSentAt: new Date() }).where(eq(reservations.id, id));
+}
+
 /* ---------------------------------------------------------------- */
 /* Troškovi (opcionalno, za neto zaradu) — vidi app/admin/rezervacije. */
 /* ---------------------------------------------------------------- */
@@ -660,6 +700,7 @@ export async function createExpense(data: {
   description: string;
   amountEur: number;
   date: string;
+  category: string;
 }) {
   const [expense] = await db.insert(expenses).values(data).returning();
   return expense;
@@ -754,4 +795,108 @@ export async function getSalesYearlyByMonth(year: number) {
     if (monthIdx >= 0 && monthIdx < 12) totals[monthIdx] += s.priceEur;
   }
   return totals;
+}
+
+/* ---------------------------------------------------------------- */
+/* Godišnja zarada, popunjenost i raščlamba troškova po kategoriji    */
+/* za VIKENDICE (za razliku od gore, koje su za agenciju) — vidi      */
+/* app/admin/rezervacije.                                             */
+/* ---------------------------------------------------------------- */
+
+/** Bruto zarada (samo plaćene rezervacije, po checkIn mjesecu — isti obrazac
+    kao getMonthlyEarnings) po mjesecu za `year`, preko zadanih vikendica. */
+export async function getYearlyEarningsByMonth(propertyIds: number[], year: number) {
+  const totals = Array(12).fill(0) as number[];
+  if (propertyIds.length === 0) return totals;
+  const all = await db.select().from(reservations).where(inArray(reservations.propertyId, propertyIds));
+  for (const r of all) {
+    if (!r.paid || !r.checkIn.startsWith(String(year))) continue;
+    const monthIdx = Number(r.checkIn.slice(5, 7)) - 1;
+    if (monthIdx >= 0 && monthIdx < 12) totals[monthIdx] += r.priceEur;
+  }
+  return totals;
+}
+
+/** Raščlamba troškova po kategoriji za mjesec (monthPrefix "YYYY-MM"), za
+    jednu ili više vikendica. */
+export async function getExpenseCategoryBreakdown(propertyIds: number[], monthPrefix: string) {
+  if (propertyIds.length === 0) return {};
+  const all = await db.select().from(expenses).where(inArray(expenses.propertyId, propertyIds));
+  const byCategory: Record<string, number> = {};
+  for (const e of all) {
+    if (!e.date.startsWith(monthPrefix)) continue;
+    byCategory[e.category] = (byCategory[e.category] ?? 0) + e.amountEur;
+  }
+  return byCategory;
+}
+
+/** Popunjenost (% dana zauzeto preko bilo kojeg izvora — ručno/iCal/
+    rezervacija) i prosječna noćna cijena (preko plaćenih rezervacija čiji
+    checkIn pada u mjesec) za JEDNU vikendicu i mjesec — vidi
+    app/admin/rezervacije. */
+export async function getOccupancyStats(propertyId: number, monthPrefix: string) {
+  const [year, month] = monthPrefix.split("-").map(Number);
+  const daysInMonth = new Date(Date.UTC(year, month, 0)).getUTCDate();
+
+  const [blocked, allReservations] = await Promise.all([
+    db.select().from(propertyBlockedDates).where(eq(propertyBlockedDates.propertyId, propertyId)),
+    db.select().from(reservations).where(eq(reservations.propertyId, propertyId)),
+  ]);
+  const daysBooked = new Set(
+    blocked.filter((b) => b.date.startsWith(monthPrefix)).map((b) => b.date)
+  ).size;
+  const occupancyPct = Math.round((daysBooked / daysInMonth) * 100);
+
+  const monthReservations = allReservations.filter((r) => r.paid && r.checkIn.startsWith(monthPrefix));
+  let totalNights = 0;
+  let totalEur = 0;
+  for (const r of monthReservations) {
+    const nights = Math.max(
+      1,
+      Math.round((new Date(r.checkOut).getTime() - new Date(r.checkIn).getTime()) / 86400000)
+    );
+    totalNights += nights;
+    totalEur += r.priceEur;
+  }
+  const avgNightlyRateEur = totalNights > 0 ? Math.round(totalEur / totalNights) : 0;
+
+  return { occupancyPct, avgNightlyRateEur, daysBooked, daysInMonth };
+}
+
+/* ---------------------------------------------------------------- */
+/* Log aktivnosti (samo rezervacije/troškovi) — vidi app/admin/aktivnost. */
+/* ---------------------------------------------------------------- */
+
+export async function logActivity(data: {
+  adminEmail: string;
+  action: string;
+  targetLabel: string;
+  propertyId: number | null;
+}) {
+  await db.insert(activityLog).values(data);
+}
+
+export async function listRecentActivity(limit = 100) {
+  return db.select().from(activityLog).orderBy(desc(activityLog.createdAt)).limit(limit);
+}
+
+/* ---------------------------------------------------------------- */
+/* Samo-rolani brojač pregleda javnih stranica — vidi app/[slug]/page.tsx */
+/* i app/f/[slug]/page.tsx (firme), lib/date.ts todayDateStringZagreb.   */
+/* ---------------------------------------------------------------- */
+
+export async function recordPageView(source: "property" | "company", sourceId: number, date: string) {
+  await db.insert(pageViews).values({ source, sourceId, date });
+}
+
+/** Ukupno pregleda i pregledi zadnjih 30 dana za jednu stranicu. */
+export async function getPageViewCounts(source: "property" | "company", sourceId: number, sinceDate: string) {
+  const rows = await db
+    .select()
+    .from(pageViews)
+    .where(and(eq(pageViews.source, source), eq(pageViews.sourceId, sourceId)));
+  return {
+    total: rows.length,
+    last30Days: rows.filter((r) => r.date >= sinceDate).length,
+  };
 }

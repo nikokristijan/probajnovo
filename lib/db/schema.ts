@@ -331,6 +331,22 @@ export const reservations = pgTable("reservations", {
       oznaka), NE koristi se za obračun zarade (vidi getMonthlyEarnings, koji
       broji po checkIn mjesecu). Null dok nije (još) plaćeno. */
   paidAt: timestamp("paid_at"),
+  /** Broj gostiju — opcionalno (stare rezervacije ga nemaju), za upozorenje
+      kad premaši properties.capacityGuests (vidi ReservationForm). */
+  guestCount: integer("guest_count"),
+  /** Kapara/predujam (EUR) — informativno, NE mijenja `paid`/getMonthlyEarnings
+      (koji i dalje broji SAMO potpuno plaćene rezervacije). Prikazuje se kao
+      treće stanje "Kapara X €" između "Čeka se" i "Plaćeno" u tablici. */
+  depositEur: integer("deposit_eur"),
+  /** Kad je gostu poslana automatska email potvrda rezervacije (ako je
+      email upisan) — sprječava dvostruko slanje, vidi createReservationAction. */
+  confirmationSentAt: timestamp("confirmation_sent_at"),
+  /** Kad je gostu poslan automatski podsjetnik dan prije dolaska (cron, vidi
+      app/api/cron/reservation-reminders) — null dok nije poslano. */
+  reminderSentAt: timestamp("reminder_sent_at"),
+  /** Kad je gostu poslana automatska zamolba za Google recenziju nakon
+      odlaska (cron, vidi app/api/cron/review-requests) — null dok nije poslano. */
+  reviewRequestSentAt: timestamp("review_request_sent_at"),
   note: text("note"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
@@ -348,6 +364,9 @@ export const expenses = pgTable("expenses", {
   amountEur: integer("amount_eur").notNull(),
   /** "YYYY-MM-DD" */
   date: text("date").notNull(),
+  /** "čišćenje" | "održavanje" | "režije" | "ostalo" — za raščlambu na
+      /admin/rezervacije, default "ostalo" za stare retke bez kategorije. */
+  category: text("category").notNull().default("ostalo"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
@@ -396,3 +415,40 @@ export const sales = pgTable("sales", {
 
 export type Sale = typeof sales.$inferSelect;
 export type NewSale = typeof sales.$inferInsert;
+
+/**
+ * Log radnji nad rezervacijama/troškovima — namjerno SAMO ta dva područja
+ * (ne cijeli sustav retroaktivno), za "Sigurnost i pregled rada" (vidi
+ * app/admin/aktivnost). `adminEmail` je snimka u trenutku radnje (ne FK na
+ * admin_users) da log ostane čitljiv i ako se admin kasnije obriše.
+ */
+export const activityLog = pgTable("activity_log", {
+  id: serial("id").primaryKey(),
+  adminEmail: text("admin_email").notNull(),
+  /** "created_reservation" | "deleted_reservation" | "created_expense" | "deleted_expense" */
+  action: text("action").notNull(),
+  targetLabel: text("target_label").notNull(),
+  propertyId: integer("property_id"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export type ActivityLogEntry = typeof activityLog.$inferSelect;
+export type NewActivityLogEntry = typeof activityLog.$inferInsert;
+
+/**
+ * Samo-rolani (bez vanjske analitike) brojač pregleda javnih stranica —
+ * jedan red po pregledu, broji se preko count() upita (vidi
+ * getPageViewCounts). Namjerno jednostavno (bez upserta) jer promet ovih
+ * stranica nije velik.
+ */
+export const pageViews = pgTable("page_views", {
+  id: serial("id").primaryKey(),
+  /** "property" | "company" */
+  source: text("source").notNull(),
+  sourceId: integer("source_id").notNull(),
+  /** "YYYY-MM-DD" u Europe/Zagreb (vidi lib/date.ts) */
+  date: text("date").notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export type PageView = typeof pageViews.$inferSelect;
