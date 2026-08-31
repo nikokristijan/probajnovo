@@ -16,6 +16,10 @@ import {
   createProperty,
   updateProperty,
   deleteProperty,
+  createCompany,
+  updateCompany,
+  deleteCompany,
+  isSlugTaken,
   createStudy,
   updateStudy,
   deleteStudy,
@@ -27,6 +31,7 @@ import {
   createAdmin,
   deleteAdmin,
   countAdmins,
+  updateAdminPassword,
 } from "@/lib/db/queries";
 
 export type ActionState = { error?: string; success?: boolean } | undefined;
@@ -341,6 +346,9 @@ export async function createPropertyAction(
   if (RESERVED_SLUGS.has(parsed.data.slug)) {
     return { error: `"${parsed.data.slug}" je rezervirana adresa, odaberi drugu.` };
   }
+  if (await isSlugTaken(parsed.data.slug)) {
+    return { error: `Adresa "${parsed.data.slug}" je već zauzeta (vikendica ili firma) — odaberi drugu.` };
+  }
 
   try {
     await createProperty({
@@ -423,6 +431,9 @@ export async function updatePropertyAction(
   if (RESERVED_SLUGS.has(parsed.data.slug)) {
     return { error: `"${parsed.data.slug}" je rezervirana adresa, odaberi drugu.` };
   }
+  if (await isSlugTaken(parsed.data.slug, { table: "properties", id })) {
+    return { error: `Adresa "${parsed.data.slug}" je već zauzeta (vikendica ili firma) — odaberi drugu.` };
+  }
 
   try {
     await updateProperty(id, {
@@ -462,6 +473,233 @@ export async function updatePropertyAction(
 export async function deletePropertyAction(id: number) {
   await requireAdmin();
   await deleteProperty(id);
+  revalidatePath("/");
+  revalidatePath("/admin");
+  redirect("/admin");
+}
+
+/* ---------------------------------------------------------------- */
+/* Firme (puna stranica poput vikendice, bez booking polja)          */
+/* ---------------------------------------------------------------- */
+
+const CompanySchema = z.object({
+  slug: z
+    .string()
+    .min(1, "Slug je obavezan.")
+    .regex(/^[a-z0-9-]+$/, "Slug smije sadržavati samo mala slova, brojke i crtice."),
+  name: z.string().min(1, "Naziv je obavezan."),
+  location: z.string().min(1),
+  tagline: z.string().min(1),
+  description: z.string().min(1),
+  services: z.string().optional(), // JSON niz {name,description,priceEur}, parsiramo dolje
+  workingHours: z.string().optional(),
+  phone: z.string().optional(),
+  address: z.string().optional(),
+  instagramUrl: z
+    .string()
+    .optional()
+    .refine((v) => !v || /^https?:\/\//i.test(v), {
+      message: "Poveznica na Instagram mora počinjati s http:// ili https://",
+    }),
+  facebookUrl: z
+    .string()
+    .optional()
+    .refine((v) => !v || /^https?:\/\//i.test(v), {
+      message: "Poveznica na Facebook mora počinjati s http:// ili https://",
+    }),
+  accentColor: z
+    .string()
+    .regex(/^#[0-9a-fA-F]{6}$/, "Boja mora biti u obliku #RRGGBB."),
+  images: z.string(), // JSON niz URL-ova, parsiramo gore definiranim parseImages
+  bannerImage: z.string().optional(),
+  contactEmail: z
+    .string()
+    .optional()
+    .refine((v) => !v || z.email().safeParse(v).success, {
+      message: "Kontakt email firme mora biti ispravan email.",
+    }),
+  published: z.coerce.boolean(),
+  layoutStyle: z.enum(["classic", "editorial", "raw", "apple"]).default("classic"),
+  darkMode: z.coerce.boolean(),
+  mapUrl: z
+    .string()
+    .optional()
+    .refine((v) => !v || /^https?:\/\//i.test(v), {
+      message: "Poveznica za mapu mora počinjati s http:// ili https://",
+    }),
+  testimonials: z.string().optional(),
+  faq: z.string().optional(),
+  imageCategories: z.string().optional(),
+  videoUrl: z
+    .string()
+    .optional()
+    .refine((v) => !v || /^https?:\/\//i.test(v), {
+      message: "Poveznica na video mora počinjati s http:// ili https://",
+    }),
+  reviewBadges: z.string().optional(),
+  faviconUrl: z.string().optional(),
+  customDomain: z
+    .string()
+    .optional()
+    .refine(
+      (v) =>
+        !v ||
+        /^[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?(\.[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?)+$/i.test(
+          v.trim().replace(/^https?:\/\//i, "").replace(/\/.*$/, "")
+        ),
+      { message: "Domena mora biti u obliku npr. tvrtka.com (bez https:// i bez kose crte)." }
+    ),
+});
+
+function parseServices(raw?: string): { name: string; description: string; priceEur: number | null }[] {
+  try {
+    const arr = JSON.parse(raw ?? "[]");
+    if (!Array.isArray(arr)) return [];
+    return arr
+      .filter((s) => s && typeof s.name === "string")
+      .map((s) => ({
+        name: s.name.trim(),
+        description: typeof s.description === "string" ? s.description.trim() : "",
+        priceEur:
+          s.priceEur === null || s.priceEur === undefined || s.priceEur === ""
+            ? null
+            : Math.max(0, Math.round(Number(s.priceEur) || 0)),
+      }))
+      .filter((s) => s.name.length > 0);
+  } catch {
+    return [];
+  }
+}
+
+function readCompanyFormData(formData: FormData) {
+  return {
+    slug: formData.get("slug"),
+    name: formData.get("name"),
+    location: formData.get("location"),
+    tagline: formData.get("tagline"),
+    description: formData.get("description"),
+    services: formData.get("services") ?? "[]",
+    workingHours: formData.get("workingHours") ?? "",
+    phone: formData.get("phone") ?? "",
+    address: formData.get("address") ?? "",
+    instagramUrl: formData.get("instagramUrl") ?? "",
+    facebookUrl: formData.get("facebookUrl") ?? "",
+    accentColor: formData.get("accentColor"),
+    images: formData.get("images") ?? "[]",
+    bannerImage: formData.get("bannerImage") ?? "",
+    contactEmail: formData.get("contactEmail") ?? "",
+    published: formData.get("published") === "on",
+    layoutStyle: formData.get("layoutStyle") ?? "classic",
+    darkMode: formData.get("darkMode") === "on",
+    mapUrl: formData.get("mapUrl") ?? "",
+    testimonials: formData.get("testimonials") ?? "[]",
+    faq: formData.get("faq") ?? "[]",
+    imageCategories: formData.get("imageCategories") ?? "{}",
+    videoUrl: formData.get("videoUrl") ?? "",
+    reviewBadges: formData.get("reviewBadges") ?? "",
+    faviconUrl: formData.get("faviconUrl") ?? "",
+    customDomain: formData.get("customDomain") ?? "",
+  };
+}
+
+export async function createCompanyAction(
+  _prevState: ActionState,
+  formData: FormData
+): Promise<ActionState> {
+  await requireAdmin();
+  const parsed = CompanySchema.safeParse(readCompanyFormData(formData));
+  if (!parsed.success) {
+    return { error: parsed.error.issues[0]?.message ?? "Provjeri unesene podatke." };
+  }
+  if (RESERVED_SLUGS.has(parsed.data.slug)) {
+    return { error: `"${parsed.data.slug}" je rezervirana adresa, odaberi drugu.` };
+  }
+  if (await isSlugTaken(parsed.data.slug)) {
+    return { error: `Adresa "${parsed.data.slug}" je već zauzeta (vikendica ili firma) — odaberi drugu.` };
+  }
+
+  try {
+    await createCompany({
+      ...parsed.data,
+      services: parseServices(parsed.data.services),
+      workingHours: parsed.data.workingHours?.trim() || null,
+      phone: parsed.data.phone?.trim() || null,
+      address: parsed.data.address?.trim() || null,
+      instagramUrl: parsed.data.instagramUrl?.trim() || null,
+      facebookUrl: parsed.data.facebookUrl?.trim() || null,
+      images: parseImages(parsed.data.images),
+      bannerImage: parsed.data.bannerImage?.trim() || null,
+      contactEmail: parsed.data.contactEmail?.trim() || null,
+      mapUrl: parsed.data.mapUrl?.trim() || null,
+      testimonials: parseTestimonials(parsed.data.testimonials),
+      faq: parseFaq(parsed.data.faq),
+      imageCategories: parseImageCategories(parsed.data.imageCategories),
+      videoUrl: parsed.data.videoUrl?.trim() || null,
+      reviewBadges: parseAmenities(parsed.data.reviewBadges ?? ""),
+      faviconUrl: parsed.data.faviconUrl?.trim() || null,
+      customDomain: normalizeDomain(parsed.data.customDomain),
+    });
+  } catch {
+    return { error: "Ta adresa (slug) ili domena je već zauzeta — odaberi drugu." };
+  }
+
+  revalidatePath("/");
+  revalidatePath("/admin");
+  redirect("/admin");
+}
+
+export async function updateCompanyAction(
+  id: number,
+  _prevState: ActionState,
+  formData: FormData
+): Promise<ActionState> {
+  await requireAdmin();
+  const parsed = CompanySchema.safeParse(readCompanyFormData(formData));
+  if (!parsed.success) {
+    return { error: parsed.error.issues[0]?.message ?? "Provjeri unesene podatke." };
+  }
+  if (RESERVED_SLUGS.has(parsed.data.slug)) {
+    return { error: `"${parsed.data.slug}" je rezervirana adresa, odaberi drugu.` };
+  }
+  if (await isSlugTaken(parsed.data.slug, { table: "companies", id })) {
+    return { error: `Adresa "${parsed.data.slug}" je već zauzeta (vikendica ili firma) — odaberi drugu.` };
+  }
+
+  try {
+    await updateCompany(id, {
+      ...parsed.data,
+      services: parseServices(parsed.data.services),
+      workingHours: parsed.data.workingHours?.trim() || null,
+      phone: parsed.data.phone?.trim() || null,
+      address: parsed.data.address?.trim() || null,
+      instagramUrl: parsed.data.instagramUrl?.trim() || null,
+      facebookUrl: parsed.data.facebookUrl?.trim() || null,
+      images: parseImages(parsed.data.images),
+      bannerImage: parsed.data.bannerImage?.trim() || null,
+      contactEmail: parsed.data.contactEmail?.trim() || null,
+      mapUrl: parsed.data.mapUrl?.trim() || null,
+      testimonials: parseTestimonials(parsed.data.testimonials),
+      faq: parseFaq(parsed.data.faq),
+      imageCategories: parseImageCategories(parsed.data.imageCategories),
+      videoUrl: parsed.data.videoUrl?.trim() || null,
+      reviewBadges: parseAmenities(parsed.data.reviewBadges ?? ""),
+      faviconUrl: parsed.data.faviconUrl?.trim() || null,
+      customDomain: normalizeDomain(parsed.data.customDomain),
+    });
+  } catch {
+    return { error: "Ta adresa (slug) ili domena je već zauzeta — odaberi drugu." };
+  }
+
+  revalidatePath("/");
+  revalidatePath(`/${parsed.data.slug}`);
+  revalidatePath("/admin");
+  revalidatePath(`/admin/companies/${id}`);
+  return { success: true };
+}
+
+export async function deleteCompanyAction(id: number) {
+  await requireAdmin();
+  await deleteCompany(id);
   revalidatePath("/");
   revalidatePath("/admin");
   redirect("/admin");
@@ -680,4 +918,48 @@ export async function deleteAdminAction(id: number) {
   await deleteAdmin(id);
   revalidatePath("/admin/admins");
   redirect("/admin/admins");
+}
+
+/* ---------------------------------------------------------------- */
+/* Promjena vlastite lozinke (bilo koji prijavljeni admin)           */
+/* ---------------------------------------------------------------- */
+
+const ChangePasswordSchema = z
+  .object({
+    currentPassword: z.string().min(1, { message: "Unesi trenutnu lozinku." }),
+    newPassword: z.string().min(8, { message: "Nova lozinka mora imati barem 8 znakova." }),
+    confirmPassword: z.string().min(1, { message: "Ponovi novu lozinku." }),
+  })
+  .refine((data) => data.newPassword === data.confirmPassword, {
+    message: "Nova lozinka i ponovljena lozinka se ne podudaraju.",
+    path: ["confirmPassword"],
+  });
+
+export async function changePasswordAction(
+  _prevState: ActionState,
+  formData: FormData
+): Promise<ActionState> {
+  const admin = await requireAdmin();
+  const parsed = ChangePasswordSchema.safeParse({
+    currentPassword: formData.get("currentPassword"),
+    newPassword: formData.get("newPassword"),
+    confirmPassword: formData.get("confirmPassword"),
+  });
+  if (!parsed.success) {
+    return { error: parsed.error.issues[0]?.message ?? "Provjeri unesene podatke." };
+  }
+
+  const row = await getAdminById(admin.adminId);
+  if (!row) {
+    return { error: "Račun nije pronađen." };
+  }
+
+  const valid = await bcrypt.compare(parsed.data.currentPassword, row.passwordHash);
+  if (!valid) {
+    return { error: "Trenutna lozinka nije točna." };
+  }
+
+  const passwordHash = await bcrypt.hash(parsed.data.newPassword, 12);
+  await updateAdminPassword(admin.adminId, passwordHash);
+  return { success: true };
 }
