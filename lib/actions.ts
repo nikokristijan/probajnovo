@@ -46,6 +46,7 @@ import {
   setAdminAccess,
   addManualBlockedDate,
   removeManualBlockedDate,
+  blockManualDateRange,
 } from "@/lib/db/queries";
 import { sendInquiryNotification, sendGuestConfirmation } from "@/lib/email";
 import { resolveCoordinates, geoMissWarning } from "@/lib/geocode";
@@ -1284,4 +1285,37 @@ export async function toggleBlockedDateAction(
     await addManualBlockedDate(propertyId, date);
   }
   revalidatePath("/admin/kalendar");
+}
+
+/** Blokira cijeli raspon datuma odjednom ("Blokiraj raspon" forma na
+    /admin/kalendar) umjesto klikanja dan po dan — vidi blockManualDateRange.
+    `redirectTo` je puni URL natrag na kalendar (ista vikendica/mjesec) koji
+    stranica sastavi preko linkFor(), da admin ostane gdje je bio. */
+export async function blockDateRangeAction(
+  propertyId: number,
+  redirectTo: string,
+  formData: FormData
+) {
+  const admin = await requireAdminOrOwner();
+  await assertPropertyAccess(admin, propertyId);
+
+  const start = String(formData.get("start") ?? "");
+  const end = String(formData.get("end") ?? "");
+  if (!DATE_RE.test(start) || !DATE_RE.test(end) || start > end) {
+    redirect(redirectTo);
+  }
+
+  // Sigurnosna gornja granica (cca 2 godine) — spriječi slučajni ogroman
+  // raspon (npr. zamijenjena godina u polju) da ne napravi tisuće redaka.
+  const MAX_RANGE_DAYS = 730;
+  const spanDays = Math.round(
+    (new Date(`${end}T00:00:00Z`).getTime() - new Date(`${start}T00:00:00Z`).getTime()) / 86400000
+  );
+  if (spanDays > MAX_RANGE_DAYS) {
+    redirect(redirectTo);
+  }
+
+  await blockManualDateRange(propertyId, start, end);
+  revalidatePath("/admin/kalendar");
+  redirect(redirectTo);
 }
