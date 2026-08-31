@@ -1,5 +1,5 @@
-import { redirect, notFound } from "next/navigation";
-import { getCurrentAdmin } from "@/lib/auth";
+import { notFound } from "next/navigation";
+import { requireFullAdmin } from "@/lib/auth";
 import { getStudyById } from "@/lib/db/queries";
 import { updateStudyAction } from "@/lib/actions";
 import StudyForm from "@/components/admin/StudyForm";
@@ -10,8 +10,7 @@ export default async function EditStudyPage({
 }: {
   params: Promise<{ id: string }>;
 }) {
-  const admin = await getCurrentAdmin();
-  if (!admin) redirect("/admin/login");
+  await requireFullAdmin();
 
   const { id } = await params;
   const numericId = Number(id);
