@@ -345,6 +345,15 @@ html.novo-lock-scroll body {
   transition: transform 0.15s ease, box-shadow 0.15s ease;
 }
 .stay-nav-cta:hover { transform: translateY(-1px); box-shadow: 0 8px 18px color-mix(in srgb, var(--accent) 45%, transparent); }
+.stay-nav-right { display: flex; align-items: center; gap: 12px; }
+/* HR/EN prekidač — auto-prijevod, vidi lib/translate.ts i app/en/[slug]/page.tsx */
+.stay-lang-switch {
+  font-family: var(--font-jetbrains-mono), monospace; font-size: 11px; font-weight: 600;
+  letter-spacing: 0.04em; color: var(--ink); opacity: 0.55; text-decoration: none;
+  border: 1px solid currentColor; border-radius: 999px; padding: 5px 9px;
+  transition: opacity 0.15s ease;
+}
+.stay-lang-switch:hover { opacity: 1; }
 
 @keyframes stay-hero-in { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: translateY(0); } }
 
