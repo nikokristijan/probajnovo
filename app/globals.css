@@ -488,6 +488,7 @@ html.novo-lock-scroll body {
 .stay-host-name { font-family: var(--font-zilla-slab), Georgia, serif; font-size: 19px; font-weight: 600; margin-bottom: 6px; }
 .stay-host-note { margin: 0; font-size: 14.5px; line-height: 1.7; color: #4a4030; font-style: italic; }
 
+.stay-map-embed { width: 100%; height: 320px; border: 0; border-radius: 16px; display: block; }
 .stay-map-link { display: inline-flex; align-items: center; gap: 6px; margin-top: 16px; background: var(--accent); color: var(--paper); font-weight: 700; font-size: 13.5px; padding: 11px 20px; border-radius: 999px; text-decoration: none; transition: transform 0.15s ease, box-shadow 0.15s ease; }
 .stay-map-link:hover { transform: translateY(-2px); box-shadow: 0 8px 18px color-mix(in srgb, var(--accent) 45%, transparent); }
 
