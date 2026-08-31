@@ -9,6 +9,7 @@ import {
 } from "@/lib/db/queries";
 import { markInquiryReadAction, markInquiryRepliedAction } from "@/lib/actions";
 import DeleteInquiryButton from "@/components/admin/DeleteInquiryButton";
+import QuickReplyForm from "@/components/admin/QuickReplyForm";
 
 const SOURCE_LABEL: Record<string, string> = {
   property: "Vikendica",
@@ -149,6 +150,9 @@ export default async function AdminInquiriesPage({
                 </div>
               </div>
               <p className="text-sm mt-3 whitespace-pre-wrap">{i.message}</p>
+              <div className="mt-3">
+                <QuickReplyForm inquiryId={i.id} />
+              </div>
             </div>
           ))}
         </div>
