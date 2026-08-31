@@ -46,6 +46,58 @@ export async function geocodeAddress(address: string): Promise<Coordinates | nul
   }
 }
 
+function sleep(ms: number) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+/**
+ * Gradi listu sve "širih" verzija adrese za pokušaj geokodiranja — korisno
+ * kad je unesena neimenovana ulica/zaselak/sokak (čest slučaj kod vikendica
+ * u manjim mjestima) koji Nominatim ne prepoznaje po imenu, ali samo mjesto
+ * prepoznaje. Npr. "Sokak bez imena 5, Vrsar" prvo pokuša cijelu adresu, pa
+ * ako to ne uspije, probaj samo "Vrsar".
+ *
+ * Pretpostavlja da su dijelovi adrese odvojeni zarezima, od najdetaljnijeg
+ * (ulica/broj) do najšireg (mjesto/država) — isti redoslijed kao placeholder
+ * u admin formi ("Bukovlje 45, Slavonski Brod").
+ */
+function widenedCandidates(address: string): string[] {
+  const segments = address
+    .split(",")
+    .map((s) => s.trim())
+    .filter(Boolean);
+
+  const candidates = segments.map((_, i) => segments.slice(i).join(", "));
+
+  if (!/hrvatsk|croatia/i.test(address)) {
+    candidates.push(`${address}, Hrvatska`);
+    if (segments.length > 1) {
+      candidates.push(`${segments[segments.length - 1]}, Hrvatska`);
+    }
+  }
+
+  return Array.from(new Set(candidates));
+}
+
+/**
+ * Isto kao geocodeAddress, ali uz progresivni fallback preko
+ * widenedCandidates — ako puna adresa ne da rezultat, pokušava redom šire
+ * verzije (npr. bez naziva ulice, samo mjesto) dok jedna ne upali ili sve ne
+ * promaše. Poziva se iz resolveCoordinates ispod.
+ */
+async function geocodeWithFallback(address: string): Promise<Coordinates | null> {
+  const candidates = widenedCandidates(address);
+
+  for (let i = 0; i < candidates.length; i++) {
+    const result = await geocodeAddress(candidates[i]);
+    if (result) return result;
+    // Nominatim traži max ~1 zahtjev/sekundu — kratka pauza između pokušaja.
+    if (i < candidates.length - 1) await sleep(1100);
+  }
+
+  return null;
+}
+
 /**
  * Odlučuje treba li (ponovno) geokodirati adresu ili samo zadržati postojeće
  * koordinate — poziva se iz create/updatePropertyAction u lib/actions.ts.
@@ -53,9 +105,9 @@ export async function geocodeAddress(address: string): Promise<Coordinates | nul
  * - Nema adrese → nema karte (null, null).
  * - Adresa je ista kao prije I već imamo koordinate → ništa se ne mijenja,
  *   ne trošimo nepotreban poziv na Nominatim.
- * - Adresa je nova/promijenjena → pokušaj geokodirati; ako Nominatim padne,
- *   radije zadrži stare koordinate (ako postoje) nego da karta nestane zbog
- *   privremenog mrežnog problema.
+ * - Adresa je nova/promijenjena → pokušaj geokodirati (uz fallback na šire
+ *   verzije adrese); ako sve promaši, radije zadrži stare koordinate (ako
+ *   postoje) nego da karta nestane zbog privremenog mrežnog problema.
  */
 export async function resolveCoordinates(
   address: string | null,
@@ -67,7 +119,7 @@ export async function resolveCoordinates(
     return { latitude: previous.latitude, longitude: previous.longitude };
   }
 
-  const geo = await geocodeAddress(address);
+  const geo = await geocodeWithFallback(address);
   if (geo) return geo;
 
   if (previous?.latitude && previous?.longitude) {

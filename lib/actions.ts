@@ -51,7 +51,17 @@ import { sendInquiryNotification, sendGuestConfirmation } from "@/lib/email";
 import { resolveCoordinates } from "@/lib/geocode";
 import type { AdminUser, Inquiry } from "@/lib/db/schema";
 
-export type ActionState = { error?: string; success?: boolean } | undefined;
+export type ActionState =
+  | { error?: string; success?: boolean; warning?: string }
+  | undefined;
+
+/** Poruka kad je adresa unesena ali Nominatim (ni uz fallback na šire
+ *  verzije adrese) nije uspio pronaći koordinate — vidi lib/geocode.ts.
+ *  Izvezeno i za app/admin/properties/[id]/page.tsx (?geo=miss slučaj nakon
+ *  kreiranja nove vikendice, vidi createPropertyAction ispod). */
+export function geoMissWarning(address: string): string {
+  return `Vikendica je spremljena, ali karta se nije mogla automatski pronaći za adresu "${address}" — OpenStreetMap je nije prepoznao. Probaj dodati ime mjesta/grada (npr. "…, Vrsar") ili ručno upiši poveznicu pod "Poveznica na mapu" ispod.`;
+}
 
 const RESERVED_SLUGS = new Set([
   "admin",
@@ -430,9 +440,11 @@ export async function createPropertyAction(
 
   const address = parsed.data.address?.trim() || null;
   const coords = await resolveCoordinates(address);
+  const geoMissed = !!address && !coords.latitude;
 
+  let created;
   try {
-    await createProperty({
+    created = await createProperty({
       ...parsed.data,
       amenities: parseAmenities(parsed.data.amenities),
       images: parseImages(parsed.data.images),
@@ -466,6 +478,11 @@ export async function createPropertyAction(
 
   revalidatePath("/");
   revalidatePath("/admin");
+  // Ako karta nije uspjela, vrati admina na stranicu za uređivanje (umjesto
+  // na popis) s upozorenjem — vidi geoMissWarning i app/admin/properties/[id]/page.tsx.
+  if (geoMissed && created) {
+    redirect(`/admin/properties/${created.id}?geo=miss`);
+  }
   redirect("/admin");
 }
 
@@ -527,6 +544,7 @@ export async function updatePropertyAction(
   const address = parsed.data.address?.trim() || null;
   const existing = await getPropertyById(id);
   const coords = await resolveCoordinates(address, existing ?? undefined);
+  const geoMissed = !!address && !coords.latitude;
 
   try {
     await updateProperty(id, {
@@ -565,7 +583,7 @@ export async function updatePropertyAction(
   revalidatePath(`/${parsed.data.slug}`);
   revalidatePath("/admin");
   revalidatePath(`/admin/properties/${id}`);
-  return { success: true };
+  return { success: true, warning: geoMissed && address ? geoMissWarning(address) : undefined };
 }
 
 export async function deletePropertyAction(id: number) {
