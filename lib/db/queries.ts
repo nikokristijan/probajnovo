@@ -1,4 +1,4 @@
-import { eq, desc, asc, and, gt, inArray, isNull } from "drizzle-orm";
+import { eq, desc, asc, and, gt, inArray, isNull, sql } from "drizzle-orm";
 import { db } from "./index";
 import {
   agency,
@@ -547,6 +547,23 @@ export async function hasPushSubscription(adminId: number): Promise<boolean> {
     .where(eq(pushSubscriptions.adminId, adminId))
     .limit(1);
   return rows.length > 0;
+}
+
+/** Jednokratni "popravi bazu" gumb u postavkama (vidi lib/actions.ts
+    runPushMigrationAction) — kreira push_subscriptions tablicu ako slučajno
+    ne postoji (npr. netko zaboravio pokrenuti SQL migraciju ručno). Koristi
+    IF NOT EXISTS pa je sigurno pozvati i više puta / kad tablica već postoji. */
+export async function ensurePushSubscriptionsTable(): Promise<void> {
+  await db.execute(sql`
+    CREATE TABLE IF NOT EXISTS push_subscriptions (
+      id SERIAL PRIMARY KEY,
+      admin_id INTEGER NOT NULL,
+      endpoint TEXT NOT NULL UNIQUE,
+      p256dh TEXT NOT NULL,
+      auth TEXT NOT NULL,
+      created_at TIMESTAMP NOT NULL DEFAULT now()
+    )
+  `);
 }
 
 /** Sve pretplate (svi uređaji) za zadani popis admin ID-eva — jedan admin
