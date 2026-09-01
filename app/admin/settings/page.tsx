@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { getCurrentAdminRecord } from "@/lib/auth";
 import ChangePasswordForm from "@/components/admin/ChangePasswordForm";
+import TwoFactorSetupForm from "@/components/admin/TwoFactorSetupForm";
 
 export default async function AdminSettingsPage() {
   const me = await getCurrentAdminRecord();
@@ -16,6 +17,11 @@ export default async function AdminSettingsPage() {
       <div className="border border-black/10 rounded-xl p-5 flex flex-col gap-4 bg-black/[0.02] max-w-sm">
         <span className="text-sm font-semibold">Promijeni lozinku</span>
         <ChangePasswordForm />
+      </div>
+
+      <div className="border border-black/10 rounded-xl p-5 flex flex-col gap-4 bg-black/[0.02] max-w-sm">
+        <span className="text-sm font-semibold">Dvofaktorska prijava (2FA)</span>
+        <TwoFactorSetupForm initialEnabled={me.twoFactorEnabled} />
       </div>
     </div>
   );
