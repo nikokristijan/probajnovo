@@ -556,6 +556,12 @@ export async function listPushSubscriptionsForAdmins(adminIds: number[]) {
   return db.select().from(pushSubscriptions).where(inArray(pushSubscriptions.adminId, adminIds));
 }
 
+/** BAŠ SVAKA pretplata u bazi, bez filtera po adminu — za broadcast obavijest
+    (vidi lib/push.ts sendPushToAllDevices i sendBroadcastPushAction). */
+export async function listAllPushSubscriptions() {
+  return db.select().from(pushSubscriptions);
+}
+
 /** Koji admini (id) trebaju dobiti push obavijest za događaj vezan uz ovu
     vikendicu/firmu — puni "admin" (vidi sve, uvijek se obavještava) +
     "owner" koji ima BAŠ tu vikendicu/firmu dodijeljenu (setAdminAccess).
