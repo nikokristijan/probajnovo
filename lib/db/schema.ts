@@ -459,3 +459,22 @@ export const pageViews = pgTable("page_views", {
 });
 
 export type PageView = typeof pageViews.$inferSelect;
+
+/**
+ * Web Push pretplate (VAPID, besplatno, bez posrednika) po adminu — jedan
+ * red po uređaju/pregledniku (admin može biti prijavljen na više uređaja
+ * odjednom, npr. mobitel + laptop, pa svaki dobiva svoju obavijest).
+ * endpoint je jedinstven (jedan po pregledniku/uređaju) pa se ponovna
+ * pretplata s istog uređaja upserta preko njega umjesto dupliciranja retka.
+ * Vidi lib/push.ts (sendPushToAdmins) i app/api/admin/push/*.
+ */
+export const pushSubscriptions = pgTable("push_subscriptions", {
+  id: serial("id").primaryKey(),
+  adminId: integer("admin_id").notNull(),
+  endpoint: text("endpoint").notNull().unique(),
+  p256dh: text("p256dh").notNull(),
+  auth: text("auth").notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export type PushSubscriptionRow = typeof pushSubscriptions.$inferSelect;

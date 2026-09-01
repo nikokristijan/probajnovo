@@ -16,6 +16,7 @@ import {
   sales,
   activityLog,
   pageViews,
+  pushSubscriptions,
   type NewProperty,
   type NewCompany,
   type NewStudy,
@@ -505,6 +506,85 @@ export async function listCompaniesForAdmin(admin: { id: number; role: string })
   const ids = grants.map((g) => g.companyId).filter((id): id is number => id != null);
   if (ids.length === 0) return [];
   return db.select().from(companies).where(inArray(companies.id, ids));
+}
+
+/* ---------------------------------------------------------------- */
+/* Web Push obavijesti (push_subscriptions) — vidi lib/push.ts        */
+/* sendPushToAdmins i lib/db/schema.ts pushSubscriptions.             */
+/* ---------------------------------------------------------------- */
+
+/** Spremi/osvježi pretplatu za ovaj uređaj (upsert preko endpoint, jedinstven
+    po pregledniku/uređaju — vidi shemu) — poziva se iz
+    app/api/admin/push/subscribe kad admin uključi obavijesti. */
+export async function savePushSubscription(data: {
+  adminId: number;
+  endpoint: string;
+  p256dh: string;
+  auth: string;
+}) {
+  await db
+    .insert(pushSubscriptions)
+    .values(data)
+    .onConflictDoUpdate({
+      target: pushSubscriptions.endpoint,
+      set: { adminId: data.adminId, p256dh: data.p256dh, auth: data.auth },
+    });
+}
+
+/** Makni pretplatu za ovaj uređaj (admin isključio obavijesti, ili istekla
+    pretplata koju je push servis odbio — vidi lib/push.ts). */
+export async function deletePushSubscription(endpoint: string) {
+  await db.delete(pushSubscriptions).where(eq(pushSubscriptions.endpoint, endpoint));
+}
+
+/** Ima li ovaj admin BAREM JEDAN uređaj s uključenim obavijestima — za
+    prikaz stanja prekidača u postavkama (TwoFactorSetupForm-stil komponenta,
+    vidi PushNotificationToggle). */
+export async function hasPushSubscription(adminId: number): Promise<boolean> {
+  const rows = await db
+    .select()
+    .from(pushSubscriptions)
+    .where(eq(pushSubscriptions.adminId, adminId))
+    .limit(1);
+  return rows.length > 0;
+}
+
+/** Sve pretplate (svi uređaji) za zadani popis admin ID-eva — jedan admin
+    može imati više uređaja pa svaki dobiva svoju obavijest. */
+export async function listPushSubscriptionsForAdmins(adminIds: number[]) {
+  if (adminIds.length === 0) return [];
+  return db.select().from(pushSubscriptions).where(inArray(pushSubscriptions.adminId, adminIds));
+}
+
+/** Koji admini (id) trebaju dobiti push obavijest za događaj vezan uz ovu
+    vikendicu/firmu — puni "admin" (vidi sve, uvijek se obavještava) +
+    "owner" koji ima BAŠ tu vikendicu/firmu dodijeljenu (setAdminAccess).
+    Zajednička funkcija za sva tri okidača (nova rezervacija/upit, podsjetnik
+    gost sutra stiže — vidi lib/push.ts sendPushToAdmins pozivatelje). */
+export async function listAdminIdsForNotification(target: {
+  propertyId?: number;
+  companyId?: number;
+}): Promise<number[]> {
+  const all = await listAdmins();
+  const fullAdminIds = all.filter((a) => a.role !== "owner").map((a) => a.id);
+  const ownerIds = all.filter((a) => a.role === "owner").map((a) => a.id);
+  if (ownerIds.length === 0) return fullAdminIds;
+
+  const grants = await db
+    .select()
+    .from(adminAccess)
+    .where(inArray(adminAccess.adminId, ownerIds));
+  const matchingOwnerIds = grants
+    .filter((g) =>
+      target.propertyId != null
+        ? g.propertyId === target.propertyId
+        : target.companyId != null
+        ? g.companyId === target.companyId
+        : false
+    )
+    .map((g) => g.adminId);
+
+  return [...new Set([...fullAdminIds, ...matchingOwnerIds])];
 }
 
 /** Upiti na koje ovaj admin ima pristup — vlasnik SAMO svojih dodijeljenih
