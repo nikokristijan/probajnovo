@@ -45,6 +45,79 @@ function EarningsCard({ label, value, unit = "€" }: { label: string; value: nu
 }
 
 /**
+ * "Pametne cjenovne preporuke" — usporedba popunjenosti/prosj. cijene s ISTIM
+ * mjesecom prošle godine. Namjerno samo INFORMATIVNI uvid, ne kruto pravilo
+ * ili automatska promjena cijene — vlasnik je eksplicitno rekao da cijene
+ * nisu uvijek fiksne (sezona, konkurencija, dogovori...), pa ovo samo
+ * pokazuje brojke i blagu naznaku ("razmisli o..."), nikad "podigni cijenu
+ * za X€". Ako prošle godine nema podataka za taj mjesec (nova vikendica ili
+ * period prije nego je počela koristiti sustav), prikazuje se samo napomena.
+ */
+function PricingInsight({
+  current,
+  lastYear,
+  monthLabel,
+}: {
+  current: { occupancyPct: number; avgNightlyRateEur: number };
+  lastYear: { occupancyPct: number; avgNightlyRateEur: number; daysBooked: number };
+  monthLabel: string;
+}) {
+  const hasLastYearData = lastYear.daysBooked > 0;
+  if (!hasLastYearData) {
+    return (
+      <div className="border border-black/10 rounded-xl px-4 py-3 bg-white">
+        <p className="text-xs text-black/50">
+          Nema dovoljno podataka iz {monthLabel} prošle godine za usporedbu popunjenosti/cijene.
+        </p>
+      </div>
+    );
+  }
+
+  const occDiff = current.occupancyPct - lastYear.occupancyPct;
+  let note: string;
+  if (occDiff >= 10 && current.avgNightlyRateEur <= lastYear.avgNightlyRateEur) {
+    note =
+      "Potražnja je znatno veća nego prošle godine u istom mjesecu, uz sličnu ili nižu cijenu — možda ima " +
+      "prostora za višu cijenu, ali odluka i dalje ovisi o sezoni, terminu i konkurenciji.";
+  } else if (occDiff <= -10) {
+    note =
+      "Popunjenost je niža nego prošle godine u istom mjesecu — vrijedi razmotriti popust ili promociju za " +
+      "ovaj period. Ovo je samo orijentir, ne pravilo.";
+  } else {
+    note = "Popunjenost je slična prošloj godini u istom mjesecu.";
+  }
+
+  return (
+    <div className="border border-black/10 rounded-xl px-4 py-4 bg-white flex flex-col gap-2.5">
+      <span className="text-xs font-semibold uppercase tracking-wide text-black/40">
+        Pametna preporuka — {monthLabel} prošle godine
+      </span>
+      <div className="flex flex-wrap gap-x-6 gap-y-1.5">
+        <div>
+          <span className="text-xs text-black/50">Popunjenost: </span>
+          <span className="text-sm font-semibold tabular-nums">
+            {current.occupancyPct}%{" "}
+            <span className="text-black/40 font-normal">(prošle god. {lastYear.occupancyPct}%)</span>
+          </span>
+        </div>
+        <div>
+          <span className="text-xs text-black/50">Prosj. cijena/noć: </span>
+          <span className="text-sm font-semibold tabular-nums">
+            {current.avgNightlyRateEur} €{" "}
+            <span className="text-black/40 font-normal">(prošle god. {lastYear.avgNightlyRateEur} €)</span>
+          </span>
+        </div>
+      </div>
+      <p className="text-xs text-black/60">{note}</p>
+      <p className="text-[11px] text-black/35">
+        Informativni uvid na temelju prošlogodišnjih podataka, ne automatska promjena cijene — konačnu odluku
+        uvijek donosiš ti.
+      </p>
+    </div>
+  );
+}
+
+/**
  * Puna knjiga rezervacija po vikendici — zamjena za vlasnikovu bilježnicu
  * (vidi task #73-79). Za svaku vikendicu: unos gosta/datuma/cijene/statusa
  * plaćanja, automatsko blokiranje kalendara (vidi lib/db/queries.ts
@@ -99,9 +172,11 @@ export default async function AdminReservationsPage({
   const month = sp.month ? Number(sp.month) : nowZagreb.month; // 1-12
   const monthPrefix = `${year}-${String(month).padStart(2, "0")}`;
   const isCurrentMonth = year === nowZagreb.year && month === nowZagreb.month;
-  const [earnings, occupancy, expenseCategories, yearlyEarnings] = await Promise.all([
+  const lastYearMonthPrefix = `${year - 1}-${String(month).padStart(2, "0")}`;
+  const [earnings, occupancy, occupancyLastYear, expenseCategories, yearlyEarnings] = await Promise.all([
     getMonthlyEarnings([property.id], monthPrefix),
     getOccupancyStats(property.id, monthPrefix),
+    getOccupancyStats(property.id, lastYearMonthPrefix),
     getExpenseCategoryBreakdown([property.id], monthPrefix),
     getYearlyEarningsByMonth([property.id], year),
   ]);
@@ -207,6 +282,7 @@ export default async function AdminReservationsPage({
           <EarningsCard label="Popunjenost" value={occupancy.occupancyPct} unit="%" />
           <EarningsCard label="Prosj. cijena/noć" value={occupancy.avgNightlyRateEur} />
         </div>
+        <PricingInsight current={occupancy} lastYear={occupancyLastYear} monthLabel={MONTH_NAMES[month - 1]} />
       </section>
 
       {expenseCategoryEntries.length > 0 && (
