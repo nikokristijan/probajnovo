@@ -67,6 +67,7 @@ import {
   deleteSale,
   SALE_CATEGORIES,
   logActivity,
+  ensurePushSubscriptionsTable,
 } from "@/lib/db/queries";
 import { sendInquiryNotification, sendGuestConfirmation, sendReservationConfirmation, sendInquiryReply } from "@/lib/email";
 import { resolveCoordinates, geoMissWarning } from "@/lib/geocode";
@@ -1845,5 +1846,28 @@ export async function sendBroadcastPushAction(
     return { success: true, sent, failed };
   } catch (err) {
     return { error: err instanceof Error ? err.message : "Slanje nije uspjelo." };
+  }
+}
+
+/* ---------------------------------------------------------------- */
+/* Jednokratni "popravi bazu" gumb — /admin/settings, ako             */
+/* push_subscriptions tablica slučajno ne postoji (SQL migracija nije  */
+/* ručno pokrenuta). Sigurno je kliknuti i kad tablica već postoji     */
+/* (CREATE TABLE IF NOT EXISTS, vidi ensurePushSubscriptionsTable).    */
+/* ---------------------------------------------------------------- */
+
+export type RunPushMigrationState = { error?: string; success?: boolean } | undefined;
+
+export async function runPushMigrationAction(
+  _prevState: RunPushMigrationState,
+  _formData: FormData
+): Promise<RunPushMigrationState> {
+  await requireAdmin();
+  try {
+    await ensurePushSubscriptionsTable();
+    revalidatePath("/admin/settings");
+    return { success: true };
+  } catch (err) {
+    return { error: err instanceof Error ? err.message : "Nije uspjelo." };
   }
 }
