@@ -269,7 +269,7 @@ export default async function AdminReservationsPage({
             </Link>
           </div>
         </div>
-        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+        <div className="admin-animate-grid grid grid-cols-2 sm:grid-cols-3 gap-3">
           <EarningsCard label="Naplaćeno (bruto)" value={earnings.grossEur} />
           <EarningsCard label="Troškovi" value={earnings.expensesEur} />
           <EarningsCard label="Neto zarada" value={earnings.netEur} />
@@ -278,7 +278,7 @@ export default async function AdminReservationsPage({
           Bruto broji samo PLAĆENE rezervacije čiji je datum dolaska gosta u ovom mjesecu — zarada
           prati kad gost stvarno boravi, bez obzira kad je označeno plaćeno.
         </p>
-        <div className="grid grid-cols-2 gap-3">
+        <div className="admin-animate-grid grid grid-cols-2 gap-3">
           <EarningsCard label="Popunjenost" value={occupancy.occupancyPct} unit="%" />
           <EarningsCard label="Prosj. cijena/noć" value={occupancy.avgNightlyRateEur} />
         </div>
@@ -298,7 +298,7 @@ export default async function AdminReservationsPage({
                 </span>
                 <div className="flex-1 h-2 rounded-full bg-black/5 overflow-hidden">
                   <div
-                    className="h-full rounded-full bg-red-400"
+                    className="admin-bar-grow h-full rounded-full bg-red-400"
                     style={{ width: `${(value / expenseCategoryMax) * 100}%` }}
                   />
                 </div>
@@ -309,7 +309,7 @@ export default async function AdminReservationsPage({
         </section>
       )}
 
-      <YearlyBarChart data={yearlyEarnings} year={year} color="#ff7f00" />
+      <YearlyBarChart key={year} data={yearlyEarnings} year={year} color="#ff7f00" />
 
       <section className="flex flex-col gap-3">
         <div className="flex items-center justify-between flex-wrap gap-2">
