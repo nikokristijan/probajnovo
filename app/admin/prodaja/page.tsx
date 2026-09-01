@@ -95,7 +95,7 @@ export default async function AdminSalesPage({
             </Link>
           </div>
         </div>
-        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+        <div className="admin-animate-grid grid grid-cols-2 sm:grid-cols-3 gap-3">
           <StatCard label="Zarada ovaj mjesec" value={earnings.totalEur} suffix=" €" />
           <StatCard label="Broj prodaja" value={earnings.count} />
           <StatCard
@@ -117,7 +117,7 @@ export default async function AdminSalesPage({
                 <span className="text-xs w-32 shrink-0 text-black/60">{CATEGORY_LABELS[cat] ?? cat}</span>
                 <div className="flex-1 h-2 rounded-full bg-black/5 overflow-hidden">
                   <div
-                    className="h-full rounded-full bg-[#0000c3]"
+                    className="admin-bar-grow h-full rounded-full bg-[#0000c3]"
                     style={{ width: `${(value / categoryMax) * 100}%` }}
                   />
                 </div>
@@ -128,7 +128,7 @@ export default async function AdminSalesPage({
         </section>
       )}
 
-      <YearlyBarChart data={yearlyTotals} year={year} color="#0000c3" />
+      <YearlyBarChart key={year} data={yearlyTotals} year={year} color="#0000c3" />
 
       <section className="flex flex-col gap-3">
         <div className="flex items-center justify-between flex-wrap gap-2">
