@@ -817,6 +817,60 @@ export async function getYearlyEarningsByMonth(propertyIds: number[], year: numb
   return totals;
 }
 
+export type AccountingReportMonth = {
+  month: number; // 1-12
+  grossEur: number;
+  expensesEur: number;
+  netEur: number;
+  expensesByCategory: Record<string, number>;
+};
+
+/**
+ * Mjesečni financijski izvještaj JEDNE vikendice za JEDNU godinu — "Izvještaj
+ * za knjigovođu" (vidi app/api/admin/reports/accounting). Bruto/troškovi/neto
+ * po ISTOJ logici kao getMonthlyEarnings (bruto = samo plaćene rezervacije,
+ * po checkIn mjesecu; troškovi po expenses.date), samo razloženo po svih 12
+ * mjeseci odjednom (dva upita umjesto 12×2) i uz raščlambu troškova po
+ * kategoriji po mjesecu.
+ */
+export async function getAccountingReport(propertyId: number, year: number) {
+  const [allReservations, allExpenses] = await Promise.all([
+    db.select().from(reservations).where(eq(reservations.propertyId, propertyId)),
+    db.select().from(expenses).where(eq(expenses.propertyId, propertyId)),
+  ]);
+
+  const months: AccountingReportMonth[] = Array.from({ length: 12 }, (_, i) => {
+    const monthPrefix = `${year}-${String(i + 1).padStart(2, "0")}`;
+    const grossEur = allReservations
+      .filter((r) => r.paid && r.checkIn.startsWith(monthPrefix))
+      .reduce((sum, r) => sum + r.priceEur, 0);
+    const monthExpenses = allExpenses.filter((e) => e.date.startsWith(monthPrefix));
+    const expensesByCategory: Record<string, number> = {};
+    for (const e of monthExpenses) {
+      expensesByCategory[e.category] = (expensesByCategory[e.category] ?? 0) + e.amountEur;
+    }
+    const expensesEur = monthExpenses.reduce((sum, e) => sum + e.amountEur, 0);
+    return { month: i + 1, grossEur, expensesEur, netEur: grossEur - expensesEur, expensesByCategory };
+  });
+
+  const totals = months.reduce(
+    (acc, m) => ({
+      grossEur: acc.grossEur + m.grossEur,
+      expensesEur: acc.expensesEur + m.expensesEur,
+      netEur: acc.netEur + m.netEur,
+    }),
+    { grossEur: 0, expensesEur: 0, netEur: 0 }
+  );
+  const categoryTotals: Record<string, number> = {};
+  for (const m of months) {
+    for (const [cat, amt] of Object.entries(m.expensesByCategory)) {
+      categoryTotals[cat] = (categoryTotals[cat] ?? 0) + amt;
+    }
+  }
+
+  return { year, months, totals, categoryTotals };
+}
+
 /** Raščlamba troškova po kategoriji za mjesec (monthPrefix "YYYY-MM"), za
     jednu ili više vikendica. */
 export async function getExpenseCategoryBreakdown(propertyIds: number[], monthPrefix: string) {
@@ -898,5 +952,45 @@ export async function getPageViewCounts(source: "property" | "company", sourceId
   return {
     total: rows.length,
     last30Days: rows.filter((r) => r.date >= sinceDate).length,
+  };
+}
+
+/**
+ * "Put gosta" (funnel) za JEDNU vikendicu: koliko je pregleda stranice u
+ * zadanom razdoblju, koliko upita je STVORENO u tom istom razdoblju, koliko
+ * rezervacija je STVORENO u tom istom razdoblju — grubi poslovni signal
+ * (pregledi → upiti → rezervacije), NE praćenje istog posjetitelja kroz sve
+ * korake (nemamo cookie/session praćenje po gostu, namjerno — vidi pageViews
+ * komentar u schema.ts). Sva tri broja moraju biti za ISTI period da omjer
+ * ima smisla, zato "sinceDate" vrijedi za sve — inače bi npr. "svih upita
+ * ikad" protiv "pregleda zadnjih 30 dana" davalo lažno visok/nizak postotak.
+ * Napomena: pageViews postoji tek od kad je brojač dodan, pa je omjer
+ * pouzdan samo za razdoblje NAKON toga (stariji upiti/rezervacije nemaju
+ * odgovarajuće pregleda u bazi) — admin UI ovo objašnjava uz brojke.
+ */
+export async function getPropertyFunnel(propertyId: number, sinceDate: string) {
+  const [viewRows, inquiryRows, reservationRows] = await Promise.all([
+    db
+      .select()
+      .from(pageViews)
+      .where(and(eq(pageViews.source, "property"), eq(pageViews.sourceId, propertyId))),
+    (async () => {
+      try {
+        return await db
+          .select()
+          .from(inquiries)
+          .where(and(eq(inquiries.source, "property"), eq(inquiries.sourceId, propertyId)));
+      } catch (err) {
+        if (isMissingInquiriesTable(err)) return [];
+        throw err;
+      }
+    })(),
+    db.select().from(reservations).where(eq(reservations.propertyId, propertyId)),
+  ]);
+  const isoDate = (d: Date) => d.toISOString().slice(0, 10);
+  return {
+    views: viewRows.filter((r) => r.date >= sinceDate).length,
+    inquiries: inquiryRows.filter((r) => isoDate(r.createdAt) >= sinceDate).length,
+    reservations: reservationRows.filter((r) => isoDate(r.createdAt) >= sinceDate).length,
   };
 }
