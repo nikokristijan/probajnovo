@@ -31,7 +31,16 @@ export async function generateMetadata({
   params: Promise<Params>;
 }): Promise<Metadata> {
   const { slug } = await params;
-  const property = await getPropertyBySlug(slug);
+  // Best-effort, isti duh kao ispod u EnglishSlugPage — ako dohvat padne
+  // (npr. privremeni DB hiccup), radije generiraj praznu metadata umjesto da
+  // padne cijeli request za /en/[slug].
+  let property: Awaited<ReturnType<typeof getPropertyBySlug>>;
+  try {
+    property = await getPropertyBySlug(slug);
+  } catch (err) {
+    console.error("[EnglishSlugPage] generateMetadata dohvat vikendice nije uspio:", err);
+    return {};
+  }
   if (!property || !property.published) return {};
 
   const en = await safeGetEnglishPropertyContent(property);
