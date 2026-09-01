@@ -6,6 +6,7 @@ import {
 } from "@/lib/db/queries";
 import { sendReservationReminder } from "@/lib/email";
 import { dateStringOffsetFromTodayZagreb } from "@/lib/date";
+import { sendPushToAdmins } from "@/lib/push";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
@@ -15,7 +16,9 @@ export const maxDuration = 60;
  * checkIn SUTRA (po hrvatskom vremenu, vidi lib/date.ts) podsjetnik na
  * dolazak, ako je gostov email upisan i podsjetnik još nije poslan (vidi
  * reservations.reminderSentAt). Isti CRON_SECRET Bearer auth obrazac kao
- * app/api/cron/weekly-digest.
+ * app/api/cron/weekly-digest. Uz mail gostu, admini dobiju i push obavijest
+ * ("Podsjetnik: gost stiže sutra" iz zahtjeva) — NEOVISNO o tome ima li gost
+ * upisan email (admin i dalje treba znati da gost stiže, čak i bez maila).
  */
 export async function GET(req: Request) {
   const expected = process.env.CRON_SECRET;
@@ -31,22 +34,32 @@ export async function GET(req: Request) {
 
   let sent = 0;
   for (const r of due) {
-    if (!r.email) {
-      // Nema email — nema kome poslati, ali ipak označi da je "obrađeno"
-      // da cron ne pokušava svaki dan iznova za istu rezervaciju.
-      await markReservationReminderSent(r.id);
-      continue;
-    }
     const property = await getPropertyById(r.propertyId);
-    if (!property) continue;
-    await sendReservationReminder({
-      to: r.email,
-      guestName: r.guestName,
-      propertyName: property.name,
-      checkIn: r.checkIn,
-    });
+
+    if (r.email && property) {
+      await sendReservationReminder({
+        to: r.email,
+        guestName: r.guestName,
+        propertyName: property.name,
+        checkIn: r.checkIn,
+      });
+      sent++;
+    }
+
+    if (property) {
+      await sendPushToAdmins(
+        { propertyId: r.propertyId },
+        {
+          title: "Gost stiže sutra",
+          body: `${r.guestName} — ${property.name}`,
+          url: "/admin/rezervacije",
+        }
+      );
+    }
+
+    // Označi "obrađeno" u oba slučaja (s mailom ili bez) da cron ne
+    // pokušava svaki dan iznova za istu rezervaciju.
     await markReservationReminderSent(r.id);
-    sent++;
   }
 
   return NextResponse.json({ checked: due.length, sent });
