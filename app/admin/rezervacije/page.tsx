@@ -260,6 +260,18 @@ export default async function AdminReservationsPage({
               >
                 Backup (JSON)
               </a>
+              <a
+                href={`/api/admin/reports/accounting?property=${property.id}&year=${year}&format=csv`}
+                className="text-xs font-semibold px-3 py-1.5 rounded-full border border-black/15 hover:border-black/40"
+              >
+                Izvještaj za knjigovođu (CSV)
+              </a>
+              <a
+                href={`/api/admin/reports/accounting?property=${property.id}&year=${year}&format=pdf`}
+                className="text-xs font-semibold px-3 py-1.5 rounded-full border border-black/15 hover:border-black/40"
+              >
+                Izvještaj za knjigovođu (PDF)
+              </a>
             </div>
           )}
         </div>
