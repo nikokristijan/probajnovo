@@ -264,6 +264,13 @@ export const adminUsers = pgTable("admin_users", {
       assertCompanyAccess. Vlasnik smije samo gledati upite i kalendar SVOJIH
       vikendica/firmi (dodijeljenih preko admin_access), ne smije ništa uređivati. */
   role: text("role").notNull().default("admin"),
+  /** TOTP tajna (base32) za dvofaktorsku prijavu — postavljena čim admin
+      pokrene enrollment (startTwoFactorSetupAction), ali se NE koristi za
+      provjeru pri prijavi dok twoFactorEnabled nije true (vidi
+      confirmTwoFactorSetupAction — traži jedan ispravan kod prije uključenja,
+      da admin ne zaključa sam sebe zbog krivo skeniranog QR koda). */
+  twoFactorSecret: text("two_factor_secret"),
+  twoFactorEnabled: boolean("two_factor_enabled").notNull().default(false),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 

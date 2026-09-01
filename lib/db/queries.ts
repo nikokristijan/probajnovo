@@ -390,6 +390,52 @@ export async function updateAdminPassword(id: number, passwordHash: string) {
 await db.update(adminUsers).set({ passwordHash }).where(eq(adminUsers.id, id));
 }
 
+/* ---------------------------------------------------------------- */
+/* Dvofaktorska prijava (2FA/TOTP) — samo-postavljanje u /admin/settings, */
+/* vidi lib/actions.ts startTwoFactorSetupAction/confirmTwoFactorSetupAction/ */
+/* disableTwoFactorAction i lib/auth.ts za provjeru pri prijavi.            */
+/* ---------------------------------------------------------------- */
+
+/** Sprema TOTP tajnu bez uključivanja 2FA — admin mora prvo unijeti jedan
+    ispravan kod (confirmTwoFactorSetupAction) da se twoFactorEnabled postavi
+    na true, inače bi krivo skeniran QR kod mogao zaključati admina iz
+    vlastitog računa. */
+export async function setTwoFactorSecret(id: number, secret: string) {
+  await db.update(adminUsers).set({ twoFactorSecret: secret, twoFactorEnabled: false }).where(eq(adminUsers.id, id));
+}
+
+export async function enableTwoFactor(id: number) {
+  await db.update(adminUsers).set({ twoFactorEnabled: true }).where(eq(adminUsers.id, id));
+}
+
+export async function disableTwoFactor(id: number) {
+  await db
+    .update(adminUsers)
+    .set({ twoFactorEnabled: false, twoFactorSecret: null })
+    .where(eq(adminUsers.id, id));
+}
+
+/**
+ * Puni backup SVIH vikendica odjednom (rezervacije + troškovi po vikendici)
+ * — za automatski tjedni backup mailom, vidi app/api/cron/weekly-backup.
+ * Isti podaci kao "Backup (JSON)" gumb po vikendici (app/api/admin/backup),
+ * samo objedinjeni preko svih vikendica u jedan izvoz da vlasnik agencije ne
+ * mora skupljati po jedan po jedan.
+ */
+export async function getFullBackupData() {
+  const properties = await listProperties();
+  const perProperty = await Promise.all(
+    properties.map(async (property) => {
+      const [reservations, expenses] = await Promise.all([
+        listReservationsForProperty(property.id),
+        listExpensesForProperty(property.id),
+      ]);
+      return { property: property.name, slug: property.slug, reservations, expenses };
+    })
+  );
+  return { exportedAt: new Date().toISOString(), properties: perProperty };
+}
+
 export async function deleteAdmin(id: number) {
   // admin_access redci nemaju FK/cascade (jednostavnosti radi), pa ih ručno pospremimo
   // prije brisanja admina da ne ostanu siročad.
