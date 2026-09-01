@@ -58,7 +58,7 @@ export default async function AdminDashboard() {
         </Link>
       )}
 
-      <section className="grid grid-cols-2 sm:grid-cols-6 gap-3">
+      <section className="admin-animate-grid grid grid-cols-2 sm:grid-cols-6 gap-3">
         <StatCard label="Vikendice" value={properties.length} />
         <StatCard label="Objavljeno" value={publishedCount} />
         <StatCard label="U Studies popisu" value={inStudiesCount} />
@@ -76,7 +76,7 @@ export default async function AdminDashboard() {
             Vikendice →
           </Link>
         </div>
-        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+        <div className="admin-animate-grid grid grid-cols-2 sm:grid-cols-3 gap-3">
           <StatCard label="Naplaćeno (bruto)" value={earnings.grossEur} suffix=" €" />
           <StatCard label="Troškovi" value={earnings.expensesEur} suffix=" €" />
           <StatCard label="Neto zarada" value={earnings.netEur} suffix=" €" />
@@ -403,7 +403,7 @@ async function OwnerDashboard({ admin }: { admin: AdminUser }) {
       </div>
 
       {pageCount > 0 && (
-        <section className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+        <section className="admin-animate-grid grid grid-cols-2 sm:grid-cols-3 gap-3">
           <StatCard label={pendingCount === 1 ? "Novi upit" : "Novih upita"} value={pendingCount} />
           <StatCard label="Dana zauzeto ovaj mjesec" value={daysBookedThisMonth} />
           <StatCard label="Zarada ovaj mjesec (neto)" value={earnings.netEur} suffix=" €" />
