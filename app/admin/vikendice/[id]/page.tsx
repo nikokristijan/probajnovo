@@ -8,6 +8,7 @@ import {
   listReservationsForProperty,
   getMonthlyEarnings,
   getPageViewCounts,
+  getPropertyFunnel,
 } from "@/lib/db/queries";
 import { markInquiryReadAction, markInquiryRepliedAction } from "@/lib/actions";
 import MiniCalendar from "@/components/admin/MiniCalendar";
@@ -21,6 +22,45 @@ function StatCard({ label, value, suffix }: { label: string; value: number; suff
         {suffix ?? ""}
       </div>
       <div className="text-xs text-black/50 mt-0.5">{label}</div>
+    </div>
+  );
+}
+
+/**
+ * "Put gosta" — pregledi → upiti → rezervacije zadnjih 30 dana, sa širinom
+ * trake razmjernom broju (najveći korak = 100% širine) i postotkom pretvorbe
+ * ispod svake sljedeće faze. Vidi getPropertyFunnel za napomenu zašto su sva
+ * tri broja NUŽNO iz istog razdoblja.
+ */
+function FunnelBar({ views, inquiries, reservations }: { views: number; inquiries: number; reservations: number }) {
+  const max = Math.max(views, 1);
+  const stages = [
+    { label: "Pregledi stranice", value: views, pct: null as number | null },
+    { label: "Upiti", value: inquiries, pct: views > 0 ? Math.round((inquiries / views) * 100) : null },
+    {
+      label: "Rezervacije",
+      value: reservations,
+      pct: inquiries > 0 ? Math.round((reservations / inquiries) * 100) : null,
+    },
+  ];
+  return (
+    <div className="flex flex-col gap-2.5">
+      {stages.map((s) => (
+        <div key={s.label} className="flex items-center gap-3">
+          <div className="w-32 shrink-0 text-xs text-black/50">{s.label}</div>
+          <div className="flex-1 h-6 bg-black/5 rounded-full overflow-hidden">
+            <div
+              className="h-full bg-[#ff7f00] rounded-full flex items-center justify-end px-2"
+              style={{ width: `${Math.max((s.value / max) * 100, s.value > 0 ? 6 : 0)}%` }}
+            >
+              {s.value > 0 && <span className="text-[11px] font-bold text-white tabular-nums">{s.value}</span>}
+            </div>
+          </div>
+          <div className="w-12 shrink-0 text-xs text-black/40 tabular-nums text-right">
+            {s.pct !== null ? `${s.pct}%` : ""}
+          </div>
+        </div>
+      ))}
     </div>
   );
 }
@@ -43,12 +83,14 @@ export default async function AdminVikendicaHubPage({ params }: { params: Promis
   const monthPrefix = `${nowZagreb.year}-${String(nowZagreb.month).padStart(2, "0")}`;
   const now = new Date(Date.UTC(nowZagreb.year, nowZagreb.month - 1, 1));
 
-  const [allInquiries, blocked, reservations, earnings, pageViews] = await Promise.all([
+  const since30 = dateStringOffsetFromTodayZagreb(-30);
+  const [allInquiries, blocked, reservations, earnings, pageViews, funnel] = await Promise.all([
     listInquiries(),
     listBlockedDates(propertyId),
     listReservationsForProperty(propertyId),
     getMonthlyEarnings([propertyId], monthPrefix),
-    getPageViewCounts("property", propertyId, dateStringOffsetFromTodayZagreb(-30)),
+    getPageViewCounts("property", propertyId, since30),
+    getPropertyFunnel(propertyId, since30),
   ]);
   const inquiries = allInquiries.filter((i) => i.source === "property" && i.sourceId === propertyId);
   const pendingCount = inquiries.filter((i) => !i.read).length;
@@ -84,6 +126,19 @@ export default async function AdminVikendicaHubPage({ params }: { params: Promis
         <Link href={`/admin/inquiries?property=${propertyId}`} className="admin-quicklink">
           Svi upiti ove vikendice
         </Link>
+      </section>
+
+      <section>
+        <h2 className="text-xs font-semibold uppercase tracking-wide text-black/40 mb-3">
+          Put gosta — zadnjih 30 dana
+        </h2>
+        <div className="border border-black/10 rounded-xl px-4 py-4 bg-white">
+          <FunnelBar views={funnel.views} inquiries={funnel.inquiries} reservations={funnel.reservations} />
+          <p className="text-xs text-black/40 mt-3">
+            Postotak je pretvorba u sljedeću fazu (upiti/pregledi, rezervacije/upiti). Brojač pregleda postoji
+            tek od nedavno, pa je omjer pouzdan samo za razdoblje otkad je uveden.
+          </p>
+        </div>
       </section>
 
       <MiniCalendar propertyId={property.id} propertyName={property.name} blocked={blocked} now={now} />
