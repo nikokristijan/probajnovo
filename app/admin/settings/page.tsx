@@ -9,7 +9,16 @@ import BroadcastPushForm from "@/components/admin/BroadcastPushForm";
 export default async function AdminSettingsPage() {
   const me = await getCurrentAdminRecord();
   if (!me) redirect("/admin/login");
-  const alreadySubscribed = await hasPushSubscription(me.id);
+  // Best-effort — isti duh kao lib/push.ts sendPushToAdmins: ako upit padne
+  // (npr. push_subscriptions tablica još ne postoji jer migracija nije
+  // pokrenuta), radije prikaži postavke s pretpostavkom "nije pretplaćen"
+  // nego da cijela stranica (lozinka, 2FA, sve) padne u grešku.
+  let alreadySubscribed = false;
+  try {
+    alreadySubscribed = await hasPushSubscription(me.id);
+  } catch (err) {
+    console.error("[AdminSettingsPage] hasPushSubscription nije uspio:", err);
+  }
 
   return (
     <div className="flex flex-col gap-8">
