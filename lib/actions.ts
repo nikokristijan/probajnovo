@@ -70,6 +70,7 @@ import {
 } from "@/lib/db/queries";
 import { sendInquiryNotification, sendGuestConfirmation, sendReservationConfirmation, sendInquiryReply } from "@/lib/email";
 import { resolveCoordinates, geoMissWarning } from "@/lib/geocode";
+import { sendPushToAdmins } from "@/lib/push";
 import type { AdminUser, Inquiry } from "@/lib/db/schema";
 
 export type ActionState =
@@ -1168,6 +1169,23 @@ export async function createInquiryAction(
     console.error("[createInquiryAction] slanje email obavijesti nije uspjelo:", err);
   }
 
+  // Push obavijest ("Novi upit stigne" iz zahtjeva) — sendPushToAdmins sam
+  // po sebi nikad ne baca grešku, ne treba try/catch. Za agencijski upit
+  // (bez konkretne vikendice/firme) idu samo puni admini, vlasnici ionako
+  // takve upite ne vide.
+  await sendPushToAdmins(
+    parsed.data.source === "property" && sourceId
+      ? { propertyId: sourceId }
+      : parsed.data.source === "company" && sourceId
+        ? { companyId: sourceId }
+        : {},
+    {
+      title: "Novi upit",
+      body: `${parsed.data.name.trim()} — ${parsed.data.sourceName.trim()}`,
+      url: "/admin/inquiries",
+    }
+  );
+
   try {
     await sendGuestConfirmation({
       to: parsed.data.email.trim(),
@@ -1608,6 +1626,19 @@ export async function createReservationAction(
     });
     await markReservationConfirmationSent(reservation.id);
   }
+
+  // Push obavijest ("Nova rezervacija od drugog admina" iz zahtjeva) —
+  // excludeAdminId izostavlja admina koji je BAŠ SAD unio ovu rezervaciju,
+  // ne treba obavijestiti samog sebe o vlastitoj akciji.
+  await sendPushToAdmins(
+    { propertyId },
+    {
+      title: "Nova rezervacija",
+      body: `${parsed.data.guestName} — ${property?.name ?? ""} (${parsed.data.checkIn} → ${parsed.data.checkOut})`,
+      url: "/admin/rezervacije",
+    },
+    { excludeAdminId: admin.id }
+  );
 
   revalidatePath("/admin/rezervacije");
   revalidatePath("/admin/kalendar");
