@@ -58,7 +58,22 @@ export default async function AdminLayout({ children }: { children: React.ReactN
           NOVO <span className="text-[#ff7f00]">admin</span>
         </span>
         {admin && (
-          <nav className="flex items-center gap-5 text-sm flex-wrap">
+          <>
+            {/* Čisto CSS "hamburger" (checkbox hack, bez klijentske komponente/JS-a) —
+                s puno stavki u navu (do 9+ linkova za punog admina) na mobitelu se
+                dosad samo ružno lomilo u više redaka preko flex-wrap; sad je iznad
+                sm praga sakriveno iza gumba. Relevantno i jer admin panel već ima
+                PWA "dodaj na početni zaslon" podršku (vidi PwaRegister gore), znači
+                stvarno se koristi na mobitelu. */}
+            <input type="checkbox" id="admin-nav-toggle" className="peer hidden" />
+            <label
+              htmlFor="admin-nav-toggle"
+              className="sm:hidden cursor-pointer border border-black/15 rounded-lg px-3 py-1.5 text-sm font-semibold"
+              aria-label="Izbornik"
+            >
+              ☰
+            </label>
+            <nav className="hidden peer-checked:flex sm:flex items-start sm:items-center gap-3 sm:gap-5 text-sm flex-col sm:flex-row w-full sm:w-auto flex-wrap">
             {admin.role === "owner" ? (
               // Vlasnik ima samo ograničen pregled — ne smije uređivati stranicu.
               // /admin sad prikazuje njegov vlastiti dashboard (vidi app/admin/page.tsx),
@@ -135,7 +150,8 @@ export default async function AdminLayout({ children }: { children: React.ReactN
                 Odjava
               </button>
             </form>
-          </nav>
+            </nav>
+          </>
         )}
       </header>
       <main className="max-w-4xl mx-auto px-6 py-10">{children}</main>
