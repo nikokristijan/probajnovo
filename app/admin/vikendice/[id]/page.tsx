@@ -45,13 +45,16 @@ function FunnelBar({ views, inquiries, reservations }: { views: number; inquirie
   ];
   return (
     <div className="flex flex-col gap-2.5">
-      {stages.map((s) => (
+      {stages.map((s, i) => (
         <div key={s.label} className="flex items-center gap-3">
           <div className="w-32 shrink-0 text-xs text-black/50">{s.label}</div>
           <div className="flex-1 h-6 bg-black/5 rounded-full overflow-hidden">
             <div
-              className="h-full bg-[#ff7f00] rounded-full flex items-center justify-end px-2"
-              style={{ width: `${Math.max((s.value / max) * 100, s.value > 0 ? 6 : 0)}%` }}
+              className="admin-bar-grow h-full bg-[#ff7f00] rounded-full flex items-center justify-end px-2"
+              style={{
+                width: `${Math.max((s.value / max) * 100, s.value > 0 ? 6 : 0)}%`,
+                animationDelay: `${i * 0.12}s`,
+              }}
             >
               {s.value > 0 && <span className="text-[11px] font-bold text-white tabular-nums">{s.value}</span>}
             </div>
@@ -109,7 +112,7 @@ export default async function AdminVikendicaHubPage({ params }: { params: Promis
         <p className="text-sm text-black/50 mt-1">{property.location}</p>
       </div>
 
-      <section className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+      <section className="admin-animate-grid grid grid-cols-2 sm:grid-cols-4 gap-3">
         <StatCard label={pendingCount === 1 ? "Novi upit" : "Novih upita"} value={pendingCount} />
         <StatCard label="Dana zauzeto ovaj mjesec" value={daysBookedThisMonth} />
         <StatCard label="Zarada ovaj mjesec (neto)" value={earnings.netEur} suffix=" €" />
