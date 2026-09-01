@@ -883,3 +883,40 @@ html.novo-lock-scroll body {
 .admin-repeat-add:hover { border-color: #ff7f00; color: #ff7f00; }
 .admin-repeat-remove { align-self: flex-start; font-size: 12px; font-weight: 600; color: #b3261e; background: transparent; border: none; cursor: pointer; padding: 2px 0; text-decoration: underline; }
 .admin-repeat-remove:hover { color: #7a1a15; }
+
+/* ---------------------------------------------------------------------
+   Admin "polish" animacije — graf zarade (linija + ispuna), fade-up ulaz
+   za statistike, i grow-in za proporcionalne trake (lijevkasti/kategorije).
+   Sve se igraju SAMO jednom pri ulasku u DOM (mount), što u praksi znači
+   svaki put kad se uđe na stranicu (Next.js App Router puni novi RSC
+   payload/DOM čvorove za novu rutu) — bez klijentske komponente/JS-a.
+   --------------------------------------------------------------------- */
+@keyframes admin-line-draw { from { stroke-dashoffset: 1; } to { stroke-dashoffset: 0; } }
+.admin-chart-line { stroke-dasharray: 1; stroke-dashoffset: 1; animation: admin-line-draw 1.1s ease-out forwards; }
+
+@keyframes admin-area-fade { from { opacity: 0; } to { opacity: 1; } }
+.admin-chart-area { opacity: 0; animation: admin-area-fade 0.7s ease-out 0.5s forwards; }
+
+@keyframes admin-dot-pop { from { opacity: 0; transform: scale(0); } to { opacity: 1; transform: scale(1); } }
+.admin-chart-dot { opacity: 0; transform-origin: center; transform-box: fill-box; animation: admin-dot-pop 0.35s ease-out forwards; }
+
+@keyframes admin-fade-up { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+.admin-animate-grid > * { opacity: 0; animation: admin-fade-up 0.5s ease-out forwards; }
+.admin-animate-grid > *:nth-child(1) { animation-delay: 0.02s; }
+.admin-animate-grid > *:nth-child(2) { animation-delay: 0.07s; }
+.admin-animate-grid > *:nth-child(3) { animation-delay: 0.12s; }
+.admin-animate-grid > *:nth-child(4) { animation-delay: 0.17s; }
+.admin-animate-grid > *:nth-child(5) { animation-delay: 0.22s; }
+.admin-animate-grid > *:nth-child(6) { animation-delay: 0.27s; }
+.admin-animate-grid > *:nth-child(n+7) { animation-delay: 0.32s; }
+
+@keyframes admin-bar-grow { from { transform: scaleX(0); } to { transform: scaleX(1); } }
+.admin-bar-grow { transform-origin: left; animation: admin-bar-grow 0.6s cubic-bezier(0.22, 1, 0.36, 1) forwards; }
+
+@media (prefers-reduced-motion: reduce) {
+  .admin-chart-line { animation: none; stroke-dashoffset: 0; }
+  .admin-chart-area { animation: none; opacity: 1; }
+  .admin-chart-dot { animation: none; opacity: 1; transform: scale(1); }
+  .admin-animate-grid > * { animation: none; opacity: 1; }
+  .admin-bar-grow { animation: none; transform: scaleX(1); }
+}
