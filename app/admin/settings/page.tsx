@@ -4,6 +4,7 @@ import { hasPushSubscription } from "@/lib/db/queries";
 import ChangePasswordForm from "@/components/admin/ChangePasswordForm";
 import TwoFactorSetupForm from "@/components/admin/TwoFactorSetupForm";
 import PushNotificationToggle from "@/components/admin/PushNotificationToggle";
+import BroadcastPushForm from "@/components/admin/BroadcastPushForm";
 
 export default async function AdminSettingsPage() {
   const me = await getCurrentAdminRecord();
@@ -31,6 +32,16 @@ export default async function AdminSettingsPage() {
         <span className="text-sm font-semibold">Obavijesti na uređaju</span>
         <PushNotificationToggle initialSubscribed={alreadySubscribed} />
       </div>
+
+      {/* Broadcast — samo puni admini (ne vlasnici), vidi requireAdmin u
+          sendBroadcastPushAction. Šalje se svim pretplaćenim uređajima svih
+          admina (uključujući vlasnike), ne samo onima koji ovo vide. */}
+      {me.role === "admin" && (
+        <div className="border border-black/10 rounded-xl p-5 flex flex-col gap-4 bg-black/[0.02] max-w-sm">
+          <span className="text-sm font-semibold">Pošalji obavijest svim uređajima</span>
+          <BroadcastPushForm />
+        </div>
+      )}
     </div>
   );
 }
