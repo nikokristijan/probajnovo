@@ -5,11 +5,17 @@ import { revalidatePath } from "next/cache";
 import { headers } from "next/headers";
 import bcrypt from "bcryptjs";
 import { z } from "zod";
+import { Secret, TOTP } from "otpauth";
+import QRCode from "qrcode";
 import {
   createSessionToken,
   setSessionCookie,
   clearSessionCookie,
   getCurrentAdmin,
+  createPendingTwoFactorToken,
+  setPendingTwoFactorCookie,
+  clearPendingTwoFactorCookie,
+  getPendingTwoFactorAdminId,
 } from "@/lib/auth";
 import {
   findAdminByEmail,
@@ -42,6 +48,9 @@ import {
   deleteAdmin,
   countAdmins,
   updateAdminPassword,
+  setTwoFactorSecret,
+  enableTwoFactor,
+  disableTwoFactor,
   hasAdminAccess,
   setAdminAccess,
   addManualBlockedDate,
@@ -96,6 +105,15 @@ const LoginSchema = z.object({
   password: z.string().min(1, { message: "Unesi lozinku." }),
 });
 
+/** Zajednička TOTP konfiguracija — MORA biti identična na sva tri mjesta koja
+    je koriste (startTwoFactorSetupAction, confirmTwoFactorSetupAction,
+    verifyTwoFactorLoginAction), inače kod koji radi u Google Authenticatoru
+    ne bi prošao provjeru ovdje. Issuer se prikazuje u autentifikatoru iznad
+    koda (npr. "NOVO admin (ana@primjer.hr)"). */
+function buildTotp(email: string, secret: Secret) {
+  return new TOTP({ issuer: "NOVO admin", label: email, algorithm: "SHA1", digits: 6, period: 30, secret });
+}
+
 export async function loginAction(
   _prevState: ActionState,
   formData: FormData
@@ -118,11 +136,57 @@ export async function loginAction(
     return { error: "Pogrešan email ili lozinka." };
   }
 
+  if (admin.twoFactorEnabled) {
+    // Lozinka je točna, ali puna sesija se NE stvara dok admin ne potvrdi
+    // TOTP kod — vidi verifyTwoFactorLoginAction i lib/auth.ts "pending 2FA".
+    const pendingToken = await createPendingTwoFactorToken(admin.id);
+    await setPendingTwoFactorCookie(pendingToken);
+    redirect("/admin/login/2fa");
+  }
+
   const token = await createSessionToken({ adminId: admin.id, email: admin.email });
   await setSessionCookie(token);
   // Vlasnik (role="owner") nema pristup punom /admin panelu — vidi requireAdmin ispod
   // — ali /admin sad prikazuje njegov vlastiti (ograničen, read-only) dashboard umjesto
   // punog pregleda, pa svi idu na istu adresu nakon prijave (vidi app/admin/page.tsx).
+  redirect("/admin");
+}
+
+const TwoFactorLoginSchema = z.object({
+  code: z.string().regex(/^\d{6}$/, { message: "Unesi 6-znamenkasti kod iz aplikacije." }),
+});
+
+/** Drugi korak prijave kad admin ima 2FA uključen — vidi loginAction gore i
+    app/admin/login/2fa. Oslanja se ISKLJUČIVO na "pending 2FA" kolačić za
+    identitet (ne na bilo kakav formData admin id) da netko ne može ubaciti
+    tuđi adminId i pogoditi kod. */
+export async function verifyTwoFactorLoginAction(
+  _prevState: ActionState,
+  formData: FormData
+): Promise<ActionState> {
+  const adminId = await getPendingTwoFactorAdminId();
+  if (!adminId) redirect("/admin/login");
+
+  const admin = await getAdminById(adminId);
+  if (!admin || !admin.twoFactorEnabled || !admin.twoFactorSecret) {
+    await clearPendingTwoFactorCookie();
+    redirect("/admin/login");
+  }
+
+  const parsed = TwoFactorLoginSchema.safeParse({ code: formData.get("code") });
+  if (!parsed.success) {
+    return { error: parsed.error.issues[0]?.message ?? "Unesi 6-znamenkasti kod." };
+  }
+
+  const totp = buildTotp(admin.email, Secret.fromBase32(admin.twoFactorSecret));
+  const delta = totp.validate({ token: parsed.data.code, window: 1 });
+  if (delta === null) {
+    return { error: "Kod nije ispravan ili je istekao." };
+  }
+
+  await clearPendingTwoFactorCookie();
+  const token = await createSessionToken({ adminId: admin.id, email: admin.email });
+  await setSessionCookie(token);
   redirect("/admin");
 }
 
@@ -1306,6 +1370,92 @@ export async function changePasswordAction(
 
   const passwordHash = await bcrypt.hash(parsed.data.newPassword, 12);
   await updateAdminPassword(row.id, passwordHash);
+  return { success: true };
+}
+
+/* ---------------------------------------------------------------- */
+/* Dvofaktorska prijava (2FA/TOTP) — samo-postavljanje na             */
+/* /admin/settings, dostupno i vlasniku (requireAdminOrOwner) kao i   */
+/* promjena lozinke, jer se odnosi samo na SIGURNOST VLASTITOG računa. */
+/* ---------------------------------------------------------------- */
+
+export type TwoFactorSetupState =
+  | { error?: string; qrDataUrl?: string; secretDisplay?: string }
+  | undefined;
+
+/** Korak 1: generira novu TOTP tajnu i sprema je (twoFactorEnabled ostaje
+    false — vidi setTwoFactorSecret) te vraća QR kod za skeniranje. Admin još
+    NIJE zaštićen 2FA-om dok ne unese jedan ispravan kod u koraku 2
+    (confirmTwoFactorSetupAction) — inače bi krivo skeniran QR mogao
+    zaključati admina iz vlastitog računa. */
+// useActionState traži oblik (state, payload) — ovaj prvi korak ne treba ni jedno ni drugo.
+/* eslint-disable @typescript-eslint/no-unused-vars */
+export async function startTwoFactorSetupAction(
+  _prevState: TwoFactorSetupState,
+  _formData: FormData
+): Promise<TwoFactorSetupState> {
+  /* eslint-enable @typescript-eslint/no-unused-vars */
+  const row = await requireAdminOrOwner();
+  const secret = new Secret({ size: 20 });
+  await setTwoFactorSecret(row.id, secret.base32);
+  const totp = buildTotp(row.email, secret);
+  const qrDataUrl = await QRCode.toDataURL(totp.toString());
+  return { qrDataUrl, secretDisplay: secret.base32 };
+}
+
+const TwoFactorConfirmSchema = z.object({
+  code: z.string().regex(/^\d{6}$/, { message: "Unesi 6-znamenkasti kod iz aplikacije." }),
+});
+
+/** Korak 2: potvrđuje da je admin uspješno skenirao/unio tajnu u svoju
+    aplikaciju za autentifikaciju tražeći JEDAN ispravan kod prije nego što
+    stvarno uključi 2FA na prijavi. */
+export async function confirmTwoFactorSetupAction(
+  _prevState: ActionState,
+  formData: FormData
+): Promise<ActionState> {
+  const row = await requireAdminOrOwner();
+  if (!row.twoFactorSecret) {
+    return { error: "Prvo pokreni postavljanje 2FA (osvježi stranicu i pokušaj ponovno)." };
+  }
+  const parsed = TwoFactorConfirmSchema.safeParse({ code: formData.get("code") });
+  if (!parsed.success) {
+    return { error: parsed.error.issues[0]?.message ?? "Unesi 6-znamenkasti kod." };
+  }
+
+  const totp = buildTotp(row.email, Secret.fromBase32(row.twoFactorSecret));
+  const delta = totp.validate({ token: parsed.data.code, window: 1 });
+  if (delta === null) {
+    return { error: "Kod nije ispravan. Provjeri je li vrijeme na telefonu točno, pa pokušaj ponovno." };
+  }
+
+  await enableTwoFactor(row.id);
+  return { success: true };
+}
+
+const TwoFactorDisableSchema = z.object({
+  currentPassword: z.string().min(1, { message: "Unesi trenutnu lozinku." }),
+});
+
+/** Isključivanje 2FA — traži trenutnu lozinku kao potvrdu, isti sigurnosni
+    obrazac kao changePasswordAction iznad (osjetljiva promjena = ponovno
+    upisana lozinka, ne samo klik). */
+export async function disableTwoFactorAction(
+  _prevState: ActionState,
+  formData: FormData
+): Promise<ActionState> {
+  const row = await requireAdminOrOwner();
+  const parsed = TwoFactorDisableSchema.safeParse({ currentPassword: formData.get("currentPassword") });
+  if (!parsed.success) {
+    return { error: parsed.error.issues[0]?.message ?? "Unesi trenutnu lozinku." };
+  }
+
+  const valid = await bcrypt.compare(parsed.data.currentPassword, row.passwordHash);
+  if (!valid) {
+    return { error: "Trenutna lozinka nije točna." };
+  }
+
+  await disableTwoFactor(row.id);
   return { success: true };
 }
 

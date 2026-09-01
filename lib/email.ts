@@ -302,6 +302,52 @@ export async function sendInquiryReply(params: {
   }
 }
 
+/**
+ * Tjedni automatski backup (JSON prilog) svih vikendica agenciji —
+ * app/api/cron/weekly-backup, vidi lib/db/queries.ts getFullBackupData.
+ * Isto "best effort" ponašanje kao ostali cron mailovi (sendWeeklyDigest):
+ * ako RESEND_API_KEY nije postavljen, tiho ne radi ništa. Za razliku od
+ * ostalih, prilaže JSON datoteku (Resend attachments podržavaju Buffer +
+ * filename, max 40MB po mailu — vidi node_modules/resend tipove).
+ */
+export async function sendAdminBackup(params: {
+  to: string;
+  filename: string;
+  jsonContent: string;
+  propertyCount: number;
+}): Promise<boolean> {
+  const apiKey = process.env.RESEND_API_KEY;
+  if (!apiKey) return false;
+
+  try {
+    const resend = new Resend(apiKey);
+    const { error } = await resend.emails.send({
+      from: FROM_ADDRESS,
+      to: [params.to],
+      subject: `Tjedni backup — ${params.propertyCount} ${params.propertyCount === 1 ? "vikendica" : "vikendica"}`,
+      html: `
+        <div style="font-family: sans-serif; max-width: 480px; margin: 0 auto;">
+          <h2 style="margin: 0 0 4px;">Tjedni automatski backup</h2>
+          <p style="color: #444; font-size: 14.5px; line-height: 1.5; margin: 0 0 16px;">
+            U prilogu je JSON izvoz rezervacija i troškova za svih ${params.propertyCount}
+            ${params.propertyCount === 1 ? "vikendicu" : "vikendica"} — lokalna kopija za svaki slučaj.
+          </p>
+          <p style="font-size: 13px; color: #999; margin: 0;">Ovo je automatska poruka, ne treba odgovarati.</p>
+        </div>
+      `,
+      attachments: [{ filename: params.filename, content: Buffer.from(params.jsonContent, "utf-8") }],
+    });
+    if (error) {
+      console.error("[sendAdminBackup] Resend je vratio gresku:", error);
+      return false;
+    }
+    return true;
+  } catch (err) {
+    console.error("[sendAdminBackup] Resend slanje nije uspjelo:", err);
+    return false;
+  }
+}
+
 function escapeHtml(s: string): string {
   return s
     .replace(/&/g, "&amp;")

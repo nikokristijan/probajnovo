@@ -92,3 +92,60 @@ export async function requireFullAdmin() {
 }
 
 export const SESSION_COOKIE_NAME = COOKIE_NAME;
+
+/* ---------------------------------------------------------------- */
+/* "Pending 2FA" — kratkotrajni ODVOJENI kolačić/token između koraka */
+/* email+lozinka i unosa TOTP koda (vidi lib/actions.ts loginAction/  */
+/* verifyTwoFactorLoginAction i app/admin/login/2fa). NIKAD ne dijeli */
+/* kolačić s punom sesijom — dok admin ne unese ispravan kod, ne smije */
+/* imati nikakav pristup adminu, samo dozvolu da PROBA kod za TOG      */
+/* konkretnog admina. 5 min vrijedi, dovoljno za otvaranje app-a.      */
+/* ---------------------------------------------------------------- */
+
+const PENDING_2FA_COOKIE_NAME = "novo_admin_2fa_pending";
+const PENDING_2FA_DURATION_SECONDS = 60 * 5; // 5 min
+
+type PendingTwoFactorPayload = { adminId: number; purpose: "2fa-pending" };
+
+export async function createPendingTwoFactorToken(adminId: number): Promise<string> {
+  return new SignJWT({ adminId, purpose: "2fa-pending" } satisfies PendingTwoFactorPayload)
+  .setProtectedHeader({ alg: "HS256" })
+  .setIssuedAt()
+  .setExpirationTime(`${PENDING_2FA_DURATION_SECONDS}s`)
+  .sign(getSecretKey());
+}
+
+async function verifyPendingTwoFactorToken(token: string): Promise<number | null> {
+  try {
+    const { payload } = await jwtVerify(token, getSecretKey());
+    if (payload.purpose !== "2fa-pending" || typeof payload.adminId !== "number") return null;
+    return payload.adminId;
+  } catch {
+    return null;
+  }
+}
+
+export async function setPendingTwoFactorCookie(token: string) {
+  const store = await cookies();
+  store.set(PENDING_2FA_COOKIE_NAME, token, {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: "lax",
+    path: "/",
+    maxAge: PENDING_2FA_DURATION_SECONDS,
+  });
+}
+
+export async function clearPendingTwoFactorCookie() {
+  const store = await cookies();
+  store.delete(PENDING_2FA_COOKIE_NAME);
+}
+
+/** Čita i provjerava "pending 2FA" kolačić — vraća adminId čiji je kod na
+    redu za provjeru, ili null ako kolačić ne postoji/istekao je/nevažeći je. */
+export async function getPendingTwoFactorAdminId(): Promise<number | null> {
+  const store = await cookies();
+  const token = store.get(PENDING_2FA_COOKIE_NAME)?.value;
+  if (!token) return null;
+  return verifyPendingTwoFactorToken(token);
+}
