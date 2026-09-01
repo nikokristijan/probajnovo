@@ -70,7 +70,7 @@ import {
 } from "@/lib/db/queries";
 import { sendInquiryNotification, sendGuestConfirmation, sendReservationConfirmation, sendInquiryReply } from "@/lib/email";
 import { resolveCoordinates, geoMissWarning } from "@/lib/geocode";
-import { sendPushToAdmins } from "@/lib/push";
+import { sendPushToAdmins, sendPushToAllDevices } from "@/lib/push";
 import type { AdminUser, Inquiry } from "@/lib/db/schema";
 
 export type ActionState =
@@ -1801,4 +1801,49 @@ export async function deleteSaleAction(id: number) {
   await requireAdmin();
   await deleteSale(id);
   revalidatePath("/admin/prodaja");
+}
+
+/* ---------------------------------------------------------------- */
+/* Broadcast push obavijest — /admin/settings, SAMO puni admini       */
+/* (requireAdmin, ne i vlasnici). Šalje se BAŠ SVAKOM pretplaćenom     */
+/* uređaju svih admina (uključujući vlasnike), vidi lib/push.ts        */
+/* sendPushToAllDevices.                                              */
+/* ---------------------------------------------------------------- */
+
+export type BroadcastPushState =
+  | { error?: string; success?: boolean; sent?: number; failed?: number }
+  | undefined;
+
+const BroadcastPushSchema = z.object({
+  title: z.string().trim().min(1, { message: "Unesi naslov." }).max(80),
+  body: z.string().trim().min(1, { message: "Unesi poruku." }).max(500),
+});
+
+export async function sendBroadcastPushAction(
+  _prevState: BroadcastPushState,
+  formData: FormData
+): Promise<BroadcastPushState> {
+  await requireAdmin();
+
+  const parsed = BroadcastPushSchema.safeParse({
+    title: formData.get("title"),
+    body: formData.get("body"),
+  });
+  if (!parsed.success) {
+    return { error: parsed.error.issues[0]?.message ?? "Provjeri unesene podatke." };
+  }
+
+  try {
+    const { sent, failed } = await sendPushToAllDevices({
+      title: parsed.data.title,
+      body: parsed.data.body,
+      url: "/admin",
+    });
+    if (sent === 0 && failed === 0) {
+      return { error: "Nijedan uređaj još nema uključene obavijesti." };
+    }
+    return { success: true, sent, failed };
+  } catch (err) {
+    return { error: err instanceof Error ? err.message : "Slanje nije uspjelo." };
+  }
 }
