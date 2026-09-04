@@ -369,6 +369,8 @@ const PropertySchema = z.object({
         ),
       { message: "Domena mora biti u obliku npr. vila-marija.com (bez https:// i bez kose crte)." }
     ),
+  logoUrl: z.string().optional(),
+  showNovoBranding: z.coerce.boolean(),
 });
 
 function parseAmenities(raw: string): string[] {
@@ -498,6 +500,8 @@ export async function createPropertyAction(
     reviewBadges: formData.get("reviewBadges") ?? "",
     faviconUrl: formData.get("faviconUrl") ?? "",
     customDomain: formData.get("customDomain") ?? "",
+    logoUrl: formData.get("logoUrl") ?? "",
+    showNovoBranding: formData.get("showNovoBranding") === "on",
   });
   if (!parsed.success) {
     return { error: parsed.error.issues[0]?.message ?? "Provjeri unesene podatke." };
@@ -541,6 +545,7 @@ export async function createPropertyAction(
       hostPhoto: parsed.data.hostPhoto?.trim() || null,
       reviewBadges: parseAmenities(parsed.data.reviewBadges ?? ""),
       faviconUrl: parsed.data.faviconUrl?.trim() || null,
+      logoUrl: parsed.data.logoUrl?.trim() || null,
       customDomain: normalizeDomain(parsed.data.customDomain),
     });
   } catch {
@@ -601,6 +606,8 @@ export async function updatePropertyAction(
     reviewBadges: formData.get("reviewBadges") ?? "",
     faviconUrl: formData.get("faviconUrl") ?? "",
     customDomain: formData.get("customDomain") ?? "",
+    logoUrl: formData.get("logoUrl") ?? "",
+    showNovoBranding: formData.get("showNovoBranding") === "on",
   });
   if (!parsed.success) {
     return { error: parsed.error.issues[0]?.message ?? "Provjeri unesene podatke." };
@@ -644,6 +651,7 @@ export async function updatePropertyAction(
       hostPhoto: parsed.data.hostPhoto?.trim() || null,
       reviewBadges: parseAmenities(parsed.data.reviewBadges ?? ""),
       faviconUrl: parsed.data.faviconUrl?.trim() || null,
+      logoUrl: parsed.data.logoUrl?.trim() || null,
       customDomain: normalizeDomain(parsed.data.customDomain),
     });
   } catch {
@@ -736,6 +744,8 @@ const CompanySchema = z.object({
         ),
       { message: "Domena mora biti u obliku npr. tvrtka.com (bez https:// i bez kose crte)." }
     ),
+  logoUrl: z.string().optional(),
+  showNovoBranding: z.coerce.boolean(),
 });
 
 function parseServices(raw?: string): { name: string; description: string; priceEur: number | null }[] {
@@ -786,6 +796,8 @@ function readCompanyFormData(formData: FormData) {
     reviewBadges: formData.get("reviewBadges") ?? "",
     faviconUrl: formData.get("faviconUrl") ?? "",
     customDomain: formData.get("customDomain") ?? "",
+    logoUrl: formData.get("logoUrl") ?? "",
+    showNovoBranding: formData.get("showNovoBranding") === "on",
   };
 }
 
@@ -824,6 +836,7 @@ export async function createCompanyAction(
       videoUrl: parsed.data.videoUrl?.trim() || null,
       reviewBadges: parseAmenities(parsed.data.reviewBadges ?? ""),
       faviconUrl: parsed.data.faviconUrl?.trim() || null,
+      logoUrl: parsed.data.logoUrl?.trim() || null,
       customDomain: normalizeDomain(parsed.data.customDomain),
     });
   } catch (err) {
@@ -874,6 +887,7 @@ export async function updateCompanyAction(
       videoUrl: parsed.data.videoUrl?.trim() || null,
       reviewBadges: parseAmenities(parsed.data.reviewBadges ?? ""),
       faviconUrl: parsed.data.faviconUrl?.trim() || null,
+      logoUrl: parsed.data.logoUrl?.trim() || null,
       customDomain: normalizeDomain(parsed.data.customDomain),
     });
   } catch (err) {
