@@ -59,6 +59,8 @@ type FormValues = {
   reviewBadges: string;
   faviconUrl: string;
   customDomain: string;
+  logoUrl: string;
+  showNovoBranding: boolean;
 };
 
 function initialValues(property?: Property): FormValues {
@@ -100,6 +102,8 @@ function initialValues(property?: Property): FormValues {
     reviewBadges: property?.reviewBadges?.join("\n") ?? "",
     faviconUrl: property?.faviconUrl ?? "",
     customDomain: property?.customDomain ?? "",
+    logoUrl: property?.logoUrl ?? "",
+    showNovoBranding: property?.showNovoBranding ?? true,
   };
 }
 
@@ -479,6 +483,30 @@ export default function PropertyForm({
       </div>
 
       <div className="border border-black/10 rounded-xl p-4 flex flex-col gap-4 bg-black/[0.02]">
+        <span className="text-sm font-semibold">Brendiranje (gornji lijevi kut stranice)</span>
+        <span className="text-xs text-black/50">
+          Ovisi o paketu koji je vlasnik kupio: ako paket uključuje uklanjanje NOVO brendiranja,
+          isključi kvačicu ispod. Ako uploadaš vlasnikov logo, on se prikazuje UMJESTO &quot;NOVO&quot;
+          naziva bez obzira na kvačicu (logo uvijek ima prednost).
+        </span>
+        <ImageUploader
+          label="Klijentov logo (opcionalno)"
+          helpText="Prikazuje se u gornjem lijevom kutu umjesto NOVO naziva. Ostavi prazno ako klijent nema svoj logo."
+          value={values.logoUrl ? [values.logoUrl] : []}
+          onChange={(urls) => set("logoUrl", urls[0] ?? "")}
+        />
+        <label className="flex items-center gap-2 text-sm font-medium">
+          <input
+            type="checkbox"
+            name="showNovoBranding"
+            checked={values.showNovoBranding}
+            onChange={(e) => set("showNovoBranding", e.target.checked)}
+          />
+          Prikaži &quot;NOVO&quot; naziv u gornjem lijevom kutu (kad nema klijentovog logotipa)
+        </label>
+      </div>
+
+      <div className="border border-black/10 rounded-xl p-4 flex flex-col gap-4 bg-black/[0.02]">
         <span className="text-sm font-semibold">Video / virtualna šetnja i dostupnost</span>
         <div className="grid grid-cols-2 gap-4">
           <Field label="Poveznica na video (YouTube, Vimeo…, opcionalno)">
@@ -604,6 +632,7 @@ export default function PropertyForm({
       <input type="hidden" name="bannerImage" value={values.bannerImage} />
       <input type="hidden" name="hostPhoto" value={values.hostPhoto} />
       <input type="hidden" name="faviconUrl" value={values.faviconUrl} />
+      <input type="hidden" name="logoUrl" value={values.logoUrl} />
       <input type="hidden" name="testimonials" value={JSON.stringify(values.testimonials)} />
       <input type="hidden" name="faq" value={JSON.stringify(values.faq)} />
       <input type="hidden" name="imageCategories" value={JSON.stringify(values.imageCategories)} />

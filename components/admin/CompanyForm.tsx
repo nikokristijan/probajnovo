@@ -45,6 +45,8 @@ type FormValues = {
   reviewBadges: string;
   faviconUrl: string;
   customDomain: string;
+  logoUrl: string;
+  showNovoBranding: boolean;
 };
 
 function initialValues(company?: Company): FormValues {
@@ -75,6 +77,8 @@ function initialValues(company?: Company): FormValues {
     reviewBadges: company?.reviewBadges?.join("\n") ?? "",
     faviconUrl: company?.faviconUrl ?? "",
     customDomain: company?.customDomain ?? "",
+    logoUrl: company?.logoUrl ?? "",
+    showNovoBranding: company?.showNovoBranding ?? true,
   };
 }
 
@@ -356,6 +360,30 @@ export default function CompanyForm({
         </span>
       </div>
 
+      <div className="border border-black/10 rounded-xl p-4 flex flex-col gap-4 bg-black/[0.02]">
+        <span className="text-sm font-semibold">Brendiranje (gornji lijevi kut stranice)</span>
+        <span className="text-xs text-black/50">
+          Ovisi o paketu koji je klijent kupio: ako paket uključuje uklanjanje NOVO brendiranja,
+          isključi kvačicu ispod. Ako uploadaš klijentov logo, on se prikazuje UMJESTO &quot;NOVO&quot;
+          naziva bez obzira na kvačicu (logo uvijek ima prednost).
+        </span>
+        <ImageUploader
+          label="Klijentov logo (opcionalno)"
+          helpText="Prikazuje se u gornjem lijevom kutu umjesto NOVO naziva. Ostavi prazno ako klijent nema svoj logo."
+          value={values.logoUrl ? [values.logoUrl] : []}
+          onChange={(urls) => set("logoUrl", urls[0] ?? "")}
+        />
+        <label className="flex items-center gap-2 text-sm font-medium">
+          <input
+            type="checkbox"
+            name="showNovoBranding"
+            checked={values.showNovoBranding}
+            onChange={(e) => set("showNovoBranding", e.target.checked)}
+          />
+          Prikaži &quot;NOVO&quot; naziv u gornjem lijevom kutu (kad nema klijentovog logotipa)
+        </label>
+      </div>
+
       <Field label="Poveznica na video (YouTube, Vimeo…, opcionalno)">
         <input
           name="videoUrl"
@@ -406,6 +434,7 @@ export default function CompanyForm({
       <input type="hidden" name="images" value={JSON.stringify(values.images)} />
       <input type="hidden" name="bannerImage" value={values.bannerImage} />
       <input type="hidden" name="faviconUrl" value={values.faviconUrl} />
+      <input type="hidden" name="logoUrl" value={values.logoUrl} />
       <input type="hidden" name="services" value={JSON.stringify(values.services)} />
       <input type="hidden" name="testimonials" value={JSON.stringify(values.testimonials)} />
       <input type="hidden" name="faq" value={JSON.stringify(values.faq)} />
