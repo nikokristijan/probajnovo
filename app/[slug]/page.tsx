@@ -147,6 +147,38 @@ function osmLinkHref(latitude: string, longitude: string): string | null {
   return `https://www.openstreetmap.org/?mlat=${lat}&mlon=${lng}#map=16/${lat}/${lng}`;
 }
 
+/** Gornji lijevi kut navigacije (vidi properties/companies logoUrl + showNovoBranding u
+    lib/db/schema.ts) — klijentov logo (ako je uploadan) UVIJEK ima prednost nad NOVO
+    nazivom; bez logotipa prikazuje "NOVO" samo ako showNovoBranding nije isključen
+    (ovisi o paketu koji je klijent kupio); bez logotipa i s isključenim brendiranjem
+    kut ostaje prazan. */
+function NavBrand({
+  logoUrl,
+  showNovoBranding,
+  name,
+}: {
+  logoUrl: string | null;
+  showNovoBranding: boolean;
+  name: string;
+}) {
+  if (logoUrl) {
+    return (
+      <Image
+        src={logoUrl}
+        alt={name}
+        width={160}
+        height={48}
+        className="stay-nav-logo"
+        priority
+      />
+    );
+  }
+  if (showNovoBranding) {
+    return <span className="stay-nav-brand">NOVO</span>;
+  }
+  return <span />;
+}
+
 /** Sitna ikona uz sadržaj (amenity) — prepoznaje uobičajene hrvatske riječi, inače prikazuje generičku kvačicu. */
 function AmenityIcon({ label }: { label: string }) {
   const l = label.toLowerCase();
@@ -357,7 +389,7 @@ export async function PropertyView({
       <StayInteractions />
 
       <header className="stay-nav">
-        <span className="stay-nav-brand">NOVO</span>
+        <NavBrand logoUrl={property.logoUrl} showNovoBranding={property.showNovoBranding} name={property.name} />
         <div className="stay-nav-right">
           <a
             className="stay-lang-switch"
@@ -803,7 +835,7 @@ function CompanyView({ company, agency }: { company: Company; agency: Agency | n
       <StayInteractions />
 
       <header className="stay-nav">
-        <span className="stay-nav-brand">NOVO</span>
+        <NavBrand logoUrl={company.logoUrl} showNovoBranding={company.showNovoBranding} name={company.name} />
         <a className="stay-nav-cta" href={mailHref} data-magnetic>
           Pošaljite upit
         </a>
