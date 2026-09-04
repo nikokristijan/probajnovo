@@ -47,27 +47,64 @@ const [row] = await db
 return row;
 }
 
+/** Dodaje logo_url/show_novo_branding stupce na properties i companies ako još
+    ne postoje (ALTER TABLE ... ADD COLUMN IF NOT EXISTS je siguran za pokretati
+    ponovno). Nema ručne SQL migracije ni gumba za nju — vidi ensureBrandingColumnsOnce
+    ispod: ovo se automatski pokrene PRIJE svakog upita koji čita/piše properties ili
+    companies, pa je live baza uvijek spremna prije nego Drizzle zatraži nove stupce
+    (isti duh kao ensurePushSubscriptionsTable, samo bez potrebe za klikom admina). */
+async function ensureBrandingColumns(): Promise<void> {
+  await db.execute(sql`ALTER TABLE properties ADD COLUMN IF NOT EXISTS logo_url TEXT`);
+  await db.execute(
+    sql`ALTER TABLE properties ADD COLUMN IF NOT EXISTS show_novo_branding BOOLEAN NOT NULL DEFAULT true`
+  );
+  await db.execute(sql`ALTER TABLE companies ADD COLUMN IF NOT EXISTS logo_url TEXT`);
+  await db.execute(
+    sql`ALTER TABLE companies ADD COLUMN IF NOT EXISTS show_novo_branding BOOLEAN NOT NULL DEFAULT true`
+  );
+}
+
+/** Memoizirano po (hladnom startu) serverless instanci — prvi upit koji dotakne
+    properties/companies pokrene ALTER TABLE jednom, svi kasniji u istoj instanci
+    samo pričekaju isti (već riješeni) promise. Na grešku briše se cache da idući
+    poziv smije pokušati ponovno umjesto da ostane trajno "pokvaren". */
+let brandingColumnsPromise: Promise<void> | null = null;
+function ensureBrandingColumnsOnce(): Promise<void> {
+  if (!brandingColumnsPromise) {
+    brandingColumnsPromise = ensureBrandingColumns().catch((err) => {
+      brandingColumnsPromise = null;
+      throw err;
+    });
+  }
+  return brandingColumnsPromise;
+}
+
 export async function listProperties({ onlyPublished = false } = {}) {
+await ensureBrandingColumnsOnce();
 const rows = await db.select().from(properties).orderBy(desc(properties.createdAt));
 return onlyPublished ? rows.filter((p) => p.published) : rows;
 }
 
 export async function getPropertyBySlug(slug: string) {
+await ensureBrandingColumnsOnce();
 const rows = await db.select().from(properties).where(eq(properties.slug, slug)).limit(1);
 return rows[0] ?? null;
 }
 
 export async function getPropertyById(id: number) {
+await ensureBrandingColumnsOnce();
 const rows = await db.select().from(properties).where(eq(properties.id, id)).limit(1);
 return rows[0] ?? null;
 }
 
 export async function createProperty(data: NewProperty) {
+await ensureBrandingColumnsOnce();
 const [row] = await db.insert(properties).values(data).returning();
 return row;
 }
 
 export async function updateProperty(id: number, data: Partial<NewProperty>) {
+await ensureBrandingColumnsOnce();
 const [row] = await db
 .update(properties)
 .set({ ...data, updatedAt: new Date() })
@@ -175,6 +212,7 @@ export async function isSlugTaken(
 
 export async function listCompanies({ onlyPublished = false } = {}) {
   try {
+    await ensureBrandingColumnsOnce();
     const rows = await db.select().from(companies).orderBy(desc(companies.createdAt));
     return onlyPublished ? rows.filter((c) => c.published) : rows;
   } catch (err) {
@@ -185,6 +223,7 @@ export async function listCompanies({ onlyPublished = false } = {}) {
 
 export async function getCompanyBySlug(slug: string) {
   try {
+    await ensureBrandingColumnsOnce();
     const rows = await db.select().from(companies).where(eq(companies.slug, slug)).limit(1);
     return rows[0] ?? null;
   } catch (err) {
@@ -195,6 +234,7 @@ export async function getCompanyBySlug(slug: string) {
 
 export async function getCompanyById(id: number) {
   try {
+    await ensureBrandingColumnsOnce();
     const rows = await db.select().from(companies).where(eq(companies.id, id)).limit(1);
     return rows[0] ?? null;
   } catch (err) {
@@ -204,11 +244,13 @@ export async function getCompanyById(id: number) {
 }
 
 export async function createCompany(data: NewCompany) {
+await ensureBrandingColumnsOnce();
 const [row] = await db.insert(companies).values(data).returning();
 return row;
 }
 
 export async function updateCompany(id: number, data: Partial<NewCompany>) {
+await ensureBrandingColumnsOnce();
 const [row] = await db
 .update(companies)
 .set({ ...data, updatedAt: new Date() })
@@ -493,6 +535,7 @@ export async function setAdminAccess(
     su to SVE vikendice, za "owner" samo dodijeljene (vidi getAdminAccessGrants). */
 export async function listPropertiesForAdmin(admin: { id: number; role: string }) {
   if (admin.role !== "owner") return listProperties();
+  await ensureBrandingColumnsOnce();
   const grants = await getAdminAccessGrants(admin.id);
   const ids = grants.map((g) => g.propertyId).filter((id): id is number => id != null);
   if (ids.length === 0) return [];
@@ -502,6 +545,7 @@ export async function listPropertiesForAdmin(admin: { id: number; role: string }
 /** Firme na koje ovaj admin ima pristup — isti duh kao listPropertiesForAdmin. */
 export async function listCompaniesForAdmin(admin: { id: number; role: string }) {
   if (admin.role !== "owner") return listCompanies();
+  await ensureBrandingColumnsOnce();
   const grants = await getAdminAccessGrants(admin.id);
   const ids = grants.map((g) => g.companyId).filter((id): id is number => id != null);
   if (ids.length === 0) return [];

@@ -106,6 +106,15 @@ export const properties = pgTable("properties", {
       Ovo polje samo bilježi namjeru vlasnika — stvarno povezivanje domene (dodavanje
       na Vercel + CNAME kod vlasnikovog DNS registratora) radi se ručno, izvan ove app. */
   customDomain: text("custom_domain").unique(),
+  /** Klijentov vlastiti logo (URL na Vercel Blob) za gornji lijevi kut stranice —
+      kad je postavljen, prikazuje se UMJESTO "NOVO" naziva, bez obzira na
+      showNovoBranding ispod. Null = nema vlastitog logotipa. */
+  logoUrl: text("logo_url"),
+  /** Prikazuje li se "NOVO" naziv u gornjem lijevom kutu kad klijent NEMA vlastiti
+      logoUrl (ovisi o paketu koji je klijent kupio — admin ručno uključuje/isključuje
+      po vikendici). Default true = kao dosad. Ako je logoUrl postavljen, on se uvijek
+      prikazuje bez obzira na ovo polje. */
+  showNovoBranding: boolean("show_novo_branding").notNull().default(true),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
@@ -153,6 +162,15 @@ export const companies = pgTable("companies", {
   reviewBadges: jsonb("review_badges").$type<string[]>().notNull().default([]),
   faviconUrl: text("favicon_url"),
   customDomain: text("custom_domain").unique(),
+  /** Klijentov vlastiti logo (URL na Vercel Blob) za gornji lijevi kut stranice —
+      kad je postavljen, prikazuje se UMJESTO "NOVO" naziva, bez obzira na
+      showNovoBranding ispod. Null = nema vlastitog logotipa. */
+  logoUrl: text("logo_url"),
+  /** Prikazuje li se "NOVO" naziv u gornjem lijevom kutu kad klijent NEMA vlastiti
+      logoUrl (ovisi o paketu koji je klijent kupio — admin ručno uključuje/isključuje
+      po firmi). Default true = kao dosad. Ako je logoUrl postavljen, on se uvijek
+      prikazuje bez obzira na ovo polje. */
+  showNovoBranding: boolean("show_novo_branding").notNull().default(true),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
