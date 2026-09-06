@@ -355,3 +355,49 @@ function escapeHtml(s: string): string {
     .replace(/>/g, "&gt;")
     .replace(/"/g, "&quot;");
 }
+
+/**
+ * Obavijest glavnom adminu o NOVO-ovim pretplatama koje uskoro ističu
+ * (Financije) — šalje se na agency.contactEmail, isti "agencijski nadzorni"
+ * primatelj kao sendWeeklyDigest (pregled preko svih klijenata, ne
+ * pojedinom vlasniku). Best effort kao ostali cron mailovi: no-op bez
+ * RESEND_API_KEY ili bez ijedne pretplate koja ističe (ne šalje prazan
+ * mail).
+ */
+export async function sendSubscriptionExpiryAlert(params: {
+  to: string;
+  items: { sourceName: string; nextRenewalDate: string; monthlyPriceEur: number }[];
+}): Promise<void> {
+  const apiKey = process.env.RESEND_API_KEY;
+  if (!apiKey) return;
+  if (params.items.length === 0) return;
+
+  try {
+    const resend = new Resend(apiKey);
+    const rows = params.items
+      .sort((a, b) => a.nextRenewalDate.localeCompare(b.nextRenewalDate))
+      .map(
+        (i) =>
+          `<tr><td style="padding: 6px 0; border-bottom: 1px solid #eee;">${escapeHtml(i.sourceName)}</td><td style="padding: 6px 0; border-bottom: 1px solid #eee;">${escapeHtml(i.nextRenewalDate)}</td><td style="padding: 6px 0; border-bottom: 1px solid #eee; text-align: right; font-weight: 600;">${i.monthlyPriceEur} €</td></tr>`
+      )
+      .join("");
+    const { error } = await resend.emails.send({
+      from: FROM_ADDRESS,
+      to: [params.to],
+      subject: `Pretplate koje uskoro ističu — ${params.items.length}`,
+      html: `
+        <div style="font-family: sans-serif; max-width: 480px; margin: 0 auto;">
+          <h2 style="margin: 0 0 4px;">Pretplate koje uskoro ističu</h2>
+          <p style="color: #666; margin: 0 0 20px; font-size: 14px;">Sljedećih 7 dana — ukupno ${params.items.length}</p>
+          <table style="width: 100%; border-collapse: collapse; font-size: 14px;">${rows}</table>
+          <p style="font-size: 13px; color: #999; margin-top: 20px;">Puni pregled u adminu: /admin/financije</p>
+        </div>
+      `,
+    });
+    if (error) {
+      console.error("[sendSubscriptionExpiryAlert] Resend je vratio gresku:", error);
+    }
+  } catch (err) {
+    console.error("[sendSubscriptionExpiryAlert] Resend slanje nije uspjelo:", err);
+  }
+}
