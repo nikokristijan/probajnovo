@@ -4,6 +4,7 @@ import {
   listAdminIdsForNotification,
   listAllPushSubscriptions,
   deletePushSubscription,
+  listAdmins,
 } from "@/lib/db/queries";
 
 /**
@@ -129,4 +130,28 @@ export async function sendPushToAllDevices(
   const subs = await listAllPushSubscriptions();
   if (subs.length === 0) return { sent: 0, failed: 0 };
   return sendToSubscriptions(subs, payload);
+}
+
+/**
+ * Push obavijest SVIM superadminima (na svim njihovim uređajima) — koristi
+ * se za Financije podsjetnike o isteku pretplate (vidi
+ * app/api/cron/reservation-reminders, koji uz gostove podsjetnike sad
+ * provjerava i pretplate). Namjerno odvojeno od sendPushToAdmins: "obični"
+ * puni admini i vlasnici ne trebaju znati o NOVO-ovoj vlastitoj naplati
+ * klijentima, samo glavni admin/superadmini. Isti "best effort" duh —
+ * nikad ne baca grešku van, obavijest ne smije srušiti cron.
+ */
+export async function sendPushToSuperAdmins(payload: PushPayload): Promise<void> {
+  if (!vapidReady()) return;
+  try {
+    ensureConfigured();
+    const all = await listAdmins();
+    const superAdminIds = all.filter((a) => a.isSuperAdmin).map((a) => a.id);
+    if (superAdminIds.length === 0) return;
+    const subs = await listPushSubscriptionsForAdmins(superAdminIds);
+    if (subs.length === 0) return;
+    await sendToSubscriptions(subs, payload);
+  } catch {
+    // Obavijest nikad ne smije srušiti glavnu akciju.
+  }
 }
