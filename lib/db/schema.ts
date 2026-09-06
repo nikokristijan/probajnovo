@@ -285,7 +285,7 @@ export const adminUsers = pgTable("admin_users", {
   /** TOTP tajna (base32) za dvofaktorsku prijavu — postavljena čim admin
       pokrene enrollment (startTwoFactorSetupAction), ali se NE koristi za
       provjeru pri prijavi dok twoFactorEnabled nije true (vidi
-      confirmTwoFactorSetupAction — traži jedan ispravan kod prije uključenja,
+      confirmTwoFactorSetupAction — traži jedan ispravan kod prije uključivanja,
       da admin ne zaključa sam sebe zbog krivo skeniranog QR koda). */
   twoFactorSecret: text("two_factor_secret"),
   twoFactorEnabled: boolean("two_factor_enabled").notNull().default(false),
@@ -296,7 +296,7 @@ export const adminUsers = pgTable("admin_users", {
  * Koje vikendice/firme smije gledati koji vlasnički (role="owner") admin_users
  * redak — jedan red po dodijeljenoj vikendici/firmi, admin može imati više
  * redaka (više vikendica odjednom). Točno jedno od propertyId/companyId je
- * postavljeno po retku. Puni adminima (role="admin") se ne provjerava ova
+ * postavljeno po retku. Punim adminima (role="admin") se ne provjerava ova
  * tablica — oni imaju pristup svemu.
  */
 export const adminAccess = pgTable("admin_access", {
@@ -496,3 +496,50 @@ export const pushSubscriptions = pgTable("push_subscriptions", {
 });
 
 export type PushSubscriptionRow = typeof pushSubscriptions.$inferSelect;
+
+/**
+ * Mjesečna pretplata NOVO studija po vikendici/firmi — vlastita naplata
+ * agencije klijentu za izradu/održavanje stranice (Financije, vidi
+ * app/admin/financije). Potpuno odvojeno od `sales` (jednokratna zarada
+ * agencije za nešto drugo, npr. konzultacije) i od `reservations`/`expenses`
+ * (zarada VIKENDICE za vlasnika) — ovo je NOVO-ova vlastita ponavljajuća
+ * naplata za sam sustav, samo za glavnog admina/superadmine (vidi
+ * lib/auth.ts requireSuperAdmin). `source`/`sourceId`/`sourceName` isti
+ * obrazac kao inquiries — nije FK vezano na properties/companies da red
+ * ostane čitljiv i ako se vikendica/firma kasnije obriše.
+ *
+ * Tablica se sama kreira pri prvom upitu (vidi ensureSubscriptionsTable u
+ * lib/db/queries.ts), isti obrazac kao ensurePushSubscriptionsTable —
+ * nema pristupa terminalu za ručno pokretanje `npm run db:migrate`.
+ */
+export const subscriptions = pgTable("subscriptions", {
+  id: serial("id").primaryKey(),
+  /** "property" | "company" */
+  source: text("source").notNull(),
+  sourceId: integer("source_id").notNull(),
+  /** Snimka naziva u trenutku kreiranja/zadnje izmjene — vidi komentar gore. */
+  sourceName: text("source_name").notNull(),
+  monthlyPriceEur: integer("monthly_price_eur").notNull(),
+  /** "YYYY-MM-DD" — dan kad je pretplata (ili probni period) počela. */
+  startDate: text("start_date").notNull(),
+  /** Besplatni probni period — dok je true, klijent ništa ne plaća do trialEndsAt. */
+  isTrial: boolean("is_trial").notNull().default(false),
+  /** "YYYY-MM-DD" kraj probnog perioda — null ako isTrial=false. */
+  trialEndsAt: text("trial_ends_at"),
+  /** "active" | "trial" | "paused" | "cancelled" */
+  status: text("status").notNull().default("active"),
+  /** "YYYY-MM-DD" — datum sljedeće naplate/isteka, prati se za podsjetnik
+   * (vidi listSubscriptionsDueForReminder i app/api/cron/reservation-reminders,
+   * koji uz podsjetnike gostima sad provjerava i ovo). */
+  nextRenewalDate: text("next_renewal_date").notNull(),
+  /** Kad je zadnji put poslan podsjetnik o isteku (push + mail) — sprječava
+   * dvostruko slanje unutar istog ciklusa; resetira se pri produljenju
+   * (vidi extendSubscription u lib/db/queries.ts). */
+  reminderSentAt: timestamp("reminder_sent_at"),
+  note: text("note"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export type Subscription = typeof subscriptions.$inferSelect;
+export type NewSubscription = typeof subscriptions.$inferInsert;
