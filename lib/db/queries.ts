@@ -1,5 +1,6 @@
 import { eq, desc, asc, and, gt, inArray, isNull, sql } from "drizzle-orm";
 import { db } from "./index";
+import { todayDateStringZagreb, dateStringOffsetFromTodayZagreb } from "@/lib/date";
 import {
   agency,
   properties,
@@ -17,12 +18,14 @@ import {
   activityLog,
   pageViews,
   pushSubscriptions,
+  subscriptions,
   type NewProperty,
   type NewCompany,
   type NewStudy,
   type NewProduct,
   type NewInquiry,
   type NewPropertyTranslationEn,
+  type NewSubscription,
 } from "./schema";
 
 const AGENCY_ROW_ID = 1;
@@ -1186,4 +1189,171 @@ export async function getPropertyFunnel(propertyId: number, sinceDate: string) {
     inquiries: inquiryRows.filter((r) => isoDate(r.createdAt) >= sinceDate).length,
     reservations: reservationRows.filter((r) => isoDate(r.createdAt) >= sinceDate).length,
   };
+}
+
+/* ---------------------------------------------------------------- */
+/* Pretplate NOVO studija (Financije, samo glavni admin/superadmini) — */
+/* vidi app/admin/financije i lib/db/schema.ts subscriptions. Tablica */
+/* se sama kreira (ensureSubscriptionsTable), isti obrazac kao         */
+/* ensurePushSubscriptionsTable — nema pristupa terminalu za ručnu     */
+/* migraciju. */
+/* ---------------------------------------------------------------- */
+
+/** Kreira `subscriptions` tablicu ako slučajno ne postoji (IF NOT EXISTS je
+ * sigurno pozvati i kad tablica već postoji) — vidi ensurePushSubscriptionsTable
+ * za isti obrazac. */
+export async function ensureSubscriptionsTable(): Promise<void> {
+  await db.execute(sql`
+    CREATE TABLE IF NOT EXISTS subscriptions (
+      id SERIAL PRIMARY KEY,
+      source TEXT NOT NULL,
+      source_id INTEGER NOT NULL,
+      source_name TEXT NOT NULL,
+      monthly_price_eur INTEGER NOT NULL,
+      start_date TEXT NOT NULL,
+      is_trial BOOLEAN NOT NULL DEFAULT false,
+      trial_ends_at TEXT,
+      status TEXT NOT NULL DEFAULT 'active',
+      next_renewal_date TEXT NOT NULL,
+      reminder_sent_at TIMESTAMP,
+      note TEXT,
+      created_at TIMESTAMP NOT NULL DEFAULT now(),
+      updated_at TIMESTAMP NOT NULL DEFAULT now()
+    )
+  `);
+}
+
+let subscriptionsTablePromise: Promise<void> | null = null;
+function ensureSubscriptionsTableOnce(): Promise<void> {
+  if (!subscriptionsTablePromise) {
+    subscriptionsTablePromise = ensureSubscriptionsTable().catch((err) => {
+      subscriptionsTablePromise = null;
+      throw err;
+    });
+  }
+  return subscriptionsTablePromise;
+}
+
+export async function listSubscriptions() {
+  await ensureSubscriptionsTableOnce();
+  return db.select().from(subscriptions).orderBy(asc(subscriptions.nextRenewalDate));
+}
+
+export async function getSubscriptionById(id: number) {
+  await ensureSubscriptionsTableOnce();
+  const rows = await db.select().from(subscriptions).where(eq(subscriptions.id, id)).limit(1);
+  return rows[0] ?? null;
+}
+
+export async function createSubscription(data: NewSubscription) {
+  await ensureSubscriptionsTableOnce();
+  const [row] = await db.insert(subscriptions).values(data).returning();
+  return row;
+}
+
+export async function updateSubscription(id: number, data: Partial<NewSubscription>) {
+  await ensureSubscriptionsTableOnce();
+  const [row] = await db
+    .update(subscriptions)
+    .set({ ...data, updatedAt: new Date() })
+    .where(eq(subscriptions.id, id))
+    .returning();
+  return row;
+}
+
+export async function deleteSubscription(id: number) {
+  await ensureSubscriptionsTableOnce();
+  await db.delete(subscriptions).where(eq(subscriptions.id, id));
+}
+
+/** "Produži" brzu radnju — pomakne nextRenewalDate za `months` mjeseci
+ * naprijed (od danas ako je trenutni datum već prošao, inače od trenutnog
+ * nextRenewalDate — da produljenje unaprijed ne skrati sljedeći ciklus),
+ * skida trial status (klijent je stvarno platio) i resetira reminderSentAt
+ * da idući ciklus opet dobije podsjetnik. */
+export async function extendSubscription(id: number, months: number) {
+  await ensureSubscriptionsTableOnce();
+  const current = await getSubscriptionById(id);
+  if (!current) return null;
+  const today = todayDateStringZagreb();
+  const base = current.nextRenewalDate > today ? current.nextRenewalDate : today;
+  const [y, m, d] = base.split("-").map(Number);
+  const next = new Date(Date.UTC(y, m - 1 + months, d));
+  const nextRenewalDate = next.toISOString().slice(0, 10);
+  const [row] = await db
+    .update(subscriptions)
+    .set({
+      nextRenewalDate,
+      status: "active",
+      isTrial: false,
+      reminderSentAt: null,
+      updatedAt: new Date(),
+    })
+    .where(eq(subscriptions.id, id))
+    .returning();
+  return row;
+}
+
+/** Pretplate čiji nextRenewalDate pada unutar sljedećih `daysAhead` dana (ili
+ * je već prošao), status "active"/"trial", a podsjetnik još nije poslan —
+ * za app/api/cron/reservation-reminders (isti dnevni cron, da se izbjegne
+ * novi cron slot). */
+export async function listSubscriptionsDueForReminder(daysAhead: number) {
+  await ensureSubscriptionsTableOnce();
+  const cutoff = dateStringOffsetFromTodayZagreb(daysAhead);
+  const all = await db
+    .select()
+    .from(subscriptions)
+    .where(
+      and(
+        inArray(subscriptions.status, ["active", "trial"]),
+        isNull(subscriptions.reminderSentAt)
+      )
+    );
+  return all.filter((s) => s.nextRenewalDate <= cutoff);
+}
+
+export async function markSubscriptionReminderSent(id: number) {
+  await db.update(subscriptions).set({ reminderSentAt: new Date() }).where(eq(subscriptions.id, id));
+}
+
+export type SubscriptionStats = {
+  mrrEur: number;
+  activeCount: number;
+  trialCount: number;
+  expiringSoonCount: number;
+  cancelledCount: number;
+};
+
+/** Brojke za stat kartice na vrhu /admin/financije — MRR (zbroj mjesečne
+ * cijene svih "active"+"trial" pretplata, probne se broje jer će uskoro
+ * postati plaćajuće — vidi napomenu u UI-u), broj aktivnih, broj na
+ * probnom periodu, broj koji ističu unutar 7 dana, broj otkazanih. */
+export async function getSubscriptionStats(): Promise<SubscriptionStats> {
+  const all = await listSubscriptions();
+  const cutoff = dateStringOffsetFromTodayZagreb(7);
+  const activeCount = all.filter((s) => s.status === "active").length;
+  const trialCount = all.filter((s) => s.status === "trial" || s.isTrial).length;
+  const mrrEur = all
+    .filter((s) => s.status === "active" || s.status === "trial")
+    .reduce((sum, s) => sum + s.monthlyPriceEur, 0);
+  const expiringSoonCount = all.filter(
+    (s) => (s.status === "active" || s.status === "trial") && s.nextRenewalDate <= cutoff
+  ).length;
+  const cancelledCount = all.filter((s) => s.status === "cancelled").length;
+  return { mrrEur, activeCount, trialCount, expiringSoonCount, cancelledCount };
+}
+
+/** Broj NOVIH pretplata (po startDate) po mjesecu za `year` (12 brojeva,
+ * siječanj→prosinac) — za YearlyBarChart na /admin/financije, isti obrazac
+ * kao getSalesYearlyByMonth. */
+export async function getSubscriptionsYearlyByMonth(year: number) {
+  const all = await listSubscriptions();
+  const totals = Array(12).fill(0) as number[];
+  for (const s of all) {
+    if (!s.startDate.startsWith(String(year))) continue;
+    const monthIdx = Number(s.startDate.slice(5, 7)) - 1;
+    if (monthIdx >= 0 && monthIdx < 12) totals[monthIdx] += 1;
+  }
+  return totals;
 }
