@@ -68,6 +68,10 @@ import {
   SALE_CATEGORIES,
   logActivity,
   ensurePushSubscriptionsTable,
+  createSubscription,
+  updateSubscription,
+  deleteSubscription,
+  extendSubscription,
 } from "@/lib/db/queries";
 import { sendInquiryNotification, sendGuestConfirmation, sendReservationConfirmation, sendInquiryReply } from "@/lib/email";
 import { resolveCoordinates, geoMissWarning } from "@/lib/geocode";
@@ -1884,4 +1888,116 @@ export async function runPushMigrationAction(
   } catch (err) {
     return { error: err instanceof Error ? err.message : "Nije uspjelo." };
   }
+}
+
+/* ---------------------------------------------------------------- */
+/* Pretplate NOVO studija (Financije) — samo glavni admin/superadmini,  */
+/* vidi lib/auth.ts requireSuperAdmin i lib/db/schema.ts subscriptions. */
+/* Potpuno odvojeno od Prodaja (jednokratna zarada agencije) i od       */
+/* Rezervacije/Troškovi (zarada VIKENDICE za vlasnika). */
+/* ---------------------------------------------------------------- */
+
+const SubscriptionSchema = z.object({
+  source: z.enum(["property", "company"]),
+  sourceId: z.coerce.number().int().positive("Odaberi vikendicu ili firmu."),
+  monthlyPriceEur: z.coerce.number().int().min(0),
+  startDate: z.string().min(1, "Datum starta je obavezan."),
+  isTrial: z.coerce.boolean(),
+  trialEndsAt: z.string().optional(),
+  status: z.enum(["active", "trial", "paused", "cancelled"]),
+  nextRenewalDate: z.string().min(1, "Datum sljedeće naplate je obavezan."),
+  note: z.string().optional(),
+});
+
+async function resolveSubscriptionSourceName(
+  source: "property" | "company",
+  sourceId: number
+): Promise<string | null> {
+  if (source === "property") {
+    const p = await getPropertyById(sourceId);
+    return p?.name ?? null;
+  }
+  const c = await getCompanyById(sourceId);
+  return c?.name ?? null;
+}
+
+function parseSubscriptionForm(formData: FormData) {
+  return SubscriptionSchema.safeParse({
+    source: formData.get("source"),
+    sourceId: formData.get("sourceId"),
+    monthlyPriceEur: formData.get("monthlyPriceEur"),
+    startDate: formData.get("startDate"),
+    isTrial: formData.get("isTrial") === "on",
+    trialEndsAt: formData.get("trialEndsAt") || undefined,
+    status: formData.get("status"),
+    nextRenewalDate: formData.get("nextRenewalDate"),
+    note: formData.get("note") || undefined,
+  });
+}
+
+export async function createSubscriptionAction(
+  _prevState: ActionState,
+  formData: FormData
+): Promise<ActionState> {
+  await requireSuperAdmin();
+  const parsed = parseSubscriptionForm(formData);
+  if (!parsed.success) {
+    return { error: parsed.error.issues[0]?.message ?? "Provjeri unesene podatke." };
+  }
+  const sourceName = await resolveSubscriptionSourceName(parsed.data.source, parsed.data.sourceId);
+  if (!sourceName) {
+    return { error: "Odabrana vikendica/firma ne postoji." };
+  }
+  await createSubscription({
+    ...parsed.data,
+    sourceName,
+    trialEndsAt: parsed.data.trialEndsAt ?? null,
+    note: parsed.data.note ?? null,
+  });
+  revalidatePath("/admin/financije");
+  revalidatePath("/admin");
+  return { success: true };
+}
+
+export async function updateSubscriptionAction(
+  id: number,
+  _prevState: ActionState,
+  formData: FormData
+): Promise<ActionState> {
+  await requireSuperAdmin();
+  const parsed = parseSubscriptionForm(formData);
+  if (!parsed.success) {
+    return { error: parsed.error.issues[0]?.message ?? "Provjeri unesene podatke." };
+  }
+  const sourceName = await resolveSubscriptionSourceName(parsed.data.source, parsed.data.sourceId);
+  if (!sourceName) {
+    return { error: "Odabrana vikendica/firma ne postoji." };
+  }
+  await updateSubscription(id, {
+    ...parsed.data,
+    sourceName,
+    trialEndsAt: parsed.data.trialEndsAt ?? null,
+    note: parsed.data.note ?? null,
+  });
+  revalidatePath("/admin/financije");
+  revalidatePath("/admin");
+  return { success: true };
+}
+
+export async function deleteSubscriptionAction(id: number) {
+  await requireSuperAdmin();
+  await deleteSubscription(id);
+  revalidatePath("/admin/financije");
+  revalidatePath("/admin");
+}
+
+/** "Produži" brzi gumb u tablici — pomakne nextRenewalDate za `months`
+ * mjeseci (vidi extendSubscription u lib/db/queries.ts: računa od danas ako
+ * je datum već prošao, inače od trenutnog nextRenewalDate), skida trial i
+ * resetira reminderSentAt da idući ciklus opet dobije podsjetnik. */
+export async function extendSubscriptionAction(id: number, months: number) {
+  await requireSuperAdmin();
+  await extendSubscription(id, months);
+  revalidatePath("/admin/financije");
+  revalidatePath("/admin");
 }
