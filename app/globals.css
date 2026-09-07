@@ -951,6 +951,18 @@ html.novo-lock-scroll body {
   --od-blob-orange: rgba(255, 127, 0, 0.42);
   --od-blob-purple: rgba(106, 33, 176, 0.4);
 
+  /* NAMJERNO pozadina izravno ovdje (ne kroz zaseban .owner-dash-bg
+     utility) — taj utility je postojao u CSS-u ali se NIGDJE u JSX-u nije
+     stvarno primjenjivao, pa je --od-bg (npr. gotovo crna #08080f u
+     tamnoj temi) bio potpuno mrtav token: stranica je ispod kartica i
+     dalje pokazivala svijetlu .admin-shell sivu (dijeljenu sa superadmin
+     dashboardom), zato je tamna tema djelovala mutno/nedovršeno bez obzira
+     na kontrast samih kartica (feedback: "tamna tema nema dovoljno
+     kontrasta i nije citljiva i uredna"). min-height osigurava da tamna
+     pozadina ispuni cijeli viewport i kad je sadržaj kraći od ekrana. */
+  background: var(--od-bg);
+  min-height: 100vh;
+  transition: background-color 0.25s ease;
   position: relative;
   isolation: isolate;
   color: var(--od-ink);
@@ -998,11 +1010,6 @@ html.novo-lock-scroll body {
     --od-blob-orange: rgba(255, 142, 24, 0.4);
     --od-blob-purple: rgba(150, 90, 230, 0.42);
   }
-}
-
-.owner-dash-bg {
-  background: var(--od-bg);
-  transition: background-color 0.25s ease;
 }
 
 /* Zamućene mrlje NOVO boje iza gornjeg dijela dashboarda — izvor boje koju
