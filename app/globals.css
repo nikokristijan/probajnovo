@@ -931,6 +931,33 @@ html.novo-lock-scroll body {
    plosnatog gradijenta s prozirnošću.
    --------------------------------------------------------------------- */
 
+/* PETI krug feedbacka na "crta/jak prijelaz" (nakon što je ČETVRTI krug —
+   vidi .owner-hero box-shadow niže — riješio samo rub HERO KARTICE, ne i
+   ono što se ispostavilo kao stvarni, veći izvor pritužbe): .owner-dash
+   živi UNUTAR <main className="max-w-4xl mx-auto px-6 py-10"> (app/admin/
+   layout.tsx), a taj <main> nema svoju pozadinu pa kroz njegov padding i
+   kroz prazan prostor lijevo/desno od max-w-4xl proviruje .admin-shell-ova
+   FIKSNA svijetlo-siva pozadina (#f7f7f5) — u tamnoj temi to je oštar
+   pravokutni rub gdje se skoro-crna .owner-dash kutija odsječe od te sive
+   podloge (i u svijetloj temi suptilnija, ali ista vrsta oštrog reza).
+   Rješenje: .admin-shell (dijeljen s punim adminom, ali ova klasa se
+   dodaje SAMO kad je admin.role === "owner" — vidi app/admin/layout.tsx)
+   dobiva ISTU pozadinsku boju kao --od-bg gore/dolje, pa "kutija" oko
+   .owner-dash nestaje jer se boji s njom stapaju umjesto sudaraju. Ne
+   dira .admin-shell izgled za pravog (super)admina jer klasa/atribut
+   nikad nisu prisutni na tom putu. */
+.owner-page-bg {
+  background: #f2f3f9;
+}
+.owner-page-bg[data-theme="dark"] {
+  background: #0a0a24;
+}
+@media (prefers-color-scheme: dark) {
+  .owner-page-bg:not([data-theme="light"]):not([data-theme="dark"]) {
+    background: #0a0a24;
+  }
+}
+
 .owner-dash {
   --od-navy: #0000c3;
   --od-orange: #ff7f00;
