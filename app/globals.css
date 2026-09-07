@@ -1101,7 +1101,13 @@ a.owner-glass:active,
   border-radius: clamp(20px, 5vw, 28px);
   padding: clamp(20px, 4vw, 30px) clamp(18px, 4.5vw, 30px);
   color: #fff;
-  background: radial-gradient(140% 160% at 6% -25%, rgba(255, 255, 255, 0.32), transparent 50%),
+  /* Sjaj je NAMJERNO u gornjem DESNOM kutu (iza streak bedža), daleko od
+     teksta u gornjem lijevom kutu (label + velika brojka) — obrnuto
+     pozicioniran sjaj preko teksta je bio uzrok "ne vidi se ništa"
+     problema (previše bijelog sjaja baš iza bijelog teksta). Donji tamni
+     sloj (::before) postoji ISKLJUČIVO da garantira kontrast teksta bez
+     obzira na boju/poziciju gradijenta ispod — ne dodaje sjaj. */
+  background: radial-gradient(120% 150% at 96% -15%, rgba(255, 255, 255, 0.24), transparent 48%),
     linear-gradient(135deg, var(--od-navy) 0%, #3a1aa0 45%, var(--od-purple) 68%, var(--od-orange) 100%);
   box-shadow: 0 24px 60px -20px rgba(10, 5, 60, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.4),
     inset 0 -50px 70px -50px rgba(0, 0, 0, 0.28);
@@ -1112,7 +1118,7 @@ a.owner-glass:active,
   content: "";
   position: absolute;
   inset: 0;
-  background: linear-gradient(115deg, rgba(255, 255, 255, 0.22) 0%, rgba(255, 255, 255, 0) 30%);
+  background: linear-gradient(200deg, rgba(0, 0, 0, 0.22) 0%, rgba(0, 0, 0, 0) 42%);
   pointer-events: none;
   z-index: 0;
 }
