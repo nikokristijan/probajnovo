@@ -149,9 +149,8 @@ export default async function AdminDashboard() {
           <Link href="/admin/vikendice" className="admin-quicklink">
             Vikendice
           </Link>
-          <Link href="/admin/prodaja" className="admin-quicklink">
-            Prodaja
-          </Link>
+          {/* Prodaja je spojena u Financije (na izričit zahtjev korisnika),
+              pa više nema svoj zaseban quicklink — vidi app/admin/financije. */}
           {admin.isSuperAdmin && (
             <Link href="/admin/financije" className="admin-quicklink">
               Financije

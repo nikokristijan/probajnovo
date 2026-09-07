@@ -110,9 +110,9 @@ export default async function AdminLayout({ children }: { children: React.ReactN
                 <Link href="/admin/vikendice" className="hover:text-[#ff7f00]">
                   Vikendice
                 </Link>
-                <Link href="/admin/prodaja" className="hover:text-[#ff7f00]">
-                  Prodaja
-                </Link>
+                {/* Prodaja je spojena u Financije (na izričit zahtjev korisnika:
+                    "spoji tab financije i prodaja u jedan") — jedan link, jedna
+                    stranica, vidi app/admin/financije AgencyLedgerTable. */}
                 {admin.isSuperAdmin && (
                   <Link href="/admin/financije" className="hover:text-[#ff7f00]">
                     Financije
