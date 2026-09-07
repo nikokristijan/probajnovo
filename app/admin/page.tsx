@@ -18,10 +18,13 @@ import {
 } from "@/lib/db/queries";
 import type { AdminUser } from "@/lib/db/schema";
 import { currentYearMonthZagreb } from "@/lib/date";
-import MiniCalendar from "@/components/admin/MiniCalendar";
 import OwnerHero from "@/components/admin/OwnerHero";
 import OwnerTrendChart from "@/components/admin/OwnerTrendChart";
 import OwnerPropertyCarousel from "@/components/admin/OwnerPropertyCarousel";
+import OwnerMiniCalendar from "@/components/admin/OwnerMiniCalendar";
+import OwnerBadges from "@/components/admin/OwnerBadges";
+import OwnerThemeToggle from "@/components/admin/OwnerThemeToggle";
+import OwnerShareReport from "@/components/admin/OwnerShareReport";
 
 export default async function AdminDashboard() {
   // Prije se ovdje zvao requireFullAdmin() koji je vlasnika (role="owner")
@@ -467,7 +470,7 @@ async function OwnerDashboard({ admin }: { admin: AdminUser }) {
   // zadnji dan TOG mjeseca, jer se "month" tumači kao 0-indeksirani mjesec
   // + 1 pa dan 0 vrati na zadnji dan traženog mjeseca).
   const daysInCurrentMonth = new Date(Date.UTC(nowZagreb.year, nowZagreb.month, 0)).getUTCDate();
-  const goalDays = Math.max(5, Math.round(daysInCurrentMonth * 0.7));
+  const autoGoalDays = Math.max(5, Math.round(daysInCurrentMonth * 0.7));
 
   const recentTrend = trend.slice(-6);
 
@@ -475,18 +478,40 @@ async function OwnerDashboard({ admin }: { admin: AdminUser }) {
   const pageCount = properties.length + companies.length;
   const singleName = pageCount === 1 ? (properties[0]?.name ?? companies[0]?.name ?? null) : null;
   const monthLabel = `${OWNER_MONTH_NAMES_HR[nowZagreb.month - 1]} ${nowZagreb.year}`;
+  const effectiveGoalDays = admin.customGoalDays ?? autoGoalDays;
 
   return (
-    <div className="flex flex-col gap-8">
-      <div>
-        <h1 className="text-xl font-bold">Pozdrav{hostName ? `, ${hostName}` : ""}!</h1>
-        <p className="text-sm text-black/50 mt-1">
-          {pageCount === 0
-            ? "Nemaš dodijeljenu nijednu vikendicu ili firmu — javi se glavnom adminu."
-            : singleName
-              ? `Pregled za ${singleName}.`
-              : "Pregled tvojih dodijeljenih stranica."}
-        </p>
+    <div
+      className="owner-dash flex flex-col gap-8"
+      data-theme={admin.themePreference ?? "system"}
+    >
+      <div className="flex items-start justify-between gap-4 flex-wrap">
+        <div>
+          <h1 className="text-xl font-bold">Pozdrav{hostName ? `, ${hostName}` : ""}!</h1>
+          <p className="text-sm mt-1" style={{ color: "var(--od-ink-faint)" }}>
+            {pageCount === 0
+              ? "Nemaš dodijeljenu nijednu vikendicu ili firmu — javi se glavnom adminu."
+              : singleName
+                ? `Pregled za ${singleName}.`
+                : "Pregled tvojih dodijeljenih stranica."}
+          </p>
+        </div>
+        <div className="flex items-center gap-2">
+          {properties.length > 0 && (
+            <OwnerShareReport
+              stats={{
+                monthLabel,
+                subtitle: singleName,
+                netEur: netEurThisMonth,
+                currentDays: daysBookedThisMonth,
+                goalDays: effectiveGoalDays,
+                deltaPct,
+                streak: admin.loginStreakCount,
+              }}
+            />
+          )}
+          <OwnerThemeToggle initialTheme={(admin.themePreference as "light" | "dark" | "system" | null) ?? "system"} />
+        </div>
       </div>
 
       {properties.length > 0 && (
@@ -496,17 +521,31 @@ async function OwnerDashboard({ admin }: { admin: AdminUser }) {
           deltaPct={deltaPct}
           isRecord={isRecord}
           initialStreak={admin.loginStreakCount}
-          goalDays={goalDays}
+          autoGoalDays={autoGoalDays}
+          initialCustomGoalDays={admin.customGoalDays}
           currentDays={daysBookedThisMonth}
           yoyDeltaDays={yoyDeltaDays}
         />
       )}
 
+      {properties.length > 0 && (
+        <OwnerBadges
+          stats={{
+            streak: admin.loginStreakCount,
+            isRecord,
+            currentDays: daysBookedThisMonth,
+            goalDays: effectiveGoalDays,
+            deltaPct,
+            yoyDeltaDays,
+          }}
+        />
+      )}
+
       {pageCount > 0 && (
         <section className="admin-animate-grid grid grid-cols-2 sm:grid-cols-3 gap-3">
-          <StatCard label={pendingCount === 1 ? "Novi upit" : "Novih upita"} value={pendingCount} />
-          <StatCard label="Dana zauzeto ovaj mjesec" value={daysBookedThisMonth} />
-          <StatCard label="Zarada ovaj mjesec (neto)" value={netEurThisMonth} suffix=" €" />
+          <OwnerStatCard label={pendingCount === 1 ? "Novi upit" : "Novih upita"} value={pendingCount} />
+          <OwnerStatCard label="Dana zauzeto ovaj mjesec" value={daysBookedThisMonth} />
+          <OwnerStatCard label="Zarada ovaj mjesec (neto)" value={netEurThisMonth} suffix=" €" />
         </section>
       )}
 
@@ -533,12 +572,19 @@ async function OwnerDashboard({ admin }: { admin: AdminUser }) {
         <OwnerPropertyCarousel properties={properties} breakdown={breakdown} monthLabel={monthLabel} />
       )}
 
-      {firstProperty && <MiniCalendar propertyId={firstProperty.id} propertyName={firstProperty.name} blocked={blockedByProperty[0] ?? []} now={now} />}
+      {firstProperty && (
+        <OwnerMiniCalendar
+          propertyId={firstProperty.id}
+          propertyName={firstProperty.name}
+          blocked={blockedByProperty[0] ?? []}
+          now={now}
+        />
+      )}
 
       {pageCount > 0 && (
         <section>
           <div className="flex items-center justify-between mb-3">
-            <h2 className="text-xs font-semibold uppercase tracking-wide text-black/40">
+            <h2 className="text-xs font-semibold uppercase tracking-wide" style={{ color: "var(--od-ink-faint)" }}>
               Zadnji upiti
             </h2>
             <Link href="/admin/inquiries" className="text-xs font-semibold text-[#ff7f00]">
@@ -546,18 +592,22 @@ async function OwnerDashboard({ admin }: { admin: AdminUser }) {
             </Link>
           </div>
           {recentInquiries.length === 0 ? (
-            <p className="text-sm text-black/60">Još nema upita.</p>
+            <p className="text-sm" style={{ color: "var(--od-ink-faint)" }}>
+              Još nema upita.
+            </p>
           ) : (
             <div className="flex flex-col gap-2">
               {recentInquiries.map((i) => (
                 <Link
                   key={i.id}
                   href="/admin/inquiries"
-                  className="flex items-center justify-between border border-black/10 rounded-xl px-4 py-3 bg-white hover:border-[#ff7f00]/40"
+                  className="owner-glass owner-glass-interactive flex items-center justify-between rounded-xl px-4 py-3"
                 >
                   <div>
-                    <div className="font-semibold text-sm">{i.name}</div>
-                    <div className="text-xs text-black/50 mt-0.5">
+                    <div className="font-semibold text-sm" style={{ color: "var(--od-ink)" }}>
+                      {i.name}
+                    </div>
+                    <div className="text-xs mt-0.5" style={{ color: "var(--od-ink-faint)" }}>
                       {i.sourceName} · {new Date(i.createdAt).toLocaleDateString("hr-HR")}
                     </div>
                   </div>
@@ -575,22 +625,39 @@ async function OwnerDashboard({ admin }: { admin: AdminUser }) {
 
       {pageCount > 0 && (
         <section>
-          <h2 className="text-xs font-semibold uppercase tracking-wide text-black/40 mb-3">
+          <h2 className="text-xs font-semibold uppercase tracking-wide mb-3" style={{ color: "var(--od-ink-faint)" }}>
             Brze radnje
           </h2>
           <div className="flex flex-wrap gap-2">
-            <Link href="/admin/rezervacije" className="admin-quicklink">
+            <Link href="/admin/rezervacije" className="owner-quicklink">
               Rezervacije
             </Link>
-            <Link href="/admin/kalendar" className="admin-quicklink">
+            <Link href="/admin/kalendar" className="owner-quicklink">
               Kalendar
             </Link>
-            <Link href="/admin/inquiries" className="admin-quicklink">
+            <Link href="/admin/inquiries" className="owner-quicklink">
               Svi upiti
             </Link>
           </div>
         </section>
       )}
+    </div>
+  );
+}
+
+/** Vlasnički pandan StatCard-u iznad — NAMJERNO odvojena funkcija (ne dijeli
+    se s AdminDashboard/StatCard) da glass redizajn ostane izoliran na
+    role="owner", isti razlog kao .owner-quicklink u globals.css. */
+function OwnerStatCard({ label, value, suffix }: { label: string; value: number; suffix?: string }) {
+  return (
+    <div className="owner-glass owner-glass-grain rounded-2xl px-4 py-3">
+      <div className="text-2xl font-bold tabular-nums" style={{ color: "var(--od-ink)" }}>
+        {value}
+        {suffix ?? ""}
+      </div>
+      <div className="text-xs mt-0.5" style={{ color: "var(--od-ink-faint)" }}>
+        {label}
+      </div>
     </div>
   );
 }
