@@ -914,10 +914,110 @@ html.novo-lock-scroll body {
 @keyframes admin-bar-grow { from { transform: scaleX(0); } to { transform: scaleX(1); } }
 .admin-bar-grow { transform-origin: left; animation: admin-bar-grow 0.6s cubic-bezier(0.22, 1, 0.36, 1) forwards; }
 
+/* ---------------------------------------------------------------------
+   Vlasnički (role="owner") dashboard — "addictive" polish (streak, hero
+   kartica, gradient prsten napretka, konfeti pri rekordu) inspirirano
+   Duolingo streakom, Instagram story prstenom i Netflix hero blokom, ali
+   unutar postojeće svijetle NOVO palete (navy #0000c3 → narančasta
+   #ff7f00), ne posebna tamna tema — vidi app/admin/page.tsx OwnerDashboard
+   i components/admin/OwnerHero.tsx.
+   --------------------------------------------------------------------- */
+
+/* Hero kartica — gradient pozadina, veliki broj, "diše" lagano pri ulazu. */
+.owner-hero {
+  position: relative;
+  overflow: hidden;
+  border-radius: 20px;
+  padding: 24px;
+  color: #fff;
+  background: linear-gradient(135deg, #0000c3 0%, #4b21b0 55%, #ff7f00 100%);
+  isolation: isolate;
+}
+.owner-hero::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(circle at 85% -10%, rgba(255,255,255,0.28), transparent 55%);
+  pointer-events: none;
+  z-index: 0;
+}
+.owner-hero > * { position: relative; z-index: 1; }
+
+@keyframes owner-hero-pop { from { opacity: 0; transform: scale(0.94) translateY(8px); } to { opacity: 1; transform: scale(1) translateY(0); } }
+.owner-hero-value { display: inline-block; animation: owner-hero-pop 0.5s cubic-bezier(0.22, 1, 0.36, 1) forwards; }
+
+/* Streak "vatra" značka — pulsira suptilno da privuče pogled bez da smeta. */
+@keyframes owner-streak-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(255,127,0,0.45); }
+  50% { box-shadow: 0 0 0 6px rgba(255,127,0,0); }
+}
+.owner-streak-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  font-weight: 700;
+  padding: 6px 12px;
+  border-radius: 999px;
+  background: rgba(255,255,255,0.16);
+  backdrop-filter: blur(6px);
+  animation: owner-streak-pulse 2.2s ease-in-out infinite;
+}
+.owner-streak-badge.owner-streak-badge-light {
+  background: linear-gradient(135deg, #fff4e8, #ffe4cc);
+  color: #b3540a;
+  animation: owner-streak-pulse 2.2s ease-in-out infinite;
+}
+
+/* Gradient napredak-prsten (Instagram story stil) — SVG stroke se "crta" od
+   0 do trenutne vrijednosti pri učitavanju, isti pathLength trik kao
+   admin-chart-line. */
+@keyframes owner-ring-draw { from { stroke-dashoffset: 1; } to { stroke-dashoffset: var(--owner-ring-offset, 0); } }
+.owner-ring-progress { stroke-dasharray: 1; stroke-dashoffset: 1; animation: owner-ring-draw 1s cubic-bezier(0.22, 1, 0.36, 1) 0.15s forwards; }
+
+/* Linearna cilj-traka (mjesečna popunjenost) — reciklira admin-bar-grow duh,
+   ali kao ispuna unutar trake umjesto grafa. */
+.owner-goal-track { height: 8px; border-radius: 999px; background: rgba(0,0,0,0.08); overflow: hidden; }
+.owner-goal-fill { height: 100%; border-radius: 999px; background: linear-gradient(90deg, #0000c3, #ff7f00); }
+
+/* Vodoravni "carousel" kartica vikendica/firmi (Netflix red / IG stories
+   stil) — čisti scroll-snap, bez JS-a. */
+.owner-carousel {
+  display: flex;
+  gap: 12px;
+  overflow-x: auto;
+  scroll-snap-type: x mandatory;
+  padding-bottom: 6px;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: thin;
+}
+.owner-carousel > * { scroll-snap-align: start; flex: 0 0 auto; }
+
+/* Konfeti pri novom rekordu — čisti DOM/CSS (bez canvasa/vanjske
+   biblioteke), pravokutnici padaju i rotiraju iz vrha kartice. Pozicija/boja/
+   kašnjenje svake čestice postavlja se inline stilom u OwnerHero.tsx. */
+@keyframes owner-confetti-fall {
+  0% { transform: translateY(-10px) rotate(0deg); opacity: 1; }
+  100% { transform: translateY(160px) rotate(540deg); opacity: 0; }
+}
+.owner-confetti-piece {
+  position: absolute;
+  top: 0;
+  width: 7px;
+  height: 12px;
+  border-radius: 2px;
+  animation: owner-confetti-fall 1.4s ease-in forwards;
+  z-index: 2;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .admin-chart-line { animation: none; stroke-dashoffset: 0; }
   .admin-chart-area { animation: none; opacity: 1; }
   .admin-chart-dot { animation: none; opacity: 1; transform: scale(1); }
   .admin-animate-grid > * { animation: none; opacity: 1; }
   .admin-bar-grow { animation: none; transform: scaleX(1); }
+  .owner-hero-value { animation: none; opacity: 1; transform: none; }
+  .owner-streak-badge { animation: none; }
+  .owner-ring-progress { animation: none; stroke-dashoffset: var(--owner-ring-offset, 0); }
+  .owner-confetti-piece { animation: none; opacity: 0; }
 }
