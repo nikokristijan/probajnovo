@@ -23,6 +23,16 @@ export default function OwnerThemeToggle({ initialTheme }: { initialTheme: Theme
     setTheme(next);
     const root = document.querySelector<HTMLElement>(".owner-dash");
     if (root) root.setAttribute("data-theme", next);
+    // SEDMI krug feedbacka ("navbar ostaje svijetao dok se ne odeš na drugu
+    // stranicu") — .owner-dash gore je SAMO dashboard sadržaj unutar <main>;
+    // header (i .admin-shell pozadina iza njega, vidi .owner-page-bg u
+    // globals.css) je poseban, viši omotač postavljen u app/admin/layout.tsx
+    // koji ovaj klik dosad uopće nije dirao, pa se stvarno mijenjao tek na
+    // sljedećoj punoj server-render navigaciji (kad admin.themePreference iz
+    // baze već bude spremljen). Postavljanjem data-theme i ovdje, header
+    // reagira ISTOG trena, bez čekanja na navigaciju.
+    const shellRoot = document.querySelector<HTMLElement>(".admin-shell");
+    if (shellRoot) shellRoot.setAttribute("data-theme", next);
     startTransition(() => {
       updateOwnerThemeAction(next).catch(() => {
         // Best-effort — izbor ostaje primijenjen lokalno i za ovaj posjet
