@@ -948,14 +948,72 @@ html.novo-lock-scroll body {
    nikad nisu prisutni na tom putu. */
 .owner-page-bg {
   background: #f2f3f9;
+  /* ŠESTI krug feedbacka: "gornji navbar ostaje bijel u tamnom modu, sve u
+     vlasnik adminu (kalendar, rezervacije...) treba istu temu kao početna".
+     Ovi --oh-* tokeni žive OVDJE (na .owner-page-bg = .admin-shell omotač,
+     iznad i headera i <main>-a) umjesto na .owner-dash (koji headeru nije
+     predak) — tako i .owner-header niže i bilo koja buduća vlasnička
+     stranica izvan .owner-dash mogu čitati istu paletu bez ponavljanja.
+     Namjerno ODVOJENO od --od-* tokena na .owner-dash (isti brojevi, ali
+     zasebne varijable) da uređivanje jednog sustava slučajno ne pomakne
+     drugi. */
+  --oh-ink: #0b0b1f;
+  --oh-ink-faint: rgba(11, 11, 31, 0.42);
+  --oh-glass: rgba(243, 244, 255, 0.72);
+  --oh-glass-chip: rgba(11, 11, 31, 0.05);
+  --oh-hairline: rgba(11, 11, 31, 0.1);
 }
 .owner-page-bg[data-theme="dark"] {
   background: #0a0a24;
+  --oh-ink: #f3f3fb;
+  --oh-ink-faint: rgba(243, 243, 251, 0.66);
+  --oh-glass: rgba(20, 20, 36, 0.72);
+  --oh-glass-chip: rgba(255, 255, 255, 0.1);
+  --oh-hairline: rgba(255, 255, 255, 0.14);
 }
 @media (prefers-color-scheme: dark) {
   .owner-page-bg:not([data-theme="light"]):not([data-theme="dark"]) {
     background: #0a0a24;
+    --oh-ink: #f3f3fb;
+    --oh-ink-faint: rgba(243, 243, 251, 0.66);
+    --oh-glass: rgba(20, 20, 36, 0.72);
+    --oh-glass-chip: rgba(255, 255, 255, 0.1);
+    --oh-hairline: rgba(255, 255, 255, 0.14);
   }
+}
+
+/* Header postaje stakleni sloj PREKO vlasničke pozadine umjesto fiksno
+   bijele trake — bez ovoga je u tamnom modu bio ostar bijeli pojas na vrhu
+   koji se sudarao s tamnom .owner-dash pozadinom ispod (isti "crta" problem
+   kao PETI krug gore, samo za header umjesto za samu kutiju). border-bottom
+   boja MORA biti eksplicitna (var(--oh-hairline)) jer bez border-color
+   utility klase Tailwind "border-b" pada natrag na currentColor, što bi
+   headeru dalo rub boje teksta umjesto suptilne linije. */
+.owner-header {
+  background: var(--oh-glass);
+  backdrop-filter: blur(20px) saturate(160%);
+  -webkit-backdrop-filter: blur(20px) saturate(160%);
+  color: var(--oh-ink);
+  border-bottom-color: var(--oh-hairline);
+  transition: background-color 0.25s ease, border-color 0.25s ease, color 0.25s ease;
+}
+/* Sticky da staklo ostane vidljivo i pri scrollu dužih vlasničkih stranica
+   (kalendar/rezervacije) — bez ovoga bi header "nestao" iza sadržaja čim
+   stranica prijeđe visinu ekrana. */
+.owner-header {
+  position: sticky;
+  top: 0;
+  z-index: 40;
+}
+.owner-header-border {
+  border-color: var(--oh-hairline);
+}
+.owner-header-faint {
+  color: var(--oh-ink-faint);
+}
+.owner-header-chip {
+  background: var(--oh-glass-chip);
+  color: var(--oh-ink-faint);
 }
 
 .owner-dash {
@@ -986,6 +1044,11 @@ html.novo-lock-scroll body {
      blokova niže. --od-after-opacity kontrolira .owner-dash::after. */
   --od-glow-navy-wash: rgba(0, 0, 195, 0);
   --od-after-opacity: 0;
+  /* Za .owner-input niže (color-scheme: var(--od-color-scheme)) — bez ovoga
+     nativna ikona kalendara na <input type="date"> ostaje crna/tamna i u
+     tamnoj temi (browser ne zna da je podloga tamna), pa "nestane" na tamnom
+     staklu — dio istog "ništa se ne vidi" feedbacka. */
+  --od-color-scheme: light;
 
   /* NAMJERNO pozadina izravno ovdje (ne kroz zaseban .owner-dash-bg
      utility) — taj utility je postojao u CSS-u ali se NIGDJE u JSX-u nije
@@ -1049,6 +1112,7 @@ html.novo-lock-scroll body {
   --od-blob-purple: rgba(150, 90, 230, 0.42);
   --od-glow-navy-wash: rgba(70, 70, 255, 0.32);
   --od-after-opacity: 0.55;
+  --od-color-scheme: dark;
 }
 
 @media (max-width: 640px) {
@@ -1078,6 +1142,7 @@ html.novo-lock-scroll body {
     --od-blob-purple: rgba(150, 90, 230, 0.42);
     --od-glow-navy-wash: rgba(70, 70, 255, 0.32);
     --od-after-opacity: 0.55;
+    --od-color-scheme: dark;
   }
 }
 
@@ -1497,6 +1562,157 @@ a.owner-glass:active,
 .owner-cal-cell-free {
   background: rgba(120, 120, 150, 0.1);
   color: var(--od-ink-soft);
+}
+
+/* ---- Puni kalendar/rezervacije/upiti/postavke (liquid glass redizajn) --
+   Dodatni gradivni blokovi za app/admin/kalendar, /rezervacije, /inquiries,
+   /settings — na izričit zahtjev korisnika ("kalendar rezervacije i sve
+   ostalo u vlasnik adminu nek poprimi istu temu kao pocetna stranica").
+   Svaka od tih stranica je DIJELJENA s punim adminom (ista ruta/komponenta,
+   samo drugačiji podaci po ulozi), pa je stil ovdje odvojen u zasebne
+   .owner-* klase koje se u JSX-u primjenjuju SAMO kad je admin.role ===
+   "owner" (uvjetni className, isti obrazac kao .owner-header ranije) —
+   puni admin i dalje vidi identičan stari bijeli/crni izgled. --------- */
+
+/* Klikabilna varijanta kalendarske ćelije (pravi <button>, ne <div> kao u
+   mini-kalendaru) — koristi se ZAJEDNO s .owner-cal-cell-free/-blocked/
+   -ical/-reservation za boju, ova klasa nosi samo interakciju/oblik. */
+.owner-cal-cell-btn {
+  aspect-ratio: 1;
+  width: 100%;
+  border-radius: 10px;
+  border: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform 0.12s ease, filter 0.15s ease;
+}
+.owner-cal-cell-btn:hover { filter: brightness(1.12); }
+.owner-cal-cell-btn:active { transform: scale(0.94); }
+
+.owner-cal-cell-ical {
+  background: rgba(140, 140, 165, 0.38);
+  color: var(--od-ink);
+}
+.owner-cal-cell-reservation {
+  background: linear-gradient(135deg, var(--od-navy), #3f3ff0);
+  color: #fff;
+  box-shadow: 0 2px 6px -2px rgba(0, 0, 195, 0.55);
+}
+
+/* Odabrana (aktivna) .owner-quicklink pilula — npr. odabrana vikendica u
+   selektoru kod kalendara/rezervacija. Solidna navy umjesto prozirnog
+   stakla da se jasno razlikuje od neodabranih opcija u OBJE teme. */
+.owner-quicklink-active,
+.owner-quicklink-active:hover {
+  background: var(--od-navy);
+  border-color: var(--od-navy);
+  color: #fff;
+  transform: none;
+}
+
+/* Standardni tekstualni/date/select input unutar .owner-dash — glass
+   površina umjesto Tailwind-ovog .admin-input (border-black/15, obična
+   bijela pozadina) koji u tamnoj temi ostaje bijel/nečitljiv. color-scheme
+   je NAMJERNO po varijabli (vidi --od-color-scheme uz --od-bg gore) da
+   nativna ikona <input type="date"> kalendara bude vidljiva u tamnoj temi. */
+.owner-input {
+  border: 1px solid var(--od-glass-border);
+  background: var(--od-glass-bg);
+  color: var(--od-ink);
+  border-radius: 10px;
+  padding: 9px 12px;
+  font-size: 14px;
+  backdrop-filter: blur(12px) saturate(150%);
+  -webkit-backdrop-filter: blur(12px) saturate(150%);
+  transition: border-color 0.15s ease;
+  color-scheme: var(--od-color-scheme, light);
+}
+.owner-input::placeholder { color: var(--od-ink-faint); }
+.owner-input:focus { outline: none; border-color: var(--od-navy); }
+
+/* Puni (solidni) primarni gumb — za glavne submit akcije (blokiraj raspon,
+   spremi postavke...). Namjerno solidna navy boja (ne staklo) da se jasno
+   razlikuje od sekundarnih .owner-quicklink gumba. */
+.owner-btn-primary {
+  border-radius: 999px;
+  background: var(--od-navy);
+  color: #fff;
+  font-weight: 600;
+  font-size: 14px;
+  padding: 10px 22px;
+  border: none;
+  cursor: pointer;
+  box-shadow: 0 10px 24px -10px rgba(0, 0, 195, 0.55);
+  transition: transform 0.15s ease, box-shadow 0.15s ease, opacity 0.15s ease;
+}
+.owner-btn-primary:hover { transform: translateY(-1px); }
+.owner-btn-primary:active { transform: translateY(0) scale(0.98); }
+.owner-btn-primary:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+
+/* Destruktivna/upozoravajuća akcija (npr. obriši upit, otkaži rezervaciju) —
+   isti crveni gradient kao .owner-cal-cell-blocked, radi Apple-ovski
+   dosljedno "crveno = destruktivno" kroz cijeli vlasnički admin. */
+.owner-btn-danger {
+  border-radius: 999px;
+  background: linear-gradient(135deg, #ff6b4a, #ff3b30);
+  color: #fff;
+  font-weight: 600;
+  font-size: 13px;
+  padding: 8px 16px;
+  border: none;
+  cursor: pointer;
+  box-shadow: 0 8px 20px -10px rgba(255, 59, 48, 0.6);
+  transition: transform 0.15s ease, opacity 0.15s ease;
+}
+.owner-btn-danger:hover { transform: translateY(-1px); }
+.owner-btn-danger:active { transform: translateY(0) scale(0.98); }
+
+/* Sitna statusna pilula (npr. "na čekanju" / "riješeno" na upitima,
+   "plaćeno" na rezervacijama) — neutralna glass verzija koje boje se onda
+   dodaju inline stilom po statusu (isto ograničenje kao ostatak sustava:
+   fiksne boje poput bg-green-100 rade OK preko bijele, ne preko tamnog
+   stakla, pa svaki status dobiva var(--od-*)-svjesnu varijantu u JSX-u). */
+.owner-pill {
+  display: inline-flex;
+  align-items: center;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: var(--od-glass-bg);
+  color: var(--od-ink-soft);
+}
+
+/* Obojane statusne pilule (rezervacije: plaćeno/kapara/čeka se/u tijeku).
+   owner-pill-warning/-neutral rade automatski u obje teme (već koriste
+   var(--od-orange)/--od-ink-soft), ali -success/-info koriste FIKSNE zelene/
+   plave nijanse pa trebaju eksplicitnu tamnu varijantu — inače je npr. tamno
+   zelen tekst na skoro-crnoj pozadini nečitljiv (isti "nema kontrasta"
+   problem kao ostatak ovog kruga feedbacka). */
+.owner-pill-success { background: rgba(16, 185, 129, 0.15); color: #059669; }
+.owner-pill-warning { background: rgba(255, 127, 0, 0.14); color: var(--od-orange); }
+.owner-pill-info { background: rgba(0, 0, 195, 0.12); color: var(--od-navy); }
+.owner-pill-neutral { background: var(--od-glass-bg); color: var(--od-ink-soft); }
+
+.owner-dash[data-theme="dark"] .owner-pill-success {
+  background: rgba(16, 185, 129, 0.22);
+  color: #34d399;
+}
+.owner-dash[data-theme="dark"] .owner-pill-info {
+  background: rgba(120, 120, 255, 0.24);
+  color: #a5a5ff;
+}
+@media (prefers-color-scheme: dark) {
+  .owner-dash:not([data-theme="light"]):not([data-theme="dark"]) .owner-pill-success {
+    background: rgba(16, 185, 129, 0.22);
+    color: #34d399;
+  }
+  .owner-dash:not([data-theme="light"]):not([data-theme="dark"]) .owner-pill-info {
+    background: rgba(120, 120, 255, 0.24);
+    color: #a5a5ff;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
