@@ -15,7 +15,6 @@ import {
   getSubscriptionStats,
   getOwnerMonthlyTrend,
   getPropertiesMonthlyBreakdown,
-  updateAdminLoginStreak,
 } from "@/lib/db/queries";
 import type { AdminUser } from "@/lib/db/schema";
 import { currentYearMonthZagreb } from "@/lib/date";
@@ -408,14 +407,10 @@ const OWNER_MONTH_NAMES_HR = [
 ];
 
 async function OwnerDashboard({ admin }: { admin: AdminUser }) {
-  const [properties, companies, inquiries, streakResult] = await Promise.all([
+  const [properties, companies, inquiries] = await Promise.all([
     listPropertiesForAdmin(admin),
     listCompaniesForAdmin(admin),
     listInquiriesForAdmin(admin),
-    // Duolingo-stil streak — samo za vlasnički dashboard, vidi
-    // lib/db/queries.ts updateAdminLoginStreak. Puni admini/superadmini ga
-    // nikad ne diraju jer ova funkcija komponenta postoji samo ovdje.
-    updateAdminLoginStreak(admin.id),
   ]);
 
   // Ime domaćina za pozdrav — izvučeno iz property.hostName prve dodijeljene
@@ -500,8 +495,7 @@ async function OwnerDashboard({ admin }: { admin: AdminUser }) {
           netEur={netEurThisMonth}
           deltaPct={deltaPct}
           isRecord={isRecord}
-          streak={streakResult.streak}
-          streakIsNew={streakResult.isNewToday}
+          initialStreak={admin.loginStreakCount}
           goalDays={goalDays}
           currentDays={daysBookedThisMonth}
           yoyDeltaDays={yoyDeltaDays}
