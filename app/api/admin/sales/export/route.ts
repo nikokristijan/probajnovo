@@ -15,14 +15,16 @@ function csvRow(fields: string[]): string {
 }
 
 /**
- * Izvoz SVIH prodaja agencije kao CSV (za "Izvezi CSV" gumb na
- * /admin/prodaja) — isti obrazac kao app/api/admin/reservations/export, samo
- * bez ?property= jer prodaja nije vezana uz vikendicu. Samo puni admini —
- * vlasnici nemaju pristup /admin/prodaja uopće.
+ * Izvoz SVIH prodaja agencije kao CSV (za "Izvezi prodaje (CSV)" gumb na
+ * /admin/financije, otkad je Prodaja spojena s Financijama) — isti obrazac
+ * kao app/api/admin/reservations/export, samo bez ?property= jer prodaja
+ * nije vezana uz vikendicu. Samo GLAVNI admin/superadmini — isto pravilo
+ * kao ostatak /admin/financije (pooštreno s prijašnjeg "bilo koji puni
+ * admin", vidi napomenu uz createSaleAction u lib/actions.ts).
  */
 export async function GET(req: Request) {
   const admin = await getCurrentAdminRecord();
-  if (!admin || admin.role === "owner") {
+  if (!admin || !admin.isSuperAdmin) {
     return NextResponse.redirect(new URL("/admin/login", req.url));
   }
 
