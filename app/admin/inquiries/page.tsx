@@ -10,6 +10,7 @@ import {
 import { markInquiryReadAction, markInquiryRepliedAction } from "@/lib/actions";
 import DeleteInquiryButton from "@/components/admin/DeleteInquiryButton";
 import QuickReplyForm from "@/components/admin/QuickReplyForm";
+import OwnerQuickReplyForm from "@/components/admin/OwnerQuickReplyForm";
 
 const SOURCE_LABEL: Record<string, string> = {
   property: "Vikendica",
@@ -54,6 +55,95 @@ export default async function AdminInquiriesPage({
 
   const unreadCount = inquiries.filter((i) => !i.read).length;
   const pageTitle = filterProperty ? `Upiti — ${filterProperty.name}` : ownerScopeLabel ? `Upiti — ${ownerScopeLabel}` : "Upiti";
+
+  // Vlasnički staklen prikaz — NAMJERNO odvojena grana (vidi OwnerMiniCalendar
+  // za obrazloženje obrasca), puni admin ispod ostaje potpuno nepromijenjen.
+  if (admin.role === "owner") {
+    return (
+      <div className="owner-dash flex flex-col gap-4" data-theme={admin.themePreference ?? "system"}>
+        {filterProperty && (
+          <Link href={`/admin/vikendice/${filterProperty.id}`} className="owner-quicklink self-start">
+            ← {filterProperty.name}
+          </Link>
+        )}
+        <div className="flex items-center justify-between gap-3 flex-wrap">
+          <h1 className="text-xl font-bold">{pageTitle}</h1>
+          <div className="flex items-center gap-2">
+            {unreadCount > 0 && (
+              <span className="owner-pill owner-pill-warning">{unreadCount} nepročitano</span>
+            )}
+            {inquiries.length > 0 && (
+              <Link href="/api/admin/inquiries/export" className="owner-quicklink">
+                Izvezi CSV
+              </Link>
+            )}
+          </div>
+        </div>
+        <p className="text-sm -mt-2" style={{ color: "var(--od-ink-soft)" }}>
+          {filterProperty
+            ? `Upiti poslani putem obrasca na stranici ${filterProperty.name}.`
+            : ownerScopeLabel
+              ? `Upiti poslani putem obrasca na stranici ${ownerScopeLabel}.`
+              : "Nemaš dodijeljenu nijednu vikendicu/firmu — javi se glavnom adminu."}
+        </p>
+
+        {inquiries.length === 0 ? (
+          <p className="text-sm" style={{ color: "var(--od-ink-soft)" }}>
+            Još nema poslanih upita. Ako je tablica tek stvorena SQL migracijom, prvi upit će se
+            pojaviti ovdje čim netko pošalje obrazac.
+          </p>
+        ) : (
+          <div className="flex flex-col gap-3">
+            {inquiries.map((i) => (
+              <div key={i.id} className="owner-glass owner-glass-grain rounded-2xl px-4 py-3.5">
+                <div className="flex items-start justify-between gap-3 flex-wrap">
+                  <div>
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="font-semibold text-sm">{i.name}</span>
+                      <span className="text-xs" style={{ color: "var(--od-ink-faint)" }}>
+                        {i.email}
+                      </span>
+                      {i.phone && (
+                        <span className="text-xs" style={{ color: "var(--od-ink-faint)" }}>
+                          · {i.phone}
+                        </span>
+                      )}
+                      {i.replied && <span className="owner-pill owner-pill-success">Odgovoreno</span>}
+                      {!i.read && !i.replied && <span className="owner-pill owner-pill-info">Novo</span>}
+                    </div>
+                    <div className="text-xs mt-0.5" style={{ color: "var(--od-ink-faint)" }}>
+                      {SOURCE_LABEL[i.source] ?? i.source} · {i.sourceName} ·{" "}
+                      {new Date(i.createdAt).toLocaleString("hr-HR")}
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2 shrink-0">
+                    {!i.read && (
+                      <form action={markInquiryReadAction.bind(null, i.id)}>
+                        <button type="submit" className="owner-quicklink">
+                          Označi pročitano
+                        </button>
+                      </form>
+                    )}
+                    {!i.replied && (
+                      <form action={markInquiryRepliedAction.bind(null, i.id)}>
+                        <button type="submit" className="owner-quicklink">
+                          Označi odgovoreno
+                        </button>
+                      </form>
+                    )}
+                  </div>
+                </div>
+                <p className="text-sm mt-3 whitespace-pre-wrap">{i.message}</p>
+                <div className="mt-3">
+                  <OwnerQuickReplyForm inquiryId={i.id} />
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    );
+  }
 
   return (
     <div>
