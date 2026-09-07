@@ -963,8 +963,23 @@ html.novo-lock-scroll body {
   --oh-glass-chip: rgba(11, 11, 31, 0.05);
   --oh-hairline: rgba(11, 11, 31, 0.1);
 }
+/* DESETI krug feedbacka ("odmah iznad Juraj Filipović, i lijevo i desno,
+   kao da je sve u okviru", samo u tamnom modu) — .owner-dash (vidi
+   pozadinu niže, "background: radial-gradient(...var(--od-glow-navy-wash)")
+   ima suptilan plavi ambient sjaj pri vrhu SVOJE kutije, ali ta kutija
+   živi unutar <main className="max-w-4xl mx-auto px-6 py-10"> — px-6/py-10
+   padding je proziran pa kroz njega proviruje .owner-page-bg pozadina ISPOD
+   (ravna, bez sjaja). Rezultat: uska ravna traka bez sjaja uz gornji, lijevi
+   i desni rub .owner-dash kutije, dok je sama kutija (odmah unutra) svjetlija
+   zbog sjaja — upravo taj kontrast ravno/sjajno izgleda kao tanak "okvir"
+   oko sadržaja. Rješenje: isti ambient sjaj (identične brojke kao
+   --od-glow-navy-wash u tamnoj temi niže) i na .owner-page-bg — proviri li
+   sad kroz padding ili ne, boja se svugdje nastavlja pa nema ruba. Dodatna
+   korist: .owner-header (glass/backdrop-filter, vidi niže) sad ima stvarnu
+   boju ispod sebe za "liquid glass" efekt umjesto ravne navy podloge. */
 .owner-page-bg[data-theme="dark"] {
-  background: #0a0a24;
+  background: radial-gradient(140% 70% at 50% -4%, rgba(70, 70, 255, 0.32), transparent 62%),
+    #0a0a24;
   --oh-ink: #f3f3fb;
   --oh-ink-faint: rgba(243, 243, 251, 0.66);
   --oh-glass: rgba(20, 20, 36, 0.72);
@@ -973,7 +988,8 @@ html.novo-lock-scroll body {
 }
 @media (prefers-color-scheme: dark) {
   .owner-page-bg:not([data-theme="light"]):not([data-theme="dark"]) {
-    background: #0a0a24;
+    background: radial-gradient(140% 70% at 50% -4%, rgba(70, 70, 255, 0.32), transparent 62%),
+      #0a0a24;
     --oh-ink: #f3f3fb;
     --oh-ink-faint: rgba(243, 243, 251, 0.66);
     --oh-glass: rgba(20, 20, 36, 0.72);
