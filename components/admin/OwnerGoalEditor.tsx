@@ -1,19 +1,28 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useEffect, useRef, useState, useTransition } from "react";
+import { createPortal } from "react-dom";
 import { useRouter } from "next/navigation";
 import { updateOwnerGoalAction } from "@/lib/actions";
 
 /**
  * Sitan glass popover za ručnu prilagodbu mjesečnog cilja dana zauzeća —
- * živi unutar OwnerHero.tsx, pored prstena napretka. `onOptimisticChange`
- * odmah pomiče prsten/traku u OwnerHero prije nego server potvrdi (bolji
- * osjećaj odziva), a stvarno spremanje ide preko updateOwnerGoalAction
- * (lib/actions.ts) — čisti klik-handler, nikad dio render puta Server
- * Komponente (isti razlog kao OwnerThemeToggle). router.refresh() nakon
- * spremanja osvježava server-rendered admin.customGoalDays za sljedeći
- * puni prikaz (npr. nakon reloada), bez čega bi optimistički prikaz i
- * stvarno spremljeno stanje mogli s vremenom razići. */
+ * gumb živi unutar OwnerHero.tsx, pored prstena napretka, ALI se sam
+ * popover renderira preko React Portala u document.body (ne kao normalno
+ * ugniježđeno dijete unutar .owner-hero).
+ *
+ * Razlog: .owner-hero ima `overflow: hidden` + `isolation: isolate` (da
+ * konfeti/pozadinske mrlje ostanu unutar zaobljenih kutova kartice), a
+ * gumb za uređivanje cilja sjedi blizu DNA kartice. Popover ugniježđen
+ * unutar te kartice ili se reže na rubu (`overflow: hidden`) ili — u
+ * kombinaciji s `backdrop-filter` na samom popoveru (owner-glass-strong) —
+ * na Safariju zna vizualno "glitchati" (poznati WebKit rub-slučaj kad se
+ * overflow:hidden+isolation kombinira s backdrop-filter na potomku), točno
+ * ono što je vlasnik prijavio ("zglitcha i ne moze se urediti cilj").
+ * Portal u body potpuno izbjegava oba uzroka — popover više nije potomak
+ * .owner-hero-a u render stablu, pozicioniran je `fixed` preko koordinata
+ * gumba (getBoundingClientRect), pa ne može biti odrezan niti pokupiti taj
+ * WebKit glitch. */
 export default function OwnerGoalEditor({
   autoGoalDays,
   initialCustomGoalDays,
@@ -24,9 +33,53 @@ export default function OwnerGoalEditor({
   onOptimisticChange: (goalDays: number) => void;
 }) {
   const [open, setOpen] = useState(false);
+  const [coords, setCoords] = useState<{ top: number; left: number } | null>(null);
   const [value, setValue] = useState(String(initialCustomGoalDays ?? autoGoalDays));
   const [pending, startTransition] = useTransition();
   const router = useRouter();
+  const buttonRef = useRef<HTMLButtonElement>(null);
+  const popoverRef = useRef<HTMLDivElement>(null);
+
+  const POPOVER_WIDTH = 200;
+
+  function openPopover() {
+    const rect = buttonRef.current?.getBoundingClientRect();
+    if (!rect) return;
+    // Poravnato s desnim rubom gumba (isti vizualni rezultat kao prijašnji
+    // `right: 0` unutar relative wrappera), ali klampano unutar viewporta
+    // tako da ne izleti s lijeve/desne strane na uskim ekranima.
+    const left = Math.min(
+      window.innerWidth - POPOVER_WIDTH - 8,
+      Math.max(8, rect.right - POPOVER_WIDTH)
+    );
+    setCoords({ top: rect.bottom + 8, left });
+    setOpen(true);
+  }
+
+  // Zatvori na klik izvan popovera/gumba, Escape, ili scroll (jednostavnije
+  // i pouzdanije nego pratiti poziciju gumba tijekom scrolla).
+  useEffect(() => {
+    if (!open) return;
+    function handlePointerDown(e: PointerEvent) {
+      const target = e.target as Node;
+      if (popoverRef.current?.contains(target) || buttonRef.current?.contains(target)) return;
+      setOpen(false);
+    }
+    function handleKeyDown(e: KeyboardEvent) {
+      if (e.key === "Escape") setOpen(false);
+    }
+    function handleScroll() {
+      setOpen(false);
+    }
+    document.addEventListener("pointerdown", handlePointerDown);
+    document.addEventListener("keydown", handleKeyDown);
+    window.addEventListener("scroll", handleScroll, { capture: true, passive: true });
+    return () => {
+      document.removeEventListener("pointerdown", handlePointerDown);
+      document.removeEventListener("keydown", handleKeyDown);
+      window.removeEventListener("scroll", handleScroll, { capture: true });
+    };
+  }, [open]);
 
   function save() {
     const n = Math.round(Number(value));
@@ -53,54 +106,67 @@ export default function OwnerGoalEditor({
   }
 
   return (
-    <div className="relative">
+    <>
       <button
+        ref={buttonRef}
         type="button"
-        onClick={() => setOpen((v) => !v)}
+        onClick={() => (open ? setOpen(false) : openPopover())}
         className="owner-goal-edit-btn"
         aria-label="Uredi cilj"
         title="Uredi cilj dana zauzeća"
       >
         ✎
       </button>
-      {open && (
-        <div
-          className="owner-glass owner-glass-strong absolute right-0 top-full mt-2 z-20 rounded-xl p-3 flex flex-col gap-2"
-          style={{ width: 200, color: "var(--od-ink)" }}
-        >
-          <label className="text-xs font-semibold" style={{ color: "var(--od-ink-soft)" }}>
-            Cilj dana ovaj mjesec
-          </label>
-          <input
-            type="number"
-            min={1}
-            max={31}
-            value={value}
-            onChange={(e) => setValue(e.target.value)}
-            className="rounded-lg border px-2.5 py-1.5 text-sm"
-            style={{ borderColor: "var(--od-hairline)", background: "transparent", color: "var(--od-ink)" }}
-          />
-          <div className="flex gap-2">
-            <button
-              type="button"
-              onClick={save}
-              disabled={pending}
-              className="flex-1 rounded-lg bg-[#ff7f00] text-white text-xs font-semibold py-1.5 disabled:opacity-60"
-            >
-              Spremi
-            </button>
-            <button
-              type="button"
-              onClick={resetToAuto}
-              disabled={pending}
-              className="flex-1 rounded-lg text-xs font-semibold py-1.5 border"
-              style={{ borderColor: "var(--od-hairline)", color: "var(--od-ink-soft)" }}
-            >
-              Auto
-            </button>
-          </div>
-        </div>
-      )}
-    </div>
+      {open &&
+        coords &&
+        createPortal(
+          <div
+            ref={popoverRef}
+            className="owner-glass owner-glass-strong rounded-xl p-3 flex flex-col gap-2"
+            style={{
+              position: "fixed",
+              top: coords.top,
+              left: coords.left,
+              width: POPOVER_WIDTH,
+              zIndex: 999,
+              color: "var(--od-ink)",
+            }}
+          >
+            <label className="text-xs font-semibold" style={{ color: "var(--od-ink-soft)" }}>
+              Cilj dana ovaj mjesec
+            </label>
+            <input
+              type="number"
+              min={1}
+              max={31}
+              value={value}
+              onChange={(e) => setValue(e.target.value)}
+              autoFocus
+              className="rounded-lg border px-2.5 py-1.5 text-sm"
+              style={{ borderColor: "var(--od-hairline)", background: "transparent", color: "var(--od-ink)" }}
+            />
+            <div className="flex gap-2">
+              <button
+                type="button"
+                onClick={save}
+                disabled={pending}
+                className="flex-1 rounded-lg bg-[#ff7f00] text-white text-xs font-semibold py-1.5 disabled:opacity-60"
+              >
+                Spremi
+              </button>
+              <button
+                type="button"
+                onClick={resetToAuto}
+                disabled={pending}
+                className="flex-1 rounded-lg text-xs font-semibold py-1.5 border"
+                style={{ borderColor: "var(--od-hairline)", color: "var(--od-ink-soft)" }}
+              >
+                Auto
+              </button>
+            </div>
+          </div>,
+          document.body
+        )}
+    </>
   );
 }

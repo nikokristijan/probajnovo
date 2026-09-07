@@ -28,18 +28,26 @@ type Badge = {
 export function computeOwnerBadges(stats: OwnerBadgeStats): Badge[] {
   const { streak, isRecord, currentDays, goalDays, deltaPct, yoyDeltaDays } = stats;
 
+  // NAMJERNO "Niz od X dana" (naziv razine/milestona), NIKAD samo "X dana
+  // zaredom" — hero kartica odmah iznad već prikazuje ŽIVI trenutni niz
+  // ("🔥 1 dan zaredom"), pa bedž s istom formulacijom ali drugim brojem
+  // (npr. zaključan "3 dana zaredom" dok hero piše "1 dan") djeluje kao
+  // proturječje, ne kao cilj kojem se teži (feedback: "bedgevi da imaju
+  // smisla"). "Niz od X dana" jasno čita se kao naziv postignuća/razine.
   const streakTier =
-    streak >= 30 ? { n: 30, label: "30 dana zaredom" } :
-    streak >= 7 ? { n: 7, label: "7 dana zaredom" } :
-    streak >= 3 ? { n: 3, label: "3 dana zaredom" } :
-    { n: 3, label: "3 dana zaredom" };
+    streak >= 30 ? { n: 30, label: "Niz od 30 dana" } :
+    streak >= 7 ? { n: 7, label: "Niz od 7 dana" } :
+    { n: 3, label: "Niz od 3 dana" };
 
   return [
     {
       id: "streak",
       icon: "🔥",
       label: streakTier.label,
-      hint: streak >= streakTier.n ? "Otvaraj dashboard svaki dan da zadržiš niz." : `Otvori dashboard ${streakTier.n} dana zaredom.`,
+      hint:
+        streak >= streakTier.n
+          ? "Otvaraj dashboard svaki dan da zadržiš niz."
+          : `Trenutni niz: ${streak} ${streak === 1 ? "dan" : "dana"}. Još ${streakTier.n - streak} do ove razine.`,
       unlocked: streak >= streakTier.n,
     },
     {
