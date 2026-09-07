@@ -73,6 +73,8 @@ import {
   deleteSubscription,
   extendSubscription,
   updateAdminLoginStreak,
+  updateOwnerTheme,
+  updateOwnerCustomGoal,
 } from "@/lib/db/queries";
 import { sendInquiryNotification, sendGuestConfirmation, sendReservationConfirmation, sendInquiryReply } from "@/lib/email";
 import { resolveCoordinates, geoMissWarning } from "@/lib/geocode";
@@ -2024,4 +2026,28 @@ export async function refreshOwnerLoginStreakAction(): Promise<{
 }> {
   const admin = await requireAdminOrOwner();
   return updateAdminLoginStreak(admin.id);
+}
+
+/** Sprema izbor teme (svijetla/tamna/prati sustav) za vlasnički dashboard
+ * (components/admin/OwnerThemeToggle.tsx) — vezano uz admin_users retka pa
+ * se prati preko uređaja/preglednika, ne samo localStorage. Čisti "use
+ * client" event handler (klik na gumb), nikad se ne poziva iz render puta
+ * Server Komponente — isti razlog kao refreshOwnerLoginStreakAction gore. */
+export async function updateOwnerThemeAction(
+  theme: "light" | "dark" | "system"
+): Promise<void> {
+  const admin = await requireAdminOrOwner();
+  await updateOwnerTheme(admin.id, theme);
+  revalidatePath("/admin");
+}
+
+/** Sprema vlasnikov ručni cilj dana zauzeća (components/admin/
+ * OwnerGoalEditor.tsx) — `days` null briše ručni cilj (vraća se na auto-
+ * izračun). Ograničeno na razuman raspon (1-31) da slučajan unos ne
+ * pokvari prsten napretka na hero kartici. */
+export async function updateOwnerGoalAction(days: number | null): Promise<void> {
+  const admin = await requireAdminOrOwner();
+  const clamped = days === null ? null : Math.min(31, Math.max(1, Math.round(days)));
+  await updateOwnerCustomGoal(admin.id, clamped);
+  revalidatePath("/admin");
 }
