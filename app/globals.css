@@ -950,6 +950,12 @@ html.novo-lock-scroll body {
   --od-blob-navy: rgba(0, 0, 195, 0.5);
   --od-blob-orange: rgba(255, 127, 0, 0.42);
   --od-blob-purple: rgba(106, 33, 176, 0.4);
+  /* Suptilan ambient navy "wash" preko CIJELE .owner-dash pozadine (vidi
+     .owner-dash background niže) — u svijetloj temi jedva primjetan
+     (pozadina je već svijetla lavanda), u tamnoj temi radi glavni posao:
+     drži cijelu stranicu u istoj navy obitelji boja kao hero, umjesto
+     da izvan dosega ::before mrlje padne natrag na golu ravnu boju. */
+  --od-glow-navy-wash: rgba(0, 0, 195, 0.08);
 
   /* NAMJERNO pozadina izravno ovdje (ne kroz zaseban .owner-dash-bg
      utility) — taj utility je postojao u CSS-u ali se NIGDJE u JSX-u nije
@@ -959,8 +965,20 @@ html.novo-lock-scroll body {
      dashboardom), zato je tamna tema djelovala mutno/nedovršeno bez obzira
      na kontrast samih kartica (feedback: "tamna tema nema dovoljno
      kontrasta i nije citljiva i uredna"). min-height osigurava da tamna
-     pozadina ispuni cijeli viewport i kad je sadržaj kraći od ekrana. */
-  background: var(--od-bg);
+     pozadina ispuni cijeli viewport i kad je sadržaj kraći od ekrana.
+
+     DRUGI KRUG feedbacka ("sad je jos gore"): flat var(--od-bg) (skoro
+     crna u tamnoj temi) je RIJEŠIO nevidljivost pozadine, ali je stvorio
+     novi problem — cijela stranica ispod bijelog headera postane jedna
+     ravna crna ploha, bez ikakve veze s bogatim navy/narančasto/
+     ljubičastim izgledom hero kartice (izabrani smjer: "gradijent kao
+     hero, ne ravno crno"). Rješenje: suptilan ambient radial-gradient
+     izravno na .owner-dash (ispod ::before mrlja, iznad flat --od-bg) koji
+     nosi navy ton po cijeloj širini/visini — tako i dijelovi stranice
+     izvan dosega ::before mrlje (dugi scroll) ostanu vizualno povezani s
+     hero bojama umjesto da padnu natrag na golu pozadinu. */
+  background: radial-gradient(140% 70% at 50% -12%, var(--od-glow-navy-wash), transparent 62%),
+    var(--od-bg);
   min-height: 100vh;
   transition: background-color 0.25s ease;
   position: relative;
@@ -977,7 +995,15 @@ html.novo-lock-scroll body {
    ink-faint podignuti — tamne pozadine trebaju VIŠI opacitet teksta za isti
    kontrast nego svijetle. */
 .owner-dash[data-theme="dark"] {
-  --od-bg: #08080f;
+  /* NAMJERNO tamna NAVY (#0a0a24), ne gotovo čista crna (staro #08080f) —
+     druga runda feedbacka ("sad je jos gore") tražila je da pozadina
+     izgleda kao produžetak hero gradijenta, ne ravna crna ploha. Ravno
+     crno + prozirni obojeni sjajevi preko njega daju "mutan/prljav" dojam
+     (radial-gradient prema "transparent" otkriva crnu, ne boju), dok
+     navy podloga s istom hue obitelji kao --od-navy čini da se ambient
+     sjaj (vidi --od-glow-navy-wash) i ::before/::after mrlje prirodno
+     stapaju s pozadinom umjesto da sjede na njoj kao mrlja. */
+  --od-bg: #0a0a24;
   --od-ink: #f3f3fb;
   --od-ink-soft: rgba(243, 243, 251, 0.84);
   --od-ink-faint: rgba(243, 243, 251, 0.66);
@@ -991,11 +1017,15 @@ html.novo-lock-scroll body {
   --od-blob-navy: rgba(74, 74, 255, 0.55);
   --od-blob-orange: rgba(255, 142, 24, 0.4);
   --od-blob-purple: rgba(150, 90, 230, 0.42);
+  --od-glow-navy-wash: rgba(70, 70, 255, 0.32);
 }
 
 @media (prefers-color-scheme: dark) {
   .owner-dash:not([data-theme="light"]):not([data-theme="dark"]) {
-    --od-bg: #08080f;
+    /* Isti navy (ne crna) razlog kao .owner-dash[data-theme="dark"] gore —
+       ova grana pokriva "sustav" temu kad korisnik nije ništa eksplicitno
+       izabrao, pa mora ostati usklađena s eksplicitnim tamnim blokom. */
+    --od-bg: #0a0a24;
     --od-ink: #f3f3fb;
     --od-ink-soft: rgba(243, 243, 251, 0.84);
     --od-ink-faint: rgba(243, 243, 251, 0.66);
@@ -1009,6 +1039,7 @@ html.novo-lock-scroll body {
     --od-blob-navy: rgba(74, 74, 255, 0.55);
     --od-blob-orange: rgba(255, 142, 24, 0.4);
     --od-blob-purple: rgba(150, 90, 230, 0.42);
+    --od-glow-navy-wash: rgba(70, 70, 255, 0.32);
   }
 }
 
@@ -1040,6 +1071,36 @@ html.novo-lock-scroll body {
   .owner-dash::before {
     height: 980px;
     opacity: 0.55;
+  }
+}
+
+/* Zrcalna mrlja pri DNU spremnika (::after, ne fiksirano za viewport —
+   sjedi na dnu STVARNOG sadržaja, pa se pomiče s duljinom stranice). Bez
+   ovoga stranice duže od ~1180px (hero + bedgevi + kartice + grafovi +
+   kalendar) padaju natrag na golu pozadinu čim se iscrpi ::before mrlja
+   pri vrhu — u tamnoj temi to izgleda kao nagli prijelaz natrag u ravnu
+   crnu plohu usred stranice (feedback: "gradijent kao hero, ne ravno
+   crno" treba vrijediti cijelom dužinom stranice, ne samo prvom ekranu). */
+.owner-dash::after {
+  content: "";
+  position: absolute;
+  bottom: -60px;
+  left: -5%;
+  right: -5%;
+  height: 760px;
+  z-index: -1;
+  pointer-events: none;
+  background: radial-gradient(520px 420px at 88% 100%, var(--od-blob-navy), transparent 64%),
+    radial-gradient(480px 400px at 6% 92%, var(--od-blob-orange), transparent 62%),
+    radial-gradient(560px 460px at 50% 60%, var(--od-blob-purple), transparent 68%);
+  filter: blur(80px) saturate(150%);
+  opacity: 0.55;
+}
+
+@media (max-width: 640px) {
+  .owner-dash::after {
+    height: 620px;
+    opacity: 0.45;
   }
 }
 
