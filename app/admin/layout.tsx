@@ -50,8 +50,19 @@ export default async function AdminLayout({ children }: { children: React.ReactN
     ownerPageHref = slug ? `/${slug}` : null;
   }
 
+  // "owner-page-bg" + data-theme dolje SAMO za role="owner" (vidi opsežan
+  // komentar uz .owner-page-bg u globals.css) — čini da .admin-shell-ova
+  // pozadina odgovara vlasničkoj tamnoj/svijetloj temi umjesto fiksne sive,
+  // da nestane oštar pravokutni rub oko .owner-dash kutije. Za punog
+  // (super)admina ova dva propa su undefined, pa je .admin-shell izgled
+  // identičan kao i prije — ništa se ne mijenja na tom putu.
+  const isOwner = admin?.role === "owner";
+
   return (
-    <div className="admin-shell">
+    <div
+      className={isOwner ? "admin-shell owner-page-bg" : "admin-shell"}
+      data-theme={isOwner ? (admin.themePreference ?? "system") : undefined}
+    >
       <PwaRegister />
       <header className="flex items-center justify-between px-6 py-4 border-b border-black/10 bg-white flex-wrap gap-3">
         <span className="font-bold tracking-tight">
