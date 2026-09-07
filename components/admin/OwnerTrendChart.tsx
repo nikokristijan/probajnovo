@@ -67,10 +67,12 @@ export default function OwnerTrendChart({
   const total = data.reduce((a, b) => a + b, 0);
 
   return (
-    <div className="border border-black/10 rounded-xl p-5 bg-white">
+    <div className="owner-glass owner-glass-grain rounded-2xl p-5">
       <div className="flex items-center justify-between mb-4">
-        <span className="text-xs font-semibold uppercase tracking-wide text-black/40">{title}</span>
-        <span className="text-xs text-black/40">
+        <span className="text-xs font-semibold uppercase tracking-wide" style={{ color: "var(--od-ink-faint)" }}>
+          {title}
+        </span>
+        <span className="text-xs" style={{ color: "var(--od-ink-faint)" }}>
           Ukupno {total}
           {suffix}
         </span>
@@ -88,7 +90,7 @@ export default function OwnerTrendChart({
           </linearGradient>
         </defs>
 
-        <line x1={0} y1={baseline} x2={width} y2={baseline} stroke="rgba(0,0,0,0.08)" strokeWidth={1} />
+        <line x1={0} y1={baseline} x2={width} y2={baseline} stroke="var(--od-hairline)" strokeWidth={1} />
 
         {areaPath && <path d={areaPath} fill={`url(#${gradientId})`} className="admin-chart-area" />}
         {linePath && (
@@ -114,13 +116,13 @@ export default function OwnerTrendChart({
               cx={p.x}
               cy={p.y}
               r={3.5}
-              fill="#fff"
+              fill="var(--od-glass-bg-strong)"
               stroke={color}
               strokeWidth={2}
               className="admin-chart-dot"
               style={{ animationDelay: `${0.9 + i * 0.04}s` }}
             />
-            <text x={p.x} y={baseline + 18} textAnchor="middle" fontSize="10" fill="rgba(0,0,0,0.45)">
+            <text x={p.x} y={baseline + 18} textAnchor="middle" fontSize="10" fill="var(--od-ink-faint)">
               {labels[i]}
             </text>
           </g>

@@ -2,18 +2,24 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { refreshOwnerLoginStreakAction } from "@/lib/actions";
+import OwnerGoalEditor from "@/components/admin/OwnerGoalEditor";
 
 /**
  * "Naslovna" kartica vlasničkog dashboarda (app/admin/page.tsx OwnerDashboard)
  * — inspirirano Netflixovom velikom "hero" karticom (jedna dramatična brojka
  * na vrhu), Duolingovim streakom i ciljem dana (loss aversion + napredak),
- * i Instagram/TikTok "story ring" prstenom oko ključne brojke. Namjerno
- * ostaje u svijetlom NOVO brendu (navy #0000c3 → orange #ff7f00 gradient),
- * ne posebna tamna tema — vidi globals.css .owner-hero.
+ * i Instagram/TikTok "story ring" prstenom oko ključne brojke. "Liquid
+ * glass" izgled preko NOVO gradient podloge (navy → ljubičasta → orange,
+ * vidi globals.css .owner-hero) — staklo je SLOJ preko postojećeg branda,
+ * ne zamjena za njega.
+ *
+ * Mobilno: label+broj i streak bedž se prisilno slažu okomito ispod ~420px
+ * (.owner-hero-top u globals.css) umjesto neugodnog omatanja jedno pored
+ * drugog na uskim ekranima.
  *
  * Animacije (count-up, konfeti, crtanje prstena) su čisti CSS/JS bez
- * biblioteka, isti duh kao admin-chart-* — zato "use client" (treba
- * useEffect za requestAnimationFrame count-up).
+ * biblioteka — zato "use client" (treba useEffect za requestAnimationFrame
+ * count-up).
  *
  * Streak "bump" NAMJERNO nije dio server-rendera (vidi app/admin/page.tsx
  * OwnerDashboard) — poziva se ovdje, u useEffectu nakon mounta, preko
@@ -25,14 +31,18 @@ import { refreshOwnerLoginStreakAction } from "@/lib/actions";
  * bez pisanja) pa je server-render uvijek deterministički; stvarni bump se
  * potvrđuje tek ovdje, na klijentu, kad je stranica već hidrirana — ako se
  * broj promijeni, badge/prsten se vidljivo "diže" (dodatni addictive efekt,
- * slično Duolingovoj animaciji streaka). */
+ * slično Duolingovoj animaciji streaka). Isti princip vrijedi za cilj dana:
+ * `autoGoalDays`/`initialCustomGoalDays` su čisto čitanje, a stvarna
+ * promjena ide preko OwnerGoalEditor → server akcija, nikad ovdje u render
+ * putu. */
 export default function OwnerHero({
   monthLabel,
   netEur,
   deltaPct,
   isRecord,
   initialStreak,
-  goalDays,
+  autoGoalDays,
+  initialCustomGoalDays,
   currentDays,
   yoyDeltaDays,
 }: {
@@ -44,7 +54,10 @@ export default function OwnerHero({
   isRecord: boolean;
   /** Streak PRIJE današnjeg bumpa (admin.loginStreakCount) — samo čitanje, vidi gore. */
   initialStreak: number;
-  goalDays: number;
+  /** Auto-izračunati cilj (70% dana u mjesecu) — koristi se kad vlasnik nema ručni cilj. */
+  autoGoalDays: number;
+  /** Vlasnikov ručni cilj (admin.customGoalDays), null = koristi autoGoalDays. */
+  initialCustomGoalDays: number | null;
   currentDays: number;
   /** Razlika dana zauzeća vs isti mjesec prošle godine, null ako nema podataka. */
   yoyDeltaDays: number | null;
@@ -53,6 +66,7 @@ export default function OwnerHero({
   const [displayDays, setDisplayDays] = useState(0);
   const [streak, setStreak] = useState(initialStreak);
   const [streakIsNew, setStreakIsNew] = useState(false);
+  const [goalDays, setGoalDays] = useState(initialCustomGoalDays ?? autoGoalDays);
 
   useEffect(() => {
     let raf = 0;
@@ -106,7 +120,7 @@ export default function OwnerHero({
 
   return (
     <div
-      className="owner-hero"
+      className="owner-hero owner-glass-grain"
       style={{ ["--owner-ring-offset" as string]: ringOffset }}
     >
       {showConfetti &&
@@ -118,12 +132,12 @@ export default function OwnerHero({
           />
         ))}
 
-      <div className="flex items-start justify-between gap-4 flex-wrap">
+      <div className="owner-hero-top">
         <div>
           <span className="text-xs font-semibold uppercase tracking-wide text-white/70">
             Neto zarada — {monthLabel}
           </span>
-          <div className="owner-hero-value text-4xl sm:text-5xl font-bold tabular-nums mt-1">
+          <div className="owner-hero-value font-bold tabular-nums mt-1">
             {displayNet} €
           </div>
           {deltaPct !== null && (
@@ -141,7 +155,7 @@ export default function OwnerHero({
         </div>
 
         {streak > 0 && (
-          <span className={"owner-streak-badge" + (streakIsNew ? "" : " owner-streak-badge-light")}>
+          <span className={"owner-streak-badge" + (streakIsNew ? " owner-streak-badge-new" : "")}>
             🔥 {streak} {streak === 1 ? "dan zaredom" : "dana zaredom"}
           </span>
         )}
@@ -175,14 +189,21 @@ export default function OwnerHero({
         <div className="flex-1 min-w-[140px]">
           <div className="flex items-center justify-between text-xs text-white/80 mb-1">
             <span>Cilj dana zauzeća ovaj mjesec</span>
-            <span className="tabular-nums">
-              {currentDays}/{goalDays}
-            </span>
+            <div className="flex items-center gap-2">
+              <span className="tabular-nums">
+                {currentDays}/{goalDays}
+              </span>
+              <OwnerGoalEditor
+                autoGoalDays={autoGoalDays}
+                initialCustomGoalDays={initialCustomGoalDays}
+                onOptimisticChange={setGoalDays}
+              />
+            </div>
           </div>
           <div className="owner-goal-track">
             <div
               className="owner-goal-fill"
-              style={{ width: `${Math.round(ringProgress * 100)}%`, background: "rgba(255,255,255,0.85)" }}
+              style={{ width: `${Math.round(ringProgress * 100)}%` }}
             />
           </div>
         </div>

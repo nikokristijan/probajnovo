@@ -28,7 +28,7 @@ export default function OwnerPropertyCarousel({
 
   return (
     <section className="flex flex-col gap-3">
-      <span className="text-xs font-semibold uppercase tracking-wide text-black/40">
+      <span className="text-xs font-semibold uppercase tracking-wide" style={{ color: "var(--od-ink-faint)" }}>
         Tvoje vikendice — {monthLabel}
       </span>
       <div className="owner-carousel">
@@ -39,17 +39,24 @@ export default function OwnerPropertyCarousel({
             <Link
               key={p.id}
               href={`/admin/rezervacije?property=${p.id}`}
-              className="w-[220px] rounded-xl overflow-hidden border border-black/10 bg-white hover:border-black/25 transition-colors"
+              className="owner-glass owner-glass-interactive w-[220px] rounded-2xl overflow-hidden"
             >
               <div
-                className="h-28 w-full bg-black/5 bg-cover bg-center"
-                style={cover ? { backgroundImage: `url(${cover})` } : undefined}
+                className="h-28 w-full bg-cover bg-center"
+                style={{
+                  backgroundColor: "rgba(120,120,150,0.12)",
+                  ...(cover ? { backgroundImage: `url(${cover})` } : {}),
+                }}
               />
               <div className="p-3 flex flex-col gap-1.5">
-                <span className="text-sm font-semibold truncate">{p.name}</span>
-                <div className="flex items-center justify-between text-xs text-black/50">
+                <span className="text-sm font-semibold truncate" style={{ color: "var(--od-ink)" }}>
+                  {p.name}
+                </span>
+                <div className="flex items-center justify-between text-xs" style={{ color: "var(--od-ink-faint)" }}>
                   <span>{stats.daysBooked} dana zauzeto</span>
-                  <span className="font-semibold text-black/70 tabular-nums">{stats.netEur} €</span>
+                  <span className="font-semibold tabular-nums" style={{ color: "var(--od-ink-soft)" }}>
+                    {stats.netEur} €
+                  </span>
                 </div>
               </div>
             </Link>
