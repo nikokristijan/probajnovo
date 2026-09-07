@@ -1117,28 +1117,25 @@ html:has(.owner-page-bg)::-webkit-scrollbar {
      staklu — dio istog "ništa se ne vidi" feedbacka. */
   --od-color-scheme: light;
 
-  /* NAMJERNO pozadina izravno ovdje (ne kroz zaseban .owner-dash-bg
-     utility) — taj utility je postojao u CSS-u ali se NIGDJE u JSX-u nije
-     stvarno primjenjivao, pa je --od-bg (npr. gotovo crna #08080f u
-     tamnoj temi) bio potpuno mrtav token: stranica je ispod kartica i
-     dalje pokazivala svijetlu .admin-shell sivu (dijeljenu sa superadmin
-     dashboardom), zato je tamna tema djelovala mutno/nedovršeno bez obzira
-     na kontrast samih kartica (feedback: "tamna tema nema dovoljno
-     kontrasta i nije citljiva i uredna"). min-height osigurava da tamna
-     pozadina ispuni cijeli viewport i kad je sadržaj kraći od ekrana.
-
-     DRUGI KRUG feedbacka ("sad je jos gore"): flat var(--od-bg) (skoro
-     crna u tamnoj temi) je RIJEŠIO nevidljivost pozadine, ali je stvorio
-     novi problem — cijela stranica ispod bijelog headera postane jedna
-     ravna crna ploha, bez ikakve veze s bogatim navy/narančasto/
-     ljubičastim izgledom hero kartice (izabrani smjer: "gradijent kao
-     hero, ne ravno crno"). Rješenje: suptilan ambient radial-gradient
-     izravno na .owner-dash (ispod ::before mrlja, iznad flat --od-bg) koji
-     nosi navy ton po cijeloj širini/visini — tako i dijelovi stranice
-     izvan dosega ::before mrlje (dugi scroll) ostanu vizualno povezani s
-     hero bojama umjesto da padnu natrag na golu pozadinu. */
-  background: radial-gradient(140% 70% at 50% -12%, var(--od-glow-navy-wash), transparent 62%),
-    var(--od-bg);
+  /* JEDANAESTI krug feedbacka ("odmah iznad Juraj Filipović, lijevo i
+     desno, kao da je sve u okviru" — DEVETI/DESETI krug su pokušali
+     riješiti dodavanjem ISTOG sjaja na .owner-page-bg, ali problem je
+     ostao: owner-dash je i dalje imao SVOJU vlastitu "background:" (ispod)
+     koja je NEPROZIRNA — sjedi PREKO .owner-page-bg-a kao vlastiti sloj s
+     TVRDIM rubom točno na granici owner-dash kutije (max-w-4xl mx-auto
+     px-6 py-10 u <main> znači owner-dash je uži od cijele stranice), pa
+     ma koliko dobro par gradijenata međusobno nalikovao, i dalje su dva
+     odvojena sloja s vidljivim šavom na spoju. Prije je ovaj background
+     ovdje bio jedini izvor boje (owner-page-bg tada još nije ni postojao —
+     vidi DRUGI/PETI/ŠESTI krug povijest), ali otkad .owner-page-bg (isti
+     --od-bg brojevi + isti ambient sjaj, vidi taj razred) sjedi ISPOD kao
+     zajednički predak SVAKE vlasničke stranice, owner-dash više ne treba
+     vlastitu neprozirnu podlogu — samo joj smeta. Rješenje: owner-dash
+     ostaje PROZIRAN (nema "background" uopće), pa .owner-page-bg-ova boja/
+     sjaj proviruje JEDNAKO kroz cijelu stranicu, unutar i izvan owner-dash
+     kutije — nema više dva sloja, pa nema ni šava. min-height ostaje (drži
+     kutiju punom visinom ekrana i kad je sadržaj kraći), samo bez
+     background svojstva. */
   min-height: 100vh;
   transition: background-color 0.25s ease;
   position: relative;
