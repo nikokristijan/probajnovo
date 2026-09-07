@@ -12,6 +12,7 @@ import {
   listInquiriesForAdmin,
   listBlockedDates,
   getMonthlyEarnings,
+  getSubscriptionStats,
 } from "@/lib/db/queries";
 import type { AdminUser } from "@/lib/db/schema";
 import { currentYearMonthZagreb } from "@/lib/date";
@@ -26,12 +27,16 @@ export default async function AdminDashboard() {
   if (!admin) redirect("/admin/login");
   if (admin.role === "owner") return <OwnerDashboard admin={admin} />;
 
-  const [properties, companies, studies, products, unreadInquiries] = await Promise.all([
+  const [properties, companies, studies, products, unreadInquiries, subscriptionStats] = await Promise.all([
     listProperties(),
     listCompanies(),
     listStudies(),
     listProducts(),
     countUnreadInquiries(),
+    // Financije brojke su vidljive samo glavnom adminu (isti gate kao
+    // /admin/financije) — "obični" puni admini ne trebaju vidjeti NOVO-ovu
+    // vlastitu naplatu klijentima na naslovnici.
+    admin.isSuperAdmin ? getSubscriptionStats() : Promise.resolve(null),
   ]);
   const publishedCount = properties.filter((p) => p.published).length;
   const inStudiesCount = properties.filter((p) => p.showInStudies).length;
@@ -55,6 +60,18 @@ export default async function AdminDashboard() {
             {unreadInquiries} {unreadInquiries === 1 ? "novi upit čeka" : "novih upita čeka"}
           </span>
           <span className="text-sm text-[#ff7f00] font-semibold">Pogledaj →</span>
+        </Link>
+      )}
+
+      {subscriptionStats && subscriptionStats.expiringSoonCount > 0 && (
+        <Link
+          href="/admin/financije"
+          className="flex items-center justify-between border border-red-300 bg-red-50 rounded-xl px-4 py-3 hover:border-red-400"
+        >
+          <span className="text-sm font-semibold">
+            {subscriptionStats.expiringSoonCount} pretplata ističe uskoro
+          </span>
+          <span className="text-sm text-red-600 font-semibold">Financije →</span>
         </Link>
       )}
 
@@ -83,6 +100,24 @@ export default async function AdminDashboard() {
         </div>
       </section>
 
+      {subscriptionStats && (
+        <section>
+          <div className="flex items-center justify-between mb-3">
+            <h2 className="text-xs font-semibold uppercase tracking-wide text-black/40">
+              NOVO pretplate klijenata
+            </h2>
+            <Link href="/admin/financije" className="text-xs font-semibold text-[#ff7f00]">
+              Financije →
+            </Link>
+          </div>
+          <div className="admin-animate-grid grid grid-cols-2 sm:grid-cols-3 gap-3">
+            <StatCard label="MRR (mjesečno)" value={subscriptionStats.mrrEur} suffix=" €" />
+            <StatCard label="Aktivne pretplate" value={subscriptionStats.activeCount} />
+            <StatCard label="Na probnom periodu" value={subscriptionStats.trialCount} />
+          </div>
+        </section>
+      )}
+
       <section>
         <h2 className="text-xs font-semibold uppercase tracking-wide text-black/40 mb-3">
           Brze radnje
@@ -109,6 +144,11 @@ export default async function AdminDashboard() {
           <Link href="/admin/prodaja" className="admin-quicklink">
             Prodaja
           </Link>
+          {admin.isSuperAdmin && (
+            <Link href="/admin/financije" className="admin-quicklink">
+              Financije
+            </Link>
+          )}
           <Link href="/admin/inquiries" className="admin-quicklink">
             Svi upiti
           </Link>
