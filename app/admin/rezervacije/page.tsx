@@ -10,12 +10,109 @@ import {
   getExpenseCategoryBreakdown,
   getYearlyEarningsByMonth,
 } from "@/lib/db/queries";
+import { deleteExpenseAction } from "@/lib/actions";
 import ReservationForm from "@/components/admin/ReservationForm";
 import ReservationsTable from "@/components/admin/ReservationsTable";
 import ExpenseForm from "@/components/admin/ExpenseForm";
 import DeleteExpenseButton from "@/components/admin/DeleteExpenseButton";
 import YearlyBarChart from "@/components/admin/YearlyBarChart";
+import OwnerReservationForm from "@/components/admin/OwnerReservationForm";
+import OwnerReservationsTable from "@/components/admin/OwnerReservationsTable";
+import OwnerExpenseForm from "@/components/admin/OwnerExpenseForm";
+import OwnerDeleteButton from "@/components/admin/OwnerDeleteButton";
+import OwnerTrendChart from "@/components/admin/OwnerTrendChart";
 import { currentYearMonthZagreb, todayDateStringZagreb } from "@/lib/date";
+
+const MONTH_ABBR = ["Sij", "Velj", "Ožu", "Tra", "Svi", "Lip", "Srp", "Kol", "Ruj", "Lis", "Stu", "Pro"];
+
+function OwnerEarningsCard({ label, value, unit = "€" }: { label: string; value: number; unit?: string }) {
+  return (
+    <div className="owner-glass owner-glass-grain rounded-2xl px-4 py-3">
+      <div className="text-2xl font-bold tabular-nums" style={{ color: "var(--od-ink)" }}>
+        {value} {unit}
+      </div>
+      <div className="text-xs mt-0.5" style={{ color: "var(--od-ink-faint)" }}>
+        {label}
+      </div>
+    </div>
+  );
+}
+
+/** Vlasnička (owner-glass) inačica PricingInsight niže — vidi tu funkciju za
+    puno obrazloženje logike, ovdje je samo stilska razlika. */
+function OwnerPricingInsight({
+  current,
+  lastYear,
+  monthLabel,
+}: {
+  current: { occupancyPct: number; avgNightlyRateEur: number };
+  lastYear: { occupancyPct: number; avgNightlyRateEur: number; daysBooked: number };
+  monthLabel: string;
+}) {
+  const hasLastYearData = lastYear.daysBooked > 0;
+  if (!hasLastYearData) {
+    return (
+      <div className="owner-glass owner-glass-grain rounded-2xl px-4 py-3">
+        <p className="text-xs" style={{ color: "var(--od-ink-faint)" }}>
+          Nema dovoljno podataka iz {monthLabel} prošle godine za usporedbu popunjenosti/cijene.
+        </p>
+      </div>
+    );
+  }
+
+  const occDiff = current.occupancyPct - lastYear.occupancyPct;
+  let note: string;
+  if (occDiff >= 10 && current.avgNightlyRateEur <= lastYear.avgNightlyRateEur) {
+    note =
+      "Potražnja je znatno veća nego prošle godine u istom mjesecu, uz sličnu ili nižu cijenu — možda ima " +
+      "prostora za višu cijenu, ali odluka i dalje ovisi o sezoni, terminu i konkurenciji.";
+  } else if (occDiff <= -10) {
+    note =
+      "Popunjenost je niža nego prošle godine u istom mjesecu — vrijedi razmotriti popust ili promociju za " +
+      "ovaj period. Ovo je samo orijentir, ne pravilo.";
+  } else {
+    note = "Popunjenost je slična prošloj godini u istom mjesecu.";
+  }
+
+  return (
+    <div className="owner-glass owner-glass-grain rounded-2xl px-4 py-4 flex flex-col gap-2.5">
+      <span className="text-xs font-semibold uppercase tracking-wide" style={{ color: "var(--od-ink-faint)" }}>
+        Pametna preporuka — {monthLabel} prošle godine
+      </span>
+      <div className="flex flex-wrap gap-x-6 gap-y-1.5">
+        <div>
+          <span className="text-xs" style={{ color: "var(--od-ink-faint)" }}>
+            Popunjenost:{" "}
+          </span>
+          <span className="text-sm font-semibold tabular-nums">
+            {current.occupancyPct}%{" "}
+            <span className="font-normal" style={{ color: "var(--od-ink-faint)" }}>
+              (prošle god. {lastYear.occupancyPct}%)
+            </span>
+          </span>
+        </div>
+        <div>
+          <span className="text-xs" style={{ color: "var(--od-ink-faint)" }}>
+            Prosj. cijena/noć:{" "}
+          </span>
+          <span className="text-sm font-semibold tabular-nums">
+            {current.avgNightlyRateEur} €{" "}
+            <span className="font-normal" style={{ color: "var(--od-ink-faint)" }}>
+              (prošle god. {lastYear.avgNightlyRateEur} €)
+            </span>
+          </span>
+        </div>
+      </div>
+      <p className="text-xs" style={{ color: "var(--od-ink-soft)" }}>
+        {note}
+      </p>
+      <p className="text-[11px]" style={{ color: "var(--od-ink-faint)" }}>
+        Informativni uvid na temelju prošlogodišnjih podataka, ne automatska promjena cijene — konačnu odluku
+        uvijek donosiš ti.
+      </p>
+    </div>
+  );
+}
 
 const EXPENSE_CATEGORY_LABELS: Record<string, string> = {
   "čišćenje": "Čišćenje",
@@ -143,14 +240,20 @@ export default async function AdminReservationsPage({
   const sp = await searchParams;
 
   if (properties.length === 0) {
+    if (admin.role === "owner") {
+      return (
+        <div className="owner-dash flex flex-col gap-2" data-theme={admin.themePreference ?? "system"}>
+          <h1 className="text-xl font-bold">Rezervacije</h1>
+          <p className="text-sm" style={{ color: "var(--od-ink-soft)" }}>
+            Nemaš dodijeljenu nijednu vikendicu — javi se glavnom adminu.
+          </p>
+        </div>
+      );
+    }
     return (
       <div className="flex flex-col gap-2">
         <h1 className="text-xl font-bold">Rezervacije</h1>
-        <p className="text-sm text-black/60">
-          {admin.role === "owner"
-            ? "Nemaš dodijeljenu nijednu vikendicu — javi se glavnom adminu."
-            : "Još nema dodanih vikendica."}
-        </p>
+        <p className="text-sm text-black/60">Još nema dodanih vikendica.</p>
       </div>
     );
   }
@@ -193,6 +296,199 @@ export default async function AdminReservationsPage({
   const showCapacityWarning = sp.capacityWarning === "1";
   const expenseCategoryEntries = Object.entries(expenseCategories).sort((a, b) => b[1] - a[1]);
   const expenseCategoryMax = Math.max(1, ...expenseCategoryEntries.map(([, v]) => v));
+
+  // Vlasnik dobiva liquid-glass redizajn (isti obrazac kao app/admin/
+  // kalendar) — puni admin ispod zadržava identičan stari isječak.
+  if (admin.role === "owner") {
+    return (
+      <div className="owner-dash flex flex-col gap-6" data-theme={admin.themePreference ?? "system"}>
+        <div>
+          <h1 className="text-xl font-bold">{property.name} — rezervacije</h1>
+          <p className="text-xs mt-0.5" style={{ color: "var(--od-ink-faint)" }}>
+            Puna knjiga rezervacija — gost, datumi, cijena i status plaćanja umjesto bilježnice.
+            Nova rezervacija automatski blokira noćenja u{" "}
+            <Link href={`/admin/kalendar?property=${property.id}`} className="underline">
+              kalendaru
+            </Link>
+            .
+          </p>
+        </div>
+
+        {properties.length > 1 && (
+          <div className="flex flex-wrap gap-2">
+            {properties.map((p) => (
+              <Link
+                key={p.id}
+                href={`/admin/rezervacije?property=${p.id}`}
+                className={"owner-quicklink" + (p.id === property.id ? " owner-quicklink-active" : "")}
+              >
+                {p.name}
+              </Link>
+            ))}
+          </div>
+        )}
+
+        {overlapCount > 0 && (
+          <p className="text-sm owner-pill owner-pill-warning !inline-block !normal-case px-3 py-2 leading-relaxed">
+            Upozorenje: {overlapCount}{" "}
+            {overlapCount === 1 ? "od odabranih dana za ovu rezervaciju je" : "od odabranih dana za ovu rezervaciju su"}{" "}
+            već bio zauzet prije spremanja (ručno, iCal ili druga rezervacija) — rezervacija je svejedno
+            spremljena, provjeri{" "}
+            <Link href={`/admin/kalendar?property=${property.id}`} className="underline">
+              kalendar
+            </Link>{" "}
+            da nije došlo do dvostruke rezervacije.
+          </p>
+        )}
+
+        {showCapacityWarning && (
+          <p className="text-sm owner-pill owner-pill-warning !inline-block !normal-case px-3 py-2 leading-relaxed">
+            Upozorenje: broj gostiju premašuje kapacitet vikendice ({property.capacityGuests}) — rezervacija je
+            svejedno spremljena.
+          </p>
+        )}
+
+        <section className="flex flex-col gap-3">
+          <div className="flex items-center justify-between flex-wrap gap-2">
+            <span className="text-xs font-semibold uppercase tracking-wide" style={{ color: "var(--od-ink-faint)" }}>
+              Zarada — {MONTH_NAMES[month - 1]} {year}
+            </span>
+            <div className="flex items-center gap-2">
+              <Link href={monthLinkFor(prevYear, prevMonth)} className="owner-quicklink">
+                ← Prošli
+              </Link>
+              {!isCurrentMonth && (
+                <Link href={`/admin/rezervacije?property=${property.id}`} className="text-xs font-semibold text-[#ff7f00]">
+                  Ovaj mjesec
+                </Link>
+              )}
+              <Link href={monthLinkFor(nextYear, nextMonth)} className="owner-quicklink">
+                Sljedeći →
+              </Link>
+            </div>
+          </div>
+          <div className="admin-animate-grid grid grid-cols-2 sm:grid-cols-3 gap-3">
+            <OwnerEarningsCard label="Naplaćeno (bruto)" value={earnings.grossEur} />
+            <OwnerEarningsCard label="Troškovi" value={earnings.expensesEur} />
+            <OwnerEarningsCard label="Neto zarada" value={earnings.netEur} />
+          </div>
+          <p className="text-xs -mt-1" style={{ color: "var(--od-ink-faint)" }}>
+            Bruto broji samo PLAĆENE rezervacije čiji je datum dolaska gosta u ovom mjesecu — zarada
+            prati kad gost stvarno boravi, bez obzira kad je označeno plaćeno.
+          </p>
+          <div className="admin-animate-grid grid grid-cols-2 gap-3">
+            <OwnerEarningsCard label="Popunjenost" value={occupancy.occupancyPct} unit="%" />
+            <OwnerEarningsCard label="Prosj. cijena/noć" value={occupancy.avgNightlyRateEur} />
+          </div>
+          <OwnerPricingInsight current={occupancy} lastYear={occupancyLastYear} monthLabel={MONTH_NAMES[month - 1]} />
+        </section>
+
+        {expenseCategoryEntries.length > 0 && (
+          <section className="owner-glass owner-glass-grain rounded-2xl p-5 flex flex-col gap-3">
+            <span className="text-xs font-semibold uppercase tracking-wide" style={{ color: "var(--od-ink-faint)" }}>
+              Troškovi po kategoriji — {MONTH_NAMES[month - 1]}
+            </span>
+            <div className="flex flex-col gap-2">
+              {expenseCategoryEntries.map(([cat, value]) => (
+                <div key={cat} className="flex items-center gap-3">
+                  <span className="text-xs w-24 shrink-0" style={{ color: "var(--od-ink-soft)" }}>
+                    {EXPENSE_CATEGORY_LABELS[cat] ?? cat}
+                  </span>
+                  <div className="flex-1 h-2 rounded-full overflow-hidden" style={{ background: "var(--od-glass-bg)" }}>
+                    <div
+                      className="admin-bar-grow h-full rounded-full bg-red-400"
+                      style={{ width: `${(value / expenseCategoryMax) * 100}%` }}
+                    />
+                  </div>
+                  <span className="text-xs font-semibold tabular-nums w-16 text-right">{value} €</span>
+                </div>
+              ))}
+            </div>
+          </section>
+        )}
+
+        <OwnerTrendChart
+          title={`Zarada po mjesecu — ${year}`}
+          labels={MONTH_ABBR}
+          data={yearlyEarnings}
+          suffix=" €"
+          color="#ff7f00"
+        />
+
+        <section className="flex flex-col gap-3">
+          <div className="flex items-center justify-between flex-wrap gap-2">
+            <h2 className="text-xs font-semibold uppercase tracking-wide" style={{ color: "var(--od-ink-faint)" }}>
+              Sve rezervacije
+            </h2>
+            {reservations.length > 0 && (
+              <div className="flex items-center gap-2 flex-wrap">
+                <a href={`/api/admin/reservations/export?property=${property.id}`} className="owner-quicklink">
+                  Izvezi CSV
+                </a>
+                <a
+                  href={`/api/admin/reservations/export-year?property=${property.id}&year=${year}`}
+                  className="owner-quicklink"
+                >
+                  Godišnji izvještaj ({year})
+                </a>
+                <a href={`/api/admin/backup?property=${property.id}`} className="owner-quicklink">
+                  Backup (JSON)
+                </a>
+                <a
+                  href={`/api/admin/reports/accounting?property=${property.id}&year=${year}&format=csv`}
+                  className="owner-quicklink"
+                >
+                  Izvještaj za knjigovođu (CSV)
+                </a>
+                <a
+                  href={`/api/admin/reports/accounting?property=${property.id}&year=${year}&format=pdf`}
+                  className="owner-quicklink"
+                >
+                  Izvještaj za knjigovođu (PDF)
+                </a>
+              </div>
+            )}
+          </div>
+          <OwnerReservationsTable propertyId={property.id} reservations={reservations} today={today} />
+        </section>
+
+        <OwnerReservationForm propertyId={property.id} redirectTo={redirectTo} capacityGuests={property.capacityGuests} />
+
+        <section className="flex flex-col gap-3">
+          <h2 className="text-xs font-semibold uppercase tracking-wide" style={{ color: "var(--od-ink-faint)" }}>
+            Troškovi (opcionalno)
+          </h2>
+          <p className="text-xs -mt-2" style={{ color: "var(--od-ink-faint)" }}>
+            Nije obavezno — unesi ih samo ako želiš da dashboard pokazuje i neto zaradu (bruto minus
+            troškovi), npr. čišćenje ili održavanje.
+          </p>
+          {expenses.length > 0 && (
+            <div className="flex flex-col gap-2">
+              {expenses.map((e) => (
+                <div key={e.id} className="owner-glass rounded-2xl flex items-center justify-between px-4 py-2.5">
+                  <div>
+                    <span className="font-semibold text-sm">{e.description}</span>
+                    <span className="text-xs ml-2" style={{ color: "var(--od-ink-faint)" }}>
+                      {formatDate(e.date)}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <span className="text-sm tabular-nums">{e.amountEur} €</span>
+                    <OwnerDeleteButton
+                      action={deleteExpenseAction.bind(null, property.id, e.id, e.description)}
+                      confirmMessage={`Sigurno želiš obrisati trošak "${e.description}"?`}
+                    />
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </section>
+
+        <OwnerExpenseForm propertyId={property.id} redirectTo={redirectTo} />
+      </div>
+    );
+  }
 
   return (
     <div className="flex flex-col gap-6">
