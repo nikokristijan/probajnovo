@@ -543,9 +543,9 @@ async function OwnerDashboard({ admin }: { admin: AdminUser }) {
 
       {pageCount > 0 && (
         <section className="admin-animate-grid grid grid-cols-2 sm:grid-cols-3 gap-3">
-          <OwnerStatCard label={pendingCount === 1 ? "Novi upit" : "Novih upita"} value={pendingCount} />
-          <OwnerStatCard label="Dana zauzeto ovaj mjesec" value={daysBookedThisMonth} />
-          <OwnerStatCard label="Zarada ovaj mjesec (neto)" value={netEurThisMonth} suffix=" €" />
+          <OwnerStatCard label={pendingCount === 1 ? "Novi upit" : "Novih upita"} value={pendingCount} accent="orange" />
+          <OwnerStatCard label="Dana zauzeto ovaj mjesec" value={daysBookedThisMonth} accent="navy" />
+          <OwnerStatCard label="Zarada ovaj mjesec (neto)" value={netEurThisMonth} suffix=" €" accent="purple" />
         </section>
       )}
 
@@ -648,9 +648,22 @@ async function OwnerDashboard({ admin }: { admin: AdminUser }) {
 /** Vlasnički pandan StatCard-u iznad — NAMJERNO odvojena funkcija (ne dijeli
     se s AdminDashboard/StatCard) da glass redizajn ostane izoliran na
     role="owner", isti razlog kao .owner-quicklink u globals.css. */
-function OwnerStatCard({ label, value, suffix }: { label: string; value: number; suffix?: string }) {
+function OwnerStatCard({
+  label,
+  value,
+  suffix,
+  accent = "navy",
+}: {
+  label: string;
+  value: number;
+  suffix?: string;
+  /** Tanka gradient traka na vrhu kartice — daje svakoj kartici vlastiti
+      identitet umjesto tri identične sive pločice (vidi globals.css
+      .owner-stat-card-*). */
+  accent?: "navy" | "orange" | "purple";
+}) {
   return (
-    <div className="owner-glass owner-glass-grain rounded-2xl px-4 py-3">
+    <div className={`owner-glass owner-glass-grain owner-stat-card owner-stat-card-${accent} rounded-2xl px-4 py-3`}>
       <div className="text-2xl font-bold tabular-nums" style={{ color: "var(--od-ink)" }}>
         {value}
         {suffix ?? ""}
