@@ -3,10 +3,13 @@ import {
   listReservationsForReminderOn,
   markReservationReminderSent,
   getPropertyById,
+  listSubscriptionsDueForReminder,
+  markSubscriptionReminderSent,
+  getAgency,
 } from "@/lib/db/queries";
-import { sendReservationReminder } from "@/lib/email";
+import { sendReservationReminder, sendSubscriptionExpiryAlert } from "@/lib/email";
 import { dateStringOffsetFromTodayZagreb } from "@/lib/date";
-import { sendPushToAdmins } from "@/lib/push";
+import { sendPushToAdmins, sendPushToSuperAdmins } from "@/lib/push";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
@@ -62,5 +65,36 @@ export async function GET(req: Request) {
     await markReservationReminderSent(r.id);
   }
 
-  return NextResponse.json({ checked: due.length, sent });
+  // Financije — NOVO-ove vlastite mjesečne pretplate klijentima. Neovisan
+  // blok od gornjeg gost-podsjetnika: provjerava pretplate kojima
+  // nextRenewalDate pada unutar 7 dana i još nije poslan podsjetnik
+  // (subscriptions.reminderSentAt), šalje mail glavnom adminu (agencijski
+  // contactEmail) i push svim superadminima, pa označi kao poslano da se
+  // ne šalje iznova svaki dan.
+  const dueSubscriptions = await listSubscriptionsDueForReminder(7);
+  if (dueSubscriptions.length > 0) {
+    const agency = await getAgency();
+    if (agency?.contactEmail) {
+      await sendSubscriptionExpiryAlert({
+        to: agency.contactEmail,
+        items: dueSubscriptions.map((s) => ({
+          sourceName: s.sourceName,
+          nextRenewalDate: s.nextRenewalDate,
+          monthlyPriceEur: s.monthlyPriceEur,
+        })),
+      });
+    }
+
+    await sendPushToSuperAdmins({
+      title: "Pretplate uskoro ističu",
+      body: `${dueSubscriptions.length} ${dueSubscriptions.length === 1 ? "pretplata ističe" : "pretplata ističe"} unutar 7 dana`,
+      url: "/admin/financije",
+    });
+
+    for (const s of dueSubscriptions) {
+      await markSubscriptionReminderSent(s.id);
+    }
+  }
+
+  return NextResponse.json({ checked: due.length, sent, subscriptionsFlagged: dueSubscriptions.length });
 }
