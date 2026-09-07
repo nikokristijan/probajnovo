@@ -1152,7 +1152,13 @@ a.owner-glass:active,
   to { opacity: 1; transform: scale(1) translateY(0); }
 }
 .owner-hero-value {
-  display: inline-block;
+  /* NAMJERNO "block", ne "inline-block" — bio je uzrok "broj je prebliz"
+     bug-a: label je <span> (inline), broj je <div> odmah iza njega, pa se
+     inline-block div nastavljao na ISTOM retku kao label umjesto da padne
+     ispod na svoj red (margin-top ne stvara prijelom retka za inline
+     elemente). "block" garantira vlastiti red bez obzira na širinu labela. */
+  display: block;
+  transform-origin: left center;
   animation: owner-hero-pop 0.55s cubic-bezier(0.22, 1, 0.36, 1) forwards;
   font-size: clamp(2.1rem, 7vw, 3rem);
   letter-spacing: -0.02em;
