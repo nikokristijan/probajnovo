@@ -915,41 +915,234 @@ html.novo-lock-scroll body {
 .admin-bar-grow { transform-origin: left; animation: admin-bar-grow 0.6s cubic-bezier(0.22, 1, 0.36, 1) forwards; }
 
 /* ---------------------------------------------------------------------
-   Vlasnički (role="owner") dashboard — "addictive" polish (streak, hero
-   kartica, gradient prsten napretka, konfeti pri rekordu) inspirirano
-   Duolingo streakom, Instagram story prstenom i Netflix hero blokom, ali
-   unutar postojeće svijetle NOVO palete (navy #0000c3 → narančasta
-   #ff7f00), ne posebna tamna tema — vidi app/admin/page.tsx OwnerDashboard
-   i components/admin/OwnerHero.tsx.
+   Vlasnički (role="owner") dashboard — "liquid glass" dizajn sustav.
+   Sve u ovom bloku živi ISKLJUČIVO iza .owner-dash omotača (app/admin/
+   page.tsx OwnerDashboard) — namjerno NIJE na :root, da ni jedno pravilo
+   ovdje ne može procuriti u superadmin/puni-admin izgled (StatCard,
+   AdminDashboard, itd. dijele isti globals.css ali nemaju .owner-dash
+   pretka). Zamjenjuje raniji ravni gradient-hero sustav istog imena.
+
+   Pristup: stakleni (frosted) sloj PREKO postojeće NOVO palete (navy
+   #0000c3 → ljubičasta → narančasta #ff7f00), ne neutralno bijelo Apple
+   staklo — boja mora ostati prepoznatljiva ispod stakla. Zamućene "mrlje"
+   boje sjede iza staklenih površina (.owner-dash::before) tako da
+   backdrop-filter stvarno pokupi boju odozdo, ne samo prozirnu bijelu
+   podlogu — to je razlika između pravog "liquid glass" efekta i običnog
+   plosnatog gradijenta s prozirnošću.
    --------------------------------------------------------------------- */
 
-/* Hero kartica — gradient pozadina, veliki broj, "diše" lagano pri ulazu. */
+.owner-dash {
+  --od-navy: #0000c3;
+  --od-orange: #ff7f00;
+  --od-purple: #6a21b0;
+
+  --od-bg: #f2f3f9;
+  --od-ink: #0b0b1f;
+  --od-ink-soft: rgba(11, 11, 31, 0.62);
+  --od-ink-faint: rgba(11, 11, 31, 0.42);
+  --od-glass-bg: rgba(255, 255, 255, 0.5);
+  --od-glass-bg-strong: rgba(255, 255, 255, 0.74);
+  --od-glass-border: rgba(255, 255, 255, 0.65);
+  --od-glass-highlight: rgba(255, 255, 255, 0.85);
+  --od-glass-shadow: 0 1px 1px rgba(20, 20, 60, 0.03), 0 10px 30px -12px rgba(20, 20, 60, 0.18),
+    inset 0 1px 0 rgba(255, 255, 255, 0.55);
+  --od-hairline: rgba(11, 11, 31, 0.09);
+  --od-blob-navy: rgba(0, 0, 195, 0.5);
+  --od-blob-orange: rgba(255, 127, 0, 0.42);
+  --od-blob-purple: rgba(106, 33, 176, 0.4);
+
+  position: relative;
+  isolation: isolate;
+  color: var(--od-ink);
+}
+
+.owner-dash[data-theme="dark"] {
+  --od-bg: #08080f;
+  --od-ink: #f3f3fb;
+  --od-ink-soft: rgba(243, 243, 251, 0.72);
+  --od-ink-faint: rgba(243, 243, 251, 0.48);
+  --od-glass-bg: rgba(26, 26, 42, 0.58);
+  --od-glass-bg-strong: rgba(26, 26, 42, 0.78);
+  --od-glass-border: rgba(255, 255, 255, 0.12);
+  --od-glass-highlight: rgba(255, 255, 255, 0.16);
+  --od-glass-shadow: 0 1px 1px rgba(0, 0, 0, 0.2), 0 10px 30px -12px rgba(0, 0, 0, 0.55),
+    inset 0 1px 0 rgba(255, 255, 255, 0.07);
+  --od-hairline: rgba(255, 255, 255, 0.1);
+  --od-blob-navy: rgba(74, 74, 255, 0.55);
+  --od-blob-orange: rgba(255, 142, 24, 0.4);
+  --od-blob-purple: rgba(150, 90, 230, 0.42);
+}
+
+@media (prefers-color-scheme: dark) {
+  .owner-dash:not([data-theme="light"]):not([data-theme="dark"]) {
+    --od-bg: #08080f;
+    --od-ink: #f3f3fb;
+    --od-ink-soft: rgba(243, 243, 251, 0.72);
+    --od-ink-faint: rgba(243, 243, 251, 0.48);
+    --od-glass-bg: rgba(26, 26, 42, 0.58);
+    --od-glass-bg-strong: rgba(26, 26, 42, 0.78);
+    --od-glass-border: rgba(255, 255, 255, 0.12);
+    --od-glass-highlight: rgba(255, 255, 255, 0.16);
+    --od-glass-shadow: 0 1px 1px rgba(0, 0, 0, 0.2), 0 10px 30px -12px rgba(0, 0, 0, 0.55),
+      inset 0 1px 0 rgba(255, 255, 255, 0.07);
+    --od-hairline: rgba(255, 255, 255, 0.1);
+    --od-blob-navy: rgba(74, 74, 255, 0.55);
+    --od-blob-orange: rgba(255, 142, 24, 0.4);
+    --od-blob-purple: rgba(150, 90, 230, 0.42);
+  }
+}
+
+.owner-dash-bg {
+  background: var(--od-bg);
+  transition: background-color 0.25s ease;
+}
+
+/* Zamućene mrlje NOVO boje iza gornjeg dijela dashboarda — izvor boje koju
+   staklene površine (hero, kartice) stvarno "vide" kroz backdrop-filter.
+   Fiksne visine (ne cijeli scroll) jer je gornja zona (hero + statistika +
+   prvi grafovi) gdje je efekt najvidljiviji i najvažniji; niže niz stranicu
+   staklo i dalje radi preko obične pozadine, što je uredu — pravi Apple
+   liquid glass isto ne boji baš svaki pixel podloge. */
+.owner-dash::before {
+  content: "";
+  position: absolute;
+  top: -60px;
+  left: -5%;
+  right: -5%;
+  height: 760px;
+  z-index: -1;
+  pointer-events: none;
+  background: radial-gradient(560px 420px at 10% 0%, var(--od-blob-navy), transparent 62%),
+    radial-gradient(480px 400px at 92% 6%, var(--od-blob-orange), transparent 60%),
+    radial-gradient(620px 460px at 48% 42%, var(--od-blob-purple), transparent 65%);
+  filter: blur(70px) saturate(150%);
+  opacity: 0.6;
+}
+
+@media (max-width: 640px) {
+  .owner-dash::before {
+    height: 520px;
+    opacity: 0.5;
+  }
+}
+
+/* Suptilna zrnatost preko staklenih površina — bez ovoga svaki glassmorphism
+   izgleda "generički AI": prava optika ima šum, ne savršeno gladak blur. */
+.owner-glass-grain {
+  position: relative;
+}
+.owner-glass-grain::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  opacity: 0.05;
+  mix-blend-mode: overlay;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='120' height='120'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/></filter><rect width='100%25' height='100%25' filter='url(%23n)'/></svg>");
+}
+
+/* Osnovna staklena površina — koristi se izravno (className="owner-glass")
+   ili kao baza preko koje admin-quicklink-stil komponente dodaju svoje. */
+.owner-glass {
+  background: var(--od-glass-bg);
+  border: 1px solid var(--od-glass-border);
+  border-radius: 20px;
+  box-shadow: var(--od-glass-shadow);
+  backdrop-filter: blur(20px) saturate(160%);
+  -webkit-backdrop-filter: blur(20px) saturate(160%);
+  transition: transform 0.2s cubic-bezier(0.22, 1, 0.36, 1), box-shadow 0.2s ease, border-color 0.2s ease;
+}
+.owner-glass-strong {
+  background: var(--od-glass-bg-strong);
+  border: 1px solid var(--od-glass-border);
+  border-radius: 18px;
+  box-shadow: var(--od-glass-shadow);
+  backdrop-filter: blur(24px) saturate(150%);
+  -webkit-backdrop-filter: blur(24px) saturate(150%);
+}
+a.owner-glass:hover,
+.owner-glass-interactive:hover {
+  transform: translateY(-1px);
+  border-color: var(--od-glass-highlight);
+}
+a.owner-glass:active,
+.owner-glass-interactive:active {
+  transform: translateY(0px) scale(0.99);
+}
+
+/* Vlasnički pandan .admin-quicklink — NAMJERNO odvojena klasa (ne dijeli
+   se s superadmin AdminDashboard, koji i dalje koristi .admin-quicklink
+   nepromijenjeno) da glass redizajn ostane izoliran na role="owner". */
+.owner-quicklink {
+  font-size: 13px;
+  font-weight: 600;
+  border-radius: 999px;
+  padding: 8px 16px;
+  text-decoration: none;
+  color: var(--od-ink);
+  background: var(--od-glass-bg);
+  border: 1px solid var(--od-glass-border);
+  backdrop-filter: blur(16px) saturate(150%);
+  -webkit-backdrop-filter: blur(16px) saturate(150%);
+  transition: border-color 0.15s ease, color 0.15s ease, transform 0.15s ease;
+}
+.owner-quicklink:hover { border-color: var(--od-orange); color: var(--od-orange); transform: translateY(-1px); }
+
+/* ---- Hero kartica ------------------------------------------------- */
+/* Zadržava NOVO gradient kao "podlogu" (isti duh kao prije), ali sad s
+   pravim staklenim slojem preko: gornji sjaj + suptilna zrnatost + rub
+   svjetla po unutrašnjem obrubu, umjesto plosnatog gradijenta. Mobilno:
+   label+broj se prisilno slažu okomito ispod ~380px (owner-hero-top), a
+   streak bedž pada u vlastiti red umjesto neugodnog omatanja pored broja. */
 .owner-hero {
   position: relative;
   overflow: hidden;
-  border-radius: 20px;
-  padding: 24px;
+  border-radius: clamp(20px, 5vw, 28px);
+  padding: clamp(20px, 4vw, 30px) clamp(18px, 4.5vw, 30px);
   color: #fff;
-  background: linear-gradient(135deg, #0000c3 0%, #4b21b0 55%, #ff7f00 100%);
+  background: radial-gradient(140% 160% at 6% -25%, rgba(255, 255, 255, 0.32), transparent 50%),
+    linear-gradient(135deg, var(--od-navy) 0%, #3a1aa0 45%, var(--od-purple) 68%, var(--od-orange) 100%);
+  box-shadow: 0 24px 60px -20px rgba(10, 5, 60, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.4),
+    inset 0 -50px 70px -50px rgba(0, 0, 0, 0.28);
+  border: 1px solid rgba(255, 255, 255, 0.22);
   isolation: isolate;
 }
 .owner-hero::before {
   content: "";
   position: absolute;
   inset: 0;
-  background: radial-gradient(circle at 85% -10%, rgba(255,255,255,0.28), transparent 55%);
+  background: linear-gradient(115deg, rgba(255, 255, 255, 0.22) 0%, rgba(255, 255, 255, 0) 30%);
   pointer-events: none;
   z-index: 0;
 }
 .owner-hero > * { position: relative; z-index: 1; }
 
-@keyframes owner-hero-pop { from { opacity: 0; transform: scale(0.94) translateY(8px); } to { opacity: 1; transform: scale(1) translateY(0); } }
-.owner-hero-value { display: inline-block; animation: owner-hero-pop 0.5s cubic-bezier(0.22, 1, 0.36, 1) forwards; }
+.owner-hero-top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+@media (max-width: 420px) {
+  .owner-hero-top { flex-direction: column; gap: 12px; }
+}
 
-/* Streak "vatra" značka — pulsira suptilno da privuče pogled bez da smeta. */
+@keyframes owner-hero-pop {
+  from { opacity: 0; transform: scale(0.94) translateY(8px); }
+  to { opacity: 1; transform: scale(1) translateY(0); }
+}
+.owner-hero-value {
+  display: inline-block;
+  animation: owner-hero-pop 0.55s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+  font-size: clamp(2.1rem, 7vw, 3rem);
+  letter-spacing: -0.02em;
+}
+
 @keyframes owner-streak-pulse {
-  0%, 100% { box-shadow: 0 0 0 0 rgba(255,127,0,0.45); }
-  50% { box-shadow: 0 0 0 6px rgba(255,127,0,0); }
+  0%, 100% { box-shadow: 0 0 0 0 rgba(255, 200, 140, 0.5); }
+  50% { box-shadow: 0 0 0 7px rgba(255, 200, 140, 0); }
 }
 .owner-streak-badge {
   display: inline-flex;
@@ -957,45 +1150,137 @@ html.novo-lock-scroll body {
   gap: 6px;
   font-size: 13px;
   font-weight: 700;
-  padding: 6px 12px;
+  padding: 7px 13px;
   border-radius: 999px;
-  background: rgba(255,255,255,0.16);
-  backdrop-filter: blur(6px);
-  animation: owner-streak-pulse 2.2s ease-in-out infinite;
+  background: rgba(255, 255, 255, 0.16);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  white-space: nowrap;
+  align-self: flex-start;
 }
-.owner-streak-badge.owner-streak-badge-light {
-  background: linear-gradient(135deg, #fff4e8, #ffe4cc);
-  color: #b3540a;
-  animation: owner-streak-pulse 2.2s ease-in-out infinite;
+.owner-streak-badge.owner-streak-badge-new {
+  animation: owner-streak-pulse 2.4s ease-in-out infinite;
+  background: linear-gradient(135deg, rgba(255, 244, 232, 0.95), rgba(255, 228, 204, 0.95));
+  color: #a3480a;
+  border-color: rgba(255, 255, 255, 0.6);
 }
 
-/* Gradient napredak-prsten (Instagram story stil) — SVG stroke se "crta" od
-   0 do trenutne vrijednosti pri učitavanju, isti pathLength trik kao
-   admin-chart-line. */
+/* ---- Prsten napretka + cilj-traka ---------------------------------- */
 @keyframes owner-ring-draw { from { stroke-dashoffset: 1; } to { stroke-dashoffset: var(--owner-ring-offset, 0); } }
 .owner-ring-progress { stroke-dasharray: 1; stroke-dashoffset: 1; animation: owner-ring-draw 1s cubic-bezier(0.22, 1, 0.36, 1) 0.15s forwards; }
 
-/* Linearna cilj-traka (mjesečna popunjenost) — reciklira admin-bar-grow duh,
-   ali kao ispuna unutar trake umjesto grafa. */
-.owner-goal-track { height: 8px; border-radius: 999px; background: rgba(0,0,0,0.08); overflow: hidden; }
-.owner-goal-fill { height: 100%; border-radius: 999px; background: linear-gradient(90deg, #0000c3, #ff7f00); }
+.owner-goal-track { height: 8px; border-radius: 999px; background: rgba(255, 255, 255, 0.22); overflow: hidden; }
+.owner-goal-fill { height: 100%; border-radius: 999px; background: rgba(255, 255, 255, 0.9); transition: width 0.6s cubic-bezier(0.22, 1, 0.36, 1); }
 
-/* Vodoravni "carousel" kartica vikendica/firmi (Netflix red / IG stories
-   stil) — čisti scroll-snap, bez JS-a. */
+/* Sitan "olovka" gumb za uređivanje cilja — namjerno miran (bez border-radius
+   ekstrema/emoji-heavy izgleda), samo suptilan glass krug. */
+.owner-goal-edit-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.16);
+  border: 1px solid rgba(255, 255, 255, 0.28);
+  color: rgba(255, 255, 255, 0.9);
+  font-size: 12px;
+  transition: background 0.15s ease;
+}
+.owner-goal-edit-btn:hover { background: rgba(255, 255, 255, 0.28); }
+
+/* ---- Carousel ------------------------------------------------------- */
 .owner-carousel {
   display: flex;
   gap: 12px;
   overflow-x: auto;
   scroll-snap-type: x mandatory;
-  padding-bottom: 6px;
+  padding: 2px 2px 10px;
   -webkit-overflow-scrolling: touch;
   scrollbar-width: thin;
 }
 .owner-carousel > * { scroll-snap-align: start; flex: 0 0 auto; }
 
-/* Konfeti pri novom rekordu — čisti DOM/CSS (bez canvasa/vanjske
-   biblioteke), pravokutnici padaju i rotiraju iz vrha kartice. Pozicija/boja/
-   kašnjenje svake čestice postavlja se inline stilom u OwnerHero.tsx. */
+/* ---- Bedževi/postignuća ---------------------------------------------- */
+.owner-badges-row {
+  display: flex;
+  gap: 10px;
+  overflow-x: auto;
+  padding: 2px 2px 8px;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: thin;
+}
+.owner-badge {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 14px 8px 10px;
+  border-radius: 999px;
+  font-size: 12.5px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+.owner-badge-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 999px;
+  font-size: 14px;
+  flex-shrink: 0;
+}
+.owner-badge-unlocked {
+  background: linear-gradient(135deg, rgba(255, 127, 0, 0.16), rgba(0, 0, 195, 0.12));
+  border: 1px solid rgba(255, 127, 0, 0.35);
+  color: var(--od-ink);
+}
+.owner-badge-unlocked .owner-badge-icon {
+  background: linear-gradient(135deg, var(--od-orange), var(--od-navy));
+  color: #fff;
+}
+.owner-badge-locked {
+  background: var(--od-glass-bg);
+  border: 1px dashed var(--od-hairline);
+  color: var(--od-ink-faint);
+}
+.owner-badge-locked .owner-badge-icon {
+  background: rgba(120, 120, 140, 0.14);
+  color: var(--od-ink-faint);
+}
+@keyframes owner-badge-pop {
+  from { opacity: 0; transform: scale(0.85); }
+  to { opacity: 1; transform: scale(1); }
+}
+.owner-badge-new { animation: owner-badge-pop 0.4s cubic-bezier(0.22, 1, 0.36, 1) forwards; }
+
+/* ---- Tema/gumb prekidača --------------------------------------------- */
+.owner-theme-switch {
+  display: inline-flex;
+  padding: 3px;
+  border-radius: 999px;
+  gap: 2px;
+}
+.owner-theme-switch button {
+  border: none;
+  background: transparent;
+  color: var(--od-ink-faint);
+  font-size: 12.5px;
+  font-weight: 600;
+  padding: 6px 11px;
+  border-radius: 999px;
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+.owner-theme-switch button.owner-theme-switch-active {
+  background: var(--od-glass-bg-strong);
+  color: var(--od-ink);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08);
+}
+
+/* ---- Konfeti ---------------------------------------------------------- */
 @keyframes owner-confetti-fall {
   0% { transform: translateY(-10px) rotate(0deg); opacity: 1; }
   100% { transform: translateY(160px) rotate(540deg); opacity: 0; }
@@ -1010,6 +1295,17 @@ html.novo-lock-scroll body {
   z-index: 2;
 }
 
+/* ---- Sitni kalendar (OwnerMiniCalendar) -------------------------------- */
+.owner-cal-cell-blocked {
+  background: linear-gradient(135deg, #ff6b4a, #ff3b30);
+  color: #fff;
+  box-shadow: 0 2px 6px -2px rgba(255, 59, 48, 0.6);
+}
+.owner-cal-cell-free {
+  background: rgba(120, 120, 150, 0.1);
+  color: var(--od-ink-soft);
+}
+
 @media (prefers-reduced-motion: reduce) {
   .admin-chart-line { animation: none; stroke-dashoffset: 0; }
   .admin-chart-area { animation: none; opacity: 1; }
@@ -1017,7 +1313,9 @@ html.novo-lock-scroll body {
   .admin-animate-grid > * { animation: none; opacity: 1; }
   .admin-bar-grow { animation: none; transform: scaleX(1); }
   .owner-hero-value { animation: none; opacity: 1; transform: none; }
-  .owner-streak-badge { animation: none; }
+  .owner-streak-badge.owner-streak-badge-new { animation: none; }
   .owner-ring-progress { animation: none; stroke-dashoffset: var(--owner-ring-offset, 0); }
   .owner-confetti-piece { animation: none; opacity: 0; }
+  .owner-badge-new { animation: none; opacity: 1; transform: none; }
+  .owner-glass, .owner-glass-interactive, a.owner-glass { transition: none; }
 }
