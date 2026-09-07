@@ -1006,6 +1006,33 @@ body:has(.owner-page-bg[data-theme="dark"]) {
   }
 }
 
+/* DEVETI krug feedbacka ("ovaj rub je oštar, na svakoj stranici u meniju
+   kad je tamni mod", sa slikom koja crveno kruži punu, svijetlo-sivu
+   okomitu traku uz sam desni rub ekrana, od vrha do dna) — to je obična
+   (nestilizirana) scrollbar TRAKA koju instalirana PWA na iOS-u iscrta preko
+   cijelog dokumenta čim je stranica scrollabilna; nasuprot tankom
+   sam-nestajućem iOS pokazivaču u običnoj Safari kartici, WKWebView
+   standalone prikaz zna iscrtati puni klasični scrollbar ako ga stranica
+   sama ne sakrije — i taj svijetlo-sivi trak na skoro crnoj pozadini je
+   točno taj "oštar rub" (i zato izgleda identično na SVAKOJ stranici: to je
+   scrollbar dokumenta, ne nešto specifično jednoj stranici). Pravе Apple
+   aplikacije nemaju trajno vidljiv scrollbar trak — sakrivanje je ovdje i
+   ispravan smjer za "izgleda kao high end Apple aplikacija", ne samo
+   kozmetički zaobilazak. Isti :has() razlog kao OSMI krug gore — cilja
+   SAMO kad je .owner-page-bg (isključivo role="owner") negdje u dokumentu,
+   pa javna stranica i puni/superadmin dashboard zadrže svoj default
+   scrollbar, netaknuto. html (ne body) jer je html korijenski scroll
+   element kad dokument premaši visinu ekrana. */
+html:has(.owner-page-bg) {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+html:has(.owner-page-bg)::-webkit-scrollbar {
+  display: none;
+  width: 0;
+  height: 0;
+}
+
 /* Header postaje stakleni sloj PREKO vlasničke pozadine umjesto fiksno
    bijele trake — bez ovoga je u tamnom modu bio ostar bijeli pojas na vrhu
    koji se sudarao s tamnom .owner-dash pozadinom ispod (isti "crta" problem
