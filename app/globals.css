@@ -982,6 +982,30 @@ html.novo-lock-scroll body {
   }
 }
 
+/* OSMI krug feedbacka ("bijela pruga na dnu ekrana", potvrđeno: admin je
+   dodan na početni zaslon kao PWA) — na iOS-u "rubber-band" scroll-bounce
+   ispod kraja dokumenta (i uski rub iza home-indicatora) otkriva <body>-jevu
+   pozadinu, ne .admin-shell/.owner-page-bg (koja PETI krug gore već boji da
+   odgovara --od-bg). <body> je DIJELJEN s cijelom javnom stranicom (uvijek
+   #ffffff), pa se ne smije mijenjati globalno — :has() ga cilja SAMO kad je
+   .owner-page-bg negdje unutar <body>, a taj razred postoji ISKLJUČIVO za
+   role="owner" (vidi app/admin/layout.tsx), pa javna stranica i puni/
+   superadmin dashboard (nikad nemaju .owner-page-bg) ostaju netaknuti.
+   Safari na iOS-u podržava :has() od 16.4 — isti minimum koji push
+   obavijesti u ovom projektu već traže (vidi OwnerPushNotificationToggle:
+   "Na iPhoneu treba iOS 16.4+"), pa ovo ne uvodi novi prag kompatibilnosti. */
+body:has(.owner-page-bg) {
+  background: #f2f3f9;
+}
+body:has(.owner-page-bg[data-theme="dark"]) {
+  background: #0a0a24;
+}
+@media (prefers-color-scheme: dark) {
+  body:has(.owner-page-bg:not([data-theme="light"]):not([data-theme="dark"])) {
+    background: #0a0a24;
+  }
+}
+
 /* Header postaje stakleni sloj PREKO vlasničke pozadine umjesto fiksno
    bijele trake — bez ovoga je u tamnom modu bio ostar bijeli pojas na vrhu
    koji se sudarao s tamnom .owner-dash pozadinom ispod (isti "crta" problem
