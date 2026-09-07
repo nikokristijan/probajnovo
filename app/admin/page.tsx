@@ -13,10 +13,16 @@ import {
   listBlockedDates,
   getMonthlyEarnings,
   getSubscriptionStats,
+  getOwnerMonthlyTrend,
+  getPropertiesMonthlyBreakdown,
+  updateAdminLoginStreak,
 } from "@/lib/db/queries";
 import type { AdminUser } from "@/lib/db/schema";
 import { currentYearMonthZagreb } from "@/lib/date";
 import MiniCalendar from "@/components/admin/MiniCalendar";
+import OwnerHero from "@/components/admin/OwnerHero";
+import OwnerTrendChart from "@/components/admin/OwnerTrendChart";
+import OwnerPropertyCarousel from "@/components/admin/OwnerPropertyCarousel";
 
 export default async function AdminDashboard() {
   // Prije se ovdje zvao requireFullAdmin() koji je vlasnika (role="owner")
@@ -384,19 +390,32 @@ function StatCard({ label, value, suffix }: { label: string; value: number; suff
 }
 
 /* ---------------------------------------------------------------- */
-/* Vlasnički (role="owner") dashboard — zamjena za stari redirect na  */
-/* /admin/inquiries: pozdrav imenom domaćina (property.hostName),     */
-/* brzi pregled (novi upiti, dana zauzeto ovaj mjesec), mini kalendar */
-/* prve dodijeljene vikendice i zadnja 3 upita. Vlasnik i dalje ne    */
-/* smije ništa uređivati ovdje — samo linkovi na /admin/kalendar i    */
-/* /admin/inquiries, gdje se sva stvarna radnja događa.               */
+/* Vlasnički (role="owner") dashboard — "addictive" redizajn: velika  */
+/* Netflix-stil hero kartica (neto zarada, Duolingo streak, cilj dana */
+/* zauzeća s prstenom, konfeti na rekordu), dva animirana trend grafa */
+/* (zarada i zauzetost zadnjih 6 mjeseci) i, ako vlasnik ima više od  */
+/* jedne vikendice, vodoravni red kartica po vikendici (Netflix row). */
+/* Vlasnik i dalje ne smije ništa uređivati ovdje — samo grafovi i    */
+/* linkovi na /admin/kalendar, /admin/rezervacije i /admin/inquiries, */
+/* gdje se sva stvarna radnja događa. Superadmin dashboard iznad ovoga */
+/* (AdminDashboard) namjerno NIJE dirat — redizajn je isključivo za   */
+/* role "owner", po izričitom zahtjevu.                               */
 /* ---------------------------------------------------------------- */
 
+const OWNER_MONTH_NAMES_HR = [
+  "Siječanj", "Veljača", "Ožujak", "Travanj", "Svibanj", "Lipanj",
+  "Srpanj", "Kolovoz", "Rujan", "Listopad", "Studeni", "Prosinac",
+];
+
 async function OwnerDashboard({ admin }: { admin: AdminUser }) {
-  const [properties, companies, inquiries] = await Promise.all([
+  const [properties, companies, inquiries, streakResult] = await Promise.all([
     listPropertiesForAdmin(admin),
     listCompaniesForAdmin(admin),
     listInquiriesForAdmin(admin),
+    // Duolingo-stil streak — samo za vlasnički dashboard, vidi
+    // lib/db/queries.ts updateAdminLoginStreak. Puni admini/superadmini ga
+    // nikad ne diraju jer ova funkcija komponenta postoji samo ovdje.
+    updateAdminLoginStreak(admin.id),
   ]);
 
   // Ime domaćina za pozdrav — izvučeno iz property.hostName prve dodijeljene
@@ -413,9 +432,16 @@ async function OwnerDashboard({ admin }: { admin: AdminUser }) {
   // ga gradimo preko Date.UTC iz Zagreb godine/mjeseca — golo `new Date()` bi
   // oko ponoći opet vratilo UTC (server) mjesec, ne hrvatski.
   const now = new Date(Date.UTC(nowZagreb.year, nowZagreb.month - 1, 1));
-  const [blockedByProperty, earnings] = await Promise.all([
+  const propertyIds = properties.map((p) => p.id);
+
+  const [blockedByProperty, trend, breakdown] = await Promise.all([
     Promise.all(properties.map((p) => listBlockedDates(p.id))),
-    getMonthlyEarnings(properties.map((p) => p.id), monthPrefix),
+    // 13 mjeseci: zadnjih 6 za trend graf ispod, + trend[0] je isti mjesec
+    // prošle godine za usporedbu u hero kartici (vidi getOwnerMonthlyTrend).
+    getOwnerMonthlyTrend(propertyIds, 13),
+    properties.length > 1
+      ? getPropertiesMonthlyBreakdown(propertyIds, monthPrefix)
+      : Promise.resolve({} as Record<number, { daysBooked: number; netEur: number }>),
   ]);
   // Zbroj zauzetih dana preko SVIH dodijeljenih vikendica ovaj mjesec (ne
   // unique po datumu) — ako vlasnik ima dvije vikendice, svaka se broji
@@ -425,9 +451,35 @@ async function OwnerDashboard({ admin }: { admin: AdminUser }) {
     .flat()
     .filter((b) => b.date.startsWith(monthPrefix)).length;
 
+  const currentMonthPoint = trend[trend.length - 1] ?? null;
+  const netEurThisMonth = currentMonthPoint?.netEur ?? 0;
+  const prevMonthPoint = trend.length >= 2 ? trend[trend.length - 2] : null;
+  const deltaPct =
+    prevMonthPoint && prevMonthPoint.netEur !== 0
+      ? Math.round(((netEurThisMonth - prevMonthPoint.netEur) / Math.abs(prevMonthPoint.netEur)) * 100)
+      : null;
+  // "Najbolji mjesec ikad" — samo ako imamo bar jedan raniji mjesec za
+  // usporedbu i ovaj mjesec stvarno nadmašuje sve prethodne (uključujući
+  // mjesece bez podataka, koji broje kao 0 — pa prvi mjesec sa stvarnom
+  // zaradom prirodno postaje "rekord" i to je uredu, vrijedi proslaviti).
+  const historicalNets = trend.slice(0, -1).map((t) => t.netEur);
+  const isRecord = netEurThisMonth > 0 && historicalNets.length > 0 && netEurThisMonth > Math.max(...historicalNets);
+  // trend[0] je, uz monthsBack=13, isti mjesec prošle godine — YoY usporedba
+  // ima smisla samo kad imamo punih 13 točaka (dovoljno dug povijesni niz).
+  const yoyDeltaDays = trend.length >= 13 ? daysBookedThisMonth - trend[0].daysBooked : null;
+
+  // Dana u tekućem mjesecu (Date.UTC(year, month, 0) s mjesecom 1-12 vraća
+  // zadnji dan TOG mjeseca, jer se "month" tumači kao 0-indeksirani mjesec
+  // + 1 pa dan 0 vrati na zadnji dan traženog mjeseca).
+  const daysInCurrentMonth = new Date(Date.UTC(nowZagreb.year, nowZagreb.month, 0)).getUTCDate();
+  const goalDays = Math.max(5, Math.round(daysInCurrentMonth * 0.7));
+
+  const recentTrend = trend.slice(-6);
+
   const firstProperty = properties[0] ?? null;
   const pageCount = properties.length + companies.length;
   const singleName = pageCount === 1 ? (properties[0]?.name ?? companies[0]?.name ?? null) : null;
+  const monthLabel = `${OWNER_MONTH_NAMES_HR[nowZagreb.month - 1]} ${nowZagreb.year}`;
 
   return (
     <div className="flex flex-col gap-8">
@@ -442,12 +494,49 @@ async function OwnerDashboard({ admin }: { admin: AdminUser }) {
         </p>
       </div>
 
+      {properties.length > 0 && (
+        <OwnerHero
+          monthLabel={monthLabel}
+          netEur={netEurThisMonth}
+          deltaPct={deltaPct}
+          isRecord={isRecord}
+          streak={streakResult.streak}
+          streakIsNew={streakResult.isNewToday}
+          goalDays={goalDays}
+          currentDays={daysBookedThisMonth}
+          yoyDeltaDays={yoyDeltaDays}
+        />
+      )}
+
       {pageCount > 0 && (
         <section className="admin-animate-grid grid grid-cols-2 sm:grid-cols-3 gap-3">
           <StatCard label={pendingCount === 1 ? "Novi upit" : "Novih upita"} value={pendingCount} />
           <StatCard label="Dana zauzeto ovaj mjesec" value={daysBookedThisMonth} />
-          <StatCard label="Zarada ovaj mjesec (neto)" value={earnings.netEur} suffix=" €" />
+          <StatCard label="Zarada ovaj mjesec (neto)" value={netEurThisMonth} suffix=" €" />
         </section>
+      )}
+
+      {properties.length > 0 && recentTrend.length > 1 && (
+        <section className="grid sm:grid-cols-2 gap-4">
+          <OwnerTrendChart
+            title="Zarada — zadnjih 6 mjeseci"
+            labels={recentTrend.map((t) => t.monthLabel)}
+            data={recentTrend.map((t) => t.netEur)}
+            suffix=" €"
+            color="#0000c3"
+          />
+          <OwnerTrendChart
+            title="Dana zauzeto — zadnjih 6 mjeseci"
+            labels={recentTrend.map((t) => t.monthLabel)}
+            data={recentTrend.map((t) => t.daysBooked)}
+            suffix=" dana"
+            color="#ff7f00"
+          />
+        </section>
+      )}
+
+      {properties.length > 1 && (
+        <OwnerPropertyCarousel properties={properties} breakdown={breakdown} monthLabel={monthLabel} />
       )}
 
       {firstProperty && <MiniCalendar propertyId={firstProperty.id} propertyName={firstProperty.name} blocked={blockedByProperty[0] ?? []} now={now} />}
@@ -511,4 +600,3 @@ async function OwnerDashboard({ admin }: { admin: AdminUser }) {
     </div>
   );
 }
-
