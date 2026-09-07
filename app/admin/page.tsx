@@ -507,6 +507,7 @@ async function OwnerDashboard({ admin }: { admin: AdminUser }) {
                 goalDays: effectiveGoalDays,
                 deltaPct,
                 streak: admin.loginStreakCount,
+                isRecord,
               }}
             />
           )}
