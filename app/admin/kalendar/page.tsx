@@ -32,14 +32,20 @@ export default async function AdminCalendarPage({
   const sp = await searchParams;
 
   if (properties.length === 0) {
+    if (admin.role === "owner") {
+      return (
+        <div className="owner-dash flex flex-col gap-2" data-theme={admin.themePreference ?? "system"}>
+          <h1 className="text-xl font-bold">Kalendar</h1>
+          <p className="text-sm" style={{ color: "var(--od-ink-soft)" }}>
+            Nemaš dodijeljenu nijednu vikendicu — javi se glavnom adminu.
+          </p>
+        </div>
+      );
+    }
     return (
       <div className="flex flex-col gap-2">
         <h1 className="text-xl font-bold">Kalendar</h1>
-        <p className="text-sm text-black/60">
-          {admin.role === "owner"
-            ? "Nemaš dodijeljenu nijednu vikendicu — javi se glavnom adminu."
-            : "Još nema dodanih vikendica."}
-        </p>
+        <p className="text-sm text-black/60">Još nema dodanih vikendica.</p>
       </div>
     );
   }
@@ -81,6 +87,166 @@ export default async function AdminCalendarPage({
     ...Array.from({ length: leadingBlanks }, () => null),
     ...Array.from({ length: daysInMonth }, (_, i) => i + 1),
   ];
+
+  // Vlasnik dobiva liquid-glass redizajn (vidi .owner-* klase u globals.css,
+  // isti sustav kao početna stranica — na izričit zahtjev korisnika "kalendar
+  // rezervacije i sve ostalo u vlasnik adminu nek poprimi istu temu kao
+  // pocetna stranica"). Puni admin ispod zadržava IDENTIČAN stari isječak —
+  // ništa se u njemu ne mijenja.
+  if (admin.role === "owner") {
+    return (
+      <div className="owner-dash flex flex-col gap-6" data-theme={admin.themePreference ?? "system"}>
+        <div>
+          <h1 className="text-xl font-bold">{property.name} — kalendar dostupnosti</h1>
+          <p className="text-xs mt-0.5" style={{ color: "var(--od-ink-faint)" }}>
+            Klikni na dan da ga označiš zauzetim/slobodnim. Dani povučeni automatski iz
+            Booking.com/Airbnb (oznaka &bdquo;iCal&rdquo;) i dani iz{" "}
+            <Link href={`/admin/rezervacije?property=${property.id}`} className="underline">
+              rezervacija
+            </Link>{" "}
+            se ne mogu ručno deblokirati ovdje.
+          </p>
+        </div>
+
+        {properties.length > 1 && (
+          <div className="flex flex-wrap gap-2">
+            {properties.map((p) => (
+              <Link
+                key={p.id}
+                href={linkFor({ property: p.id, year: nowZagreb.year, month: nowZagreb.month })}
+                className={"owner-quicklink" + (p.id === property.id ? " owner-quicklink-active" : "")}
+              >
+                {p.name}
+              </Link>
+            ))}
+          </div>
+        )}
+
+        <div className="owner-glass owner-glass-grain rounded-2xl p-5 max-w-xl">
+          <div className="flex items-center justify-between mb-4">
+            <Link href={linkFor({ year: prevYear, month: prevMonth })} className="owner-quicklink">
+              ← Prošli
+            </Link>
+            <span className="font-semibold text-sm">
+              {MONTH_NAMES[month - 1]} {year}
+            </span>
+            <Link href={linkFor({ year: nextYear, month: nextMonth })} className="owner-quicklink">
+              Sljedeći →
+            </Link>
+          </div>
+
+          <div className="grid grid-cols-7 gap-1.5 text-center">
+            {WEEKDAY_LABELS.map((w) => (
+              <div key={w} className="text-[11px] font-semibold py-1" style={{ color: "var(--od-ink-faint)" }}>
+                {w}
+              </div>
+            ))}
+            {cells.map((day, i) => {
+              if (day === null) return <div key={`blank-${i}`} />;
+              const dateStr = `${year}-${pad2(month)}-${pad2(day)}`;
+              const blockedRow = blockedByDate.get(dateStr);
+              const source = blockedRow?.source;
+              const isBlocked = !!source;
+              const isIcal = source === "ical";
+              const isReservation = source === "reservation";
+
+              if (isIcal) {
+                return (
+                  <div
+                    key={dateStr}
+                    title="Automatski povučeno (iCal) — ne može se ručno deblokirati ovdje"
+                    className="owner-cal-cell-btn owner-cal-cell-ical text-xs font-semibold"
+                    style={{ cursor: "default" }}
+                  >
+                    {day}
+                  </div>
+                );
+              }
+
+              if (isReservation) {
+                const guestName =
+                  blockedRow?.reservationId != null
+                    ? guestNameByReservationId.get(blockedRow.reservationId)
+                    : null;
+                return (
+                  <div
+                    key={dateStr}
+                    title={
+                      (guestName ? `${guestName} — ` : "") +
+                      "iz rezervacije — ne može se ručno deblokirati ovdje, obriši rezervaciju"
+                    }
+                    className="owner-cal-cell-btn owner-cal-cell-reservation text-xs font-semibold"
+                    style={{ cursor: "default" }}
+                  >
+                    {day}
+                  </div>
+                );
+              }
+
+              return (
+                <form key={dateStr} action={toggleBlockedDateAction.bind(null, property.id, dateStr, isBlocked)}>
+                  <button
+                    type="submit"
+                    className={
+                      "owner-cal-cell-btn text-xs font-semibold " +
+                      (isBlocked ? "owner-cal-cell-blocked" : "owner-cal-cell-free")
+                    }
+                  >
+                    {day}
+                  </button>
+                </form>
+              );
+            })}
+          </div>
+
+          <div className="flex items-center gap-4 mt-4 text-[11px] flex-wrap" style={{ color: "var(--od-ink-faint)" }}>
+            <span className="flex items-center gap-1.5">
+              <span className="w-2.5 h-2.5 rounded-full owner-cal-cell-free inline-block" />
+              slobodno
+            </span>
+            <span className="flex items-center gap-1.5">
+              <span className="w-2.5 h-2.5 rounded-full owner-cal-cell-blocked inline-block" />
+              ručno blokirano
+            </span>
+            <span className="flex items-center gap-1.5">
+              <span className="w-2.5 h-2.5 rounded-full owner-cal-cell-ical inline-block" />
+              iCal (auto)
+            </span>
+            <span className="flex items-center gap-1.5">
+              <span className="w-2.5 h-2.5 rounded-full owner-cal-cell-reservation inline-block" />
+              rezervacija
+            </span>
+          </div>
+        </div>
+
+        {/* Blokiranje cijelog raspona odjednom — umjesto klikanja dan po dan
+            gore, npr. za cijeli tjedan rezervacije unesene izvan sustava. */}
+        <form
+          action={blockDateRangeAction.bind(null, property.id, linkFor({}))}
+          className="owner-glass owner-glass-grain rounded-2xl p-5 max-w-xl flex flex-col gap-3"
+        >
+          <span className="text-sm font-semibold">Blokiraj raspon datuma</span>
+          <p className="text-xs -mt-2" style={{ color: "var(--od-ink-faint)" }}>
+            Označi cijeli raspon zauzetim odjednom (npr. tjedan rezerviran telefonom), umjesto
+            klikanja svakog dana posebno gore.
+          </p>
+          <div className="flex items-end gap-3 flex-wrap">
+            <label className="flex flex-col gap-1 text-xs font-medium" style={{ color: "var(--od-ink-soft)" }}>
+              Od
+              <input type="date" name="start" required className="owner-input" />
+            </label>
+            <label className="flex flex-col gap-1 text-xs font-medium" style={{ color: "var(--od-ink-soft)" }}>
+              Do
+              <input type="date" name="end" required className="owner-input" />
+            </label>
+            <button type="submit" className="owner-btn-primary h-fit">
+              Blokiraj
+            </button>
+          </div>
+        </form>
+      </div>
+    );
+  }
 
   return (
     <div className="flex flex-col gap-6">
