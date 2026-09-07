@@ -6,6 +6,9 @@ import TwoFactorSetupForm from "@/components/admin/TwoFactorSetupForm";
 import PushNotificationToggle from "@/components/admin/PushNotificationToggle";
 import BroadcastPushForm from "@/components/admin/BroadcastPushForm";
 import RunPushMigrationButton from "@/components/admin/RunPushMigrationButton";
+import OwnerChangePasswordForm from "@/components/admin/OwnerChangePasswordForm";
+import OwnerTwoFactorSetupForm from "@/components/admin/OwnerTwoFactorSetupForm";
+import OwnerPushNotificationToggle from "@/components/admin/OwnerPushNotificationToggle";
 
 export default async function AdminSettingsPage() {
   const me = await getCurrentAdminRecord();
@@ -24,6 +27,42 @@ export default async function AdminSettingsPage() {
   } catch (err) {
     console.error("[AdminSettingsPage] hasPushSubscription nije uspio:", err);
     pushDbBroken = true;
+  }
+
+  // Vlasnički staklen prikaz — NAMJERNO odvojena grana (vidi OwnerMiniCalendar
+  // za obrazloženje obrasca), puni admin ispod ostaje potpuno nepromijenjen.
+  if (me.role === "owner") {
+    return (
+      <div className="owner-dash flex flex-col gap-6" data-theme={me.themePreference ?? "system"}>
+        <div>
+          <h1 className="text-xl font-bold">Postavke</h1>
+          <p className="text-xs mt-0.5" style={{ color: "var(--od-ink-faint)" }}>
+            Prijavljen kao {me.email}
+          </p>
+        </div>
+
+        <div className="owner-glass owner-glass-grain rounded-2xl p-5 flex flex-col gap-4 max-w-sm">
+          <span className="text-sm font-semibold">Promijeni lozinku</span>
+          <OwnerChangePasswordForm />
+        </div>
+
+        <div className="owner-glass owner-glass-grain rounded-2xl p-5 flex flex-col gap-4 max-w-sm">
+          <span className="text-sm font-semibold">Dvofaktorska prijava (2FA)</span>
+          <OwnerTwoFactorSetupForm initialEnabled={me.twoFactorEnabled} />
+        </div>
+
+        <div className="owner-glass owner-glass-grain rounded-2xl p-5 flex flex-col gap-4 max-w-sm">
+          <span className="text-sm font-semibold">Obavijesti na uređaju</span>
+          {pushDbBroken ? (
+            <p className="text-sm text-red-400">
+              Obavijesti trenutno nisu dostupne — javi punom adminu da to popravi.
+            </p>
+          ) : (
+            <OwnerPushNotificationToggle initialSubscribed={alreadySubscribed} />
+          )}
+        </div>
+      </div>
+    );
   }
 
   return (
