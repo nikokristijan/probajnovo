@@ -39,6 +39,7 @@ export default function OwnerGoalEditor({
   const router = useRouter();
   const buttonRef = useRef<HTMLButtonElement>(null);
   const popoverRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
 
   const POPOVER_WIDTH = 200;
 
@@ -56,8 +57,27 @@ export default function OwnerGoalEditor({
     setOpen(true);
   }
 
-  // Zatvori na klik izvan popovera/gumba, Escape, ili scroll (jednostavnije
-  // i pouzdanije nego pratiti poziciju gumba tijekom scrolla).
+  // NAMJERNO fokusiranje inputa RUČNO (preko rafa + focus({preventScroll}))
+  // umjesto autoFocus propa — pravi uzrok bug-a "na tren se pojavi pa
+  // odmah nestane": autoFocus na mobitelu (Safari/Chrome) potiče preglednik
+  // da SAM odmah scrolla stranicu kako bi fokusirano polje bilo iznad
+  // tipkovnice, taj automatski scroll je hvatao naš scroll-close listener
+  // ispod i ODMAH zatvarao popover prije nego ga je vlasnik uopće stigao
+  // vidjeti. `preventScroll: true` u potpunosti gasi taj automatski scroll
+  // (input je već postavljen na dobru poziciju preko getBoundingClientRect
+  // u openPopover, ne treba mu dodatni scroll-into-view).
+  useEffect(() => {
+    if (!open) return;
+    const raf = requestAnimationFrame(() => inputRef.current?.focus({ preventScroll: true }));
+    return () => cancelAnimationFrame(raf);
+  }, [open]);
+
+  // Zatvori na klik izvan popovera/gumba, Escape, ili STVARNI scroll
+  // korisnika (jednostavnije i pouzdanije nego pratiti poziciju gumba
+  // tijekom scrolla). Scroll-listener se veže s malim odgodom (obrana u
+  // dubinu uz preventScroll gore) — sprječava da bilo kakav preostali
+  // layout-pomak odmah po otvaranju (npr. tipkovnica koja se pojavljuje)
+  // lažno okine zatvaranje prije nego korisnik uopće stigne nešto učiniti.
   useEffect(() => {
     if (!open) return;
     function handlePointerDown(e: PointerEvent) {
@@ -73,10 +93,13 @@ export default function OwnerGoalEditor({
     }
     document.addEventListener("pointerdown", handlePointerDown);
     document.addEventListener("keydown", handleKeyDown);
-    window.addEventListener("scroll", handleScroll, { capture: true, passive: true });
+    const scrollGuard = window.setTimeout(() => {
+      window.addEventListener("scroll", handleScroll, { capture: true, passive: true });
+    }, 400);
     return () => {
       document.removeEventListener("pointerdown", handlePointerDown);
       document.removeEventListener("keydown", handleKeyDown);
+      window.clearTimeout(scrollGuard);
       window.removeEventListener("scroll", handleScroll, { capture: true });
     };
   }, [open]);
@@ -136,12 +159,12 @@ export default function OwnerGoalEditor({
               Cilj dana ovaj mjesec
             </label>
             <input
+              ref={inputRef}
               type="number"
               min={1}
               max={31}
               value={value}
               onChange={(e) => setValue(e.target.value)}
-              autoFocus
               className="rounded-lg border px-2.5 py-1.5 text-sm"
               style={{ borderColor: "var(--od-hairline)", background: "transparent", color: "var(--od-ink)" }}
             />

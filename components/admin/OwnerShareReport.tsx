@@ -10,6 +10,7 @@ type ShareStats = {
   goalDays: number;
   deltaPct: number | null;
   streak: number;
+  isRecord: boolean;
 };
 
 function roundedRect(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, r: number) {
@@ -46,6 +47,59 @@ function addGrain(ctx: CanvasRenderingContext2D, w: number, h: number) {
   ctx.fillStyle = pattern;
   ctx.fillRect(0, 0, w, h);
   ctx.restore();
+}
+
+/** Konfeti koji ZAOBILAZI stvarne pravokutnike sadržaja (naslov+brojka,
+    kartice, footer) — NAMJERNO ne jednostavan "margin od ruba" pristup:
+    lijevo poravnati tekst (mjesec, "NETO ZARADA", velika brojka) sjedi
+    BLIZU lijevog ruba platna, pa bi margin-only provjera i dalje puštala
+    konfeti točno preko tog teksta (viđeno u pregledu: točkica preko slova
+    u "NETO"). Eksplicitni pravokutnici sadržaja garantiraju da konfeti
+    nikad ne prelazi preko čitljivog dijela slike, a i dalje slobodno pada
+    po praznim rubovima/razmacima. Poziva se samo kod postignuća (rekordni
+    mjesec ili ostvaren cilj — vidi poziv niže), ne na svaki izvještaj. */
+function addConfetti(ctx: CanvasRenderingContext2D, w: number, h: number) {
+  const colors = ["#ff9428", "#c9a2ff", "#ffffff", "#ffd166", "#7ee7c7"];
+  const rand = (min: number, max: number) => min + Math.random() * (max - min);
+  const forbidden = [
+    { x0: 30, y0: 150, x1: 540, y1: 500 }, // mjesec, "NETO ZARADA", velika brojka, delta
+    { x0: 30, y0: 590, x1: 1050, y1: 860 }, // obje statistik-kartice
+    { x0: 30, y0: 940, x1: 360, y1: 1040 }, // razdjelnica + footer wordmark
+  ];
+  const insideForbidden = (x: number, y: number) =>
+    forbidden.some((r) => x > r.x0 && x < r.x1 && y > r.y0 && y < r.y1);
+
+  for (let i = 0; i < 130; i++) {
+    const x = rand(0, w);
+    const y = rand(0, h);
+    if (insideForbidden(x, y)) continue;
+
+    ctx.save();
+    ctx.translate(x, y);
+    ctx.rotate(rand(0, Math.PI * 2));
+    ctx.globalAlpha = rand(0.55, 0.95);
+    ctx.fillStyle = colors[Math.floor(Math.random() * colors.length)];
+    const shape = Math.random();
+    if (shape < 0.45) {
+      const cw = rand(7, 13);
+      const ch = rand(13, 21);
+      ctx.fillRect(-cw / 2, -ch / 2, cw, ch);
+    } else if (shape < 0.8) {
+      const r = rand(3.5, 7);
+      ctx.beginPath();
+      ctx.arc(0, 0, r, 0, Math.PI * 2);
+      ctx.fill();
+    } else {
+      const s = rand(9, 15);
+      ctx.beginPath();
+      ctx.moveTo(0, -s / 2);
+      ctx.lineTo(s / 2, s / 2);
+      ctx.lineTo(-s / 2, s / 2);
+      ctx.closePath();
+      ctx.fill();
+    }
+    ctx.restore();
+  }
 }
 
 /** Iscrtava brendirani 1080×1080 PNG sažetak mjeseca na <canvas>-u, u
@@ -90,29 +144,64 @@ function drawReportCanvas(stats: ShareStats): HTMLCanvasElement {
 
   addGrain(ctx, 1080, 1080);
 
-  // Sitan "logo" lockup gore lijevo — krug s N + wordmark, umjesto gole
-  // rečenice teksta (djeluje kao pravi brand-report, ne generička poruka).
-  ctx.fillStyle = "rgba(255,255,255,0.16)";
+  // Konfeti + proslavna pločica SAMO kod postignuća (rekordni mjesec ili
+  // ostvaren cilj) — nacrtano PRIJE loga/teksta tako da sjedi kao pozadinski
+  // sloj, a stakleni tekst/kartice se čitko crtaju preko njega.
+  const isCelebration = stats.isRecord || stats.currentDays >= stats.goalDays;
+  if (isCelebration) addConfetti(ctx, 1080, 1080);
+
+  // Logo lockup gore lijevo — pun narančasti krug s "N" (isti brand-accent
+  // kao "NOVO admin" header na stranici) + dvobojni wordmark (NOVO bold
+  // bijelo + narančasti accent tekst), umjesto gole sivkaste rečenice —
+  // jači, prepoznatljiviji brand-otisak na slici koja se dijeli van appa.
+  ctx.fillStyle = "#ff9428";
   ctx.beginPath();
-  ctx.arc(90, 88, 26, 0, Math.PI * 2);
+  ctx.arc(90, 88, 28, 0, Math.PI * 2);
   ctx.fill();
-  ctx.strokeStyle = "rgba(255,255,255,0.35)";
-  ctx.lineWidth = 1.5;
-  ctx.stroke();
   ctx.fillStyle = "#ffffff";
-  ctx.font = "800 26px system-ui, -apple-system, sans-serif";
+  ctx.font = "800 28px system-ui, -apple-system, sans-serif";
   ctx.textAlign = "center";
   ctx.textBaseline = "middle";
   ctx.fillText("N", 90, 90);
   ctx.textAlign = "left";
   ctx.textBaseline = "alphabetic";
 
-  ctx.fillStyle = "rgba(255,255,255,0.72)";
-  ctx.font = "600 26px system-ui, -apple-system, sans-serif";
-  ctx.fillText("NOVO — mjesečni izvještaj", 132, 82);
+  ctx.fillStyle = "#ffffff";
+  ctx.font = "800 28px system-ui, -apple-system, sans-serif";
+  ctx.fillText("NOVO", 134, 82);
+  const novoWidth = ctx.measureText("NOVO").width;
+  ctx.fillStyle = "#ff9428";
+  ctx.font = "700 26px system-ui, -apple-system, sans-serif";
+  ctx.fillText(" mjesečni izvještaj", 134 + novoWidth, 82);
   ctx.fillStyle = "rgba(255,255,255,0.5)";
   ctx.font = "500 22px system-ui, -apple-system, sans-serif";
-  ctx.fillText(stats.subtitle ? stats.subtitle : "probajnovo.com", 132, 110);
+  ctx.fillText(stats.subtitle ? stats.subtitle : "probajnovo.com", 134, 112);
+
+  // Proslavna pločica gore desno — isti vizualni jezik kao streak-bedž na
+  // stvarnom hero-u ("🔥 X dana zaredom" pločica gore desno), samo ovdje
+  // javlja KOJE postignuće je razlog konfeta (rekord ima prednost pred
+  // ostvarenim ciljem ako su oba točna, da poruka ostane jedna i jasna).
+  if (isCelebration) {
+    const label = stats.isRecord ? "🎉 Rekordni mjesec" : "🎯 Cilj ostvaren";
+    ctx.font = "700 24px system-ui, -apple-system, sans-serif";
+    const textW = ctx.measureText(label).width;
+    const padX = 22;
+    const pillW = textW + padX * 2;
+    const pillH = 48;
+    const pillX = 1080 - 72 - pillW;
+    const pillY = 56;
+    roundedRect(ctx, pillX, pillY, pillW, pillH, pillH / 2);
+    ctx.fillStyle = "rgba(255,255,255,0.16)";
+    ctx.fill();
+    roundedRect(ctx, pillX, pillY, pillW, pillH, pillH / 2);
+    ctx.strokeStyle = "rgba(255,255,255,0.38)";
+    ctx.lineWidth = 1.5;
+    ctx.stroke();
+    ctx.fillStyle = "#ffffff";
+    ctx.textBaseline = "middle";
+    ctx.fillText(label, pillX + padX, pillY + pillH / 2 + 1);
+    ctx.textBaseline = "alphabetic";
+  }
 
   ctx.fillStyle = "#ffffff";
   ctx.font = "700 40px system-ui, -apple-system, sans-serif";
