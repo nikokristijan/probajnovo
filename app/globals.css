@@ -950,12 +950,15 @@ html.novo-lock-scroll body {
   --od-blob-navy: rgba(0, 0, 195, 0.5);
   --od-blob-orange: rgba(255, 127, 0, 0.42);
   --od-blob-purple: rgba(106, 33, 176, 0.4);
-  /* Suptilan ambient navy "wash" preko CIJELE .owner-dash pozadine (vidi
-     .owner-dash background niže) — u svijetloj temi jedva primjetan
-     (pozadina je već svijetla lavanda), u tamnoj temi radi glavni posao:
-     drži cijelu stranicu u istoj navy obitelji boja kao hero, umjesto
-     da izvan dosega ::before mrlje padne natrag na golu ravnu boju. */
-  --od-glow-navy-wash: rgba(0, 0, 195, 0.08);
+  /* TREĆI KRUG feedbacka ("pokvario si i svijetlu pozadinu"): ambient wash
+     + zrcalna ::after mrlja pri dnu su NAMJERNO isključeni u svijetloj temi
+     (opacity/alpha na 0 ovdje) — svijetla tema je već bila dobra prije ova
+     dva dodatka i nije trebala dirati; oba efekta postoje SAMO da riješe
+     "gradijent kao hero, ne ravno crno" u TAMNOJ temi, pa se uključuju
+     isključivo unutar [data-theme="dark"] / prefers-color-scheme:dark
+     blokova niže. --od-after-opacity kontrolira .owner-dash::after. */
+  --od-glow-navy-wash: rgba(0, 0, 195, 0);
+  --od-after-opacity: 0;
 
   /* NAMJERNO pozadina izravno ovdje (ne kroz zaseban .owner-dash-bg
      utility) — taj utility je postojao u CSS-u ali se NIGDJE u JSX-u nije
@@ -1018,6 +1021,13 @@ html.novo-lock-scroll body {
   --od-blob-orange: rgba(255, 142, 24, 0.4);
   --od-blob-purple: rgba(150, 90, 230, 0.42);
   --od-glow-navy-wash: rgba(70, 70, 255, 0.32);
+  --od-after-opacity: 0.55;
+}
+
+@media (max-width: 640px) {
+  .owner-dash[data-theme="dark"] {
+    --od-after-opacity: 0.45;
+  }
 }
 
 @media (prefers-color-scheme: dark) {
@@ -1040,6 +1050,13 @@ html.novo-lock-scroll body {
     --od-blob-orange: rgba(255, 142, 24, 0.4);
     --od-blob-purple: rgba(150, 90, 230, 0.42);
     --od-glow-navy-wash: rgba(70, 70, 255, 0.32);
+    --od-after-opacity: 0.55;
+  }
+}
+
+@media (max-width: 640px) and (prefers-color-scheme: dark) {
+  .owner-dash:not([data-theme="light"]):not([data-theme="dark"]) {
+    --od-after-opacity: 0.45;
   }
 }
 
@@ -1094,13 +1111,17 @@ html.novo-lock-scroll body {
     radial-gradient(480px 400px at 6% 92%, var(--od-blob-orange), transparent 62%),
     radial-gradient(560px 460px at 50% 60%, var(--od-blob-purple), transparent 68%);
   filter: blur(80px) saturate(150%);
-  opacity: 0.55;
+  /* NAMJERNO preko --od-after-opacity varijable (0 u svijetloj temi, ~0.5 u
+     tamnoj — vidi definicije te varijable uz --od-bg gore) umjesto fiksnog
+     broja: ova mrlja postoji ISKLJUČIVO za tamnu temu, svijetla je već bila
+     dobra i nije je trebalo dirati (feedback: "pokvario si i svijetlu
+     pozadinu"). */
+  opacity: var(--od-after-opacity, 0);
 }
 
 @media (max-width: 640px) {
   .owner-dash::after {
     height: 620px;
-    opacity: 0.45;
   }
 }
 
