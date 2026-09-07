@@ -1559,3 +1559,25 @@ export async function getSubscriptionsYearlyByMonth(year: number) {
   }
   return totals;
 }
+
+/** Isto kao getSubscriptionsYearlyByMonth, ali zbraja monthlyPriceEur
+ * (vrijednost) umjesto brojanja pretplata — za spojeni "Financije" pregled
+ * (vidi app/admin/financije), gdje se ovo zbraja s getSalesYearlyByMonth u
+ * JEDAN graf ukupnog prometa agencije po mjesecu. NAPOMENA: ovo je "nova
+ * potpisana mjesečna vrijednost" (koliko je NOVIH pretplata vrijedilo u
+ * mjesecu kad su počele), ne stvarno naplaćeni iznos taj mjesec — prava
+ * mjesečna naplata bi trebala priznavati SVAKI mjesec dok je pretplata
+ * aktivna, što bi tražilo puni ledger po ciklusu naplate (nema ga u
+ * shemi). Ovo je namjerno jednostavna, iskrena aproksimacija u istom duhu
+ * kao "nove pretplate" graf koji je već postojao — samo u eurima umjesto
+ * broja, da se može zbrojiti s prodajom. */
+export async function getSubscriptionsValueYearlyByMonth(year: number) {
+  const all = await listSubscriptions();
+  const totals = Array(12).fill(0) as number[];
+  for (const s of all) {
+    if (!s.startDate.startsWith(String(year))) continue;
+    const monthIdx = Number(s.startDate.slice(5, 7)) - 1;
+    if (monthIdx >= 0 && monthIdx < 12) totals[monthIdx] += s.monthlyPriceEur;
+  }
+  return totals;
+}
