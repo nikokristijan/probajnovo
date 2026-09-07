@@ -5,21 +5,38 @@ import { logoutAction } from "@/lib/actions";
 import { listPropertiesForAdmin, listCompaniesForAdmin } from "@/lib/db/queries";
 import PwaRegister from "@/components/admin/PwaRegister";
 
-export const metadata: Metadata = {
-  title: "NOVO — admin",
-  robots: { index: false, follow: false },
-  // PWA — omogućuje "Dodaj na početni zaslon" / "Instaliraj aplikaciju" za
-  // /admin na mobitelu, vidi public/admin-manifest.json i PwaRegister.tsx.
-  manifest: "/admin-manifest.json",
-  appleWebApp: {
-    capable: true,
-    statusBarStyle: "default",
-    title: "NOVO admin",
-  },
-  icons: {
-    apple: "/apple-touch-icon.png",
-  },
-};
+/* OSMI krug feedbacka ("vrh je oštra kocka, bijelo gore i dole", potvrđeno
+   da je admin dodan na početni zaslon kao PWA) — statusBarStyle "default"
+   je STATIČAN i uvijek daje bijelu iOS statusnu traku (sat/baterija), bez
+   obzira na vlasnikovu tamnu temu; ta traka NIJE dio našeg DOM-a (OS je
+   crta preko nje), pa je nijedan CSS unutar stranice ne može obojiti — samo
+   ovaj meta podatak. Zato metadata mora postati generateMetadata(): čita
+   trenutnog admina i za role="owner" u eksplicitnoj tamnoj temi vraća
+   "black" (puna tamna traka, sljubljuje se s .owner-header ispod umjesto
+   bijelog reza) — za sve ostalo (puni/superadmin, ili vlasnik u
+   svijetloj/sustavnoj temi) ostaje "default" kao i dosad, potpuno
+   nepromijenjeno ponašanje na tom putu. "Sustav" tema nema poseban slučaj
+   jer OS preferenciju ne možemo pročitati na serveru u ovoj točki — ostaje
+   "default", isto kao prije ovog popravka (bez regresije). */
+export async function generateMetadata(): Promise<Metadata> {
+  const admin = await getCurrentAdminRecord();
+  const ownerDark = admin?.role === "owner" && admin.themePreference === "dark";
+  return {
+    title: "NOVO — admin",
+    robots: { index: false, follow: false },
+    // PWA — omogućuje "Dodaj na početni zaslon" / "Instaliraj aplikaciju" za
+    // /admin na mobitelu, vidi public/admin-manifest.json i PwaRegister.tsx.
+    manifest: "/admin-manifest.json",
+    appleWebApp: {
+      capable: true,
+      statusBarStyle: ownerDark ? "black" : "default",
+      title: "NOVO admin",
+    },
+    icons: {
+      apple: "/apple-touch-icon.png",
+    },
+  };
+}
 
 export const viewport: Viewport = {
   themeColor: "#ff7f00",
