@@ -1,6 +1,10 @@
 import { eq, desc, asc, and, gt, inArray, isNull, sql } from "drizzle-orm";
 import { db } from "./index";
-import { todayDateStringZagreb, dateStringOffsetFromTodayZagreb } from "@/lib/date";
+import {
+  todayDateStringZagreb,
+  dateStringOffsetFromTodayZagreb,
+  currentYearMonthZagreb,
+} from "@/lib/date";
 import {
   agency,
   properties,
@@ -400,14 +404,72 @@ export async function deleteInquiry(id: number) {
   await db.delete(inquiries).where(eq(inquiries.id, id));
 }
 
+/** Dodaje login_streak_count/last_login_date stupce na admin_users ako još
+    ne postoje — isti obrazac kao ensureBrandingColumns gore, samo za
+    Duolingo-stil streak na vlasničkom dashboardu (vidi
+    updateAdminLoginStreak niže i app/admin/page.tsx OwnerDashboard). */
+async function ensureAdminStreakColumns(): Promise<void> {
+  await db.execute(
+    sql`ALTER TABLE admin_users ADD COLUMN IF NOT EXISTS login_streak_count INTEGER NOT NULL DEFAULT 0`
+  );
+  await db.execute(sql`ALTER TABLE admin_users ADD COLUMN IF NOT EXISTS last_login_date TEXT`);
+}
+
+let adminStreakColumnsPromise: Promise<void> | null = null;
+function ensureAdminStreakColumnsOnce(): Promise<void> {
+  if (!adminStreakColumnsPromise) {
+    adminStreakColumnsPromise = ensureAdminStreakColumns().catch((err) => {
+      adminStreakColumnsPromise = null;
+      throw err;
+    });
+  }
+  return adminStreakColumnsPromise;
+}
+
 export async function findAdminByEmail(email: string) {
+await ensureAdminStreakColumnsOnce();
 const rows = await db.select().from(adminUsers).where(eq(adminUsers.email, email)).limit(1);
 return rows[0] ?? null;
 }
 
 export async function getAdminById(id: number) {
+await ensureAdminStreakColumnsOnce();
 const rows = await db.select().from(adminUsers).where(eq(adminUsers.id, id)).limit(1);
 return rows[0] ?? null;
+}
+
+/**
+ * Ažurira Duolingo-stil streak (uzastopni dani otvaranja admina) — poziva se
+ * SAMO s vlasničkog (role="owner") dashboarda (app/admin/page.tsx
+ * OwnerDashboard), punim adminima/superadminima se streak ne prikazuje ni
+ * ne broji. Idempotentno unutar istog dana (više posjeta/prefetcheva iste
+ * stranice ne broji dvaput) — provjerava lastLoginDate prije pisanja.
+ * Ako je zadnja prijava bila JUČER (Europe/Zagreb) → +1, inače (uključujući
+ * "nikad") → reset na 1. `isNewToday` govori je li se streak BAŠ SAD
+ * promijenio (za konfete/animaciju) — false ako je dashboard već otvoren
+ * ranije istog dana.
+ */
+export async function updateAdminLoginStreak(
+  adminId: number
+): Promise<{ streak: number; isNewToday: boolean }> {
+  await ensureAdminStreakColumnsOnce();
+  const admin = await getAdminById(adminId);
+  if (!admin) return { streak: 0, isNewToday: false };
+
+  const today = todayDateStringZagreb();
+  if (admin.lastLoginDate === today) {
+    return { streak: admin.loginStreakCount, isNewToday: false };
+  }
+
+  const yesterday = dateStringOffsetFromTodayZagreb(-1);
+  const newStreak = admin.lastLoginDate === yesterday ? admin.loginStreakCount + 1 : 1;
+
+  await db
+    .update(adminUsers)
+    .set({ loginStreakCount: newStreak, lastLoginDate: today })
+    .where(eq(adminUsers.id, adminId));
+
+  return { streak: newStreak, isNewToday: true };
 }
 
 export async function listAdmins() {
@@ -934,6 +996,111 @@ export async function getMonthlyEarnings(propertyIds: number[], monthPrefix: str
     .reduce((sum, e) => sum + e.amountEur, 0);
 
   return { grossEur, expensesEur, netEur: grossEur - expensesEur };
+}
+
+const MONTH_ABBR_HR = ["Sij", "Velj", "Ožu", "Tra", "Svi", "Lip", "Srp", "Kol", "Ruj", "Lis", "Stu", "Pro"];
+
+export type OwnerMonthPoint = {
+  year: number;
+  month: number; // 1-12
+  monthLabel: string;
+  daysBooked: number;
+  netEur: number;
+};
+
+/**
+ * Zadnjih `monthsBack` mjeseci (uključujući tekući) zauzetosti i neto zarade
+ * preko SVIH zadanih vikendica — za vlasnički dashboard (app/admin/page.tsx
+ * OwnerDashboard): trend graf, usporedba s prošlim mjesecom, "najbolji mjesec
+ * ikad" provjera i usporedba s istim mjesecom prošle godine. Jedan upit za
+ * blokirane datume i jedan za rezervacije/troškove preko cijelog prozora —
+ * raspodjela po mjesecu radi se u JS-u, puno jeftinije od monthsBack
+ * zasebnih upita (isti duh kao getMonthlyEarnings iznad, samo za više
+ * mjeseci odjednom). Poredak: najstariji prvi, tekući mjesec zadnji
+ * (trend[trend.length - 1]) — trend[0] je isti mjesec `monthsBack - 1`
+ * godina/mjeseci unatrag (npr. monthsBack=13 → trend[0] je isti mjesec
+ * prošle godine, za YoY usporedbu).
+ */
+export async function getOwnerMonthlyTrend(
+  propertyIds: number[],
+  monthsBack: number
+): Promise<OwnerMonthPoint[]> {
+  if (propertyIds.length === 0) return [];
+
+  const nowZagreb = currentYearMonthZagreb();
+  const points: { year: number; month: number }[] = [];
+  for (let i = monthsBack - 1; i >= 0; i--) {
+    const d = new Date(Date.UTC(nowZagreb.year, nowZagreb.month - 1 - i, 1));
+    points.push({ year: d.getUTCFullYear(), month: d.getUTCMonth() + 1 });
+  }
+
+  const [allBlocked, allReservations, allExpenses] = await Promise.all([
+    db
+      .select()
+      .from(propertyBlockedDates)
+      .where(inArray(propertyBlockedDates.propertyId, propertyIds)),
+    db.select().from(reservations).where(inArray(reservations.propertyId, propertyIds)),
+    db.select().from(expenses).where(inArray(expenses.propertyId, propertyIds)),
+  ]);
+
+  return points.map(({ year, month }) => {
+    const prefix = `${year}-${String(month).padStart(2, "0")}`;
+    const daysBooked = allBlocked.filter((b) => b.date.startsWith(prefix)).length;
+    const grossEur = allReservations
+      .filter((r) => r.paid && r.checkIn.startsWith(prefix))
+      .reduce((sum, r) => sum + r.priceEur, 0);
+    const expensesEur = allExpenses
+      .filter((e) => e.date.startsWith(prefix))
+      .reduce((sum, e) => sum + e.amountEur, 0);
+    return {
+      year,
+      month,
+      monthLabel: MONTH_ABBR_HR[month - 1],
+      daysBooked,
+      netEur: grossEur - expensesEur,
+    };
+  });
+}
+
+/**
+ * Raspodjela zauzetosti/neto zarade PO POJEDINOJ vikendici za jedan mjesec —
+ * za vlasnički dashboard kad vlasnik ima više vikendica (OwnerPropertyCarousel
+ * kartice, "koja vikendica najbolje stoji ovaj mjesec"). Vraća mapu
+ * propertyId → { daysBooked, netEur }; vikendica bez ijedne rezervacije/
+ * blokade tog mjeseca svejedno dobiva unos s nulama (lakše renderirati bez
+ * dodatnih provjera u komponenti).
+ */
+export async function getPropertiesMonthlyBreakdown(
+  propertyIds: number[],
+  monthPrefix: string
+): Promise<Record<number, { daysBooked: number; netEur: number }>> {
+  const result: Record<number, { daysBooked: number; netEur: number }> = {};
+  for (const id of propertyIds) result[id] = { daysBooked: 0, netEur: 0 };
+  if (propertyIds.length === 0) return result;
+
+  const [allBlocked, allReservations, allExpenses] = await Promise.all([
+    db
+      .select()
+      .from(propertyBlockedDates)
+      .where(inArray(propertyBlockedDates.propertyId, propertyIds)),
+    db.select().from(reservations).where(inArray(reservations.propertyId, propertyIds)),
+    db.select().from(expenses).where(inArray(expenses.propertyId, propertyIds)),
+  ]);
+
+  for (const id of propertyIds) {
+    const daysBooked = allBlocked.filter(
+      (b) => b.propertyId === id && b.date.startsWith(monthPrefix)
+    ).length;
+    const grossEur = allReservations
+      .filter((r) => r.propertyId === id && r.paid && r.checkIn.startsWith(monthPrefix))
+      .reduce((sum, r) => sum + r.priceEur, 0);
+    const expensesEur = allExpenses
+      .filter((e) => e.propertyId === id && e.date.startsWith(monthPrefix))
+      .reduce((sum, e) => sum + e.amountEur, 0);
+    result[id] = { daysBooked, netEur: grossEur - expensesEur };
+  }
+
+  return result;
 }
 
 /* ---------------------------------------------------------------- */

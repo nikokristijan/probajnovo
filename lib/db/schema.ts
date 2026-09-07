@@ -289,6 +289,15 @@ export const adminUsers = pgTable("admin_users", {
       da admin ne zaključa sam sebe zbog krivo skeniranog QR koda). */
   twoFactorSecret: text("two_factor_secret"),
   twoFactorEnabled: boolean("two_factor_enabled").notNull().default(false),
+  /** Uzastopni dani otvaranja admina (Duolingo-stil streak) — koristi se
+      samo na vlasničkom (role="owner") dashboardu, vidi
+      lib/db/queries.ts updateAdminLoginStreak i app/admin/page.tsx
+      OwnerDashboard. Punim adminima/superadminima se ne mijenja/prikazuje. */
+  loginStreakCount: integer("login_streak_count").notNull().default(0),
+  /** "YYYY-MM-DD" (Europe/Zagreb) zadnjeg dana kad je streak ažuriran — null
+      dok se nikad nije računao. Sprječava dvostruko brojanje istog dana kod
+      više posjeta/prefetcheva iste stranice. */
+  lastLoginDate: text("last_login_date"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
