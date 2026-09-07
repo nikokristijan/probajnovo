@@ -72,6 +72,7 @@ import {
   updateSubscription,
   deleteSubscription,
   extendSubscription,
+  updateAdminLoginStreak,
 } from "@/lib/db/queries";
 import { sendInquiryNotification, sendGuestConfirmation, sendReservationConfirmation, sendInquiryReply } from "@/lib/email";
 import { resolveCoordinates, geoMissWarning } from "@/lib/geocode";
@@ -2000,4 +2001,27 @@ export async function extendSubscriptionAction(id: number, months: number) {
   await extendSubscription(id, months);
   revalidatePath("/admin/financije");
   revalidatePath("/admin");
+}
+
+/**
+ * Ažurira Duolingo-stil streak (vidi lib/db/queries.ts updateAdminLoginStreak)
+ * — namjerno POZVANO IZ KLIJENTA (components/admin/OwnerHero.tsx useEffect
+ * nakon mounta), ne tijekom renderiranja app/admin/page.tsx OwnerDashboard.
+ * Server Komponente se u Next.js-u znaju renderirati više puta po zahtjevu
+ * (RSC payload + prefetch), pa je pisanje u bazu ("bump" streaka) usred
+ * renderiranja nepouzdano — dvije izvedbe iste stranice mogu vidjeti
+ * RAZLIČITO stanje baze i proizvesti različit HTML, što je uzrokovalo
+ * povremenu React hydration grešku (#418) na /admin za vlasnika. Sada
+ * OwnerDashboard samo ČITA početni streak (admin.loginStreakCount, bez
+ * pisanja) za prvi render, a stvarni "bump" se događa ovdje, ČISTO na
+ * klijentu nakon što je stranica već hidrirana — nema više utrke između
+ * dva izvršavanja render funkcije. Vraća najnovije stanje da OwnerHero
+ * može animirano "podići" broj i prikazati konfeti tek kad je stvarno
+ * potvrđeno da je streak porastao danas prvi put. */
+export async function refreshOwnerLoginStreakAction(): Promise<{
+  streak: number;
+  isNewToday: boolean;
+}> {
+  const admin = await requireAdminOrOwner();
+  return updateAdminLoginStreak(admin.id);
 }
