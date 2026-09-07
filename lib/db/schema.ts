@@ -298,6 +298,19 @@ export const adminUsers = pgTable("admin_users", {
       dok se nikad nije računao. Sprječava dvostruko brojanje istog dana kod
       više posjeta/prefetcheva iste stranice. */
   lastLoginDate: text("last_login_date"),
+  /** Postavke vlasničkog (role="owner") dashboarda — vidi
+      app/admin/page.tsx OwnerDashboard i lib/actions.ts
+      updateOwnerThemeAction/updateOwnerGoalAction. Punim adminima se ne
+      koriste (dashboard im je odvojen, AdminDashboard). */
+  /** "light" | "dark" | "system" — null = "system" (prati uređaj), isto
+      ponašanje kao da je eksplicitno "system", samo bez retke u bazi dok
+      vlasnik prvi put ne promijeni temu. */
+  themePreference: text("theme_preference"),
+  /** Vlasnikov ručni cilj dana zauzeća ovaj mjesec — null = koristi auto-
+      izračunati cilj (70% dana u mjesecu, vidi app/admin/page.tsx
+      goalDays). Postavljen samo ako je vlasnik svjesno promijenio zadani
+      cilj (OwnerGoalEditor). */
+  customGoalDays: integer("custom_goal_days"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 

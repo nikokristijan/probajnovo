@@ -404,15 +404,21 @@ export async function deleteInquiry(id: number) {
   await db.delete(inquiries).where(eq(inquiries.id, id));
 }
 
-/** Dodaje login_streak_count/last_login_date stupce na admin_users ako još
-    ne postoje — isti obrazac kao ensureBrandingColumns gore, samo za
-    Duolingo-stil streak na vlasničkom dashboardu (vidi
-    updateAdminLoginStreak niže i app/admin/page.tsx OwnerDashboard). */
+/** Dodaje login_streak_count/last_login_date/theme_preference/
+    custom_goal_days stupce na admin_users ako još ne postoje — isti obrazac
+    kao ensureBrandingColumns gore. Prva dva su za Duolingo-stil streak,
+    zadnja dva za vlasničke postavke dashboarda (tamna tema, prilagodljiv
+    cilj dana) — vidi updateAdminLoginStreak/updateOwnerTheme/
+    updateOwnerCustomGoal niže i app/admin/page.tsx OwnerDashboard. */
 async function ensureAdminStreakColumns(): Promise<void> {
   await db.execute(
     sql`ALTER TABLE admin_users ADD COLUMN IF NOT EXISTS login_streak_count INTEGER NOT NULL DEFAULT 0`
   );
   await db.execute(sql`ALTER TABLE admin_users ADD COLUMN IF NOT EXISTS last_login_date TEXT`);
+  await db.execute(sql`ALTER TABLE admin_users ADD COLUMN IF NOT EXISTS theme_preference TEXT`);
+  await db.execute(
+    sql`ALTER TABLE admin_users ADD COLUMN IF NOT EXISTS custom_goal_days INTEGER`
+  );
 }
 
 let adminStreakColumnsPromise: Promise<void> | null = null;
@@ -470,6 +476,35 @@ export async function updateAdminLoginStreak(
     .where(eq(adminUsers.id, adminId));
 
   return { streak: newStreak, isNewToday: true };
+}
+
+/** Sprema vlasnikov ručni izbor teme (vidi lib/actions.ts
+    updateOwnerThemeAction i components/admin/OwnerThemeToggle.tsx).
+    `null` = "prati sustav" (briše eksplicitni izbor). */
+export async function updateOwnerTheme(
+  adminId: number,
+  theme: "light" | "dark" | "system" | null
+): Promise<void> {
+  await ensureAdminStreakColumnsOnce();
+  await db
+    .update(adminUsers)
+    .set({ themePreference: theme === "system" ? null : theme })
+    .where(eq(adminUsers.id, adminId));
+}
+
+/** Sprema vlasnikov ručni cilj dana zauzeća za tekući mjesec (vidi
+    lib/actions.ts updateOwnerGoalAction i components/admin/
+    OwnerGoalEditor.tsx). `null` briše ručni cilj — dashboard se vraća na
+    auto-izračunati (70% dana u mjesecu, vidi app/admin/page.tsx). */
+export async function updateOwnerCustomGoal(
+  adminId: number,
+  goalDays: number | null
+): Promise<void> {
+  await ensureAdminStreakColumnsOnce();
+  await db
+    .update(adminUsers)
+    .set({ customGoalDays: goalDays })
+    .where(eq(adminUsers.id, adminId));
 }
 
 export async function listAdmins() {
