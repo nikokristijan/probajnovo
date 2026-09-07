@@ -57,27 +57,17 @@ export default function OwnerGoalEditor({
     setOpen(true);
   }
 
-  // NAMJERNO fokusiranje inputa RUČNO (preko rafa + focus({preventScroll}))
-  // umjesto autoFocus propa — pravi uzrok bug-a "na tren se pojavi pa
-  // odmah nestane": autoFocus na mobitelu (Safari/Chrome) potiče preglednik
-  // da SAM odmah scrolla stranicu kako bi fokusirano polje bilo iznad
-  // tipkovnice, taj automatski scroll je hvatao naš scroll-close listener
-  // ispod i ODMAH zatvarao popover prije nego ga je vlasnik uopće stigao
-  // vidjeti. `preventScroll: true` u potpunosti gasi taj automatski scroll
-  // (input je već postavljen na dobru poziciju preko getBoundingClientRect
-  // u openPopover, ne treba mu dodatni scroll-into-view).
-  useEffect(() => {
-    if (!open) return;
-    const raf = requestAnimationFrame(() => inputRef.current?.focus({ preventScroll: true }));
-    return () => cancelAnimationFrame(raf);
-  }, [open]);
-
-  // Zatvori na klik izvan popovera/gumba, Escape, ili STVARNI scroll
-  // korisnika (jednostavnije i pouzdanije nego pratiti poziciju gumba
-  // tijekom scrolla). Scroll-listener se veže s malim odgodom (obrana u
-  // dubinu uz preventScroll gore) — sprječava da bilo kakav preostali
-  // layout-pomak odmah po otvaranju (npr. tipkovnica koja se pojavljuje)
-  // lažno okine zatvaranje prije nego korisnik uopće stigne nešto učiniti.
+  // Zatvori na klik izvan popovera/gumba ili Escape. NAMJERNO VIŠE NE
+  // zatvara na scroll (treći krug feedbacka: "čim kliknem da napišem broj
+  // nestane") — pravi uzrok: kad korisnik tapne broj-polje da počne
+  // tipkati, mobilni preglednik SAM scrolla stranicu da polje bude iznad
+  // tipkovnice, taj scroll je gasio popover prije nego je korisnik stigao
+  // išta upisati (prijašnji pokušaj s odgodom od 400ms je samo POMAKNUO
+  // trenutak kvara, nije ga riješio — pravi tap na polje često dođe kasnije
+  // od 400ms). Umjesto zatvaranja, scroll sad samo PONOVNO IZRAČUNA poziciju
+  // popovera iz trenutnog položaja gumba (isti izračun kao openPopover) —
+  // popover ostaje otvoren i ostaje "zalijepljen" uz gumb i kad se
+  // tipkovnica pojavi i kad korisnik stvarno scrolla stranicu.
   useEffect(() => {
     if (!open) return;
     function handlePointerDown(e: PointerEvent) {
@@ -89,17 +79,20 @@ export default function OwnerGoalEditor({
       if (e.key === "Escape") setOpen(false);
     }
     function handleScroll() {
-      setOpen(false);
+      const rect = buttonRef.current?.getBoundingClientRect();
+      if (!rect) return;
+      const left = Math.min(
+        window.innerWidth - POPOVER_WIDTH - 8,
+        Math.max(8, rect.right - POPOVER_WIDTH)
+      );
+      setCoords({ top: rect.bottom + 8, left });
     }
     document.addEventListener("pointerdown", handlePointerDown);
     document.addEventListener("keydown", handleKeyDown);
-    const scrollGuard = window.setTimeout(() => {
-      window.addEventListener("scroll", handleScroll, { capture: true, passive: true });
-    }, 400);
+    window.addEventListener("scroll", handleScroll, { capture: true, passive: true });
     return () => {
       document.removeEventListener("pointerdown", handlePointerDown);
       document.removeEventListener("keydown", handleKeyDown);
-      window.clearTimeout(scrollGuard);
       window.removeEventListener("scroll", handleScroll, { capture: true });
     };
   }, [open]);

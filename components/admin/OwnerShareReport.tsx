@@ -13,6 +13,21 @@ type ShareStats = {
   isRecord: boolean;
 };
 
+/** Učitava pravi NOVO logo (public/novo-logo.png, isti file kao svugdje na
+    stranici) kao <img> spreman za ctx.drawImage — NAMJERNO umjesto ručno
+    crtanog kruga sa slovom "N": to je bila izmišljena zamjena, ne stvarni
+    brend (feedback: "logo nije krug sa slovom N nego ... imas poslan
+    logo"). Isti origin (public/), pa nema CORS/"tainted canvas" problema
+    pri kasnijem canvas.toBlob() izvozu. */
+function loadImage(src: string): Promise<HTMLImageElement> {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.onload = () => resolve(img);
+    img.onerror = reject;
+    img.src = src;
+  });
+}
+
 function roundedRect(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, r: number) {
   ctx.beginPath();
   ctx.moveTo(x + r, y);
@@ -110,11 +125,12 @@ function addConfetti(ctx: CanvasRenderingContext2D, w: number, h: number) {
     sve tri boje (taj sweep je bio točno ono na što se odnosila feedback
     poruka — ista slika se dijeli van dashboarda pa mora nositi isti,
     ispravljeni izgled, ne stari). */
-function drawReportCanvas(stats: ShareStats): HTMLCanvasElement {
+async function drawReportCanvas(stats: ShareStats): Promise<HTMLCanvasElement> {
   const canvas = document.createElement("canvas");
   canvas.width = 1080;
   canvas.height = 1080;
   const ctx = canvas.getContext("2d")!;
+  const logoImg = await loadImage("/novo-logo.png");
 
   // Navy podloga — dominira, brend ostaje prepoznatljiv.
   ctx.fillStyle = "#0000c3";
@@ -150,32 +166,22 @@ function drawReportCanvas(stats: ShareStats): HTMLCanvasElement {
   const isCelebration = stats.isRecord || stats.currentDays >= stats.goalDays;
   if (isCelebration) addConfetti(ctx, 1080, 1080);
 
-  // Logo lockup gore lijevo — pun narančasti krug s "N" (isti brand-accent
-  // kao "NOVO admin" header na stranici) + dvobojni wordmark (NOVO bold
-  // bijelo + narančasti accent tekst), umjesto gole sivkaste rečenice —
-  // jači, prepoznatljiviji brand-otisak na slici koja se dijeli van appa.
-  ctx.fillStyle = "#ff9428";
-  ctx.beginPath();
-  ctx.arc(90, 88, 28, 0, Math.PI * 2);
-  ctx.fill();
-  ctx.fillStyle = "#ffffff";
-  ctx.font = "800 28px system-ui, -apple-system, sans-serif";
-  ctx.textAlign = "center";
-  ctx.textBaseline = "middle";
-  ctx.fillText("N", 90, 90);
-  ctx.textAlign = "left";
-  ctx.textBaseline = "alphabetic";
+  // Logo lockup gore lijevo — PRAVI NOVO logo (public/novo-logo.png, isti
+  // file kao svugdje drugdje na stranici), ne izmišljeni krug sa slovom
+  // "N". Logo je već narančast pa čita jasno na navy podlozi bez ikakve
+  // dodatne pozadine iza njega.
+  const logoH = 46;
+  const logoW = logoH * (logoImg.naturalWidth / logoImg.naturalHeight);
+  const logoX = 72;
+  const logoY = 56;
+  ctx.drawImage(logoImg, logoX, logoY, logoW, logoH);
 
   ctx.fillStyle = "#ffffff";
-  ctx.font = "800 28px system-ui, -apple-system, sans-serif";
-  ctx.fillText("NOVO", 134, 82);
-  const novoWidth = ctx.measureText("NOVO").width;
-  ctx.fillStyle = "#ff9428";
   ctx.font = "700 26px system-ui, -apple-system, sans-serif";
-  ctx.fillText(" mjesečni izvještaj", 134 + novoWidth, 82);
+  ctx.fillText("mjesečni izvještaj", logoX + logoW + 18, logoY + logoH / 2 + 9);
   ctx.fillStyle = "rgba(255,255,255,0.5)";
-  ctx.font = "500 22px system-ui, -apple-system, sans-serif";
-  ctx.fillText(stats.subtitle ? stats.subtitle : "probajnovo.com", 134, 112);
+  ctx.font = "500 21px system-ui, -apple-system, sans-serif";
+  ctx.fillText(stats.subtitle ? stats.subtitle : "probajnovo.com", logoX, logoY + logoH + 28);
 
   // Proslavna pločica gore desno — isti vizualni jezik kao streak-bedž na
   // stvarnom hero-u ("🔥 X dana zaredom" pločica gore desno), samo ovdje
@@ -334,7 +340,7 @@ export default function OwnerShareReport({ stats }: { stats: ShareStats }) {
   async function handleShare() {
     setBusy(true);
     try {
-      const canvas = drawReportCanvas(stats);
+      const canvas = await drawReportCanvas(stats);
       const blob: Blob | null = await new Promise((resolve) => canvas.toBlob(resolve, "image/png"));
       if (!blob) return;
       const fileName = `novo-izvjestaj-${stats.monthLabel.replace(/\s+/g, "-").toLowerCase()}.png`;
