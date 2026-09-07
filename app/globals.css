@@ -940,12 +940,12 @@ html.novo-lock-scroll body {
   --od-ink: #0b0b1f;
   --od-ink-soft: rgba(11, 11, 31, 0.62);
   --od-ink-faint: rgba(11, 11, 31, 0.42);
-  --od-glass-bg: rgba(255, 255, 255, 0.5);
-  --od-glass-bg-strong: rgba(255, 255, 255, 0.74);
+  --od-glass-bg: rgba(243, 244, 255, 0.55);
+  --od-glass-bg-strong: rgba(248, 248, 255, 0.78);
   --od-glass-border: rgba(255, 255, 255, 0.65);
   --od-glass-highlight: rgba(255, 255, 255, 0.85);
-  --od-glass-shadow: 0 1px 1px rgba(20, 20, 60, 0.03), 0 10px 30px -12px rgba(20, 20, 60, 0.18),
-    inset 0 1px 0 rgba(255, 255, 255, 0.55);
+  --od-glass-shadow: 0 2px 2px rgba(20, 20, 60, 0.04), 0 16px 40px -16px rgba(20, 20, 60, 0.28),
+    inset 0 1px 0 rgba(255, 255, 255, 0.6);
   --od-hairline: rgba(11, 11, 31, 0.09);
   --od-blob-navy: rgba(0, 0, 195, 0.5);
   --od-blob-orange: rgba(255, 127, 0, 0.42);
@@ -965,8 +965,8 @@ html.novo-lock-scroll body {
   --od-glass-bg-strong: rgba(26, 26, 42, 0.78);
   --od-glass-border: rgba(255, 255, 255, 0.12);
   --od-glass-highlight: rgba(255, 255, 255, 0.16);
-  --od-glass-shadow: 0 1px 1px rgba(0, 0, 0, 0.2), 0 10px 30px -12px rgba(0, 0, 0, 0.55),
-    inset 0 1px 0 rgba(255, 255, 255, 0.07);
+  --od-glass-shadow: 0 2px 2px rgba(0, 0, 0, 0.22), 0 16px 40px -16px rgba(0, 0, 0, 0.6),
+    inset 0 1px 0 rgba(255, 255, 255, 0.09);
   --od-hairline: rgba(255, 255, 255, 0.1);
   --od-blob-navy: rgba(74, 74, 255, 0.55);
   --od-blob-orange: rgba(255, 142, 24, 0.4);
@@ -983,8 +983,8 @@ html.novo-lock-scroll body {
     --od-glass-bg-strong: rgba(26, 26, 42, 0.78);
     --od-glass-border: rgba(255, 255, 255, 0.12);
     --od-glass-highlight: rgba(255, 255, 255, 0.16);
-    --od-glass-shadow: 0 1px 1px rgba(0, 0, 0, 0.2), 0 10px 30px -12px rgba(0, 0, 0, 0.55),
-      inset 0 1px 0 rgba(255, 255, 255, 0.07);
+    --od-glass-shadow: 0 2px 2px rgba(0, 0, 0, 0.22), 0 16px 40px -16px rgba(0, 0, 0, 0.6),
+      inset 0 1px 0 rgba(255, 255, 255, 0.09);
     --od-hairline: rgba(255, 255, 255, 0.1);
     --od-blob-navy: rgba(74, 74, 255, 0.55);
     --od-blob-orange: rgba(255, 142, 24, 0.4);
@@ -1009,20 +1009,22 @@ html.novo-lock-scroll body {
   top: -60px;
   left: -5%;
   right: -5%;
-  height: 760px;
+  height: 1180px;
   z-index: -1;
   pointer-events: none;
   background: radial-gradient(560px 420px at 10% 0%, var(--od-blob-navy), transparent 62%),
     radial-gradient(480px 400px at 92% 6%, var(--od-blob-orange), transparent 60%),
-    radial-gradient(620px 460px at 48% 42%, var(--od-blob-purple), transparent 65%);
+    radial-gradient(620px 460px at 48% 42%, var(--od-blob-purple), transparent 65%),
+    radial-gradient(520px 480px at 20% 78%, var(--od-blob-purple), transparent 68%),
+    radial-gradient(560px 420px at 88% 92%, var(--od-blob-navy), transparent 66%);
   filter: blur(70px) saturate(150%);
-  opacity: 0.6;
+  opacity: 0.65;
 }
 
 @media (max-width: 640px) {
   .owner-dash::before {
-    height: 520px;
-    opacity: 0.5;
+    height: 980px;
+    opacity: 0.55;
   }
 }
 
@@ -1106,9 +1108,19 @@ a.owner-glass:active,
      pozicioniran sjaj preko teksta je bio uzrok "ne vidi se ništa"
      problema (previše bijelog sjaja baš iza bijelog teksta). Donji tamni
      sloj (::before) postoji ISKLJUČIVO da garantira kontrast teksta bez
-     obzira na boju/poziciju gradijenta ispod — ne dodaje sjaj. */
-  background: radial-gradient(120% 150% at 96% -15%, rgba(255, 255, 255, 0.24), transparent 48%),
-    linear-gradient(135deg, var(--od-navy) 0%, #3a1aa0 45%, var(--od-purple) 68%, var(--od-orange) 100%);
+     obzira na boju/poziciju gradijenta ispod — ne dodaje sjaj.
+
+     NAMJERNO nije jedan gladak dijagonalni linear-gradient kroz sve tri
+     boje (navy → ljubičasta → narančasta) — to je upravo "AI stock
+     gradient" izgled (vidi feedback "gradient izgleda malo AI"). Umjesto
+     toga: čvrsta NOVO navy podloga (brand ostaje prepoznatljiv, dominira
+     >70% površine) s dva mala, lokalizirana "izvora svjetla" u suprotnim
+     donjim kutovima — narančasti i ljubičasti sjaj koji izgledaju kao da
+     dolaze iza stakla, ne kao ispisana boja preko cijele kartice. */
+  background: radial-gradient(120% 150% at 96% -15%, rgba(255, 255, 255, 0.22), transparent 48%),
+    radial-gradient(72% 85% at 2% 118%, rgba(255, 148, 40, 0.62), transparent 60%),
+    radial-gradient(62% 68% at 106% 88%, rgba(134, 52, 205, 0.4), transparent 62%),
+    var(--od-navy);
   box-shadow: 0 24px 60px -20px rgba(10, 5, 60, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.4),
     inset 0 -50px 70px -50px rgba(0, 0, 0, 0.28);
   border: 1px solid rgba(255, 255, 255, 0.22);
@@ -1205,6 +1217,13 @@ a.owner-glass:active,
   padding: 2px 2px 10px;
   -webkit-overflow-scrolling: touch;
   scrollbar-width: thin;
+  /* Desni rub vidljivo iščezava umjesto da se sadržaj naglo reže — jasan
+     signal "još ima, skrolaj" umjesto da izgleda kao slomljen layout
+     (feedback: bedž trofeja se naglo prekidao na rubu ekrana). Bezopasno
+     i kad sadržaj stane bez potrebe za skrolanjem — maska tad jednostavno
+     nema što izblijediti. */
+  -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 32px), transparent 100%);
+  mask-image: linear-gradient(to right, #000 calc(100% - 32px), transparent 100%);
 }
 .owner-carousel > * { scroll-snap-align: start; flex: 0 0 auto; }
 
@@ -1216,6 +1235,8 @@ a.owner-glass:active,
   padding: 2px 2px 8px;
   -webkit-overflow-scrolling: touch;
   scrollbar-width: thin;
+  -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 28px), transparent 100%);
+  mask-image: linear-gradient(to right, #000 calc(100% - 28px), transparent 100%);
 }
 .owner-badge {
   flex: 0 0 auto;
@@ -1261,6 +1282,28 @@ a.owner-glass:active,
   to { opacity: 1; transform: scale(1); }
 }
 .owner-badge-new { animation: owner-badge-pop 0.4s cubic-bezier(0.22, 1, 0.36, 1) forwards; }
+
+/* ---- Statistički mini-kartice (OwnerStatCard) ------------------------- */
+/* Bez obojenog ruba sve tri kartice izgledaju kao identična ponovljena
+   siva pločica (feedback: "malo ruzno" — monotono). Tanka gradient traka
+   na vrhu svake kartice, po jedna boja iz NOVO palete, dovoljna je da
+   svaka kartica dobije vlastiti identitet bez da se doda još stakla/šuma. */
+.owner-stat-card {
+  position: relative;
+  overflow: hidden;
+}
+.owner-stat-card::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  opacity: 0.85;
+}
+.owner-stat-card-orange::before { background: linear-gradient(90deg, var(--od-orange), transparent 85%); }
+.owner-stat-card-navy::before { background: linear-gradient(90deg, var(--od-navy), transparent 85%); }
+.owner-stat-card-purple::before { background: linear-gradient(90deg, var(--od-purple), transparent 85%); }
 
 /* ---- Tema/gumb prekidača --------------------------------------------- */
 .owner-theme-switch {
