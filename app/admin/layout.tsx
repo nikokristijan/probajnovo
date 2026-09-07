@@ -64,7 +64,18 @@ export default async function AdminLayout({ children }: { children: React.ReactN
       data-theme={isOwner ? (admin.themePreference ?? "system") : undefined}
     >
       <PwaRegister />
-      <header className="flex items-center justify-between px-6 py-4 border-b border-black/10 bg-white flex-wrap gap-3">
+      {/* ŠESTI krug feedbacka ("gornji navbar ostaje bijel u tamnom modu") —
+          header dobiva "owner-header" stakleni sloj SAMO za role="owner"
+          (vidi .owner-header u globals.css); puni (super)admin zadržava
+          identičan bg-white/border-black izgled kao i prije, ništa se ne
+          dira na tom putu. */}
+      <header
+        className={
+          isOwner
+            ? "flex items-center justify-between px-6 py-4 border-b owner-header flex-wrap gap-3"
+            : "flex items-center justify-between px-6 py-4 border-b border-black/10 bg-white flex-wrap gap-3"
+        }
+      >
         <span className="font-bold tracking-tight">
           NOVO <span className="text-[#ff7f00]">admin</span>
         </span>
@@ -79,7 +90,11 @@ export default async function AdminLayout({ children }: { children: React.ReactN
             <input type="checkbox" id="admin-nav-toggle" className="peer hidden" />
             <label
               htmlFor="admin-nav-toggle"
-              className="sm:hidden cursor-pointer border border-black/15 rounded-lg px-3 py-1.5 text-sm font-semibold"
+              className={
+                isOwner
+                  ? "sm:hidden cursor-pointer border owner-header-border rounded-lg px-3 py-1.5 text-sm font-semibold"
+                  : "sm:hidden cursor-pointer border border-black/15 rounded-lg px-3 py-1.5 text-sm font-semibold"
+              }
               aria-label="Izbornik"
             >
               ☰
@@ -145,7 +160,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
             <Link href={ownerPageHref ?? "/"} className="hover:text-[#ff7f00]" target="_blank">
               Pogledaj stranicu ↗
             </Link>
-            <span className="text-black/40 flex items-center gap-1.5">
+            <span className={isOwner ? "owner-header-faint flex items-center gap-1.5" : "text-black/40 flex items-center gap-1.5"}>
               {admin.email}
               {admin.isSuperAdmin && (
                 <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-[#ff7f00]/10 text-[#ff7f00]">
@@ -153,7 +168,13 @@ export default async function AdminLayout({ children }: { children: React.ReactN
                 </span>
               )}
               {admin.role === "owner" && (
-                <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-black/5 text-black/50">
+                <span
+                  className={
+                    isOwner
+                      ? "text-[10px] font-semibold px-1.5 py-0.5 rounded-full owner-header-chip"
+                      : "text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-black/5 text-black/50"
+                  }
+                >
                   vlasnik{ownerLabel ? ` · ${ownerLabel}` : ""}
                 </span>
               )}
@@ -161,7 +182,11 @@ export default async function AdminLayout({ children }: { children: React.ReactN
             <form action={logoutAction}>
               <button
                 type="submit"
-                className="rounded-full border border-black/15 px-3 py-1.5 hover:border-[#ff7f00] hover:text-[#ff7f00]"
+                className={
+                  isOwner
+                    ? "rounded-full border owner-header-border px-3 py-1.5 hover:border-[#ff7f00] hover:text-[#ff7f00]"
+                    : "rounded-full border border-black/15 px-3 py-1.5 hover:border-[#ff7f00] hover:text-[#ff7f00]"
+                }
               >
                 Odjava
               </button>
