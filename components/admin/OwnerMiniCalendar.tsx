@@ -54,7 +54,13 @@ export default function OwnerMiniCalendar({
           Puni kalendar →
         </Link>
       </div>
-      <div className="owner-glass owner-glass-grain rounded-2xl p-4 max-w-xs">
+      {/* NAMJERNO bez max-w-xs (naslijeđeno iz MiniCalendar.tsx, gdje ima
+          smisla jer sjedi pored drugog sadržaja) — ovdje je kalendar
+          samostalan red u istom okomitom nizu kao i sve ostale kartice
+          (bedževi, statistike, grafovi), pa mora dijeliti njihovu punu
+          širinu, inače na mobitelu izgleda uže od svega ostalog (feedback:
+          "kalendar nije jednako sirok kao sve ostalo"). */}
+      <div className="owner-glass owner-glass-grain rounded-2xl p-4">
         <div className="grid grid-cols-7 gap-1 text-center">
           {MINI_WEEKDAY_LABELS.map((w) => (
             <div key={w} className="text-[10px] font-semibold py-0.5" style={{ color: "var(--od-ink-faint)" }}>
