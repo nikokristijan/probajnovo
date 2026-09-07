@@ -1774,8 +1774,11 @@ export async function deleteExpenseAction(propertyId: number, id: number, descri
 
 /* ---------------------------------------------------------------- */
 /* Zarada agencije (prodaja stranica/proizvoda/usluga) — vidi         */
-/* app/admin/prodaja. Samo puni admini (requireAdmin), NE vlasnici —  */
-/* vlasnici vide samo svoje vikendice, ovo je agencijska knjiga.      */
+/* app/admin/financije (spojeno s pretplatama, bivši /admin/prodaja). */
+/* Samo GLAVNI admin/superadmini (requireSuperAdmin) — isto pravilo   */
+/* kao pretplate, otkad je korisnik izričito potvrdio "financije i    */
+/* prodaja su oboje za superadmine"; pooštreno s prijašnjeg           */
+/* requireAdmin (koji je puštao SVE pune admine, ne samo glavnog).    */
 /* ---------------------------------------------------------------- */
 
 const SaleSchema = z.object({
@@ -1792,7 +1795,7 @@ export async function createSaleAction(
   _prevState: ActionState,
   formData: FormData
 ): Promise<ActionState> {
-  await requireAdmin();
+  await requireSuperAdmin();
 
   const parsed = SaleSchema.safeParse({
     category: formData.get("category"),
@@ -1814,15 +1817,15 @@ export async function createSaleAction(
     date: parsed.data.date,
     note: parsed.data.note || null,
   });
-  revalidatePath("/admin/prodaja");
+  revalidatePath("/admin/financije");
   // redirect() umjesto { success: true } — isprazni formu za sljedeći unos.
   redirect(redirectTo);
 }
 
 export async function deleteSaleAction(id: number) {
-  await requireAdmin();
+  await requireSuperAdmin();
   await deleteSale(id);
-  revalidatePath("/admin/prodaja");
+  revalidatePath("/admin/financije");
 }
 
 /* ---------------------------------------------------------------- */
