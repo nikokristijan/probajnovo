@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { refreshOwnerLoginStreakAction } from "@/lib/actions";
 
 /**
  * "Naslovna" kartica vlasničkog dashboarda (app/admin/page.tsx OwnerDashboard)
@@ -13,14 +14,24 @@ import { useEffect, useMemo, useState } from "react";
  * Animacije (count-up, konfeti, crtanje prstena) su čisti CSS/JS bez
  * biblioteka, isti duh kao admin-chart-* — zato "use client" (treba
  * useEffect za requestAnimationFrame count-up).
- */
+ *
+ * Streak "bump" NAMJERNO nije dio server-rendera (vidi app/admin/page.tsx
+ * OwnerDashboard) — poziva se ovdje, u useEffectu nakon mounta, preko
+ * refreshOwnerLoginStreakAction (lib/actions.ts). Server Komponente se u
+ * Next.js-u znaju izvršiti više puta po zahtjevu (RSC payload + prefetch),
+ * pa PISANJE u bazu usred renderiranja može proizvesti dva različita HTML-a
+ * za isti zahtjev → React hydration greška (#418) koju smo vidjeli na /admin
+ * za vlasnika. `initialStreak` je čisto ČITANJE (admin.loginStreakCount,
+ * bez pisanja) pa je server-render uvijek deterministički; stvarni bump se
+ * potvrđuje tek ovdje, na klijentu, kad je stranica već hidrirana — ako se
+ * broj promijeni, badge/prsten se vidljivo "diže" (dodatni addictive efekt,
+ * slično Duolingovoj animaciji streaka). */
 export default function OwnerHero({
   monthLabel,
   netEur,
   deltaPct,
   isRecord,
-  streak,
-  streakIsNew,
+  initialStreak,
   goalDays,
   currentDays,
   yoyDeltaDays,
@@ -31,9 +42,8 @@ export default function OwnerHero({
   deltaPct: number | null;
   /** Je li ovo najbolji mjesec ikad (po neto zaradi) — pokreće konfeti + banner. */
   isRecord: boolean;
-  streak: number;
-  /** Je li streak upravo danas povećan (za suptilni pop na broju). */
-  streakIsNew: boolean;
+  /** Streak PRIJE današnjeg bumpa (admin.loginStreakCount) — samo čitanje, vidi gore. */
+  initialStreak: number;
   goalDays: number;
   currentDays: number;
   /** Razlika dana zauzeća vs isti mjesec prošle godine, null ako nema podataka. */
@@ -41,6 +51,8 @@ export default function OwnerHero({
 }) {
   const [displayNet, setDisplayNet] = useState(0);
   const [displayDays, setDisplayDays] = useState(0);
+  const [streak, setStreak] = useState(initialStreak);
+  const [streakIsNew, setStreakIsNew] = useState(false);
 
   useEffect(() => {
     let raf = 0;
@@ -58,6 +70,24 @@ export default function OwnerHero({
     return () => cancelAnimationFrame(raf);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [netEur, currentDays]);
+
+  useEffect(() => {
+    let cancelled = false;
+    refreshOwnerLoginStreakAction()
+      .then((result) => {
+        if (cancelled) return;
+        setStreak(result.streak);
+        setStreakIsNew(result.isNewToday);
+      })
+      .catch(() => {
+        // Best-effort — ako akcija ne uspije, ostaje prikazan initialStreak
+        // (jučerašnje stanje), dashboard i dalje normalno radi.
+      });
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const showConfetti = isRecord || (streakIsNew && streak > 0 && streak % 5 === 0);
   const confettiPieces = useMemo(() => {
