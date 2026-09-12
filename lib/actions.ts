@@ -326,7 +326,7 @@ const PropertySchema = z.object({
   phone: z.string().optional(),
   published: z.coerce.boolean(),
   showInStudies: z.coerce.boolean(),
-  layoutStyle: z.enum(["classic", "editorial", "raw", "apple"]).default("classic"),
+  layoutStyle: z.enum(["classic", "editorial", "raw", "apple", "grand"]).default("classic"),
   darkMode: z.coerce.boolean(),
   checkInTime: z.string().optional(),
   checkOutTime: z.string().optional(),
@@ -721,7 +721,7 @@ const CompanySchema = z.object({
       message: "Kontakt email firme mora biti ispravan email.",
     }),
   published: z.coerce.boolean(),
-  layoutStyle: z.enum(["classic", "editorial", "raw", "apple"]).default("classic"),
+  layoutStyle: z.enum(["classic", "editorial", "raw", "apple", "grand"]).default("classic"),
   darkMode: z.coerce.boolean(),
   mapUrl: z
     .string()

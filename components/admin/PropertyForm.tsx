@@ -16,6 +16,16 @@ const APPLE_COLOR_PRESETS: { label: string; value: string }[] = [
   { label: "Terakota", value: "#b5502e" },
 ];
 
+/** Grand stil je fiksno taman (vidi .stay-grand u globals.css) — akcent ovdje
+    služi samo kao suptilan detalj (linije, hover, cijena), pa preporučujemo
+    prigušene, "metalik" nijanse umjesto punih boja iz Apple palete. */
+const GRAND_COLOR_PRESETS: { label: string; value: string }[] = [
+  { label: "Šampanjac", value: "#c9a969" },
+  { label: "Bronca", value: "#a97142" },
+  { label: "Maslina", value: "#8a8560" },
+  { label: "Bjelokost", value: "#cfc6b3" },
+];
+
 type PropertyAction = (
   prevState: ActionState,
   formData: FormData
@@ -39,7 +49,7 @@ type FormValues = {
   phone: string;
   published: boolean;
   showInStudies: boolean;
-  layoutStyle: "classic" | "editorial" | "raw" | "apple";
+  layoutStyle: "classic" | "editorial" | "raw" | "apple" | "grand";
   darkMode: boolean;
   checkInTime: string;
   checkOutTime: string;
@@ -282,6 +292,7 @@ export default function PropertyForm({
               <option value="editorial">Editorial — magazinski, veliki naslovi</option>
               <option value="raw">Raw — brutalist, mono, oštro</option>
               <option value="apple">Apple — stakleno, mekano, minimalno</option>
+              <option value="grand">Grand — ultra-premium, ogromne fotografije, tanka serifna slova</option>
             </select>
           </Field>
           <label className="flex items-center gap-2 text-sm font-medium mt-auto pb-2">
@@ -302,6 +313,30 @@ export default function PropertyForm({
             </span>
             <div className="flex flex-wrap gap-2">
               {APPLE_COLOR_PRESETS.map((preset) => (
+                <button
+                  key={preset.value}
+                  type="button"
+                  onClick={() => set("accentColor", preset.value)}
+                  className="flex items-center gap-2 rounded-full border border-black/15 bg-white pl-1.5 pr-3 py-1.5 text-xs font-medium hover:border-black/30"
+                  title={preset.value}
+                >
+                  <span
+                    className="h-5 w-5 rounded-full border border-black/10"
+                    style={{ background: preset.value }}
+                  />
+                  {preset.label}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+        {values.layoutStyle === "grand" && (
+          <div className="flex flex-col gap-2">
+            <span className="text-sm font-medium">
+              Boja detalja za Grand stil — pozadina je uvijek tamna, ovo je samo akcent (klikni za primjenu)
+            </span>
+            <div className="flex flex-wrap gap-2">
+              {GRAND_COLOR_PRESETS.map((preset) => (
                 <button
                   key={preset.value}
                   type="button"

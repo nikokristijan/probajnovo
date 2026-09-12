@@ -305,10 +305,15 @@ export async function PropertyView({
   const layout =
     property.layoutStyle === "editorial" ||
     property.layoutStyle === "raw" ||
-    property.layoutStyle === "apple"
+    property.layoutStyle === "apple" ||
+    property.layoutStyle === "grand"
       ? property.layoutStyle
       : "classic";
-  const stayClass = `stay stay-${layout}${property.darkMode ? " stay-dark" : ""}`;
+  // Grand je uvijek taman — isti "sigurne varijante boje" sustav (--ink/--paper
+  // preračunati u .stay-dark) samo se uvijek uključi za ovaj layout, bez obzira
+  // na admin prekidač, jer je tamna, prigušena pozadina dio same estetike
+  // (Tawaraya/Borgo Santo Stefano stil), ne opcionalna varijanta boje.
+  const stayClass = `stay stay-${layout}${property.darkMode || layout === "grand" ? " stay-dark" : ""}`;
   const accentStyle = { "--accent": property.accentColor } as React.CSSProperties;
   const contactEmail = property.contactEmail || agency?.contactEmail || "hello@novo.studio";
   // Ako admin nije eksplicitno postavio banner, koristi prvu sliku iz galerije —
@@ -388,6 +393,32 @@ export async function PropertyView({
       <script type="application/ld+json" dangerouslySetInnerHTML={jsonLdProps(propertyJsonLd)} />
       <StayInteractions />
 
+      {layout === "grand" && (
+        // Puni zaslon prije ikakvog UI kroma — isti prvi dojam kao kod
+        // the-tawaraya.jp/borgosantandrea.it: samo ime, lokacija, tišina.
+        // Nav ide TEK poslije u DOM redoslijedu — .stay-nav je sticky (top:0),
+        // pa se sam "zalijepi" tek kad gost skrola do njega, bez ijedne
+        // linije nove JS logike.
+        <section className="stay-grand-intro">
+          {property.logoUrl ? (
+            <Image
+              src={property.logoUrl}
+              alt={property.name}
+              width={340}
+              height={140}
+              className="stay-grand-intro-logo"
+              priority
+            />
+          ) : (
+            <div className="stay-grand-intro-mark">{property.name}</div>
+          )}
+          <div className="stay-grand-intro-loc">{property.location}</div>
+          <div className="stay-grand-intro-scroll" aria-hidden="true">
+            {L("Pomaknite se", "Scroll")}
+          </div>
+        </section>
+      )}
+
       <header className="stay-nav">
         <NavBrand logoUrl={property.logoUrl} showNovoBranding={property.showNovoBranding} name={property.name} />
         <div className="stay-nav-right">
@@ -403,7 +434,7 @@ export async function PropertyView({
         </div>
       </header>
 
-      {layout === "raw" && marqueeItems.length > 0 && (
+      {(layout === "raw" || layout === "grand") && marqueeItems.length > 0 && (
         <div className="stay-marquee" aria-hidden="true">
           <div className="stay-marquee-track">
             {[...marqueeItems, ...marqueeItems].map((t, i) => (
@@ -493,7 +524,7 @@ export async function PropertyView({
         </p>
       </RevealSection>
 
-      {layout === "editorial" && (
+      {(layout === "editorial" || layout === "grand") && (
         <div className="stay-pullquote">
           <RevealSection>
             <blockquote>“{property.tagline}”</blockquote>
@@ -722,7 +753,7 @@ export async function PropertyView({
         <InquiryForm source="property" sourceId={property.id} sourceName={property.name} lang={lang} />
       </RevealSection>
 
-      <footer className="stay-foot">
+      <footer className="stay-foot" data-watermark={property.name}>
         {property.name} · {property.location}
         <div className="credit">
           {L("Stranicu pokreće", "Site by")} <Link href="/">NOVO</Link>
@@ -771,10 +802,12 @@ function CompanyView({ company, agency }: { company: Company; agency: Agency | n
   const layout =
     company.layoutStyle === "editorial" ||
     company.layoutStyle === "raw" ||
-    company.layoutStyle === "apple"
+    company.layoutStyle === "apple" ||
+    company.layoutStyle === "grand"
       ? company.layoutStyle
       : "classic";
-  const stayClass = `stay stay-${layout}${company.darkMode ? " stay-dark" : ""}`;
+  // Vidi identičnu napomenu u PropertyView — Grand je uvijek taman.
+  const stayClass = `stay stay-${layout}${company.darkMode || layout === "grand" ? " stay-dark" : ""}`;
   const accentStyle = { "--accent": company.accentColor } as React.CSSProperties;
   const contactEmail = company.contactEmail || agency?.contactEmail || "hello@novo.studio";
   const effectiveBanner = company.bannerImage || company.images[0] || null;
@@ -834,6 +867,27 @@ function CompanyView({ company, agency }: { company: Company; agency: Agency | n
       <script type="application/ld+json" dangerouslySetInnerHTML={jsonLdProps(companyJsonLd)} />
       <StayInteractions />
 
+      {layout === "grand" && (
+        <section className="stay-grand-intro">
+          {company.logoUrl ? (
+            <Image
+              src={company.logoUrl}
+              alt={company.name}
+              width={340}
+              height={140}
+              className="stay-grand-intro-logo"
+              priority
+            />
+          ) : (
+            <div className="stay-grand-intro-mark">{company.name}</div>
+          )}
+          <div className="stay-grand-intro-loc">{company.location}</div>
+          <div className="stay-grand-intro-scroll" aria-hidden="true">
+            Pomaknite se
+          </div>
+        </section>
+      )}
+
       <header className="stay-nav">
         <NavBrand logoUrl={company.logoUrl} showNovoBranding={company.showNovoBranding} name={company.name} />
         <a className="stay-nav-cta" href={mailHref} data-magnetic>
@@ -841,7 +895,7 @@ function CompanyView({ company, agency }: { company: Company; agency: Agency | n
         </a>
       </header>
 
-      {layout === "raw" && marqueeItems.length > 0 && (
+      {(layout === "raw" || layout === "grand") && marqueeItems.length > 0 && (
         <div className="stay-marquee" aria-hidden="true">
           <div className="stay-marquee-track">
             {[...marqueeItems, ...marqueeItems].map((t, i) => (
@@ -932,7 +986,7 @@ function CompanyView({ company, agency }: { company: Company; agency: Agency | n
         <p className={layout === "editorial" ? "stay-dropcap" : undefined}>{company.description}</p>
       </RevealSection>
 
-      {layout === "editorial" && (
+      {(layout === "editorial" || layout === "grand") && (
         <div className="stay-pullquote">
           <RevealSection>
             <blockquote>“{company.tagline}”</blockquote>
@@ -1113,7 +1167,7 @@ function CompanyView({ company, agency }: { company: Company; agency: Agency | n
         <InquiryForm source="company" sourceId={company.id} sourceName={company.name} />
       </RevealSection>
 
-      <footer className="stay-foot">
+      <footer className="stay-foot" data-watermark={company.name}>
         {company.name} · {company.location}
         <div className="credit">
           Stranicu pokreće <Link href="/">NOVO</Link>
