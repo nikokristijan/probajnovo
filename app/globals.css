@@ -703,7 +703,7 @@ html.novo-lock-scroll body {
 .stay-raw .stay-mobile-cta a { border-radius: 0; }
 
 /* Marquee traka — beskonačno klizeći tekst, karakterističan "raw" detalj */
-.stay-marquee { overflow: hidden; background: var(--ink); color: var(--paper); border-bottom: 2px solid var(--ink); white-space: nowrap; }
+.stay-marquee { overflow: hidden; background: var(--ink); color: var(--paper); border-bottom: 2px solid var(--ink); white-space: nowrap; -webkit-mask-image: linear-gradient(to right, transparent, #000 6%, #000 94%, transparent); mask-image: linear-gradient(to right, transparent, #000 6%, #000 94%, transparent); }
 .stay-marquee-track { display: inline-flex; gap: 40px; padding: 8px 0; animation: stay-marquee-scroll 22s linear infinite; }
 .stay-marquee-track span { font-size: 12px; letter-spacing: 0.08em; text-transform: uppercase; padding-right: 40px; border-right: 1px solid color-mix(in srgb, var(--paper) 30%, transparent); }
 .stay-marquee-track span:last-child { border-right: none; }
@@ -1162,8 +1162,10 @@ html.novo-lock-scroll body {
 }
 
 @media (max-width: 640px) {
-  .stay-grand .stay-stat { border-right: none; border-bottom: 1px solid color-mix(in srgb, var(--ink) 12%, transparent); padding: 12px 0; }
-  .stay-grand .stay-foot::before { font-size: clamp(48px, 22vw, 90px); }
+    .stay-grand .stay-stats { flex-direction: column; }
+    .stay-grand .stay-stat { width: 100%; border-right: none; border-bottom: 1px solid color-mix(in srgb, var(--ink) 12%, transparent); padding: 14px 0; }
+    .stay-grand .stay-stat:last-child { border-bottom: none; }
+    .stay-grand .stay-foot::before { font-size: clamp(48px, 22vw, 90px); }
 }
 
 /* --- Scroll choreography: jedini "brutalni" scroll-jack moment na
