@@ -10,7 +10,7 @@ import GalleryLightbox from "@/components/GalleryLightbox";
 import StayInteractions from "@/components/StayInteractions";
 import InquiryForm from "@/components/InquiryForm";
 import AvailabilityCalendar from "@/components/AvailabilityCalendar";
-import ScrollChoreography from "@/components/ScrollChoreography";
+import GrandShowcase from "@/components/GrandShowcase";
 
 export const revalidate = 0;
 
@@ -453,7 +453,7 @@ export async function PropertyView({
         </div>
       </header>
 
-      {(layout === "raw" || layout === "grand") && marqueeItems.length > 0 && (
+      {layout === "raw" && marqueeItems.length > 0 && (
         <div className="stay-marquee" aria-hidden="true">
           <div className="stay-marquee-track">
             {[...marqueeItems, ...marqueeItems].map((t, i) => (
@@ -552,7 +552,11 @@ export async function PropertyView({
       )}
 
       {layout === "grand" && gallery.length >= 4 && (
-        <ScrollChoreography images={[gallery[0], gallery[1], gallery[2], gallery[3]]} />
+        <GrandShowcase
+          images={[gallery[0], gallery[1], gallery[2], gallery[3]]}
+          captions={property.imageCategories}
+          name={property.name}
+        />
       )}
 
       {gallery.length > 0 && (
@@ -927,7 +931,7 @@ function CompanyView({ company, agency }: { company: Company; agency: Agency | n
         </a>
       </header>
 
-      {(layout === "raw" || layout === "grand") && marqueeItems.length > 0 && (
+      {layout === "raw" && marqueeItems.length > 0 && (
         <div className="stay-marquee" aria-hidden="true">
           <div className="stay-marquee-track">
             {[...marqueeItems, ...marqueeItems].map((t, i) => (
@@ -1027,7 +1031,11 @@ function CompanyView({ company, agency }: { company: Company; agency: Agency | n
       )}
 
       {layout === "grand" && gallery.length >= 4 && (
-        <ScrollChoreography images={[gallery[0], gallery[1], gallery[2], gallery[3]]} />
+        <GrandShowcase
+          images={[gallery[0], gallery[1], gallery[2], gallery[3]]}
+          captions={company.imageCategories}
+          name={company.name}
+        />
       )}
 
       {gallery.length > 0 && (
