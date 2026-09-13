@@ -19,23 +19,33 @@ export default function StayInteractions() {
       typeof window !== "undefined" &&
       window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
 
-    function onScroll() {
-      const doc = document.documentElement;
-      const scrollable = doc.scrollHeight - doc.clientHeight;
-      const pct = scrollable > 0 ? (doc.scrollTop / scrollable) * 100 : 0;
-      if (barRef.current) barRef.current.style.width = `${pct}%`;
+    function update() {
+            const doc = document.documentElement;
+            const scrollable = doc.scrollHeight - doc.clientHeight;
+            const pct = scrollable > 0 ? (doc.scrollTop / scrollable) * 100 : 0;
+            if (barRef.current) barRef.current.style.width = `${pct}%`;
 
-      if (!reduceMotion) {
-        parallaxEls.forEach((el) => {
-          const r = el.parentElement?.getBoundingClientRect();
-          if (!r) return;
-          const shift = Math.max(-40, Math.min(40, r.top * 0.12));
-          el.style.transform = `translateY(${shift}px) scale(1.12)`;
-        });
-      }
+            if (!reduceMotion) {
+                      parallaxEls.forEach((el) => {
+                                  const r = el.parentElement?.getBoundingClientRect();
+                                  if (!r) return;
+                                  const shift = Math.max(-90, Math.min(90, r.top * 0.22));
+                                  const scale = 1.12 + Math.min(0.1, Math.abs(shift) * 0.0009);
+                                  el.style.transform = `translateY(${shift}px) scale(${scale})`;
+                      });
+            }
     }
-    onScroll();
-    window.addEventListener("scroll", onScroll, { passive: true });
+        let ticking = false;
+        function onScroll() {
+                if (ticking) return;
+                ticking = true;
+                requestAnimationFrame(() => {
+                          update();
+                          ticking = false;
+                });
+        }
+        update();
+        window.addEventListener("scroll", onScroll, { passive: true });
 
     const magnets = Array.from(document.querySelectorAll<HTMLElement>("[data-magnetic]"));
     const cleanups: Array<() => void> = [];
