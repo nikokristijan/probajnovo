@@ -10,6 +10,7 @@ import GalleryLightbox from "@/components/GalleryLightbox";
 import StayInteractions from "@/components/StayInteractions";
 import InquiryForm from "@/components/InquiryForm";
 import AvailabilityCalendar from "@/components/AvailabilityCalendar";
+import ScrollChoreography from "@/components/ScrollChoreography";
 
 export const revalidate = 0;
 
@@ -395,24 +396,42 @@ export async function PropertyView({
 
       {layout === "grand" && (
         // Puni zaslon prije ikakvog UI kroma — isti prvi dojam kao kod
-        // the-tawaraya.jp/borgosantandrea.it: samo ime, lokacija, tišina.
-        // Nav ide TEK poslije u DOM redoslijedu — .stay-nav je sticky (top:0),
-        // pa se sam "zalijepi" tek kad gost skrola do njega, bez ijedne
-        // linije nove JS logike.
+        // the-tawaraya.jp/borgosantandrea.it: najbolja fotografija objekta
+        // preko cijelog ekrana, ime ispisano preko nje. Nav ide TEK poslije
+        // u DOM redoslijedu — .stay-nav je sticky (top:0), pa se sam
+        // "zalijepi" tek kad gost skrola do njega, bez ijedne linije nove
+        // JS logike. Drugi (dupli) hero niže u stranici je za "grand" ugašen
+        // — ova sekcija je jedino mjesto gdje se ime ispisuje preko fotke.
         <section className="stay-grand-intro">
-          {property.logoUrl ? (
-            <Image
-              src={property.logoUrl}
-              alt={property.name}
-              width={340}
-              height={140}
-              className="stay-grand-intro-logo"
-              priority
-            />
-          ) : (
-            <div className="stay-grand-intro-mark">{property.name}</div>
+          {effectiveBanner && (
+            <div className="stay-grand-intro-media">
+              <Image
+                src={effectiveBanner}
+                alt=""
+                fill
+                sizes="100vw"
+                priority
+                data-parallax
+              />
+            </div>
           )}
-          <div className="stay-grand-intro-loc">{property.location}</div>
+          <div className="stay-grand-intro-scrim" aria-hidden="true" />
+          <div className="stay-grand-intro-content">
+            <div className="stay-grand-intro-loc">{property.location}</div>
+            {property.logoUrl ? (
+              <Image
+                src={property.logoUrl}
+                alt={property.name}
+                width={340}
+                height={140}
+                className="stay-grand-intro-logo"
+                priority
+              />
+            ) : (
+              <h1 className="stay-grand-intro-mark">{property.name}</h1>
+            )}
+            {property.tagline && <p className="stay-grand-intro-tagline">{property.tagline}</p>}
+          </div>
           <div className="stay-grand-intro-scroll" aria-hidden="true">
             {L("Pomaknite se", "Scroll")}
           </div>
@@ -444,7 +463,7 @@ export async function PropertyView({
         </div>
       )}
 
-      {effectiveBanner ? (
+      {layout !== "grand" && (effectiveBanner ? (
         <div className="stay-banner">
           <Image
             src={effectiveBanner}
@@ -483,7 +502,7 @@ export async function PropertyView({
           <h1>{property.name}</h1>
           <p>{property.tagline}</p>
         </div>
-      )}
+      ))}
 
       {layout === "classic" && gallery.length > 0 && (
         <div className="stay-classic-polaroids" aria-hidden="true">
@@ -530,6 +549,10 @@ export async function PropertyView({
             <blockquote>“{property.tagline}”</blockquote>
           </RevealSection>
         </div>
+      )}
+
+      {layout === "grand" && gallery.length >= 4 && (
+        <ScrollChoreography images={[gallery[0], gallery[1], gallery[2], gallery[3]]} />
       )}
 
       {gallery.length > 0 && (
@@ -869,19 +892,28 @@ function CompanyView({ company, agency }: { company: Company; agency: Agency | n
 
       {layout === "grand" && (
         <section className="stay-grand-intro">
-          {company.logoUrl ? (
-            <Image
-              src={company.logoUrl}
-              alt={company.name}
-              width={340}
-              height={140}
-              className="stay-grand-intro-logo"
-              priority
-            />
-          ) : (
-            <div className="stay-grand-intro-mark">{company.name}</div>
+          {effectiveBanner && (
+            <div className="stay-grand-intro-media">
+              <Image src={effectiveBanner} alt="" fill sizes="100vw" priority data-parallax />
+            </div>
           )}
-          <div className="stay-grand-intro-loc">{company.location}</div>
+          <div className="stay-grand-intro-scrim" aria-hidden="true" />
+          <div className="stay-grand-intro-content">
+            <div className="stay-grand-intro-loc">{company.location}</div>
+            {company.logoUrl ? (
+              <Image
+                src={company.logoUrl}
+                alt={company.name}
+                width={340}
+                height={140}
+                className="stay-grand-intro-logo"
+                priority
+              />
+            ) : (
+              <h1 className="stay-grand-intro-mark">{company.name}</h1>
+            )}
+            {company.tagline && <p className="stay-grand-intro-tagline">{company.tagline}</p>}
+          </div>
           <div className="stay-grand-intro-scroll" aria-hidden="true">
             Pomaknite se
           </div>
@@ -905,7 +937,7 @@ function CompanyView({ company, agency }: { company: Company; agency: Agency | n
         </div>
       )}
 
-      {effectiveBanner ? (
+      {layout !== "grand" && (effectiveBanner ? (
         <div className="stay-banner">
           <Image
             src={effectiveBanner}
@@ -944,7 +976,7 @@ function CompanyView({ company, agency }: { company: Company; agency: Agency | n
           <h1>{company.name}</h1>
           <p>{company.tagline}</p>
         </div>
-      )}
+      ))}
 
       {layout === "classic" && gallery.length > 0 && (
         <div className="stay-classic-polaroids" aria-hidden="true">
@@ -992,6 +1024,10 @@ function CompanyView({ company, agency }: { company: Company; agency: Agency | n
             <blockquote>“{company.tagline}”</blockquote>
           </RevealSection>
         </div>
+      )}
+
+      {layout === "grand" && gallery.length >= 4 && (
+        <ScrollChoreography images={[gallery[0], gallery[1], gallery[2], gallery[3]]} />
       )}
 
       {gallery.length > 0 && (
