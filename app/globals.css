@@ -942,7 +942,7 @@ html.novo-lock-scroll body {
   animation: stay-grand-fade-in 1.1s ease 0.55s both;
 }
 .stay-grand-intro-scroll {
-  position: absolute; bottom: clamp(20px, 5vw, 40px); left: 50%; transform: translateX(-50%); z-index: 2;
+    align-self: center; margin-top: clamp(28px, 6vw, 44px); z-index: 2;
   display: flex; flex-direction: column; align-items: center; gap: 10px;
   font-family: var(--font-jetbrains-mono), monospace; font-size: 10px; letter-spacing: 0.26em;
   text-transform: uppercase; color: rgba(255,255,255,0.7);
@@ -1177,7 +1177,7 @@ html.novo-lock-scroll body {
 .stay-choreo-stage { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; }
 .stay-choreo-img {
   position: absolute; left: 50%; top: 50%; width: 36vw; height: 24vh;
-  transform: translate(-50%, -50%); overflow: hidden; background: var(--plaster);
+    translate: -50% -50%; overflow: hidden; background: var(--plaster);
   box-shadow: 0 30px 70px rgba(0,0,0,0.4);
 }
 .stay-choreo-img img { width: 100%; height: 100%; object-fit: cover; display: block; }
