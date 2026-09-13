@@ -10,7 +10,6 @@ import GalleryLightbox from "@/components/GalleryLightbox";
 import StayInteractions from "@/components/StayInteractions";
 import InquiryForm from "@/components/InquiryForm";
 import AvailabilityCalendar from "@/components/AvailabilityCalendar";
-import GrandShowcase from "@/components/GrandShowcase";
 
 export const revalidate = 0;
 
@@ -551,14 +550,6 @@ export async function PropertyView({
         </div>
       )}
 
-      {layout === "grand" && gallery.length >= 4 && (
-        <GrandShowcase
-          images={[gallery[0], gallery[1], gallery[2], gallery[3]]}
-          captions={property.imageCategories}
-          name={property.name}
-        />
-      )}
-
       {gallery.length > 0 && (
         <RevealSection className="stay-section">
           <h2 className="stay-eyebrow">
@@ -1028,14 +1019,6 @@ function CompanyView({ company, agency }: { company: Company; agency: Agency | n
             <blockquote>“{company.tagline}”</blockquote>
           </RevealSection>
         </div>
-      )}
-
-      {layout === "grand" && gallery.length >= 4 && (
-        <GrandShowcase
-          images={[gallery[0], gallery[1], gallery[2], gallery[3]]}
-          captions={company.imageCategories}
-          name={company.name}
-        />
       )}
 
       {gallery.length > 0 && (
