@@ -6,6 +6,7 @@ import {
   listCompanies,
   listStudies,
   listProducts,
+  listNfcTags,
   countUnreadInquiries,
   listPropertiesForAdmin,
   listCompaniesForAdmin,
@@ -35,11 +36,12 @@ export default async function AdminDashboard() {
   if (!admin) redirect("/admin/login");
   if (admin.role === "owner") return <OwnerDashboard admin={admin} />;
 
-  const [properties, companies, studies, products, unreadInquiries, subscriptionStats] = await Promise.all([
+  const [properties, companies, studies, products, nfcTags, unreadInquiries, subscriptionStats] = await Promise.all([
     listProperties(),
     listCompanies(),
     listStudies(),
     listProducts(),
+    listNfcTags(),
     countUnreadInquiries(),
     // Financije brojke su vidljive samo glavnom adminu (isti gate kao
     // /admin/financije) — "obični" puni admini ne trebaju vidjeti NOVO-ovu
@@ -83,13 +85,14 @@ export default async function AdminDashboard() {
         </Link>
       )}
 
-      <section className="admin-animate-grid grid grid-cols-2 sm:grid-cols-6 gap-3">
+      <section className="admin-animate-grid grid grid-cols-2 sm:grid-cols-7 gap-3">
         <StatCard label="Vikendice" value={properties.length} />
         <StatCard label="Objavljeno" value={publishedCount} />
         <StatCard label="U Studies popisu" value={inStudiesCount} />
         <StatCard label="Firme" value={companies.length} />
         <StatCard label="Studies unosi" value={studies.length} />
         <StatCard label="Proizvodi" value={products.length} />
+        <StatCard label="NFC oznake" value={nfcTags.length} />
       </section>
 
       <section>
@@ -142,6 +145,9 @@ export default async function AdminDashboard() {
           </Link>
           <Link href="/admin/products/new" className="admin-quicklink">
             + Novi proizvod
+          </Link>
+          <Link href="/admin/nfc/new" className="admin-quicklink">
+            + Nova NFC oznaka
           </Link>
           <Link href="/admin/agency" className="admin-quicklink">
             Sadržaj agencije
@@ -373,6 +379,57 @@ export default async function AdminDashboard() {
           ))}
         </div>
       )}
+      </section>
+
+      <section>
+        <div className="flex items-center justify-between mb-6">
+          <div>
+            <h1 className="text-xl font-bold">NFC oznake</h1>
+            <p className="text-xs text-black/50 mt-0.5">
+              Gost-facing WiFi stranica za svaku fizičku NFC pločicu — dodirom telefona gost
+              vidi mrežu/lozinku (+ QR za auto-spajanje) i opcionalnu dobrodošlicu.
+            </p>
+          </div>
+          <Link
+            href="/admin/nfc/new"
+            className="rounded-full bg-black text-white text-sm font-semibold px-4 py-2 shrink-0"
+          >
+            + Dodaj NFC oznaku
+          </Link>
+        </div>
+
+        {nfcTags.length === 0 ? (
+          <p className="text-sm text-black/60">
+            Još nema dodanih NFC oznaka. Klikni &ldquo;Dodaj NFC oznaku&rdquo; da napraviš prvu.
+          </p>
+        ) : (
+          <div className="flex flex-col gap-2">
+            {nfcTags.map((tag) => (
+              <Link
+                key={tag.id}
+                href={`/admin/nfc/${tag.id}`}
+                className="flex items-center justify-between border border-black/10 rounded-xl px-4 py-3 bg-white hover:border-[#0000c3]/40"
+              >
+                <div>
+                  <div className="font-semibold text-sm">{tag.label}</div>
+                  <div className="text-xs text-black/50 mt-0.5">
+                    probajnovo.com/nfc/{tag.slug} · {tag.wifiSsid}
+                  </div>
+                </div>
+                <span
+                  className={
+                    "text-xs font-semibold px-2.5 py-1 rounded-full shrink-0 " +
+                    (tag.published
+                      ? "bg-green-100 text-green-700"
+                      : "bg-black/5 text-black/50")
+                  }
+                >
+                  {tag.published ? "objavljeno" : "skriveno"}
+                </span>
+              </Link>
+            ))}
+          </div>
+        )}
       </section>
     </div>
   );
