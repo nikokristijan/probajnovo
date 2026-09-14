@@ -2162,3 +2162,161 @@ a.owner-glass:active,
   .owner-badge-new { animation: none; opacity: 1; transform: none; }
   .owner-glass, .owner-glass-interactive, a.owner-glass { transition: none; }
 }
+
+/* =====================================================================
+   NFC gost-stranica (/nfc/[slug], vidi lib/db/schema.ts nfcTags) — gost
+   dodirne telefonom fizičku 3D printanu pločicu, NFC otvori ovu stranicu.
+   Namjerno POTPUNO odvojeno od .stay-* (vikendica) sustava boja/fontova —
+   ovo je jedna mala, samostalna "vizitka" stranica, ne puna prezentacija
+   objekta, pa ne treba dijeliti njihov token sustav. Uvijek svijetla
+   (papirnata), bez tamne varijante — čitljivost WiFi lozinke gostu na
+   pretpregled ekranu (lockscreen fallback) je važnija od teme.
+   ===================================================================== */
+.nfc-page {
+  min-height: 100dvh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 32px 20px;
+  background: #faf6ef;
+  font-family: var(--font-karla), system-ui, sans-serif;
+  color: #1c1912;
+}
+
+.nfc-card {
+  width: 100%;
+  max-width: 420px;
+  background: #ffffff;
+  border-radius: 28px;
+  overflow: hidden;
+  box-shadow: 0 24px 60px -32px rgba(28, 25, 18, 0.35);
+  border: 1px solid rgba(28, 25, 18, 0.08);
+}
+
+.nfc-hero-image {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  background: #ece5d6;
+}
+.nfc-hero-image img { object-fit: cover; }
+
+.nfc-body {
+  padding: 28px 26px 32px;
+  display: flex;
+  flex-direction: column;
+  gap: 22px;
+}
+
+.nfc-welcome-title {
+  font-family: var(--font-space-grotesk), system-ui, sans-serif;
+  font-weight: 700;
+  font-size: 1.5rem;
+  line-height: 1.2;
+  margin: 0;
+  letter-spacing: -0.01em;
+}
+
+.nfc-welcome-text {
+  font-size: 0.9rem;
+  line-height: 1.55;
+  color: #58513f;
+  margin: -12px 0 0;
+  white-space: pre-line;
+}
+
+.nfc-wifi-card {
+  border: 1px solid rgba(28, 25, 18, 0.1);
+  border-radius: 18px;
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  background: #fdfcf9;
+  /* Boja akcenta po pločici (tag.accentColor) — tanka vrpca gore, dovoljno
+     za "ovo je brendirano" dojam bez da nadjača čitljivost teksta ispod. */
+  border-top: 3px solid var(--nfc-accent, #b5502e);
+}
+
+.nfc-wifi-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.nfc-wifi-label {
+  font-size: 0.68rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: #8a806a;
+}
+
+.nfc-wifi-value {
+  font-family: var(--font-jetbrains-mono), ui-monospace, monospace;
+  font-size: 1.05rem;
+  font-weight: 600;
+  word-break: break-word;
+}
+
+.nfc-copy-btn {
+  flex-shrink: 0;
+  border: 1px solid rgba(28, 25, 18, 0.15);
+  background: #ffffff;
+  border-radius: 999px;
+  padding: 7px 14px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  cursor: pointer;
+  color: #1c1912;
+  transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+}
+.nfc-copy-btn:hover { border-color: var(--nfc-accent, #b5502e); color: var(--nfc-accent, #b5502e); }
+.nfc-copy-btn[data-copied="true"] {
+  background: var(--nfc-accent, #b5502e);
+  border-color: var(--nfc-accent, #b5502e);
+  color: #fff;
+}
+
+.nfc-open-badge {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: #58513f;
+  font-style: italic;
+}
+
+.nfc-qr-wrap {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding-top: 4px;
+}
+
+.nfc-qr-frame {
+  padding: 10px;
+  background: #fff;
+  border-radius: 14px;
+  border: 1px solid rgba(28, 25, 18, 0.1);
+}
+.nfc-qr-frame img { width: 168px; height: 168px; display: block; }
+
+.nfc-qr-caption {
+  font-size: 0.72rem;
+  color: #8a806a;
+  text-align: center;
+}
+
+.nfc-footer {
+  text-align: center;
+  font-size: 0.7rem;
+  color: #a39a83;
+  letter-spacing: 0.02em;
+}
+.nfc-footer a { color: inherit; text-decoration: underline; text-underline-offset: 2px; }
+
+@media (max-width: 380px) {
+  .nfc-body { padding: 22px 20px 26px; }
+  .nfc-welcome-title { font-size: 1.3rem; }
+}
