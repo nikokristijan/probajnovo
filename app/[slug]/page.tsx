@@ -344,18 +344,24 @@ export async function PropertyView({
   // vikendice s jednom cijenom/jedinicom sekcija se jednostavno ne prikazuje.
   const unitGroups = (() => {
     const order: string[] = [];
+    const displayName = new Map<string, string>();
     const prices = new Map<string, number[]>();
     for (const sp of property.seasonalPricing) {
       const name = sp.label.replace(/\s*\([^)]*\)\s*$/, "").trim() || sp.label;
-      if (!prices.has(name)) {
-        prices.set(name, []);
-        order.push(name);
+      // Grupiramo case-insensitive jer admin ponekad nedosljedno unese isti
+      // naziv jedinice (npr. "Manji Apartman" vs "Manji apartman") u
+      // različitim sezonskim redovima — to je i dalje ista jedinica.
+      const key = name.toLowerCase();
+      if (!prices.has(key)) {
+        prices.set(key, []);
+        displayName.set(key, name);
+        order.push(key);
       }
-      prices.get(name)!.push(sp.priceEur);
+      prices.get(key)!.push(sp.priceEur);
     }
-    return order.map((name) => {
-      const list = prices.get(name)!;
-      return { name, min: Math.min(...list), max: Math.max(...list) };
+    return order.map((key) => {
+      const list = prices.get(key)!;
+      return { name: displayName.get(key)!, min: Math.min(...list), max: Math.max(...list) };
     });
   })();
 
