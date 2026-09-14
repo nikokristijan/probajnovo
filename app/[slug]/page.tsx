@@ -309,11 +309,12 @@ export async function PropertyView({
     property.layoutStyle === "grand"
       ? property.layoutStyle
       : "classic";
-  // Grand je uvijek taman — isti "sigurne varijante boje" sustav (--ink/--paper
-  // preračunati u .stay-dark) samo se uvijek uključi za ovaj layout, bez obzira
-  // na admin prekidač, jer je tamna, prigušena pozadina dio same estetike
-  // (Tawaraya/Borgo Santo Stefano stil), ne opcionalna varijanta boje.
-  const stayClass = `stay stay-${layout}${property.darkMode || layout === "grand" ? " stay-dark" : ""}`;
+  // Grand poštuje isti admin prekidač za tamnu/svijetlu temu kao i ostali
+  // layouti — svijetla, "papirnata" (--paper) pozadina s akcentnom bojom
+  // tu i tamo je zadana estetika (klijentov zahtjev: bijela baza, boja
+  // rijetko), a admin i dalje po želji može uključiti .stay-dark za ovaj
+  // konkretan objekt, isto kao i za classic/editorial/raw/apple.
+  const stayClass = `stay stay-${layout}${property.darkMode ? " stay-dark" : ""}`;
   const accentStyle = { "--accent": property.accentColor } as React.CSSProperties;
   const contactEmail = property.contactEmail || agency?.contactEmail || "hello@novo.studio";
   // Ako admin nije eksplicitno postavio banner, koristi prvu sliku iz galerije —
@@ -334,6 +335,55 @@ export async function PropertyView({
     property.tagline,
     ...property.amenities.slice(0, 4),
   ].filter(Boolean);
+
+  // Grand — generički prikaz "više jedinica" (npr. dva apartmana) BEZ ikakvog
+  // novog admin polja: grupira postojeći seasonalPricing po nazivu ispred
+  // zadnje zagrade (npr. "Veći apartman (7. i 8. mjesec)" → "Veći apartman"),
+  // pa ako klijent već cjenovno razlikuje dvije+ jedinice, dobivamo poštene
+  // kartice s pravim, već unesenim podacima — ništa se ne izmišlja, a za
+  // vikendice s jednom cijenom/jedinicom sekcija se jednostavno ne prikazuje.
+  const unitGroups = (() => {
+    const order: string[] = [];
+    const displayName = new Map<string, string>();
+    const prices = new Map<string, number[]>();
+    for (const sp of property.seasonalPricing) {
+      const name = sp.label.replace(/\s*\([^)]*\)\s*$/, "").trim() || sp.label;
+      // Grupiramo case-insensitive jer admin ponekad nedosljedno unese isti
+      // naziv jedinice (npr. "Manji Apartman" vs "Manji apartman") u
+      // različitim sezonskim redovima — to je i dalje ista jedinica.
+      const key = name.toLowerCase();
+      if (!prices.has(key)) {
+        prices.set(key, []);
+        displayName.set(key, name);
+        order.push(key);
+      }
+      prices.get(key)!.push(sp.priceEur);
+    }
+    return order.map((key) => {
+      const list = prices.get(key)!;
+      return { name: displayName.get(key)!, min: Math.min(...list), max: Math.max(...list) };
+    });
+  })();
+
+  // Grand — gornji navigacijski izbornik na stranicu (umjesto da je "sve
+  // nanizano na jednom mjestu"): linkovi na sekcije koje ova vikendica
+  // stvarno ima, istim uvjetima kao dolje u JSX-u, da nikad ne vodi na
+  // sekciju koje nema.
+  const grandNavLinks =
+    layout === "grand"
+      ? ([
+          { href: "#o-objektu", label: L("O objektu", "About") },
+          unitGroups.length >= 2 && { href: "#apartmani", label: L("Apartmani", "Apartments") },
+          gallery.length > 0 && { href: "#galerija", label: L("Galerija", "Gallery") },
+          property.amenities.length > 0 && { href: "#sadrzaji", label: L("Sadržaji", "Amenities") },
+          (property.mapUrl || (property.latitude && property.longitude)) && {
+            href: "#lokacija",
+            label: L("Lokacija", "Location"),
+          },
+          property.seasonalPricing.length > 0 && { href: "#cjenik", label: L("Cjenik", "Pricing") },
+          { href: "#upit", label: L("Kontakt", "Contact") },
+        ].filter(Boolean) as { href: string; label: string }[])
+      : [];
 
   // Numerirane sekcije (01, 02…) — editorial detalj, brojimo samo sekcije
   // koje se stvarno prikazuju za ovu vikendicu (evaluira se redom kroz JSX).
@@ -439,6 +489,15 @@ export async function PropertyView({
 
       <header className="stay-nav">
         <NavBrand logoUrl={property.logoUrl} showNovoBranding={property.showNovoBranding} name={property.name} />
+        {grandNavLinks.length > 0 && (
+          <nav className="stay-nav-links" aria-label={L("Navigacija po stranici", "Page navigation")}>
+            {grandNavLinks.map((l) => (
+              <a key={l.href} href={l.href}>
+                {l.label}
+              </a>
+            ))}
+          </nav>
+        )}
         <div className="stay-nav-right">
           <a
             className="stay-lang-switch"
@@ -533,7 +592,7 @@ export async function PropertyView({
         </div>
       )}
 
-      <RevealSection className="stay-section stay-about" data-secno={aboutNo}>
+      <RevealSection className="stay-section stay-about" data-secno={aboutNo} id="o-objektu">
         <h2 className="stay-eyebrow">
           <span className="stay-eyebrow-no">{aboutNo}</span>{L("O objektu", "About")}
         </h2>
@@ -541,6 +600,25 @@ export async function PropertyView({
           {property.description}
         </p>
       </RevealSection>
+
+      {layout === "grand" && unitGroups.length >= 2 && (
+        <RevealSection className="stay-section" id="apartmani">
+          <h2 className="stay-eyebrow">
+            <span className="stay-eyebrow-no">{eyebrowNo()}</span>{L("Apartmani", "Apartments")}
+          </h2>
+          <div className="stay-units-grid">
+            {unitGroups.map((u) => (
+              <div className="stay-unit-card" key={u.name}>
+                <h3>{u.name}</h3>
+                <p className="stay-unit-price">
+                  {u.min === u.max ? `${u.min} €` : `${u.min}–${u.max} €`}{" "}
+                  <span>{L("/ noć", "/ night")}</span>
+                </p>
+              </div>
+            ))}
+          </div>
+        </RevealSection>
+      )}
 
       {(layout === "editorial" || layout === "grand") && (
         <div className="stay-pullquote">
@@ -551,7 +629,7 @@ export async function PropertyView({
       )}
 
       {gallery.length > 0 && (
-        <RevealSection className="stay-section">
+        <RevealSection className="stay-section" id="galerija">
           <h2 className="stay-eyebrow">
             <span className="stay-eyebrow-no">{eyebrowNo()}</span>{L("Galerija", "Gallery")}
           </h2>
@@ -582,7 +660,7 @@ export async function PropertyView({
       )}
 
       {property.amenities.length > 0 && (
-        <RevealSection className="stay-section stay-alt">
+        <RevealSection className="stay-section stay-alt" id="sadrzaji">
           <h2 className="stay-eyebrow">
             <span className="stay-eyebrow-no">{eyebrowNo()}</span>{L("Sadržaji", "Amenities")}
           </h2>
@@ -700,7 +778,7 @@ export async function PropertyView({
             ? osmLinkHref(property.latitude, property.longitude)
             : null);
         return (
-          <RevealSection className="stay-section stay-alt">
+          <RevealSection className="stay-section stay-alt" id="lokacija">
             <h2 className="stay-eyebrow">
               <span className="stay-eyebrow-no">{eyebrowNo()}</span>{L("Lokacija", "Location")}
             </h2>
@@ -722,7 +800,7 @@ export async function PropertyView({
       })()}
 
       {property.seasonalPricing.length > 0 && (
-        <RevealSection className="stay-section">
+        <RevealSection className="stay-section" id="cjenik">
           <h2 className="stay-eyebrow">
             <span className="stay-eyebrow-no">{eyebrowNo()}</span>{L("Sezonski cjenik", "Seasonal pricing")}
           </h2>
@@ -764,7 +842,7 @@ export async function PropertyView({
         </div>
       </RevealSection>
 
-      <RevealSection className="stay-section stay-alt">
+      <RevealSection className="stay-section stay-alt" id="upit">
         <h2 className="stay-eyebrow">
           <span className="stay-eyebrow-no">{eyebrowNo()}</span>{L("Pošaljite upit", "Send an inquiry")}
         </h2>
@@ -824,8 +902,8 @@ function CompanyView({ company, agency }: { company: Company; agency: Agency | n
     company.layoutStyle === "grand"
       ? company.layoutStyle
       : "classic";
-  // Vidi identičnu napomenu u PropertyView — Grand je uvijek taman.
-  const stayClass = `stay stay-${layout}${company.darkMode || layout === "grand" ? " stay-dark" : ""}`;
+  // Vidi identičnu napomenu u PropertyView — Grand poštuje admin prekidač.
+  const stayClass = `stay stay-${layout}${company.darkMode ? " stay-dark" : ""}`;
   const accentStyle = { "--accent": company.accentColor } as React.CSSProperties;
   const contactEmail = company.contactEmail || agency?.contactEmail || "hello@novo.studio";
   const effectiveBanner = company.bannerImage || company.images[0] || null;
@@ -853,6 +931,18 @@ function CompanyView({ company, agency }: { company: Company; agency: Agency | n
   let sectionNo = 0;
   const eyebrowNo = () => String(++sectionNo).padStart(2, "0");
   const aboutNo = eyebrowNo();
+
+  // Vidi identičnu napomenu u PropertyView.
+  const grandNavLinks =
+    layout === "grand"
+      ? ([
+          { href: "#o-nama", label: "O nama" },
+          gallery.length > 0 && { href: "#galerija", label: "Galerija" },
+          company.services.length > 0 && { href: "#usluge", label: "Usluge" },
+          (company.address || company.phone || company.mapUrl) && { href: "#kontakt", label: "Kontakt & lokacija" },
+          { href: "#upit", label: "Pošaljite upit" },
+        ].filter(Boolean) as { href: string; label: string }[])
+      : [];
 
   const companyImages = [effectiveBanner, ...gallery].filter((s): s is string => Boolean(s));
   const companyJsonLd: Record<string, unknown> = {
@@ -917,6 +1007,15 @@ function CompanyView({ company, agency }: { company: Company; agency: Agency | n
 
       <header className="stay-nav">
         <NavBrand logoUrl={company.logoUrl} showNovoBranding={company.showNovoBranding} name={company.name} />
+        {grandNavLinks.length > 0 && (
+          <nav className="stay-nav-links" aria-label="Navigacija po stranici">
+            {grandNavLinks.map((l) => (
+              <a key={l.href} href={l.href}>
+                {l.label}
+              </a>
+            ))}
+          </nav>
+        )}
         <a className="stay-nav-cta" href={mailHref} data-magnetic>
           Pošaljite upit
         </a>
@@ -1006,7 +1105,7 @@ function CompanyView({ company, agency }: { company: Company; agency: Agency | n
         </div>
       )}
 
-      <RevealSection className="stay-section stay-about" data-secno={aboutNo}>
+      <RevealSection className="stay-section stay-about" data-secno={aboutNo} id="o-nama">
         <h2 className="stay-eyebrow">
           <span className="stay-eyebrow-no">{aboutNo}</span>O nama
         </h2>
@@ -1022,7 +1121,7 @@ function CompanyView({ company, agency }: { company: Company; agency: Agency | n
       )}
 
       {gallery.length > 0 && (
-        <RevealSection className="stay-section">
+        <RevealSection className="stay-section" id="galerija">
           <h2 className="stay-eyebrow">
             <span className="stay-eyebrow-no">{eyebrowNo()}</span>Galerija
           </h2>
@@ -1053,7 +1152,7 @@ function CompanyView({ company, agency }: { company: Company; agency: Agency | n
       )}
 
       {company.services.length > 0 && (
-        <RevealSection className="stay-section stay-alt">
+        <RevealSection className="stay-section stay-alt" id="usluge">
           <h2 className="stay-eyebrow">
             <span className="stay-eyebrow-no">{eyebrowNo()}</span>Usluge &amp; proizvodi
           </h2>
@@ -1130,7 +1229,7 @@ function CompanyView({ company, agency }: { company: Company; agency: Agency | n
       )}
 
       {(company.address || company.phone || company.mapUrl || company.instagramUrl || company.facebookUrl) && (
-        <RevealSection className="stay-section stay-alt">
+        <RevealSection className="stay-section stay-alt" id="kontakt">
           <h2 className="stay-eyebrow">
             <span className="stay-eyebrow-no">{eyebrowNo()}</span>Kontakt &amp; lokacija
           </h2>
@@ -1187,7 +1286,7 @@ function CompanyView({ company, agency }: { company: Company; agency: Agency | n
         </div>
       </RevealSection>
 
-      <RevealSection className="stay-section stay-alt">
+      <RevealSection className="stay-section stay-alt" id="upit">
         <h2 className="stay-eyebrow">
           <span className="stay-eyebrow-no">{eyebrowNo()}</span>Pošaljite upit
         </h2>
