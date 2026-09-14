@@ -75,6 +75,10 @@ import {
   updateAdminLoginStreak,
   updateOwnerTheme,
   updateOwnerCustomGoal,
+  isNfcSlugTaken,
+  createNfcTag,
+  updateNfcTag,
+  deleteNfcTag,
 } from "@/lib/db/queries";
 import { sendInquiryNotification, sendGuestConfirmation, sendReservationConfirmation, sendInquiryReply } from "@/lib/email";
 import { resolveCoordinates, geoMissWarning } from "@/lib/geocode";
@@ -95,6 +99,7 @@ const RESERVED_SLUGS = new Set([
   "favicon.ico",
   "_next",
   "en", // /en/[slug] — auto-prijevod vikendica, vidi app/en/[slug]/page.tsx
+  "nfc", // /nfc/[slug] — gost-facing WiFi stranice za NFC pločice, vidi lib/db/schema.ts nfcTags
 ]);
 
 /** Postgres 42P01 ("relation does not exist") — kod živi na `.cause` kod Drizzle grešaka, ne na samoj grešci. */
@@ -1080,6 +1085,120 @@ export async function deleteProductAction(id: number) {
   await requireAdmin();
   await deleteProduct(id);
   revalidatePath("/");
+  revalidatePath("/admin");
+  redirect("/admin");
+}
+
+/* ---------------------------------------------------------------- */
+/* NFC oznake (gost-facing WiFi stranica, vidi lib/db/schema.ts       */
+/* nfcTags i app/nfc/[slug]/page.tsx) — vlastiti /nfc/<slug> namespace */
+/* pa slug provjera ide preko isNfcSlugTaken, NE isSlugTaken.          */
+/* ---------------------------------------------------------------- */
+
+const NfcTagSchema = z.object({
+  slug: z
+    .string()
+    .min(1, "Slug je obavezan.")
+    .regex(/^[a-z0-9-]+$/, "Slug smije sadržavati samo mala slova, brojke i crtice."),
+  label: z.string().min(1, "Interna oznaka je obavezna."),
+  wifiSsid: z.string().min(1, "Naziv WiFi mreže je obavezan."),
+  wifiPassword: z.string().optional(),
+  welcomeTitle: z.string().optional(),
+  welcomeText: z.string().optional(),
+  image: z.string().optional(),
+  accentColor: z
+    .string()
+    .regex(/^#[0-9a-fA-F]{6}$/, "Boja mora biti u obliku #RRGGBB.")
+    .default("#B5502E"),
+  published: z.coerce.boolean(),
+});
+
+function readNfcTagFormData(formData: FormData) {
+  return {
+    slug: formData.get("slug"),
+    label: formData.get("label"),
+    wifiSsid: formData.get("wifiSsid"),
+    wifiPassword: formData.get("wifiPassword") ?? "",
+    welcomeTitle: formData.get("welcomeTitle") ?? "",
+    welcomeText: formData.get("welcomeText") ?? "",
+    image: formData.get("image") ?? "",
+    accentColor: formData.get("accentColor") || "#B5502E",
+    published: formData.get("published") === "on",
+  };
+}
+
+/** Prazan string → null (za sva opcionalna text polja: wifiPassword znači
+    "otvorena mreža bez lozinke" kad je null, ostala znače "ne prikazuje se"). */
+function emptyToNull(v?: string): string | null {
+  const trimmed = (v ?? "").trim();
+  return trimmed === "" ? null : trimmed;
+}
+
+export async function createNfcTagAction(
+  _prevState: ActionState,
+  formData: FormData
+): Promise<ActionState> {
+  await requireAdmin();
+  const parsed = NfcTagSchema.safeParse(readNfcTagFormData(formData));
+  if (!parsed.success) {
+    return { error: parsed.error.issues[0]?.message ?? "Provjeri unesene podatke." };
+  }
+  if (RESERVED_SLUGS.has(parsed.data.slug)) {
+    return { error: `"${parsed.data.slug}" je rezervirana adresa, odaberi drugu.` };
+  }
+  if (await isNfcSlugTaken(parsed.data.slug)) {
+    return { error: `Adresa "${parsed.data.slug}" je već zauzeta — odaberi drugu.` };
+  }
+  await createNfcTag({
+    slug: parsed.data.slug,
+    label: parsed.data.label,
+    wifiSsid: parsed.data.wifiSsid,
+    wifiPassword: emptyToNull(parsed.data.wifiPassword),
+    welcomeTitle: emptyToNull(parsed.data.welcomeTitle),
+    welcomeText: emptyToNull(parsed.data.welcomeText),
+    image: emptyToNull(parsed.data.image),
+    accentColor: parsed.data.accentColor,
+    published: parsed.data.published,
+  });
+  revalidatePath("/admin");
+  redirect("/admin");
+}
+
+export async function updateNfcTagAction(
+  id: number,
+  _prevState: ActionState,
+  formData: FormData
+): Promise<ActionState> {
+  await requireAdmin();
+  const parsed = NfcTagSchema.safeParse(readNfcTagFormData(formData));
+  if (!parsed.success) {
+    return { error: parsed.error.issues[0]?.message ?? "Provjeri unesene podatke." };
+  }
+  if (RESERVED_SLUGS.has(parsed.data.slug)) {
+    return { error: `"${parsed.data.slug}" je rezervirana adresa, odaberi drugu.` };
+  }
+  if (await isNfcSlugTaken(parsed.data.slug, id)) {
+    return { error: `Adresa "${parsed.data.slug}" je već zauzeta — odaberi drugu.` };
+  }
+  await updateNfcTag(id, {
+    slug: parsed.data.slug,
+    label: parsed.data.label,
+    wifiSsid: parsed.data.wifiSsid,
+    wifiPassword: emptyToNull(parsed.data.wifiPassword),
+    welcomeTitle: emptyToNull(parsed.data.welcomeTitle),
+    welcomeText: emptyToNull(parsed.data.welcomeText),
+    image: emptyToNull(parsed.data.image),
+    accentColor: parsed.data.accentColor,
+    published: parsed.data.published,
+  });
+  revalidatePath("/admin");
+  revalidatePath(`/nfc/${parsed.data.slug}`);
+  return { success: true };
+}
+
+export async function deleteNfcTagAction(id: number) {
+  await requireAdmin();
+  await deleteNfcTag(id);
   revalidatePath("/admin");
   redirect("/admin");
 }

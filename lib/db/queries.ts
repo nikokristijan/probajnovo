@@ -23,6 +23,7 @@ import {
   pageViews,
   pushSubscriptions,
   subscriptions,
+  nfcTags,
   type NewProperty,
   type NewCompany,
   type NewStudy,
@@ -30,6 +31,7 @@ import {
   type NewInquiry,
   type NewPropertyTranslationEn,
   type NewSubscription,
+  type NewNfcTag,
 } from "./schema";
 
 const AGENCY_ROW_ID = 1;
@@ -1580,4 +1582,93 @@ export async function getSubscriptionsValueYearlyByMonth(year: number) {
     if (monthIdx >= 0 && monthIdx < 12) totals[monthIdx] += s.monthlyPriceEur;
   }
   return totals;
+}
+
+/* ---------------------------------------------------------------- */
+/* NFC oznake (gost-facing WiFi stranica za fizičku NFC pločicu) —    */
+/* vidi lib/db/schema.ts nfcTags i app/nfc/[slug]/page.tsx. Tablica   */
+/* se sama kreira (ensureNfcTagsTable), isti obrazac kao              */
+/* ensureSubscriptionsTable — nema pristupa terminalu za ručnu        */
+/* migraciju.                                                         */
+/* ---------------------------------------------------------------- */
+
+/** Kreira `nfc_tags` tablicu ako slučajno ne postoji (IF NOT EXISTS je
+ * sigurno pozvati i kad tablica već postoji) — vidi ensureSubscriptionsTable
+ * za isti obrazac. */
+export async function ensureNfcTagsTable(): Promise<void> {
+  await db.execute(sql`
+    CREATE TABLE IF NOT EXISTS nfc_tags (
+      id SERIAL PRIMARY KEY,
+      slug TEXT NOT NULL UNIQUE,
+      label TEXT NOT NULL,
+      wifi_ssid TEXT NOT NULL,
+      wifi_password TEXT,
+      welcome_title TEXT,
+      welcome_text TEXT,
+      image TEXT,
+      accent_color TEXT NOT NULL DEFAULT '#B5502E',
+      published BOOLEAN NOT NULL DEFAULT true,
+      created_at TIMESTAMP NOT NULL DEFAULT now(),
+      updated_at TIMESTAMP NOT NULL DEFAULT now()
+    )
+  `);
+}
+
+let nfcTagsTablePromise: Promise<void> | null = null;
+function ensureNfcTagsTableOnce(): Promise<void> {
+  if (!nfcTagsTablePromise) {
+    nfcTagsTablePromise = ensureNfcTagsTable().catch((err) => {
+      nfcTagsTablePromise = null;
+      throw err;
+    });
+  }
+  return nfcTagsTablePromise;
+}
+
+export async function listNfcTags() {
+  await ensureNfcTagsTableOnce();
+  return db.select().from(nfcTags).orderBy(desc(nfcTags.createdAt));
+}
+
+export async function getNfcTagById(id: number) {
+  await ensureNfcTagsTableOnce();
+  const rows = await db.select().from(nfcTags).where(eq(nfcTags.id, id)).limit(1);
+  return rows[0] ?? null;
+}
+
+/** Za gost-facing /nfc/[slug] — samo objavljene pločice su dohvatljive
+    (isti duh kao getPropertyBySlug + provjera `published` u page.tsx). */
+export async function getNfcTagBySlug(slug: string) {
+  await ensureNfcTagsTableOnce();
+  const rows = await db.select().from(nfcTags).where(eq(nfcTags.slug, slug)).limit(1);
+  return rows[0] ?? null;
+}
+
+/** Slug provjera SAMO unutar nfc_tags (vlastiti /nfc/<slug> namespace, ne
+    dijeli ga s properties/companies — vidi komentar uz nfcTags u schema.ts). */
+export async function isNfcSlugTaken(slug: string, excludeId?: number) {
+  await ensureNfcTagsTableOnce();
+  const rows = await db.select({ id: nfcTags.id }).from(nfcTags).where(eq(nfcTags.slug, slug));
+  return rows.some((r) => r.id !== excludeId);
+}
+
+export async function createNfcTag(data: NewNfcTag) {
+  await ensureNfcTagsTableOnce();
+  const [row] = await db.insert(nfcTags).values(data).returning();
+  return row;
+}
+
+export async function updateNfcTag(id: number, data: Partial<NewNfcTag>) {
+  await ensureNfcTagsTableOnce();
+  const [row] = await db
+    .update(nfcTags)
+    .set({ ...data, updatedAt: new Date() })
+    .where(eq(nfcTags.id, id))
+    .returning();
+  return row;
+}
+
+export async function deleteNfcTag(id: number) {
+  await ensureNfcTagsTableOnce();
+  await db.delete(nfcTags).where(eq(nfcTags.id, id));
 }

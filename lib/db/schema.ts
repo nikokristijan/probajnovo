@@ -565,3 +565,47 @@ export const subscriptions = pgTable("subscriptions", {
 
 export type Subscription = typeof subscriptions.$inferSelect;
 export type NewSubscription = typeof subscriptions.$inferInsert;
+
+/**
+ * Gost-facing WiFi stranica za fizički NFC proizvod (vidi `products` tablicu
+ * iznad — 3D printane pločice s NFC oznakom): gost dodirne telefonom
+ * pločicu u apartmanu/vikendici, NFC otvori "probajnovo.com/nfc/<slug>",
+ * stranica pokaže WiFi mrežu/lozinku (+ QR za auto-spajanje) i opcionalnu
+ * dobrodošlicu. Namjerno ODVOJENO od `properties` — jedna vikendica može
+ * imati više pločica (npr. dvije odvojene mreže za dva apartmana, kao Duka
+ * & Piko), a i firme bez vikendice mogu naručiti samo pločicu bez pune
+ * stranice. Vlastiti /nfc/<slug> URL prostor (ne dijeli namespace s
+ * properties/companies) — vidi RESERVED_SLUGS u lib/actions.ts ("nfc").
+ * Tablica se sama kreira pri prvom upitu (ensureNfcTagsTableOnce), isti
+ * obrazac kao subscriptions/push_subscriptions — nema pristupa terminalu
+ * za ručnu migraciju.
+ */
+export const nfcTags = pgTable("nfc_tags", {
+  id: serial("id").primaryKey(),
+  /** Adresa: probajnovo.com/nfc/<slug>. Vlastiti namespace, ne mora biti
+      globalno jedinstven s properties/companies slugovima. */
+  slug: text("slug").notNull().unique(),
+  /** Interna oznaka za admin popis (npr. "Duka & Piko — WiFi"), gost je ne vidi. */
+  label: text("label").notNull(),
+  wifiSsid: text("wifi_ssid").notNull(),
+  /** Null/prazno = otvorena mreža bez lozinke (QR i prikaz to prate — vidi
+      app/nfc/[slug]/page.tsx buildWifiQrPayload). */
+  wifiPassword: text("wifi_password"),
+  /** Naslov dobrodošlice iznad WiFi kartice, npr. "Dobrodošli u Duka & Piko!".
+      Null = prikazuje se generički "Dobrodošli!". */
+  welcomeTitle: text("welcome_title"),
+  /** Slobodan tekst ispod naslova (npr. osobna poruka domaćina, upute za
+      dolazak). Null = ne prikazuje se. */
+  welcomeText: text("welcome_text"),
+  /** Opcionalna slika (URL na Vercel Blob) iznad dobrodošlice — fotka
+      objekta ili domaćina. Null = nema slike. */
+  image: text("image"),
+  /** Boja akcenta (QR okvir, gumbi) — isti sustav kao properties/companies. */
+  accentColor: text("accent_color").notNull().default("#B5502E"),
+  published: boolean("published").notNull().default(true),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export type NfcTag = typeof nfcTags.$inferSelect;
+export type NewNfcTag = typeof nfcTags.$inferInsert;
