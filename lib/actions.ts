@@ -36,6 +36,7 @@ import {
   createProduct,
   updateProduct,
   deleteProduct,
+  isProductSlugTaken,
   createInquiry,
   countRecentInquiriesByIp,
   getInquiryById,
@@ -100,6 +101,7 @@ const RESERVED_SLUGS = new Set([
   "_next",
   "en", // /en/[slug] — auto-prijevod vikendica, vidi app/en/[slug]/page.tsx
   "nfc", // /nfc/[slug] — gost-facing WiFi stranice za NFC pločice, vidi lib/db/schema.ts nfcTags
+  "proizvodi", // /proizvodi i /proizvodi/[slug] — javne stranice proizvoda, vidi lib/db/schema.ts products
 ]);
 
 /** Postgres 42P01 ("relation does not exist") — kod živi na `.cause` kod Drizzle grešaka, ne na samoj grešci. */
@@ -1019,6 +1021,18 @@ const ProductSchema = z.object({
   features: z.string().optional(), // jedan po retku, parsiramo kao amenities
   published: z.coerce.boolean(),
   position: z.coerce.number().int().default(0),
+  /** Prazno = proizvod nema vlastitu /proizvodi/<slug> stranicu (nije link,
+      ne pojavljuje se u /proizvodi popisu). */
+  slug: z
+    .string()
+    .optional()
+    .refine((v) => !v || /^[a-z0-9-]+$/.test(v), "Slug smije sadržavati samo mala slova, brojke i crtice."),
+  videoUrl: z.string().optional(),
+  category: z.string().optional(),
+  featured: z.coerce.boolean(),
+  ctaButtonText: z.string().optional(),
+  seoTitle: z.string().optional(),
+  seoDescription: z.string().optional(),
 });
 
 function readProductFormData(formData: FormData) {
@@ -1031,6 +1045,13 @@ function readProductFormData(formData: FormData) {
     features: formData.get("features") ?? "",
     published: formData.get("published") === "on",
     position: formData.get("position") ?? "0",
+    slug: formData.get("slug") ?? "",
+    videoUrl: formData.get("videoUrl") ?? "",
+    category: formData.get("category") ?? "",
+    featured: formData.get("featured") === "on",
+    ctaButtonText: formData.get("ctaButtonText") ?? "",
+    seoTitle: formData.get("seoTitle") ?? "",
+    seoDescription: formData.get("seoDescription") ?? "",
   };
 }
 
@@ -1049,14 +1070,30 @@ export async function createProductAction(
   if (!parsed.success) {
     return { error: parsed.error.issues[0]?.message ?? "Provjeri unesene podatke." };
   }
+  const slug = emptyToNull(parsed.data.slug);
+  if (slug) {
+    if (RESERVED_SLUGS.has(slug)) {
+      return { error: `"${slug}" je rezervirana adresa, odaberi drugu.` };
+    }
+    if (await isProductSlugTaken(slug)) {
+      return { error: `Adresa "${slug}" je već zauzeta — odaberi drugu.` };
+    }
+  }
   await createProduct({
     ...parsed.data,
     priceEur: parsePriceEur(parsed.data.priceEur),
     images: parseImages(parsed.data.images),
     features: parseAmenities(parsed.data.features ?? ""),
+    slug,
+    videoUrl: emptyToNull(parsed.data.videoUrl),
+    category: emptyToNull(parsed.data.category),
+    ctaButtonText: emptyToNull(parsed.data.ctaButtonText),
+    seoTitle: emptyToNull(parsed.data.seoTitle),
+    seoDescription: emptyToNull(parsed.data.seoDescription),
   });
   revalidatePath("/");
   revalidatePath("/admin");
+  revalidatePath("/proizvodi");
   redirect("/admin");
 }
 
@@ -1070,14 +1107,31 @@ export async function updateProductAction(
   if (!parsed.success) {
     return { error: parsed.error.issues[0]?.message ?? "Provjeri unesene podatke." };
   }
+  const slug = emptyToNull(parsed.data.slug);
+  if (slug) {
+    if (RESERVED_SLUGS.has(slug)) {
+      return { error: `"${slug}" je rezervirana adresa, odaberi drugu.` };
+    }
+    if (await isProductSlugTaken(slug, id)) {
+      return { error: `Adresa "${slug}" je već zauzeta — odaberi drugu.` };
+    }
+  }
   await updateProduct(id, {
     ...parsed.data,
     priceEur: parsePriceEur(parsed.data.priceEur),
     images: parseImages(parsed.data.images),
     features: parseAmenities(parsed.data.features ?? ""),
+    slug,
+    videoUrl: emptyToNull(parsed.data.videoUrl),
+    category: emptyToNull(parsed.data.category),
+    ctaButtonText: emptyToNull(parsed.data.ctaButtonText),
+    seoTitle: emptyToNull(parsed.data.seoTitle),
+    seoDescription: emptyToNull(parsed.data.seoDescription),
   });
   revalidatePath("/");
   revalidatePath("/admin");
+  revalidatePath("/proizvodi");
+  if (slug) revalidatePath(`/proizvodi/${slug}`);
   return { success: true };
 }
 
@@ -1111,6 +1165,11 @@ const NfcTagSchema = z.object({
     .regex(/^#[0-9a-fA-F]{6}$/, "Boja mora biti u obliku #RRGGBB.")
     .default("#B5502E"),
   published: z.coerce.boolean(),
+  googleReviewUrl: z.string().optional(),
+  socialUrl: z.string().optional(),
+  contactPhone: z.string().optional(),
+  houseRulesText: z.string().optional(),
+  localTipsText: z.string().optional(),
 });
 
 function readNfcTagFormData(formData: FormData) {
@@ -1124,6 +1183,11 @@ function readNfcTagFormData(formData: FormData) {
     image: formData.get("image") ?? "",
     accentColor: formData.get("accentColor") || "#B5502E",
     published: formData.get("published") === "on",
+    googleReviewUrl: formData.get("googleReviewUrl") ?? "",
+    socialUrl: formData.get("socialUrl") ?? "",
+    contactPhone: formData.get("contactPhone") ?? "",
+    houseRulesText: formData.get("houseRulesText") ?? "",
+    localTipsText: formData.get("localTipsText") ?? "",
   };
 }
 
@@ -1159,6 +1223,11 @@ export async function createNfcTagAction(
     image: emptyToNull(parsed.data.image),
     accentColor: parsed.data.accentColor,
     published: parsed.data.published,
+    googleReviewUrl: emptyToNull(parsed.data.googleReviewUrl),
+    socialUrl: emptyToNull(parsed.data.socialUrl),
+    contactPhone: emptyToNull(parsed.data.contactPhone),
+    houseRulesText: emptyToNull(parsed.data.houseRulesText),
+    localTipsText: emptyToNull(parsed.data.localTipsText),
   });
   revalidatePath("/admin");
   redirect("/admin");
@@ -1190,6 +1259,11 @@ export async function updateNfcTagAction(
     image: emptyToNull(parsed.data.image),
     accentColor: parsed.data.accentColor,
     published: parsed.data.published,
+    googleReviewUrl: emptyToNull(parsed.data.googleReviewUrl),
+    socialUrl: emptyToNull(parsed.data.socialUrl),
+    contactPhone: emptyToNull(parsed.data.contactPhone),
+    houseRulesText: emptyToNull(parsed.data.houseRulesText),
+    localTipsText: emptyToNull(parsed.data.localTipsText),
   });
   revalidatePath("/admin");
   revalidatePath(`/nfc/${parsed.data.slug}`);
@@ -1208,7 +1282,7 @@ export async function deleteNfcTagAction(id: number) {
 /* ---------------------------------------------------------------- */
 
 const InquirySchema = z.object({
-  source: z.enum(["property", "company", "agency"]),
+  source: z.enum(["property", "company", "agency", "product"]),
   sourceId: z.string().optional(),
   sourceName: z.string().min(1),
   name: z.string().min(1, "Unesi ime i prezime."),
@@ -1345,7 +1419,7 @@ export async function createInquiryAction(
     natrag na agencijski email ako specifičan nije postavljen (isti lanac
     fallbackova kao za "Pošaljite upit" mailto gumbe na /[slug] stranici). */
 async function resolveInquiryRecipient(
-  source: "property" | "company" | "agency",
+  source: "property" | "company" | "agency" | "product",
   sourceId: number | null
 ): Promise<string | null> {
   const agency = await getAgency();
@@ -1357,6 +1431,8 @@ async function resolveInquiryRecipient(
     const company = await getCompanyById(sourceId);
     if (company?.contactEmail) return company.contactEmail;
   }
+  // "agency" i "product" nemaju vlastiti kontakt-email — upit ide na
+  // agencijski (isti obrazac kao "agency" prije uvođenja proizvoda).
   return agency?.contactEmail || null;
 }
 
