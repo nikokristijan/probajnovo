@@ -90,7 +90,9 @@ export default async function NfcTagPage({
                 {/* eslint-disable-next-line @next/next/no-img-element -- data: URI, next/image ne podržava */}
                 <img src={qrDataUrl} alt="QR kod za spajanje na WiFi" width={168} height={168} />
               </div>
-              <span className="nfc-qr-caption">Skeniraj fotoaparatom za automatsko spajanje</span>
+              <span className="nfc-qr-caption">
+                Skeniraj fotoaparatom ili drži prst na QR kodu za automatsko spajanje
+              </span>
             </div>
           </div>
 
