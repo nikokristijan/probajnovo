@@ -14,11 +14,15 @@ export default function InquiryForm({
   sourceId,
   sourceName,
   lang = "hr",
+  ctaLabel,
 }: {
-  source: "property" | "company" | "agency";
+  source: "property" | "company" | "agency" | "product";
   sourceId?: number | null;
   sourceName: string;
   lang?: "hr" | "en";
+  /** Prilagođen tekst gumba za slanje (npr. proizvod s vlastitim CTA tekstom).
+      Undefined/prazno = zadani "Pošalji poruku"/"Send message". */
+  ctaLabel?: string;
 }) {
   const [state, formAction, pending] = useActionState<ActionState, FormData>(
     createInquiryAction,
@@ -72,7 +76,7 @@ export default function InquiryForm({
       {state?.error && <p className="stay-inquiry-error">{state.error}</p>}
 
       <button type="submit" className="stay-inquiry-submit" disabled={pending}>
-        {pending ? L("Šalje se…", "Sending…") : L("Pošalji poruku", "Send message")}
+        {pending ? L("Šalje se…", "Sending…") : ctaLabel || L("Pošalji poruku", "Send message")}
       </button>
     </form>
   );

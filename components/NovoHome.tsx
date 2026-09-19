@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import Image from "next/image";
+import Link from "next/link";
 
 /* ------------------------------------------------------------------ */
 /* Tipovi                                                              */
@@ -35,6 +36,11 @@ export type ProductCard = {
   priceEur: number | null;
   images: string[];
   features: string[];
+  /** Adresa vlastite stranice (probajnovo.com/proizvodi/<slug>) — null =
+      proizvod (još) nema vlastitu stranicu, ne prikazuje se poveznica. */
+  slug: string | null;
+  featured: boolean;
+  category: string | null;
 };
 
 const SERVICES = ["BREND IDENTITET", "DIGITALNI DIZAJN", "WEB & PRODUKT", "FILM & MOTION", "MARKETING"];
@@ -360,6 +366,11 @@ function ProductContent({ product, contactEmail }: { product: ProductCard; conta
           <a href={mailHref} className="mono link">
             POŠALJI UPIT ↗
           </a>
+          {product.slug && (
+            <Link href={`/proizvodi/${product.slug}`} className="mono link">
+              STRANICA PROIZVODA ↗
+            </Link>
+          )}
         </div>
       </div>
     </div>
@@ -449,6 +460,11 @@ function ProductFullscreenPage({
               <a href={mailHref} className="novo-os-cta mono">
                 POŠALJI UPIT ↗
               </a>
+              {product.slug && (
+                <Link href={`/proizvodi/${product.slug}`} className="mono link">
+                  STRANICA PROIZVODA ↗
+                </Link>
+              )}
             </div>
           </div>
         </div>
