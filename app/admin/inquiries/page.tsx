@@ -16,6 +16,7 @@ const SOURCE_LABEL: Record<string, string> = {
   property: "Vikendica",
   company: "Firma",
   agency: "NOVO (agencija)",
+  product: "Proizvod",
 };
 
 export default async function AdminInquiriesPage({
