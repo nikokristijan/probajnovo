@@ -219,6 +219,30 @@ export const products = pgTable("products", {
   published: boolean("published").notNull().default(true),
   /** Ručni redoslijed unutar popisa (manji broj = prvo). */
   position: integer("position").notNull().default(0),
+  /** Adresa vlastite stranice proizvoda: probajnovo.com/proizvodi/<slug>.
+      Vlastiti namespace (vidi isProductSlugTaken u lib/db/queries.ts i
+      RESERVED_SLUGS u lib/actions.ts) — ne dijeli prostor s properties/
+      companies/nfcTags slugovima. Null dok proizvod nema svoju stranicu
+      (stariji redci prije uvođenja ove značajke) — takvi se ne linkaju s
+      NOVO naslovnice i /proizvodi popisa ih ne prikazuje kao klikabilne. */
+  slug: text("slug").unique(),
+  /** Poveznica na video (YouTube/Vimeo i sl.) prikazan na stranici proizvoda.
+      Null = nema videa. */
+  videoUrl: text("video_url"),
+  /** Kratka kategorija/oznaka (npr. "NFC", "Tisak"), slobodan tekst.
+      Null = ne prikazuje se. */
+  category: text("category"),
+  /** Istaknuto (badge) — ističe proizvod u /proizvodi popisu i na naslovnici. */
+  featured: boolean("featured").notNull().default(false),
+  /** Prilagođen tekst gumba za upit na stranici proizvoda (npr. "Naruči
+      pločicu"). Null/prazno = zadano "Pošalji upit". Mijenja SAMO tekst
+      gumba — sam mehanizam slanja upita ostaje isti obrazac kao vikendice/
+      firme (InquiryForm → inquiries tablica), ne mailto/WhatsApp. */
+  ctaButtonText: text("cta_button_text"),
+  /** SEO <title> za /proizvodi/<slug>. Null = koristi naziv proizvoda. */
+  seoTitle: text("seo_title"),
+  /** SEO meta opis za /proizvodi/<slug>. Null = koristi tagline. */
+  seoDescription: text("seo_description"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
@@ -603,6 +627,19 @@ export const nfcTags = pgTable("nfc_tags", {
   /** Boja akcenta (QR okvir, gumbi) — isti sustav kao properties/companies. */
   accentColor: text("accent_color").notNull().default("#B5502E"),
   published: boolean("published").notNull().default(true),
+  /** Poveznica na Google recenzije (npr. "napiši recenziju" kratki link) —
+      sve od ovdje pa do localTipsText su OPCIONALNI gost-facing dodaci:
+      null/prazno = sekcija se uopće ne prikazuje na stranici, popunjeno =
+      prikazuje se. Vidi app/nfc/[slug]/page.tsx. */
+  googleReviewUrl: text("google_review_url"),
+  /** Poveznica na društvenu mrežu (Instagram/Facebook i sl.). Null = ne prikazuje se. */
+  socialUrl: text("social_url"),
+  /** Telefon za "Nazovite"/WhatsApp gumb. Null = ne prikazuje se. */
+  contactPhone: text("contact_phone"),
+  /** Kućni red / upute gostu, slobodan tekst. Null = ne prikazuje se. */
+  houseRulesText: text("house_rules_text"),
+  /** Lokalne preporuke (restorani, plaže i sl.), slobodan tekst. Null = ne prikazuje se. */
+  localTipsText: text("local_tips_text"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });

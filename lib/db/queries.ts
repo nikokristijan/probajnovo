@@ -303,22 +303,75 @@ export async function deleteStudy(id: number) {
 await db.delete(studies).where(eq(studies.id, id));
 }
 
+/** Dodaje stupce dodane nakon prvog lansiranja `products` (vlastita stranica
+    /proizvodi/<slug>, video, kategorija, istaknuto, prilagođen CTA tekst, SEO)
+    — isti ALTER TABLE ... ADD COLUMN IF NOT EXISTS obrazac kao
+    ensureBrandingColumns, jer products već postoji u produkciji. Unique
+    indeks (umjesto UNIQUE na samom stupcu) dopušta više redaka s praznim
+    slugom (stariji proizvodi bez vlastite stranice) — Postgres NE tretira
+    više NULL vrijednosti kao sukob u unique indeksu. */
+async function ensureProductColumns(): Promise<void> {
+  await db.execute(sql`ALTER TABLE products ADD COLUMN IF NOT EXISTS slug TEXT`);
+  await db.execute(sql`ALTER TABLE products ADD COLUMN IF NOT EXISTS video_url TEXT`);
+  await db.execute(sql`ALTER TABLE products ADD COLUMN IF NOT EXISTS category TEXT`);
+  await db.execute(
+    sql`ALTER TABLE products ADD COLUMN IF NOT EXISTS featured BOOLEAN NOT NULL DEFAULT false`
+  );
+  await db.execute(sql`ALTER TABLE products ADD COLUMN IF NOT EXISTS cta_button_text TEXT`);
+  await db.execute(sql`ALTER TABLE products ADD COLUMN IF NOT EXISTS seo_title TEXT`);
+  await db.execute(sql`ALTER TABLE products ADD COLUMN IF NOT EXISTS seo_description TEXT`);
+  await db.execute(
+    sql`CREATE UNIQUE INDEX IF NOT EXISTS products_slug_key ON products (slug)`
+  );
+}
+
+let productColumnsPromise: Promise<void> | null = null;
+function ensureProductColumnsOnce(): Promise<void> {
+  if (!productColumnsPromise) {
+    productColumnsPromise = ensureProductColumns().catch((err) => {
+      productColumnsPromise = null;
+      throw err;
+    });
+  }
+  return productColumnsPromise;
+}
+
 export async function listProducts({ onlyPublished = false } = {}) {
+await ensureProductColumnsOnce();
 const rows = await db.select().from(products).orderBy(asc(products.position), desc(products.createdAt));
 return onlyPublished ? rows.filter((p) => p.published) : rows;
 }
 
 export async function getProductById(id: number) {
+await ensureProductColumnsOnce();
 const rows = await db.select().from(products).where(eq(products.id, id)).limit(1);
 return rows[0] ?? null;
 }
 
+/** Za javnu stranicu /proizvodi/[slug] — vlastiti namespace, ne dijeli ga s
+    properties/companies/nfcTags (vidi isProductSlugTaken ispod). */
+export async function getProductBySlug(slug: string) {
+  await ensureProductColumnsOnce();
+  const rows = await db.select().from(products).where(eq(products.slug, slug)).limit(1);
+  return rows[0] ?? null;
+}
+
+/** Slug provjera SAMO unutar products (vlastiti /proizvodi/<slug> namespace) —
+    isti obrazac kao isNfcSlugTaken. */
+export async function isProductSlugTaken(slug: string, excludeId?: number) {
+  await ensureProductColumnsOnce();
+  const rows = await db.select({ id: products.id }).from(products).where(eq(products.slug, slug));
+  return rows.some((r) => r.id !== excludeId);
+}
+
 export async function createProduct(data: NewProduct) {
+await ensureProductColumnsOnce();
 const [row] = await db.insert(products).values(data).returning();
 return row;
 }
 
 export async function updateProduct(id: number, data: Partial<NewProduct>) {
+await ensureProductColumnsOnce();
 const [row] = await db
 .update(products)
 .set({ ...data, updatedAt: new Date() })
@@ -1614,10 +1667,27 @@ export async function ensureNfcTagsTable(): Promise<void> {
   `);
 }
 
+/** Dodaje opcionalne gost-facing stupce dodane nakon prvog lansiranja
+    nfc_tags (Google recenzije, društvene mreže, kontakt telefon, kućni red,
+    lokalne preporuke) — isti ALTER TABLE ... ADD COLUMN IF NOT EXISTS obrazac
+    kao ensureBrandingColumns, jer nfc_tags već postoji u produkciji pa CREATE
+    TABLE IF NOT EXISTS iznad ne bi ništa dodao postojećoj tablici. Svih pet
+    su OPCIONALNI — vidi komentar uz ova polja u schema.ts. */
+async function ensureNfcExtraColumns(): Promise<void> {
+  await db.execute(sql`ALTER TABLE nfc_tags ADD COLUMN IF NOT EXISTS google_review_url TEXT`);
+  await db.execute(sql`ALTER TABLE nfc_tags ADD COLUMN IF NOT EXISTS social_url TEXT`);
+  await db.execute(sql`ALTER TABLE nfc_tags ADD COLUMN IF NOT EXISTS contact_phone TEXT`);
+  await db.execute(sql`ALTER TABLE nfc_tags ADD COLUMN IF NOT EXISTS house_rules_text TEXT`);
+  await db.execute(sql`ALTER TABLE nfc_tags ADD COLUMN IF NOT EXISTS local_tips_text TEXT`);
+}
+
 let nfcTagsTablePromise: Promise<void> | null = null;
 function ensureNfcTagsTableOnce(): Promise<void> {
   if (!nfcTagsTablePromise) {
-    nfcTagsTablePromise = ensureNfcTagsTable().catch((err) => {
+    nfcTagsTablePromise = (async () => {
+      await ensureNfcTagsTable();
+      await ensureNfcExtraColumns();
+    })().catch((err) => {
       nfcTagsTablePromise = null;
       throw err;
     });
