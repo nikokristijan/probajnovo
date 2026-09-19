@@ -19,6 +19,13 @@ type FormValues = {
   features: string;
   published: boolean;
   position: string;
+  slug: string;
+  videoUrl: string;
+  category: string;
+  featured: boolean;
+  ctaButtonText: string;
+  seoTitle: string;
+  seoDescription: string;
 };
 
 function initialValues(product?: Product): FormValues {
@@ -31,6 +38,13 @@ function initialValues(product?: Product): FormValues {
     features: (product?.features ?? []).join("\n"),
     published: product?.published ?? true,
     position: String(product?.position ?? 0),
+    slug: product?.slug ?? "",
+    videoUrl: product?.videoUrl ?? "",
+    category: product?.category ?? "",
+    featured: product?.featured ?? false,
+    ctaButtonText: product?.ctaButtonText ?? "",
+    seoTitle: product?.seoTitle ?? "",
+    seoDescription: product?.seoDescription ?? "",
   };
 }
 
@@ -135,6 +149,66 @@ export default function ProductForm({
         />
       </div>
 
+      <div className="border border-black/10 rounded-xl p-4 flex flex-col gap-5 bg-black/[0.02]">
+        <p className="text-sm font-semibold">Vlastita stranica proizvoda</p>
+        <Field label="Adresa — probajnovo.com/proizvodi/<slug> (prazno = proizvod nema vlastitu stranicu)">
+          <input
+            name="slug"
+            value={values.slug}
+            onChange={(e) => set("slug", e.target.value.toLowerCase())}
+            pattern="[a-z0-9-]+"
+            placeholder="npr. nfc-plocica-wifi"
+            className="admin-input"
+          />
+        </Field>
+        <Field label="Video (YouTube/Vimeo poveznica, opcionalno)">
+          <input
+            name="videoUrl"
+            value={values.videoUrl}
+            onChange={(e) => set("videoUrl", e.target.value)}
+            placeholder="https://youtube.com/watch?v=..."
+            className="admin-input"
+          />
+        </Field>
+        <div className="grid grid-cols-2 gap-4">
+          <Field label="Kategorija / oznaka (opcionalno)">
+            <input
+              name="category"
+              value={values.category}
+              onChange={(e) => set("category", e.target.value)}
+              placeholder="npr. NFC"
+              className="admin-input"
+            />
+          </Field>
+          <Field label="Tekst gumba za upit (prazno = 'Pošalji upit')">
+            <input
+              name="ctaButtonText"
+              value={values.ctaButtonText}
+              onChange={(e) => set("ctaButtonText", e.target.value)}
+              placeholder="npr. Naruči pločicu"
+              className="admin-input"
+            />
+          </Field>
+        </div>
+        <Field label="SEO naslov (prazno = naziv proizvoda)">
+          <input
+            name="seoTitle"
+            value={values.seoTitle}
+            onChange={(e) => set("seoTitle", e.target.value)}
+            className="admin-input"
+          />
+        </Field>
+        <Field label="SEO opis (prazno = kratki opis)">
+          <textarea
+            name="seoDescription"
+            value={values.seoDescription}
+            onChange={(e) => set("seoDescription", e.target.value)}
+            rows={2}
+            className="admin-input"
+          />
+        </Field>
+      </div>
+
       <label className="flex items-center gap-2 text-sm font-medium">
         <input
           type="checkbox"
@@ -143,6 +217,16 @@ export default function ProductForm({
           onChange={(e) => set("published", e.target.checked)}
         />
         Objavljeno (vidljivo u PROIZVODI popisu na stranici)
+      </label>
+
+      <label className="flex items-center gap-2 text-sm font-medium">
+        <input
+          type="checkbox"
+          name="featured"
+          checked={values.featured}
+          onChange={(e) => set("featured", e.target.checked)}
+        />
+        Istaknuto (badge u popisu proizvoda)
       </label>
 
       {/* Skriveno polje koje server action očekuje kao string */}
