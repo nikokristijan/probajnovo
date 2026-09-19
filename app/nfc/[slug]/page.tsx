@@ -51,6 +51,11 @@ function buildWifiQrPayload(ssid: string, password: string | null): string {
   return `WIFI:T:WPA;S:${s};P:${p};;`;
 }
 
+/** wa.me traži broj bez "+"/razmaka/crtica — samo znamenke. */
+function buildWhatsAppUrl(phone: string): string {
+  return `https://wa.me/${phone.replace(/[^0-9]/g, "")}`;
+}
+
 export default async function NfcTagPage({
   params,
 }: {
@@ -95,6 +100,45 @@ export default async function NfcTagPage({
               </span>
             </div>
           </div>
+
+          {(tag.googleReviewUrl || tag.socialUrl || tag.contactPhone) && (
+            <div className="nfc-actions">
+              {tag.googleReviewUrl && (
+                <a
+                  href={tag.googleReviewUrl}
+                  target="_blank"
+                  rel="noopener"
+                  className="nfc-action-btn nfc-action-btn--primary"
+                >
+                  ⭐ Ostavi nam Google recenziju
+                </a>
+              )}
+              {tag.socialUrl && (
+                <a href={tag.socialUrl} target="_blank" rel="noopener" className="nfc-action-btn">
+                  Prati nas na društvenim mrežama
+                </a>
+              )}
+              {tag.contactPhone && (
+                <a href={buildWhatsAppUrl(tag.contactPhone)} target="_blank" rel="noopener" className="nfc-action-btn">
+                  WhatsApp / poziv
+                </a>
+              )}
+            </div>
+          )}
+
+          {tag.houseRulesText && (
+            <div className="nfc-text-card">
+              <p className="nfc-text-card-title">Kućni red</p>
+              <p className="nfc-text-card-body">{tag.houseRulesText}</p>
+            </div>
+          )}
+
+          {tag.localTipsText && (
+            <div className="nfc-text-card">
+              <p className="nfc-text-card-title">Lokalne preporuke</p>
+              <p className="nfc-text-card-body">{tag.localTipsText}</p>
+            </div>
+          )}
 
           <p className="nfc-footer">
             Stranicu pokreće <a href="https://www.probajnovo.com" target="_blank" rel="noopener">NOVO</a>

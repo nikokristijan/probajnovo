@@ -2316,7 +2316,231 @@ a.owner-glass:active,
 }
 .nfc-footer a { color: inherit; text-decoration: underline; text-underline-offset: 2px; }
 
+/* Opcionalni gost-facing dodaci (Google recenzije/društvene mreže/WhatsApp
+   gumbi + kućni red/lokalne preporuke tekst) — svaki se renderira SAMO ako je
+   admin popunio odgovarajuće polje na nfcTags, vidi app/nfc/[slug]/page.tsx. */
+.nfc-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.nfc-action-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  border: 1px solid rgba(28, 25, 18, 0.12);
+  border-radius: 999px;
+  padding: 13px 18px;
+  font-size: 0.9rem;
+  font-weight: 700;
+  text-align: center;
+  text-decoration: none;
+  color: #1c1912;
+  background: #fdfcf9;
+  transition: background 0.15s ease, border-color 0.15s ease, transform 0.1s ease;
+}
+.nfc-action-btn:hover { border-color: var(--nfc-accent, #b5502e); }
+.nfc-action-btn:active { transform: scale(0.98); }
+
+.nfc-action-btn--primary {
+  background: var(--nfc-accent, #b5502e);
+  border-color: var(--nfc-accent, #b5502e);
+  color: #fff;
+}
+.nfc-action-btn--primary:hover { opacity: 0.92; }
+
+.nfc-text-card {
+  border: 1px solid rgba(28, 25, 18, 0.1);
+  border-radius: 18px;
+  padding: 18px 20px;
+  background: #fdfcf9;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.nfc-text-card-title {
+  font-size: 0.68rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: #8a806a;
+  margin: 0;
+}
+
+.nfc-text-card-body {
+  font-size: 0.88rem;
+  line-height: 1.6;
+  color: #33301f;
+  margin: 0;
+  white-space: pre-line;
+}
+
 @media (max-width: 380px) {
   .nfc-body { padding: 22px 20px 26px; }
   .nfc-welcome-title { font-size: 1.3rem; }
 }
+
+/* =========================================================================
+   PROIZVODI — javne stranice /proizvodi i /proizvodi/[slug].
+   Vlastiti token-scope u NOVO bojama (navy + narančasta), ali definira ISTA
+   imena varijabli (--accent/--accent-dark/--paper/--ink/--plaster/--dim)
+   koje koristi dijeljeni InquiryForm (.stay-inquiry-*), da ga ovdje možemo
+   ponovno koristiti bez forkanja — vidi komentar uz .stay gore.
+   ===================================================================== */
+.novo-product-page {
+  --accent: #0000c3;
+  --accent-dark: color-mix(in srgb, var(--accent) 75%, black);
+  --ink: #0a0a1a;
+  --paper: #ffffff;
+  --plaster: #f1f1fa;
+  --dim: #67667c;
+  --novo-orange: #ff7f00;
+  font-family: var(--font-karla), "Segoe UI", sans-serif;
+  color: var(--ink);
+  background: var(--paper);
+  min-height: 100vh;
+}
+.novo-product-page h1, .novo-product-page h2, .novo-product-page h3 {
+  font-family: var(--font-space-grotesk), "Arial Black", sans-serif;
+}
+
+.novo-product-topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 20px clamp(20px, 5vw, 56px);
+  border-bottom: 1px solid rgba(10, 10, 26, 0.08);
+}
+.novo-product-logo { font-weight: 700; font-size: 15px; letter-spacing: -0.01em; color: var(--novo-orange); text-decoration: none; }
+.novo-product-back {
+  font-family: var(--font-jetbrains-mono), monospace;
+  font-size: 11px;
+  letter-spacing: 0.1em;
+  color: var(--dim);
+  text-decoration: none;
+}
+.novo-product-back:hover { color: var(--accent); }
+
+.novo-product-wrap {
+  max-width: 1080px;
+  margin: 0 auto;
+  padding: clamp(32px, 6vw, 64px) clamp(20px, 5vw, 56px) clamp(56px, 8vw, 96px);
+}
+
+/* --- Listing (/proizvodi) --- */
+.novo-products-header { display: flex; flex-direction: column; gap: 10px; margin-bottom: clamp(28px, 5vw, 44px); }
+.novo-products-kicker { font-family: var(--font-jetbrains-mono), monospace; font-size: 11px; letter-spacing: 0.16em; color: var(--accent); }
+.novo-products-header h1 { font-size: clamp(1.8rem, 4vw, 2.6rem); font-weight: 500; letter-spacing: -0.01em; margin: 0; }
+.novo-products-lede { color: var(--dim); max-width: 60ch; margin: 0; line-height: 1.55; }
+
+.novo-products-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 22px;
+}
+
+.novo-product-card {
+  display: flex;
+  flex-direction: column;
+  border: 1px solid rgba(10, 10, 26, 0.1);
+  border-radius: 16px;
+  overflow: hidden;
+  text-decoration: none;
+  color: var(--ink);
+  background: var(--paper);
+  transition: border-color 0.15s ease, transform 0.15s ease;
+  position: relative;
+}
+.novo-product-card:hover { border-color: var(--accent); transform: translateY(-2px); }
+
+.novo-product-card-badge {
+  position: absolute;
+  top: 12px;
+  left: 12px;
+  z-index: 1;
+  background: var(--novo-orange);
+  color: #fff;
+  font-family: var(--font-jetbrains-mono), monospace;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  padding: 5px 10px;
+  border-radius: 999px;
+}
+
+.novo-product-card-img { position: relative; width: 100%; aspect-ratio: 4 / 3; background: var(--plaster); }
+.novo-product-card-img img { object-fit: cover; }
+
+.novo-product-card-body { padding: 16px 18px 20px; display: flex; flex-direction: column; gap: 6px; }
+.novo-product-card-category { font-family: var(--font-jetbrains-mono), monospace; font-size: 10px; letter-spacing: 0.1em; color: var(--dim); text-transform: uppercase; }
+.novo-product-card-name { font-weight: 700; font-size: 1.05rem; }
+.novo-product-card-tagline { color: var(--dim); font-size: 0.9rem; line-height: 1.4; }
+.novo-product-card-price { font-family: var(--font-jetbrains-mono), monospace; font-size: 0.85rem; color: var(--accent); margin-top: 4px; }
+
+.novo-products-empty { color: var(--dim); }
+
+/* --- Pojedinačna stranica (/proizvodi/[slug]) --- */
+.novo-product-hero {
+  display: grid;
+  grid-template-columns: 1.1fr 1fr;
+  gap: clamp(28px, 5vw, 56px);
+  align-items: start;
+}
+@media (max-width: 780px) { .novo-product-hero { grid-template-columns: 1fr; } }
+
+.novo-product-media { display: flex; flex-direction: column; gap: 12px; }
+.novo-product-media-main { position: relative; width: 100%; aspect-ratio: 4 / 3; border-radius: 18px; overflow: hidden; background: var(--plaster); }
+.novo-product-media-main img { object-fit: cover; }
+.novo-product-thumbs { display: flex; gap: 8px; flex-wrap: wrap; }
+.novo-product-thumb { position: relative; width: 64px; height: 64px; border-radius: 10px; overflow: hidden; border: 2px solid transparent; background: var(--plaster); cursor: pointer; padding: 0; }
+.novo-product-thumb.active { border-color: var(--accent); }
+.novo-product-thumb img { object-fit: cover; }
+
+.novo-product-video { position: relative; width: 100%; aspect-ratio: 16 / 9; border-radius: 18px; overflow: hidden; background: #000; }
+.novo-product-video iframe { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; }
+
+.novo-product-info { display: flex; flex-direction: column; gap: 16px; }
+.novo-product-info-top { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.novo-product-badge {
+  background: var(--novo-orange);
+  color: #fff;
+  font-family: var(--font-jetbrains-mono), monospace;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  padding: 5px 10px;
+  border-radius: 999px;
+}
+.novo-product-info h1 { font-size: clamp(1.7rem, 3.4vw, 2.3rem); margin: 0; letter-spacing: -0.01em; line-height: 1.15; }
+.novo-product-tagline { font-size: 1.05rem; color: var(--dim); margin: 0; }
+.novo-product-desc { line-height: 1.65; margin: 0; white-space: pre-line; }
+.novo-product-price { font-family: var(--font-jetbrains-mono), monospace; font-size: 1.1rem; color: var(--accent); font-weight: 700; }
+
+.novo-product-features { display: flex; flex-wrap: wrap; gap: 8px; }
+.novo-product-feature-chip {
+  font-family: var(--font-jetbrains-mono), monospace;
+  font-size: 10.5px;
+  letter-spacing: 0.06em;
+  border: 1px solid rgba(10, 10, 26, 0.15);
+  padding: 6px 12px;
+  border-radius: 999px;
+  color: var(--dim);
+}
+
+.novo-product-inquiry {
+  margin-top: clamp(48px, 7vw, 80px);
+  padding-top: clamp(32px, 5vw, 48px);
+  border-top: 1px solid rgba(10, 10, 26, 0.1);
+  max-width: 640px;
+}
+.novo-product-inquiry h2 { font-size: 1.3rem; margin: 0 0 6px; }
+.novo-product-inquiry p { color: var(--dim); margin: 0 0 20px; }
+/* .stay-inquiry-field input border je fiksno toplo bež (usklađeno s
+   properties/companies paletom) — ovdje ga preklapamo hladnijom nijansom
+   da pristaje uz navy/bijeli NOVO brend. */
+.novo-product-page .stay-inquiry-field input,
+.novo-product-page .stay-inquiry-field textarea { border-color: #d8d8ea; }

@@ -62,6 +62,9 @@ export default async function HomePage() {
     priceEur: p.priceEur,
     images: p.images,
     features: p.features,
+    slug: p.slug,
+    featured: p.featured,
+    category: p.category,
   }));
 
   return (

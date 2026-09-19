@@ -20,6 +20,11 @@ type FormValues = {
   image: string;
   accentColor: string;
   published: boolean;
+  googleReviewUrl: string;
+  socialUrl: string;
+  contactPhone: string;
+  houseRulesText: string;
+  localTipsText: string;
 };
 
 function initialValues(tag?: NfcTag): FormValues {
@@ -33,6 +38,11 @@ function initialValues(tag?: NfcTag): FormValues {
     image: tag?.image ?? "",
     accentColor: tag?.accentColor ?? "#B5502E",
     published: tag?.published ?? true,
+    googleReviewUrl: tag?.googleReviewUrl ?? "",
+    socialUrl: tag?.socialUrl ?? "",
+    contactPhone: tag?.contactPhone ?? "",
+    houseRulesText: tag?.houseRulesText ?? "",
+    localTipsText: tag?.localTipsText ?? "",
   };
 }
 
@@ -146,6 +156,59 @@ export default function NfcTagForm({
           className="h-10 w-20 rounded-lg border border-black/10 cursor-pointer"
         />
       </Field>
+
+      <div className="border border-black/10 rounded-xl p-4 flex flex-col gap-4 bg-black/[0.02]">
+        <p className="text-xs text-black/50 -mb-1">
+          Sve ovo je opcionalno — ako polje ostaviš prazno, ta sekcija se gostu uopće ne prikazuje.
+        </p>
+        <Field label="Poveznica na Google recenzije">
+          <input
+            name="googleReviewUrl"
+            value={values.googleReviewUrl}
+            onChange={(e) => set("googleReviewUrl", e.target.value)}
+            placeholder="https://g.page/r/.../review"
+            className="admin-input"
+          />
+        </Field>
+        <Field label="Poveznica na društvenu mrežu (Instagram/Facebook)">
+          <input
+            name="socialUrl"
+            value={values.socialUrl}
+            onChange={(e) => set("socialUrl", e.target.value)}
+            placeholder="https://instagram.com/..."
+            className="admin-input"
+          />
+        </Field>
+        <Field label="Telefon za WhatsApp/poziv">
+          <input
+            name="contactPhone"
+            value={values.contactPhone}
+            onChange={(e) => set("contactPhone", e.target.value)}
+            placeholder="+385 91 234 5678"
+            className="admin-input"
+          />
+        </Field>
+        <Field label="Kućni red / upute gostu">
+          <textarea
+            name="houseRulesText"
+            value={values.houseRulesText}
+            onChange={(e) => set("houseRulesText", e.target.value)}
+            rows={3}
+            placeholder={"npr. Odjava do 10h\nNema pušenja u apartmanu\nTiho razdoblje od 22h"}
+            className="admin-input"
+          />
+        </Field>
+        <Field label="Lokalne preporuke (restorani, plaže i sl.)">
+          <textarea
+            name="localTipsText"
+            value={values.localTipsText}
+            onChange={(e) => set("localTipsText", e.target.value)}
+            rows={3}
+            placeholder={"npr. Konoba Marul — 5 min pješice\nPlaža Vela Przina — 10 min autom"}
+            className="admin-input"
+          />
+        </Field>
+      </div>
 
       <label className="flex items-center gap-2 text-sm font-medium">
         <input

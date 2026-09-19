@@ -360,9 +360,17 @@ export default async function AdminDashboard() {
                 className="flex items-center justify-between border border-black/10 rounded-xl px-4 py-3 bg-white hover:border-[#0000c3]/40"
               >
                 <div>
-                  <div className="font-semibold text-sm">{p.name}</div>
+                  <div className="font-semibold text-sm flex items-center gap-2">
+                    {p.name}
+                    {p.featured && (
+                      <span className="text-[10px] font-bold uppercase tracking-wide bg-[#ff7f00]/15 text-[#ff7f00] px-2 py-0.5 rounded-full">
+                        Istaknuto
+                      </span>
+                    )}
+                  </div>
                   <div className="text-xs text-black/50 mt-0.5">
                     {p.priceEur != null ? `od ${p.priceEur} €` : "na upit"}
+                    {p.slug && <> · /proizvodi/{p.slug}</>}
                 </div>
               </div>
               <span
