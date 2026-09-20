@@ -2221,7 +2221,7 @@ a.owner-glass:active,
   font-size: 0.9rem;
   line-height: 1.55;
   color: #58513f;
-  margin: -12px 0 0;
+  margin: 10px 0 0;
   white-space: pre-line;
 }
 
@@ -2502,6 +2502,7 @@ a.owner-glass:active,
 
 .novo-product-video { position: relative; width: 100%; aspect-ratio: 16 / 9; border-radius: 18px; overflow: hidden; background: #000; }
 .novo-product-video iframe { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; }
+.novo-product-video video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; background: #000; }
 
 .novo-product-info { display: flex; flex-direction: column; gap: 16px; }
 .novo-product-info-top { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
