@@ -28,9 +28,16 @@ export async function POST(request: Request): Promise<NextResponse> {
             "image/webp",
             "image/gif",
             "image/avif",
+            "video/mp4",
+            "video/webm",
+            "video/quicktime",
+            "video/x-m4v",
           ],
           addRandomSuffix: true,
-          maximumSizeInBytes: 15 * 1024 * 1024, // 15MB po slici
+          // 15MB je bilo dovoljno dok je ovo prihvaćalo samo slike; sad kroz
+          // isti endpoint ide i upload proizvodnog videa, pa je limit podignut
+          // na 200MB da stane kraći demo-video u razumnoj kvaliteti.
+          maximumSizeInBytes: 200 * 1024 * 1024,
         };
       },
       onUploadCompleted: async () => {
