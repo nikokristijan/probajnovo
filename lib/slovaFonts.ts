@@ -55,12 +55,19 @@ export const SLOVA_COLORS: SlovaColor[] = [
   { id: "wood", label: "Drvo efekt", hex: "#a9773f" },
 ];
 
-export type SlovaEnv = { id: string; label: string };
+/**
+ * Podloga na kojoj se pregledava tekst u konfiguratoru — namjerno obične
+ * ravne boje/uzorci (swatch), ne lažne "fotografije prostora": drži se
+ * NOVO-ove sirove, tipografski vođene estetike (vidi app/slova/slova.css)
+ * umjesto generičkih AI stock-photo pozadina.
+ */
+export type SlovaBackdrop = { id: string; label: string; swatch: string };
 
-export const SLOVA_ENVS: SlovaEnv[] = [
-  { id: "office", label: "Ured / recepcija" },
-  { id: "cafe", label: "Kafić / restoran" },
-  { id: "home", label: "Dom / hodnik" },
+export const SLOVA_BACKDROPS: SlovaBackdrop[] = [
+  { id: "white", label: "Bijela", swatch: "#ffffff" },
+  { id: "black", label: "Crna", swatch: "#0a0a1a" },
+  { id: "concrete", label: "Beton", swatch: "#c7c7cf" },
+  { id: "raster", label: "Raster", swatch: "#ffffff" },
 ];
 
 export const SLOVA_MIN_ORDER_EUR = 15;

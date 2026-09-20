@@ -7,44 +7,9 @@ import {
   SLOVA_FONTS,
   SLOVA_SIZES,
   SLOVA_COLORS,
-  SLOVA_ENVS,
+  SLOVA_BACKDROPS,
   SLOVA_MIN_ORDER_EUR,
 } from "@/lib/slovaFonts";
-
-/** Zatamni hex boju za postotak `percent` (0..1) — koristi se za "sjenu"
-    ekstruzije slova u pregledu, tako da slovo izgleda kao fizički objekt s
-    debljinom umjesto ravne boje teksta. */
-function shadeHex(hex: string, percent: number): string {
-  const f = parseInt(hex.slice(1), 16);
-  const t = percent < 0 ? 0 : 255;
-  const p = percent < 0 ? percent * -1 : percent;
-  const R = f >> 16;
-  const G = (f >> 8) & 0x00ff;
-  const B = f & 0x0000ff;
-  return (
-    "#" +
-    (
-      0x1000000 +
-      (Math.round((t - R) * p) + R) * 0x10000 +
-      (Math.round((t - G) * p) + G) * 0x100 +
-      (Math.round((t - B) * p) + B)
-    )
-      .toString(16)
-      .slice(1)
-  );
-}
-
-/** Slaže niz text-shadow slojeva pomaknutih dijagonalno da tekst na ekranu
-    djeluje "debelo"/reljefno, kao da ima stvarnu dubinu — isti trik kao
-    ekstrudirana plastična/drvena slova u stvarnosti. */
-function buildExtrusionShadow(hex: string, depth: number): string {
-  const dark = shadeHex(hex, -0.45);
-  const layers: string[] = ["0 0 1px rgba(0,0,0,0.25)"];
-  for (let i = 1; i <= depth; i++) {
-    layers.push(`${i}px ${i}px 0 ${dark}`);
-  }
-  return layers.join(", ");
-}
 
 function formatEUR(n: number): string {
   return `${n} €`;
@@ -55,7 +20,7 @@ export default function SlovaCustomizer() {
   const [fontId, setFontId] = useState("bebas");
   const [sizeId, setSizeId] = useState("m");
   const [colorId, setColorId] = useState("orange");
-  const [envId, setEnvId] = useState("office");
+  const [backdropId, setBackdropId] = useState("white");
   const [note, setNote] = useState("");
 
   const [state, formAction, pending] = useActionState<ActionState, FormData>(
@@ -66,23 +31,29 @@ export default function SlovaCustomizer() {
   const selectedFont = SLOVA_FONTS.find((f) => f.id === fontId) ?? SLOVA_FONTS[0]!;
   const selectedSize = SLOVA_SIZES.find((s) => s.id === sizeId) ?? SLOVA_SIZES[1]!;
   const selectedColor = SLOVA_COLORS.find((c) => c.id === colorId) ?? SLOVA_COLORS[0]!;
+  const selectedBackdrop = SLOVA_BACKDROPS.find((b) => b.id === backdropId) ?? SLOVA_BACKDROPS[0]!;
+  const backdropIndex = SLOVA_BACKDROPS.findIndex((b) => b.id === backdropId);
 
   const charCount = text.replace(/\s/g, "").length;
   const rawEstimate = charCount * selectedSize.pricePerLetter;
   const estimate = charCount > 0 ? Math.max(rawEstimate, SLOVA_MIN_ORDER_EUR) : 0;
 
-  const letterStyle = useMemo(() => {
-    const depth = Math.max(3, Math.round(selectedSize.previewRem * 1.8));
+  const displayText = text.trim().length > 0 ? text : "VAŠ TEKST";
+
+  /* Kontrast oboda oko slova ovisi o PODLOZI, ne o odabranoj boji slova —
+     tako tekst ostaje čitljiv na crnoj podlozi čak i kad korisnik izabere
+     tamnu boju slova. Sam offset "duh" iza teksta uvijek je plav (NOVO
+     --accent, jedna dosljedna spot-boja, kao print s pomaknutim registrom,
+     a ne gradijent/sjaj) — namjerno ne narančast, jer je narančasta ujedno
+     i zadana boja slova pa bi se duh izgubio čim se boje poklope. */
+  const strokeColor = backdropId === "black" ? "#f4f4f1" : "#0a0a1a";
+  const textStyle = useMemo(() => {
     return {
       fontFamily: `var(${selectedFont.cssVar})`,
-      fontSize: `clamp(1.6rem, ${selectedSize.previewRem}rem + 1vw, ${selectedSize.previewRem * 1.6}rem)`,
-      color: selectedColor.hex,
-      textShadow: buildExtrusionShadow(selectedColor.hex, depth),
-      filter: "drop-shadow(8px 14px 18px rgba(0,0,0,0.45)) drop-shadow(0 0 24px rgba(139,92,246,0.25))",
+      fontSize: `clamp(1.7rem, ${selectedSize.previewRem}rem + 1.4vw, ${selectedSize.previewRem * 1.7}rem)`,
     } as React.CSSProperties;
-  }, [selectedFont, selectedSize, selectedColor]);
-
-  const displayText = text.trim().length > 0 ? text : "VAŠ TEKST";
+  }, [selectedFont, selectedSize]);
+  const offsetPx = Math.max(4, Math.round(selectedSize.previewRem * 3));
 
   const composedMessage = useMemo(() => {
     const lines = [
@@ -101,14 +72,13 @@ export default function SlovaCustomizer() {
   }, [text, selectedFont, selectedSize, selectedColor, charCount, estimate, note]);
 
   return (
-    <>
+    <div className="novo-product-wrap">
       <section className="slova-hero">
-        <div className="slova-hero-glow" aria-hidden="true" />
-        <span className="slova-kicker">NOVO — PROSTORNA SLOVA PO MJERI</span>
+        <div className="slova-kicker">NOVO — PROSTORNA SLOVA PO MJERI</div>
         <h1>Vaš tekst, u prostoru, prije nego ga naručite.</h1>
         <p className="slova-hero-lede">
-          Upišite tekst, odaberite font, veličinu i boju, pogledajte odmah kako izgledaju na zidu i
-          pošaljite upit u dva klika.
+          Upišite tekst, odaberite font, veličinu i boju, pogledajte odmah kako izgledaju i pošaljite
+          upit u dva klika.
         </p>
         <div className="slova-hero-chips">
           <span>Font po izboru</span>
@@ -120,7 +90,9 @@ export default function SlovaCustomizer() {
       <section className="slova-builder">
         <div className="slova-controls">
           <div className="slova-field">
-            <label htmlFor="slova-text">Vaš tekst</label>
+            <label htmlFor="slova-text" className="slova-field-label">
+              Vaš tekst
+            </label>
             <input
               id="slova-text"
               type="text"
@@ -179,13 +151,12 @@ export default function SlovaCustomizer() {
                 <button
                   type="button"
                   key={c.id}
-                  className={`slova-color-swatch${colorId === c.id ? " active" : ""}`}
-                  style={{ background: c.hex }}
+                  className={`slova-color-item${colorId === c.id ? " active" : ""}`}
                   onClick={() => setColorId(c.id)}
                   aria-pressed={colorId === c.id}
-                  title={c.label}
                 >
-                  <span className="slova-color-label">{c.label}</span>
+                  <span className="slova-color-swatch" style={{ background: c.hex }} />
+                  <span className="slova-color-item-label">{c.label}</span>
                 </button>
               ))}
             </div>
@@ -193,24 +164,48 @@ export default function SlovaCustomizer() {
         </div>
 
         <div className="slova-preview">
-          <div className="slova-preview-tabs">
-            {SLOVA_ENVS.map((e) => (
+          <div className="slova-backdrop-row">
+            {SLOVA_BACKDROPS.map((b) => (
               <button
                 type="button"
-                key={e.id}
-                className={`slova-env-tab${envId === e.id ? " active" : ""}`}
-                onClick={() => setEnvId(e.id)}
-                aria-pressed={envId === e.id}
+                key={b.id}
+                className={`slova-backdrop-tab${backdropId === b.id ? " active" : ""}`}
+                onClick={() => setBackdropId(b.id)}
+                aria-pressed={backdropId === b.id}
               >
-                {e.label}
+                <span className={`slova-backdrop-dot${b.id === "raster" ? " slova-backdrop-dot--raster" : ""}`} style={b.id === "raster" ? undefined : { background: b.swatch }} />
+                {b.label}
               </button>
             ))}
           </div>
-          <div className={`slova-wall slova-env-${envId}`}>
-            <span className="slova-wall-text" style={letterStyle}>
-              {displayText}
+
+          <div className={`slova-render slova-render--${backdropId}`}>
+            <span className="slova-reg-mark slova-reg-mark--tl">+</span>
+            <span className="slova-reg-mark slova-reg-mark--tr">+</span>
+            <span className="slova-reg-mark slova-reg-mark--bl">+</span>
+            <span className="slova-reg-mark slova-reg-mark--br">+</span>
+
+            <span className="slova-render-stack">
+              <span
+                className="slova-render-offset"
+                aria-hidden="true"
+                style={{ ...textStyle, transform: `translate(${offsetPx}px, ${offsetPx}px)` }}
+              >
+                {displayText}
+              </span>
+              <span
+                className="slova-render-main"
+                style={{ ...textStyle, color: selectedColor.hex, WebkitTextStroke: `1px ${strokeColor}` }}
+              >
+                {displayText}
+              </span>
+            </span>
+
+            <span className="slova-render-caption">
+              {String(backdropIndex + 1).padStart(2, "0")} / {selectedBackdrop.label.toUpperCase()}
             </span>
           </div>
+
           <div className="slova-price-readout">
             <span className="slova-price-label">Okvirna cijena</span>
             <span className="slova-price-value">{charCount > 0 ? formatEUR(estimate) : "—"}</span>
@@ -222,8 +217,8 @@ export default function SlovaCustomizer() {
         </div>
       </section>
 
-      <section className="slova-includes">
-        <h2>Što dobijete</h2>
+      <section className="slova-includes-section">
+        <div className="slova-kicker">ŠTO DOBIJETE</div>
         <div className="slova-includes-grid">
           <div className="slova-include-card">
             <span className="slova-include-title">Slova po mjeri</span>
@@ -244,44 +239,44 @@ export default function SlovaCustomizer() {
         </div>
       </section>
 
-      <section className="slova-inquiry">
+      <section className="novo-product-inquiry">
         <h2>Pošaljite upit</h2>
         {state?.success ? (
-          <div className="slova-inquiry-done" role="status">
+          <div className="stay-inquiry-done" role="status">
             Hvala! Upit je poslan, javljamo se uskoro s ponudom i rokom izrade.
           </div>
         ) : (
           <>
             <p>Javljamo se s konačnom ponudom i rokom izrade, obično isti ili sljedeći radni dan.</p>
-            <form action={formAction} className="slova-inquiry-form">
+            <form action={formAction} className="stay-inquiry-form">
               <input type="hidden" name="source" value="product" />
               <input type="hidden" name="sourceName" value="Prostorna slova (konfigurator)" />
               <input type="hidden" name="message" value={composedMessage} readOnly />
 
-              <div className="slova-inquiry-hp" aria-hidden="true">
+              <div className="stay-inquiry-hp" aria-hidden="true">
                 <label>
                   Ne popunjavaj ovo polje
                   <input type="text" name="website" tabIndex={-1} autoComplete="off" />
                 </label>
               </div>
 
-              <div className="slova-inquiry-row">
-                <label className="slova-inquiry-field">
+              <div className="stay-inquiry-row">
+                <label className="stay-inquiry-field">
                   <span>Ime i prezime</span>
                   <input type="text" name="name" required maxLength={200} autoComplete="name" />
                 </label>
-                <label className="slova-inquiry-field">
+                <label className="stay-inquiry-field">
                   <span>Email</span>
                   <input type="email" name="email" required maxLength={200} autoComplete="email" />
                 </label>
               </div>
 
-              <label className="slova-inquiry-field">
+              <label className="stay-inquiry-field">
                 <span>Telefon (opcionalno)</span>
                 <input type="tel" name="phone" maxLength={40} autoComplete="tel" />
               </label>
 
-              <label className="slova-inquiry-field">
+              <label className="stay-inquiry-field">
                 <span>Dodatna napomena (opcionalno)</span>
                 <textarea
                   rows={3}
@@ -297,20 +292,15 @@ export default function SlovaCustomizer() {
                 {selectedColor.label}
               </div>
 
-              {state?.error && <p className="slova-inquiry-error">{state.error}</p>}
+              {state?.error && <p className="stay-inquiry-error">{state.error}</p>}
 
-              <button type="submit" className="slova-inquiry-submit" disabled={pending}>
+              <button type="submit" className="stay-inquiry-submit" disabled={pending}>
                 {pending ? "Šalje se…" : "Pošalji upit"}
               </button>
             </form>
           </>
         )}
       </section>
-
-      <footer className="slova-footer">
-        <span>NOVO studio</span>
-        <a href="mailto:hello@probajnovo.com">hello@probajnovo.com</a>
-      </footer>
-    </>
+    </div>
   );
 }
