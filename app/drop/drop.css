@@ -2,9 +2,8 @@
    Drop.hr — showcase mikrostranica (drop.probajnovo.com)
    Izmišljeni GenZ "fizički newsletter" brend, portfolio primjer za NOVO.
    Mood referenca (po dogovoru s klijentom): leoparpeix.com — igrivo,
-   ilustrirano, s likom koji reagira na klik i sadržajem koji se stvarno
-   pomiče/rotira na scroll (CSS 3D transform + IntersectionObserver),
-   umjesto klasičnog fade-in scrolla.
+   ilustrirano, slojevita pozadina s dubinom i lik koji stvarno reagira
+   na miš/klik/scroll, umjesto ravnih boja i klasičnog fade-in scrolla.
 
    Sve klase su prefiksirane s "drop-" da se nikad ne poklope s ".novo-*"
    klasama iz ostatka stranice (globals.css) — ovaj fajl se importira samo
@@ -19,6 +18,7 @@
   --drop-yellow: #ffd34d;
   --drop-cream: #fff8ef;
   --drop-cream-deep: #ffefd6;
+  --drop-sky: #dcf1fb;
   --drop-ink: #1b1b1f;
 
   position: relative;
@@ -48,13 +48,17 @@
   position: sticky;
   top: 0;
   z-index: 40;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 14px clamp(18px, 5vw, 48px);
   background: rgba(255, 248, 239, 0.78);
   backdrop-filter: blur(10px);
   border-bottom: 2px solid rgba(27, 27, 31, 0.06);
+}
+.drop-nav-inner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  max-width: 1280px;
+  margin-inline: auto;
+  padding: 14px clamp(18px, 5vw, 48px);
 }
 .drop-nav-brand {
   display: flex;
@@ -97,15 +101,16 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 90px 20px 60px;
-  background: radial-gradient(120% 100% at 50% 0%, #eaf7fd 0%, var(--drop-cream) 55%, var(--drop-cream) 100%);
+  padding: 120px clamp(24px, 7vw, 72px) 80px;
+  background: linear-gradient(180deg, #eaf7fd 0%, var(--drop-sky) 55%, var(--drop-sky) 100%);
   overflow: hidden;
 }
 
 .drop-hero-inner {
   position: relative;
   z-index: 3;
-  max-width: 760px;
+  max-width: 700px;
+  padding-inline: clamp(12px, 3vw, 32px);
   text-align: center;
   display: flex;
   flex-direction: column;
@@ -113,8 +118,16 @@
   gap: 18px;
 }
 
+.drop-wordmark-stage {
+  display: inline-block;
+  transform-style: preserve-3d;
+  transition: transform 0.18s ease-out;
+  will-change: transform;
+}
+
 .drop-wordmark {
-  width: min(90vw, 640px);
+  display: block;
+  width: min(70vw, 500px);
   height: auto;
   filter: drop-shadow(0 18px 30px rgba(89, 188, 230, 0.35));
 }
@@ -145,20 +158,107 @@
   border-radius: 999px;
   background: var(--drop-ink);
   color: var(--drop-cream);
+  transition: transform 0.2s ease, background 0.2s ease;
+}
+.drop-hero-inner .drop-scroll-cue:hover {
+  background: var(--drop-blue-deep);
+  transform: translateY(-2px);
 }
 .drop-scroll-cue span {
   animation: drop-bob 1.6s ease-in-out infinite;
 }
 
-/* mascot ("Kap") — CSS okvir za JS-vezanu rotaciju/translate na scroll */
-.drop-mascot {
+/* ------------------------- pozadinski blobovi ------------------------- */
+.drop-blob-wrap {
+  position: absolute;
+  border-radius: 50%;
+  z-index: 0;
+  will-change: transform;
+}
+.drop-blob-wrap--a {
+  width: 380px;
+  height: 380px;
+  top: -10%;
+  left: -10%;
+}
+.drop-blob-wrap--b {
+  width: 320px;
+  height: 320px;
+  bottom: -14%;
+  right: -8%;
+}
+.drop-blob-wrap--c {
+  width: 230px;
+  height: 230px;
+  top: 32%;
+  right: 12%;
+}
+.drop-blob {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  filter: blur(50px);
+  opacity: 0.55;
+  animation: drop-blob-drift 22s ease-in-out infinite;
+}
+.drop-blob--a {
+  background: radial-gradient(circle, var(--drop-blue) 0%, transparent 72%);
+}
+.drop-blob--b {
+  background: radial-gradient(circle, var(--drop-pink) 0%, transparent 72%);
+  animation-delay: -7s;
+}
+.drop-blob--c {
+  background: radial-gradient(circle, var(--drop-yellow) 0%, transparent 72%);
+  animation-delay: -14s;
+  opacity: 0.4;
+}
+@keyframes drop-blob-drift {
+  0%,
+  100% {
+    transform: translate(0, 0) scale(1);
+  }
+  50% {
+    transform: translate(24px, -18px) scale(1.08);
+  }
+}
+
+/* mascot — 3-slojna arhitektura da JS scroll-transform, CSS idle
+   keyframe, i CSS custom-property hover-tilt NIKAD ne piše preko istog
+   "transform" na istom elementu (svaki sloj kontrolira samo svoj). */
+.drop-mascot-stage {
   position: absolute;
   right: clamp(2%, 8vw, 14%);
   bottom: 4%;
   z-index: 2;
-  cursor: pointer;
-  transform-origin: 50% 60%;
   will-change: transform;
+}
+.drop-mascot-shadow {
+  position: absolute;
+  left: 50%;
+  bottom: -8px;
+  width: 140px;
+  height: 32px;
+  background: radial-gradient(closest-side, rgba(47, 143, 196, 0.38), rgba(47, 143, 196, 0));
+  transform: translateX(-50%);
+  filter: blur(2px);
+  z-index: 0;
+  animation: drop-shadow-pulse 4.5s ease-in-out infinite;
+}
+.drop-mascot-idle {
+  position: relative;
+  z-index: 1;
+  animation: drop-mascot-bob 4.5s ease-in-out infinite;
+  transform-origin: 50% 85%;
+}
+.drop-mascot {
+  --drop-mascot-tiltx: 0deg;
+  --drop-mascot-tilty: 0deg;
+  position: relative;
+  cursor: pointer;
+  transform: perspective(900px) rotateX(var(--drop-mascot-tiltx)) rotateY(var(--drop-mascot-tilty));
+  transition: transform 0.35s cubic-bezier(0.2, 0.8, 0.2, 1);
+  transform-style: preserve-3d;
   filter: drop-shadow(0 20px 24px rgba(47, 143, 196, 0.28));
 }
 .drop-mascot:focus-visible {
@@ -171,11 +271,40 @@
   transform-box: fill-box;
   transform-origin: center;
 }
+.drop-mascot-pupil {
+  transition: transform 0.05s linear;
+  transform-box: fill-box;
+  transform-origin: center;
+}
 .drop-mascot-mouth {
   transition: d 0.2s ease;
 }
 .drop-mascot.is-poked .drop-mascot-eye {
   transform: scaleY(0.15);
+}
+
+/* splash mikro-interakcija na klik */
+.drop-splash {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+.drop-splash-dot {
+  position: absolute;
+  top: 45%;
+  left: 50%;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--drop-blue-deep);
+  transform: rotate(var(--drop-splash-angle)) translateY(0);
+  animation: drop-splash-fly 0.6s ease-out forwards;
+}
+@keyframes drop-splash-fly {
+  to {
+    transform: rotate(var(--drop-splash-angle)) translateY(-52px);
+    opacity: 0;
+  }
 }
 
 /* clouds */
@@ -186,6 +315,7 @@
   opacity: 0.9;
   filter: blur(0.5px);
   animation: drop-float 7s ease-in-out infinite;
+  z-index: 1;
 }
 .drop-cloud--a {
   width: 220px;
@@ -283,6 +413,44 @@
     transform: translateY(5px);
   }
 }
+@keyframes drop-mascot-bob {
+  0%,
+  100% {
+    transform: translateY(0) rotate(-2.5deg);
+  }
+  50% {
+    transform: translateY(-10px) rotate(2.5deg);
+  }
+}
+@keyframes drop-shadow-pulse {
+  0%,
+  100% {
+    transform: translateX(-50%) scale(1);
+    opacity: 0.9;
+  }
+  50% {
+    transform: translateX(-50%) scale(0.85);
+    opacity: 0.6;
+  }
+}
+
+/* ------------------------- valoviti razdjelnici ------------------------- */
+.drop-wave {
+  position: relative;
+  width: 100%;
+  line-height: 0;
+}
+.drop-wave svg {
+  display: block;
+  width: 100%;
+  height: 48px;
+}
+.drop-wave path {
+  fill: var(--drop-wave-fill);
+}
+.drop-wave--flip svg {
+  transform: scaleY(-1);
+}
 
 /* ---------------------------- sections ---------------------------- */
 .drop-section {
@@ -290,13 +458,45 @@
   padding: clamp(56px, 9vw, 110px) clamp(20px, 6vw, 60px);
 }
 .drop-section--alt {
+  position: relative;
+  overflow: hidden;
   background: var(--drop-cream-deep);
 }
+.drop-section--alt::before {
+  content: "";
+  position: absolute;
+  width: 320px;
+  height: 320px;
+  border-radius: 50%;
+  background: radial-gradient(circle, var(--drop-pink) 0%, transparent 70%);
+  filter: blur(60px);
+  opacity: 0.35;
+  top: -12%;
+  left: -8%;
+  z-index: 0;
+}
 .drop-section--cta {
+  position: relative;
+  overflow: hidden;
   background: linear-gradient(180deg, var(--drop-cream) 0%, #fde6ef 100%);
+}
+.drop-section--cta::before {
+  content: "";
+  position: absolute;
+  width: 340px;
+  height: 340px;
+  border-radius: 50%;
+  background: radial-gradient(circle, var(--drop-blue) 0%, transparent 70%);
+  filter: blur(70px);
+  opacity: 0.3;
+  bottom: -16%;
+  right: -8%;
+  z-index: 0;
 }
 
 .drop-section-grid {
+  position: relative;
+  z-index: 1;
   max-width: 1080px;
   margin: 0 auto;
   display: grid;
@@ -314,9 +514,13 @@
   margin: 0 0 10px;
 }
 .drop-eyebrow--center {
+  position: relative;
+  z-index: 1;
   text-align: center;
 }
 .drop-h2-center {
+  position: relative;
+  z-index: 1;
   text-align: center;
   max-width: 720px;
   margin: 0 auto 46px;
@@ -337,8 +541,12 @@
   color: var(--drop-ink);
 }
 
-/* postcard / envelope 3D */
+/* postcard / envelope 3D — kombinirani "otvoreni" kut + hover-tilt preko
+   istih --tiltx/--tilty custom properties koje puni useRevealTilt, tako
+   da se ni ovdje dva mehanizma ne bore oko istog transforma. */
 .drop-postcard-stage {
+  --tiltx: 0deg;
+  --tilty: 0deg;
   perspective: 1300px;
   display: flex;
   justify-content: center;
@@ -354,7 +562,7 @@
 }
 .drop-postcard-stage.is-in .drop-postcard {
   opacity: 1;
-  transform: rotateY(-8deg) rotateX(4deg) translateY(0) scale(1);
+  transform: rotateY(calc(-8deg + var(--tilty))) rotateX(calc(4deg + var(--tiltx))) translateY(0) scale(1);
 }
 .drop-postcard-face {
   position: absolute;
@@ -401,6 +609,8 @@
 
 /* steps */
 .drop-steps {
+  position: relative;
+  z-index: 1;
   max-width: 1080px;
   margin: 0 auto;
   display: grid;
@@ -430,19 +640,30 @@
   font-size: 0.98rem;
 }
 
-/* reveal (steps + milestone cards) */
+/* reveal (steps + milestone cards) — ulazna animacija i hover-tilt dijele
+   JEDAN transform preko --tiltx/--tilty custom properties (JS ih mijenja
+   preko useRevealTilt, CSS ih samo čita), pa se transition/animation nikad
+   ne natežu oko iste vrijednosti. */
 .drop-reveal {
+  --tiltx: 0deg;
+  --tilty: 0deg;
   opacity: 0;
-  transform: translateY(34px) scale(0.94);
-  transition: opacity 0.6s ease, transform 0.6s cubic-bezier(0.22, 1, 0.36, 1);
+  transform: perspective(700px) translateY(34px) scale(0.94) rotateX(var(--tiltx)) rotateY(var(--tilty));
+  transition: opacity 0.6s ease, transform 0.45s cubic-bezier(0.22, 1, 0.36, 1), box-shadow 0.25s ease;
 }
 .drop-reveal.is-in {
   opacity: 1;
-  transform: translateY(0) rotate(var(--drop-tilt, 0deg)) scale(1);
+  transform: perspective(700px) translateY(0) rotate(var(--drop-tilt, 0deg)) scale(1) rotateX(var(--tiltx))
+    rotateY(var(--tilty));
+}
+.drop-reveal.is-in:hover {
+  box-shadow: 10px 12px 0 rgba(27, 27, 31, 0.12);
 }
 
 /* milestone grid */
 .drop-grid {
+  position: relative;
+  z-index: 1;
   max-width: 1080px;
   margin: 0 auto;
   display: grid;
@@ -482,6 +703,8 @@
   font-size: 0.95rem;
 }
 .drop-fineprint {
+  position: relative;
+  z-index: 1;
   text-align: center;
   margin: 26px 0 0;
   font-size: 0.85rem;
@@ -491,6 +714,7 @@
 /* CTA */
 .drop-cta-hive {
   position: relative;
+  z-index: 1;
   max-width: 640px;
   margin: 0 auto;
   text-align: center;
@@ -598,14 +822,17 @@
   .drop-grid {
     grid-template-columns: repeat(2, 1fr);
   }
-  .drop-mascot {
+  .drop-mascot-stage {
     right: 6%;
     bottom: 2%;
-    transform-origin: 50% 60%;
   }
-  .drop-mascot svg {
+  .drop-mascot-svg {
     width: 120px;
     height: 132px;
+  }
+  .drop-blob-wrap--a,
+  .drop-blob-wrap--b {
+    transform: scale(0.75);
   }
 }
 
@@ -621,9 +848,23 @@
   .drop-hero {
     padding-top: 110px;
   }
+  .drop-wordmark {
+    width: min(78vw, 400px);
+  }
   .drop-cloud--a,
   .drop-cloud--b {
     transform: scale(0.7);
+  }
+  .drop-blob-wrap--c {
+    display: none;
+  }
+}
+
+@media (hover: none) {
+  .drop-mascot,
+  .drop-reveal,
+  .drop-postcard-stage .drop-postcard {
+    transition-duration: 0.3s;
   }
 }
 
