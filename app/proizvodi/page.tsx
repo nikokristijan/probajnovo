@@ -8,7 +8,7 @@ export const revalidate = 0;
 export const metadata: Metadata = {
   title: "Proizvodi — NOVO",
   description:
-    "Fizički proizvodi NOVO studija — 3D printane NFC pločice koje gosta jednim dodirom spajaju na WiFi i vode do Google recenzije.",
+    "Fizički proizvodi NOVO studija — NFC pločice koje gosta jednim dodirom spajaju na WiFi, i prostorna slova po mjeri.",
   robots: { index: true, follow: true },
   alternates: { canonical: "https://www.probajnovo.com/proizvodi" },
   icons: { icon: "/favicon-orange.png" },
@@ -28,33 +28,45 @@ export default async function ProductsPage() {
           <span className="novo-products-kicker">PROIZVODI</span>
           <h1>Fizički proizvodi NOVO studija</h1>
           <p className="novo-products-lede">
-            3D printane pločice s NFC oznakom — gost ih dodirne telefonom i odmah se spoji na WiFi ili
-            ostavi Google recenziju. Bez aplikacije, bez upisivanja lozinke.
+            Od pločica s NFC oznakom koje goste jednim dodirom spajaju na WiFi, do prostornih slova po
+            mjeri za izlog ili recepciju.
           </p>
         </div>
 
-        {products.length === 0 ? (
-          <p className="novo-products-empty">Uskoro dostupno.</p>
-        ) : (
-          <div className="novo-products-grid">
-            {products.map((p) => (
-              <Link key={p.id} href={`/proizvodi/${p.slug}`} className="novo-product-card">
-                {p.featured && <span className="novo-product-card-badge">ISTAKNUTO</span>}
-                <div className="novo-product-card-img">
-                  {p.images[0] && <Image src={p.images[0]} alt={p.name} fill sizes="(max-width: 640px) 100vw, 320px" />}
-                </div>
-                <div className="novo-product-card-body">
-                  {p.category && <span className="novo-product-card-category">{p.category}</span>}
-                  <span className="novo-product-card-name">{p.name}</span>
-                  <span className="novo-product-card-tagline">{p.tagline}</span>
-                  <span className="novo-product-card-price">
-                    {p.priceEur != null ? `od ${p.priceEur} €` : "na upit"}
-                  </span>
-                </div>
-              </Link>
-            ))}
-          </div>
-        )}
+        <div className="novo-products-grid">
+          {/* Statična kartica za /slova konfigurator — nije u `products` tablici jer
+              nije jednostavna tekst/slika+upit stranica kao ostali proizvodi, nego
+              zaseban interaktivni alat (vidi app/slova). Uvijek prikazana prva. */}
+          <Link href="/slova" className="novo-product-card">
+            <span className="novo-product-card-badge">NOVO</span>
+            <div className="novo-product-card-img" style={{ background: "#0b0b10" }} />
+            <div className="novo-product-card-body">
+              <span className="novo-product-card-category">Prostorna slova</span>
+              <span className="novo-product-card-name">Custom slova po mjeri</span>
+              <span className="novo-product-card-tagline">
+                Odaberite font, veličinu i boju, pogledajte uživo i pošaljite upit.
+              </span>
+              <span className="novo-product-card-price">od 4 €/slovo</span>
+            </div>
+          </Link>
+
+          {products.map((p) => (
+            <Link key={p.id} href={`/proizvodi/${p.slug}`} className="novo-product-card">
+              {p.featured && <span className="novo-product-card-badge">ISTAKNUTO</span>}
+              <div className="novo-product-card-img">
+                {p.images[0] && <Image src={p.images[0]} alt={p.name} fill sizes="(max-width: 640px) 100vw, 320px" />}
+              </div>
+              <div className="novo-product-card-body">
+                {p.category && <span className="novo-product-card-category">{p.category}</span>}
+                <span className="novo-product-card-name">{p.name}</span>
+                <span className="novo-product-card-tagline">{p.tagline}</span>
+                <span className="novo-product-card-price">
+                  {p.priceEur != null ? `od ${p.priceEur} €` : "na upit"}
+                </span>
+              </div>
+            </Link>
+          ))}
+        </div>
       </div>
     </div>
   );
