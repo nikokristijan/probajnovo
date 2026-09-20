@@ -4,6 +4,7 @@ import { useActionState, useState } from "react";
 import type { ActionState } from "@/lib/actions";
 import type { Product } from "@/lib/db/schema";
 import ImageUploader from "./ImageUploader";
+import VideoUploader from "./VideoUploader";
 
 type ProductAction = (
   prevState: ActionState,
@@ -161,15 +162,13 @@ export default function ProductForm({
             className="admin-input"
           />
         </Field>
-        <Field label="Video (YouTube/Vimeo poveznica, opcionalno)">
-          <input
-            name="videoUrl"
-            value={values.videoUrl}
-            onChange={(e) => set("videoUrl", e.target.value)}
-            placeholder="https://youtube.com/watch?v=..."
-            className="admin-input"
-          />
-        </Field>
+        <VideoUploader
+          label="Video (opcionalno)"
+          helpText="Uploadaj kratku snimku proizvoda — prikazuje se na stranici proizvoda ispod opisa."
+          value={values.videoUrl}
+          onChange={(url) => set("videoUrl", url)}
+        />
+        <input type="hidden" name="videoUrl" value={values.videoUrl} />
         <div className="grid grid-cols-2 gap-4">
           <Field label="Kategorija / oznaka (opcionalno)">
             <input
