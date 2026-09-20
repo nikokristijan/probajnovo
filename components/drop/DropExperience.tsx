@@ -10,15 +10,18 @@ import "@/app/drop/drop.css";
  * Izmišljeni brend napravljen ISKLJUČIVO kao portfolio primjer za NOVO
  * (vidi footer na dnu stranice — jasno piše da je koncept, ne pravi
  * proizvod). Referentni "mood" po dogovoru: leoparpeix.com — igrivo,
- * potpuno ilustrirano, s likom koji reagira na klik, i sadržajem koji se
- * pomiče/rotira na scroll umjesto klasičnog fade-in scrolla.
+ * potpuno ilustrirano, s likom koji stvarno reagira (miš/klik/scroll) i
+ * slojevitom, "3D" pozadinom umjesto ravnih boja.
  *
- * Umjesto pravog WebGL prizora (rizičnije dodati kao novu ovisnost u
- * postojeći Next.js build), 3D dojam se postiže CSS 3D transformacijama
- * (perspective + rotateX/Y) vezanim na scroll poziciju i na
- * IntersectionObserver — maskota se stvarno okreće/pomiče dok skrolaš,
- * razglednica se "otvara" u 3D kad uđe u kadar, kartice brojki upadaju pod
- * kutom kao razbacane polaroid fotke.
+ * v2 (nakon feedbacka): maskota je prije radila punu 2D rotate() do 476°
+ * na scroll — vizualno se prevrtala naglavačke i lice je postajalo
+ * nečitljivo ("izgleda katastrofa"). Sad je rastavljena u 3 sloja koji se
+ * NIKAD ne bore oko istog CSS transforma:
+ *   stage (JS scroll parallax, blaga translacija/rotacija do max 8°)
+ *   → idle (čisti CSS keyframe bob/njihanje, uvijek uključen)
+ *     → mascot (CSS custom-property rotateX/Y tilt na hover/mousemove,
+ *       preko perspective(), lice nikad ne prelazi ~20° pa ostaje čitljivo).
+ * Oči prate kursor (pomak zjenice), klik radi "splash" mikro-interakciju.
  */
 
 const BEE_PATHS = [
@@ -69,7 +72,43 @@ function Bee({
   );
 }
 
-function useReveal<T extends HTMLElement>() {
+/** Blurani "blob" pozadinski oblici — daju dubinu i pomiču se blago
+ * drugačijom brzinom od ostatka sadržaja (parallax) dok se scrolla. */
+function Blob({
+  variant,
+  parallaxRef,
+}: {
+  variant: "a" | "b" | "c";
+  parallaxRef: React.RefObject<HTMLDivElement | null>;
+}) {
+  return (
+    <div className={`drop-blob-wrap drop-blob-wrap--${variant}`} ref={parallaxRef} aria-hidden="true">
+      <div className={`drop-blob drop-blob--${variant}`} />
+    </div>
+  );
+}
+
+/** Valoviti razdjelnik između sekcija — umjesto ravnog reza između boja. */
+function WaveDivider({ bg, fill, flip }: { bg: string; fill: string; flip?: boolean }) {
+  return (
+    <div
+      className={`drop-wave${flip ? " drop-wave--flip" : ""}`}
+      aria-hidden="true"
+      style={{ background: bg, ["--drop-wave-fill" as string]: fill }}
+    >
+      <svg viewBox="0 0 1200 80" preserveAspectRatio="none">
+        <path d="M0,40 C150,85 350,0 600,32 C850,64 1050,8 1200,42 L1200,80 L0,80 Z" />
+      </svg>
+    </div>
+  );
+}
+
+/** IntersectionObserver reveal + pointer-tilt (3D naginjanje prema kursoru)
+ * u jednom hooku, na istom refu — tako se izbjegava spajanje dva refa na
+ * isti DOM node i izbjegava se poziv hooka unutar .map() callbacka (krši
+ * Rules of Hooks i puca ESLint build), jer se poziva iz RevealItem-a koji
+ * je zaseban komponent. */
+function useRevealTilt<T extends HTMLElement>(maxDeg = 8) {
   const ref = useRef<T | null>(null);
   useEffect(() => {
     const el = ref.current;
@@ -88,12 +127,27 @@ function useReveal<T extends HTMLElement>() {
     io.observe(el);
     return () => io.disconnect();
   }, []);
-  return ref;
+
+  function onPointerMove(e: React.PointerEvent) {
+    if (e.pointerType === "touch") return;
+    const el = ref.current;
+    if (!el) return;
+    const rect = el.getBoundingClientRect();
+    const px = (e.clientX - rect.left) / rect.width - 0.5;
+    const py = (e.clientY - rect.top) / rect.height - 0.5;
+    el.style.setProperty("--tiltx", `${(-py * maxDeg).toFixed(2)}deg`);
+    el.style.setProperty("--tilty", `${(px * maxDeg).toFixed(2)}deg`);
+  }
+  function onPointerLeave() {
+    const el = ref.current;
+    if (!el) return;
+    el.style.setProperty("--tiltx", "0deg");
+    el.style.setProperty("--tilty", "0deg");
+  }
+
+  return { ref, onPointerMove, onPointerLeave };
 }
 
-/** Wrapper koji sam poziva useReveal — MILESTONES/STEPS se renderiraju kroz
- * ovu komponentu umjesto pozivanja hooka izravno unutar .map() callbacka
- * (poziv hooka unutar petlje krši Rules of Hooks i puca ESLint build). */
 function RevealItem({
   className,
   style,
@@ -103,18 +157,24 @@ function RevealItem({
   style?: React.CSSProperties;
   children: React.ReactNode;
 }) {
-  const ref = useReveal<HTMLDivElement>();
+  const { ref, onPointerMove, onPointerLeave } = useRevealTilt<HTMLDivElement>();
   return (
-    <div ref={ref} className={className} style={style}>
+    <div
+      ref={ref}
+      className={className}
+      style={style}
+      onPointerMove={onPointerMove}
+      onPointerLeave={onPointerLeave}
+    >
       {children}
     </div>
   );
 }
 
 function Envelope() {
-  const ref = useReveal<HTMLDivElement>();
+  const { ref, onPointerMove, onPointerLeave } = useRevealTilt<HTMLDivElement>(10);
   return (
-    <div className="drop-postcard-stage" ref={ref}>
+    <div className="drop-postcard-stage" ref={ref} onPointerMove={onPointerMove} onPointerLeave={onPointerLeave}>
       <div className="drop-postcard">
         <div className="drop-postcard-face drop-postcard-back" />
         <div className="drop-postcard-flap" />
@@ -227,51 +287,145 @@ function JoinForm() {
   );
 }
 
-export default function DropExperience() {
-  const mascotRef = useRef<HTMLDivElement | null>(null);
-  const heroRef = useRef<HTMLDivElement | null>(null);
-  const [poked, setPoked] = useState(false);
+/** Par kapljica koje prsnu iz maskote na klik — čisti CSS keyframe,
+ * uklone se iz DOM-a nakon animacije preko setTimeout u parentu. */
+function Splash() {
+  return (
+    <span className="drop-splash" aria-hidden="true">
+      {Array.from({ length: 6 }).map((_, i) => (
+        <span key={i} className="drop-splash-dot" style={{ ["--drop-splash-angle" as string]: `${i * 60}deg` }} />
+      ))}
+    </span>
+  );
+}
 
+export default function DropExperience() {
+  const heroRef = useRef<HTMLDivElement | null>(null);
+  const mascotStageRef = useRef<HTMLDivElement | null>(null);
+  const mascotRef = useRef<HTMLDivElement | null>(null);
+  const pupilLRef = useRef<SVGEllipseElement | null>(null);
+  const pupilRRef = useRef<SVGEllipseElement | null>(null);
+  const wordmarkStageRef = useRef<HTMLDivElement | null>(null);
+  const blobARef = useRef<HTMLDivElement | null>(null);
+  const blobBRef = useRef<HTMLDivElement | null>(null);
+  const blobCRef = useRef<HTMLDivElement | null>(null);
+  const [poked, setPoked] = useState(false);
+  const [splashes, setSplashes] = useState<number[]>([]);
+
+  // Jedna dijeljena rAF petlja za: scroll-parallax maskote i blobova,
+  // ambijentalni tilt wordmarka prema kursoru, i oči koje prate kursor.
+  // Sve se okida na scroll ILI pointermove pa je jeftino (nema stalnog
+  // rafa dok se ništa ne miče).
   useEffect(() => {
     let raf = 0;
-    function onScroll() {
-      cancelAnimationFrame(raf);
-      raf = requestAnimationFrame(() => {
-        const heroH = heroRef.current?.offsetHeight ?? 800;
-        const progress = Math.min(Math.max(window.scrollY / heroH, 0), 1.4);
-        if (mascotRef.current) {
-          const rotate = progress * 340;
-          const rise = progress * -120;
-          const scale = 1 - Math.min(progress, 1) * 0.22;
-          mascotRef.current.style.transform = `translateY(${rise}px) rotate(${rotate}deg) scale(${scale})`;
-        }
-      });
+    let pointer = { x: typeof window !== "undefined" ? window.innerWidth / 2 : 0, y: 200 };
+
+    function update() {
+      const heroH = heroRef.current?.offsetHeight ?? 800;
+      const progress = Math.min(Math.max(window.scrollY / heroH, 0), 1);
+
+      if (mascotStageRef.current) {
+        const rise = progress * -70;
+        const tilt = progress * 8;
+        const scale = 1 - progress * 0.1;
+        mascotStageRef.current.style.transform = `translateY(${rise}px) rotate(${tilt}deg) scale(${scale})`;
+      }
+
+      if (blobARef.current) blobARef.current.style.transform = `translate3d(0, ${(progress * -50).toFixed(1)}px, 0)`;
+      if (blobBRef.current) blobBRef.current.style.transform = `translate3d(0, ${(progress * 60).toFixed(1)}px, 0)`;
+      if (blobCRef.current)
+        blobCRef.current.style.transform = `translate3d(0, ${(progress * -30).toFixed(1)}px, 0) rotate(${(progress * 14).toFixed(1)}deg)`;
+
+      if (wordmarkStageRef.current && window.innerWidth > 720) {
+        const px = pointer.x / window.innerWidth - 0.5;
+        const py = pointer.y / window.innerHeight - 0.5;
+        wordmarkStageRef.current.style.transform = `perspective(1400px) rotateX(${(-py * 6).toFixed(2)}deg) rotateY(${(px * 8).toFixed(2)}deg)`;
+      }
+
+      const mascotEl = mascotRef.current;
+      if (mascotEl && (pupilLRef.current || pupilRRef.current)) {
+        const rect = mascotEl.getBoundingClientRect();
+        const cx = rect.left + rect.width * 0.5;
+        const cy = rect.top + rect.height * 0.42;
+        const dx = pointer.x - cx;
+        const dy = pointer.y - cy;
+        const dist = Math.hypot(dx, dy) || 1;
+        const travel = Math.min(3.4, dist / 30);
+        const t = `translate(${((dx / dist) * travel).toFixed(1)}px, ${((dy / dist) * travel).toFixed(1)}px)`;
+        if (pupilLRef.current) pupilLRef.current.style.transform = t;
+        if (pupilRRef.current) pupilRRef.current.style.transform = t;
+      }
+
+      raf = 0;
     }
+    function schedule() {
+      if (!raf) raf = requestAnimationFrame(update);
+    }
+    function onScroll() {
+      schedule();
+    }
+    function onPointerMove(e: PointerEvent) {
+      pointer = { x: e.clientX, y: e.clientY };
+      schedule();
+    }
+
     window.addEventListener("scroll", onScroll, { passive: true });
-    onScroll();
+    window.addEventListener("pointermove", onPointerMove, { passive: true });
+    schedule();
     return () => {
       window.removeEventListener("scroll", onScroll);
+      window.removeEventListener("pointermove", onPointerMove);
       cancelAnimationFrame(raf);
     };
   }, []);
 
+  function handlePoke() {
+    setPoked(true);
+    window.setTimeout(() => setPoked(false), 600);
+    const id = Date.now();
+    setSplashes((s) => [...s, id]);
+    window.setTimeout(() => setSplashes((s) => s.filter((x) => x !== id)), 650);
+  }
+
+  function onMascotPointerMove(e: React.PointerEvent<HTMLDivElement>) {
+    if (e.pointerType === "touch") return;
+    const el = mascotRef.current;
+    if (!el) return;
+    const rect = el.getBoundingClientRect();
+    const px = (e.clientX - rect.left) / rect.width - 0.5;
+    const py = (e.clientY - rect.top) / rect.height - 0.5;
+    el.style.setProperty("--drop-mascot-tiltx", `${(-py * 20).toFixed(1)}deg`);
+    el.style.setProperty("--drop-mascot-tilty", `${(px * 20).toFixed(1)}deg`);
+  }
+  function onMascotPointerLeave() {
+    const el = mascotRef.current;
+    if (!el) return;
+    el.style.setProperty("--drop-mascot-tiltx", "0deg");
+    el.style.setProperty("--drop-mascot-tilty", "0deg");
+  }
+
   return (
     <div className="drop-page">
       <nav className="drop-nav">
-        <a href="#top" className="drop-nav-brand">
-          <Image src="/drop/drop-badge-blue.png" alt="" width={36} height={36} />
-          <span>Drop</span>
-        </a>
-        <div className="drop-nav-links">
-          <a href="#kako-radi">Kako radi</a>
-          <a href="#brojke">Brojke</a>
-          <a href="#pridruzi-se" className="drop-nav-cta">
-            Pridruži se
+        <div className="drop-nav-inner">
+          <a href="#top" className="drop-nav-brand">
+            <Image src="/drop/drop-badge-blue.png" alt="" width={36} height={36} />
+            <span>Drop</span>
           </a>
+          <div className="drop-nav-links">
+            <a href="#kako-radi">Kako radi</a>
+            <a href="#brojke">Brojke</a>
+            <a href="#pridruzi-se" className="drop-nav-cta">
+              Pridruži se
+            </a>
+          </div>
         </div>
       </nav>
 
       <header id="top" className="drop-hero" ref={heroRef}>
+        <Blob variant="a" parallaxRef={blobARef} />
+        <Blob variant="b" parallaxRef={blobBRef} />
+        <Blob variant="c" parallaxRef={blobCRef} />
         <div className="drop-cloud drop-cloud--a" />
         <div className="drop-cloud drop-cloud--b" />
         <div className="drop-cloud drop-cloud--c" />
@@ -280,14 +434,16 @@ export default function DropExperience() {
         <Bee pathIndex={2} duration={13} delay={0.6} scale={1.1} style={{ top: "40%", left: "40%" }} />
 
         <div className="drop-hero-inner">
-          <Image
-            src="/drop/drop-wordmark.png"
-            alt="Drop"
-            width={1100}
-            height={517}
-            priority
-            className="drop-wordmark"
-          />
+          <div className="drop-wordmark-stage" ref={wordmarkStageRef}>
+            <Image
+              src="/drop/drop-wordmark.png"
+              alt="Drop"
+              width={1100}
+              height={517}
+              priority
+              className="drop-wordmark"
+            />
+          </div>
           <p className="drop-tagline">Prvi fizički newsletter za digitalnu generaciju.</p>
           <p className="drop-subcopy">
             Svaki mjesec ti u sandučić stiže Drop — mini paket vijesti, poziva i iznenađenja koji
@@ -299,50 +455,79 @@ export default function DropExperience() {
           </a>
         </div>
 
-        <div
-          className={`drop-mascot${poked ? " is-poked" : ""}`}
-          ref={mascotRef}
-          onClick={() => {
-            setPoked(true);
-            window.setTimeout(() => setPoked(false), 600);
-          }}
-          role="button"
-          tabIndex={0}
-          aria-label="Kap, maskota Dropa — klikni me"
-          onKeyDown={(e) => {
-            if (e.key === "Enter" || e.key === " ") {
-              setPoked(true);
-              window.setTimeout(() => setPoked(false), 600);
-            }
-          }}
-        >
-          <svg viewBox="0 0 200 220" width="180" height="198">
-            <path
-              d="M100 8 C150 78 186 118 186 156 A86 86 0 1 1 14 156 C14 118 50 78 100 8 Z"
-              fill="#59BCE6"
-            />
-            <path
-              d="M100 8 C150 78 186 118 186 156 A86 86 0 0 1 100 242 Z"
-              fill="#3FA6D6"
-              opacity="0.55"
-            />
-            <ellipse className="drop-mascot-eye" cx="76" cy="150" rx="9" ry="12" fill="#1B1B1F" />
-            <ellipse className="drop-mascot-eye" cx="124" cy="150" rx="9" ry="12" fill="#1B1B1F" />
-            <circle cx="72" cy="146" r="3" fill="#fff" />
-            <circle cx="120" cy="146" r="3" fill="#fff" />
-            <path
-              className="drop-mascot-mouth"
-              d="M82 176 Q100 192 118 176"
-              stroke="#1B1B1F"
-              strokeWidth="5"
-              fill="none"
-              strokeLinecap="round"
-            />
-            <ellipse cx="60" cy="168" rx="10" ry="6" fill="#F4AACB" opacity="0.7" />
-            <ellipse cx="140" cy="168" rx="10" ry="6" fill="#F4AACB" opacity="0.7" />
-          </svg>
+        <div className="drop-mascot-stage" ref={mascotStageRef}>
+          <div className="drop-mascot-shadow" aria-hidden="true" />
+          <div className="drop-mascot-idle">
+            <div
+              className={`drop-mascot${poked ? " is-poked" : ""}`}
+              ref={mascotRef}
+              onPointerMove={onMascotPointerMove}
+              onPointerLeave={onMascotPointerLeave}
+              onClick={handlePoke}
+              role="button"
+              tabIndex={0}
+              aria-label="Kap, maskota Dropa — klikni me"
+              onKeyDown={(e) => {
+                if (e.key === "Enter" || e.key === " ") handlePoke();
+              }}
+            >
+              <svg viewBox="0 0 200 220" width="180" height="198" className="drop-mascot-svg" aria-hidden="true">
+                <defs>
+                  <radialGradient id="dropBodyGrad" cx="35%" cy="28%" r="80%">
+                    <stop offset="0%" stopColor="#a9e2fa" />
+                    <stop offset="55%" stopColor="#59bce6" />
+                    <stop offset="100%" stopColor="#2f8fc4" />
+                  </radialGradient>
+                </defs>
+                <path
+                  d="M100 8 C150 78 186 118 186 156 A86 86 0 1 1 14 156 C14 118 50 78 100 8 Z"
+                  fill="url(#dropBodyGrad)"
+                />
+                <path
+                  d="M100 8 C150 78 186 118 186 156 A86 86 0 0 1 100 242 Z"
+                  fill="#2f8fc4"
+                  opacity="0.4"
+                />
+                <ellipse
+                  cx="66"
+                  cy="64"
+                  rx="20"
+                  ry="28"
+                  fill="#ffffff"
+                  opacity="0.4"
+                  transform="rotate(-16 66 64)"
+                  style={{ filter: "blur(3px)" }}
+                />
+                <g className="drop-mascot-eye drop-mascot-eye--l">
+                  <ellipse cx="76" cy="150" rx="11" ry="14" fill="#ffffff" />
+                  <ellipse ref={pupilLRef} className="drop-mascot-pupil" cx="76" cy="150" rx="7" ry="10" fill="#1B1B1F" />
+                  <circle cx="73" cy="146" r="2.6" fill="#fff" />
+                </g>
+                <g className="drop-mascot-eye drop-mascot-eye--r">
+                  <ellipse cx="124" cy="150" rx="11" ry="14" fill="#ffffff" />
+                  <ellipse ref={pupilRRef} className="drop-mascot-pupil" cx="124" cy="150" rx="7" ry="10" fill="#1B1B1F" />
+                  <circle cx="121" cy="146" r="2.6" fill="#fff" />
+                </g>
+                <path
+                  className="drop-mascot-mouth"
+                  d="M82 176 Q100 192 118 176"
+                  stroke="#1B1B1F"
+                  strokeWidth="5"
+                  fill="none"
+                  strokeLinecap="round"
+                />
+                <ellipse cx="60" cy="168" rx="10" ry="6" fill="#F4AACB" opacity="0.7" />
+                <ellipse cx="140" cy="168" rx="10" ry="6" fill="#F4AACB" opacity="0.7" />
+              </svg>
+              {splashes.map((id) => (
+                <Splash key={id} />
+              ))}
+            </div>
+          </div>
         </div>
       </header>
+
+      <WaveDivider bg="var(--drop-sky)" fill="var(--drop-cream)" />
 
       <section id="sto-je-drop" className="drop-section">
         <div className="drop-section-grid">
@@ -365,6 +550,8 @@ export default function DropExperience() {
         <h2 className="drop-h2-center">Tri koraka. Nula scrollanja.</h2>
         <Steps />
       </section>
+
+      <WaveDivider bg="var(--drop-cream-deep)" fill="var(--drop-cream)" />
 
       <section id="brojke" className="drop-section">
         <p className="drop-eyebrow drop-eyebrow--center">Brojke koje zuje</p>
