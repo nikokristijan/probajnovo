@@ -15,6 +15,65 @@ function formatEUR(n: number): string {
   return `${n} €`;
 }
 
+/** Posvijetli (percent > 0) ili potamni (percent < 0) hex boju za ~percent%. */
+function shadeHex(hex: string, percent: number): string {
+  const clean = hex.replace("#", "");
+  const num = parseInt(clean, 16);
+  const amt = Math.round(2.55 * percent);
+  const r = Math.min(255, Math.max(0, ((num >> 16) & 0xff) + amt));
+  const g = Math.min(255, Math.max(0, ((num >> 8) & 0xff) + amt));
+  const b = Math.min(255, Math.max(0, (num & 0xff) + amt));
+  return `#${((1 << 24) + (r << 16) + (g << 8) + b).toString(16).slice(1)}`;
+}
+
+/** Linearna interpolacija između dvije hex boje, t u [0, 1]. */
+function mixHex(hexA: string, hexB: string, t: number): string {
+  const a = parseInt(hexA.replace("#", ""), 16);
+  const b = parseInt(hexB.replace("#", ""), 16);
+  const ar = (a >> 16) & 0xff;
+  const ag = (a >> 8) & 0xff;
+  const ab = a & 0xff;
+  const br = (b >> 16) & 0xff;
+  const bg = (b >> 8) & 0xff;
+  const bb = b & 0xff;
+  const r = Math.round(ar + (br - ar) * t);
+  const g = Math.round(ag + (bg - ag) * t);
+  const bl = Math.round(ab + (bb - ab) * t);
+  return `#${((1 << 24) + (r << 16) + (g << 8) + bl).toString(16).slice(1)}`;
+}
+
+/** Percipirana svjetlina hex boje, 0 (crna) – 1 (bijela). */
+function hexLuminance(hex: string): number {
+  const clean = hex.replace("#", "");
+  const num = parseInt(clean, 16);
+  const r = (num >> 16) & 0xff;
+  const g = (num >> 8) & 0xff;
+  const b = num & 0xff;
+  return (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+}
+
+/** Približna svjetlina svake podloge iz SLOVA_BACKDROPS, za odluku treba li
+ * slovima kontrastni rub (bez toga bi npr. bijela slova na bijeloj podlozi
+ * bila nečitljiva). */
+const BACKDROP_LUMINANCE: Record<string, number> = {
+  white: 0.95,
+  black: 0.05,
+  concrete: 0.78,
+  raster: 0.95,
+};
+
+/* Sjaj na gornjem rubu slova (kao odsjaj na plastici/metalu) — isti za sve
+ * boje, dovoljno suptilan da radi i na svijetlim i na tamnim slovima preko
+ * mix-blend-mode: overlay. */
+const GLOSS_GRADIENT =
+  "linear-gradient(180deg, rgba(255,255,255,0.7) 0%, rgba(255,255,255,0.22) 32%, rgba(255,255,255,0) 55%)";
+/* Dijagonalna metalna zraka za "Zlatna" — kao odsjaj na poliranom metalu. */
+const GOLD_SHINE_GRADIENT =
+  "linear-gradient(115deg, rgba(255,255,255,0) 32%, rgba(255,255,255,0.9) 47%, rgba(255,255,255,0) 62%)";
+/* Fine dijagonalne linije za "Drvo efekt". */
+const WOOD_GRAIN_GRADIENT =
+  "repeating-linear-gradient(94deg, rgba(35,18,5,0.4) 0px, rgba(35,18,5,0.4) 1px, transparent 1px, transparent 5px)";
+
 export default function SlovaCustomizer() {
   const [text, setText] = useState("DOBRODOŠLI");
   const [fontId, setFontId] = useState("bebas");
@@ -40,20 +99,61 @@ export default function SlovaCustomizer() {
 
   const displayText = text.trim().length > 0 ? text : "VAŠ TEKST";
 
-  /* Kontrast oboda oko slova ovisi o PODLOZI, ne o odabranoj boji slova —
-     tako tekst ostaje čitljiv na crnoj podlozi čak i kad korisnik izabere
-     tamnu boju slova. Sam offset "duh" iza teksta uvijek je plav (NOVO
-     --accent, jedna dosljedna spot-boja, kao print s pomaknutim registrom,
-     a ne gradijent/sjaj) — namjerno ne narančast, jer je narančasta ujedno
-     i zadana boja slova pa bi se duh izgubio čim se boje poklope. */
-  const strokeColor = backdropId === "black" ? "#f4f4f1" : "#0a0a1a";
   const textStyle = useMemo(() => {
     return {
       fontFamily: `var(${selectedFont.cssVar})`,
       fontSize: `clamp(1.7rem, ${selectedSize.previewRem}rem + 1.4vw, ${selectedSize.previewRem * 1.7}rem)`,
     } as React.CSSProperties;
   }, [selectedFont, selectedSize]);
-  const offsetPx = Math.max(4, Math.round(selectedSize.previewRem * 3));
+
+  /* Broj "koraka" bočne ekstruzije slova — veća slova, deblja (vidljivija)
+     dubina, ali s gornjom i donjom granicom da ostane čitljivo. */
+  const extrusionSteps = useMemo(() => {
+    const raw = Math.round(selectedSize.previewRem * 3);
+    return Math.max(6, Math.min(16, raw));
+  }, [selectedSize]);
+
+  /* Ako su boja slova i podloga slične svjetline (npr. bijela slova na
+     bijeloj podlozi), dodaje se tanki kontrastni rub oko slova — inače bi
+     se slovo vizualno "izgubilo" i ostala bi vidljiva samo sjena. */
+  const needsRim = useMemo(() => {
+    const letterLum = hexLuminance(selectedColor.hex);
+    const backdropLum = BACKDROP_LUMINANCE[backdropId] ?? 0.9;
+    return Math.abs(letterLum - backdropLum) < 0.22;
+  }, [selectedColor, backdropId]);
+  const rimColor = (BACKDROP_LUMINANCE[backdropId] ?? 0.9) > 0.5 ? "#0a0a1a" : "#f4f4f1";
+
+  /* Prava ekstruzija (bočna dubina) umjesto plošnog grafičkog efekta: svaki
+     piksel pomaka je jedan "korak" u tamnijoj nijansi boje slova (svjetlije
+     bliže prednjoj plohi, tamnije dalje — kao da bočna stjenka slova prima
+     manje svjetla), plus mekana raspršena sjena na kraju za kontakt s
+     podlogom. Računa se ovdje (ne u CSS-u) jer ovisi o odabranoj boji i
+     veličini. */
+  const extrusionShadow = useMemo(() => {
+    const depthNear = shadeHex(selectedColor.hex, -18);
+    const depthFar = shadeHex(selectedColor.hex, -58);
+    const rimLayers = needsRim
+      ? [
+          `-1px 0 0 ${rimColor}`,
+          `1px 0 0 ${rimColor}`,
+          `0 -1px 0 ${rimColor}`,
+          `0 1px 0 ${rimColor}`,
+          `-1px -1px 0 ${rimColor}`,
+          `1px -1px 0 ${rimColor}`,
+          `-1px 1px 0 ${rimColor}`,
+          `1px 1px 0 ${rimColor}`,
+        ]
+      : [];
+    const depthLayers = Array.from({ length: extrusionSteps }, (_, idx) => {
+      const t = extrusionSteps > 1 ? idx / (extrusionSteps - 1) : 0;
+      const stepColor = mixHex(depthNear, depthFar, t);
+      return `${idx + 1}px ${idx + 1}px 0 ${stepColor}`;
+    });
+    const ambient = `${extrusionSteps + 5}px ${extrusionSteps + 8}px ${Math.round(
+      extrusionSteps * 1.6
+    )}px rgba(10, 10, 26, 0.4)`;
+    return [...rimLayers, ...depthLayers, ambient].join(", ");
+  }, [selectedColor, needsRim, rimColor, extrusionSteps]);
 
   const composedMessage = useMemo(() => {
     const lines = [
@@ -185,21 +285,40 @@ export default function SlovaCustomizer() {
             <span className="slova-reg-mark slova-reg-mark--bl">+</span>
             <span className="slova-reg-mark slova-reg-mark--br">+</span>
 
-            <span className="slova-render-stack">
-              <span
-                className="slova-render-offset"
-                aria-hidden="true"
-                style={{ ...textStyle, transform: `translate(${offsetPx}px, ${offsetPx}px)` }}
-              >
-                {displayText}
-              </span>
+            <div className="slova-render-stage">
+              <span className="slova-render-ground" aria-hidden="true" />
               <span
                 className="slova-render-main"
-                style={{ ...textStyle, color: selectedColor.hex, WebkitTextStroke: `1px ${strokeColor}` }}
+                style={{ ...textStyle, color: selectedColor.hex, textShadow: extrusionShadow }}
               >
                 {displayText}
               </span>
-            </span>
+              <span
+                className="slova-render-gloss"
+                aria-hidden="true"
+                style={{ ...textStyle, backgroundImage: GLOSS_GRADIENT }}
+              >
+                {displayText}
+              </span>
+              {colorId === "gold" && (
+                <span
+                  className="slova-render-shine"
+                  aria-hidden="true"
+                  style={{ ...textStyle, backgroundImage: GOLD_SHINE_GRADIENT }}
+                >
+                  {displayText}
+                </span>
+              )}
+              {colorId === "wood" && (
+                <span
+                  className="slova-render-grain"
+                  aria-hidden="true"
+                  style={{ ...textStyle, backgroundImage: WOOD_GRAIN_GRADIENT }}
+                >
+                  {displayText}
+                </span>
+              )}
+            </div>
 
             <span className="slova-render-caption">
               {String(backdropIndex + 1).padStart(2, "0")} / {selectedBackdrop.label.toUpperCase()}
