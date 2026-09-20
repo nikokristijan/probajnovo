@@ -184,10 +184,14 @@
   background-color: #fff;
 }
 
-/* Panel u kojem se "renderira" tekst — misli se na njega kao na fizički
-   uzorak/swatch, ne foto-realistični prizor: ravna boja/raster podloga,
-   registracijske oznake u kutovima (klasičan pre-press/print detalj) i
-   naslov + broj uzorka ispod, kao stvarna kartica materijala. */
+/* Panel u kojem se tekst "renderira" — fotorealističan prikaz dimenzionalnih
+   (3D) slova na zidu, ne plošna grafika: prava ekstruzija (bočna dubina
+   slova, izračunata u SlovaCustomizeru ovisno o veličini/boji i primijenjena
+   kao text-shadow), mekana kontaktna sjena na podlozi i sjaj na gornjem rubu
+   slova (kao na plastici/metalu). Registracijske oznake i naslov uzorka
+   ostaju kao print-proof okvir OKO tog prikaza — ekstruzija/sjena/sjaj su
+   namjerna iznimka od "bez sjaja/blur efekata" pravila ostatka stranice, jer
+   ovdje opisuju stvaran fizički oblik slova, a ne dekorativni efekt. */
 .slova-render {
   position: relative;
   border: 1px solid var(--ink);
@@ -197,10 +201,22 @@
   justify-content: center;
   padding: 40px 24px;
   overflow: hidden;
+  /* blaga vinjeta ruba — podloga izgleda kao stvarno osvijetljen zid s
+     dubinom, ne kao ravna boja bez izvora svjetla */
+  box-shadow: inset 0 0 70px rgba(10, 10, 26, 0.14);
 }
-.slova-render--white { background: #ffffff; }
-.slova-render--black { background: #0a0a1a; }
-.slova-render--concrete { background: var(--slova-concrete); }
+.slova-render--white {
+  background: radial-gradient(ellipse at 50% 32%, rgba(10, 10, 26, 0.02), rgba(10, 10, 26, 0.07) 100%), #ffffff;
+}
+.slova-render--black {
+  background: radial-gradient(ellipse at 50% 28%, rgba(255, 255, 255, 0.07), rgba(0, 0, 0, 0.5) 100%), #0a0a1a;
+}
+.slova-render--concrete {
+  background:
+    radial-gradient(circle at 22% 28%, rgba(255, 255, 255, 0.12), transparent 45%),
+    radial-gradient(circle at 78% 68%, rgba(10, 10, 26, 0.12), transparent 50%),
+    var(--slova-concrete);
+}
 .slova-render--raster {
   background-color: #ffffff;
   background-image: radial-gradient(rgba(10, 10, 26, 0.5) 1.6px, transparent 1.6px);
@@ -214,6 +230,7 @@
   line-height: 1;
   color: rgba(10, 10, 26, 0.3);
   user-select: none;
+  z-index: 2;
 }
 .slova-render--black .slova-reg-mark { color: rgba(255, 255, 255, 0.35); }
 .slova-reg-mark--tl { top: 10px; left: 12px; }
@@ -221,27 +238,58 @@
 .slova-reg-mark--bl { bottom: 10px; left: 12px; }
 .slova-reg-mark--br { bottom: 10px; right: 12px; }
 
-.slova-render-stack { position: relative; display: inline-block; max-width: 100%; }
-.slova-render-offset {
-  position: absolute;
-  inset: 0;
-  z-index: 0;
-  text-align: center;
-  /* Fiksna plava (--accent), NE narančasta — narančasta je i zadana boja
-     slova (SLOVA_COLORS "orange" je default), pa bi se "duh" izgubio u
-     glavnom tekstu čim se boje poklope. Plava se ne poklapa ni s jednom
-     ponuđenom bojom slova, pa je "duh" uvijek vidljiv. */
-  color: var(--accent);
-  user-select: none;
-  pointer-events: none;
+/* Pozornica za dimenzionalna slova: .slova-render-main nosi izračunatu
+   ekstruziju (inline style, ovisi o veličini/boji), a gloss/shine/grain
+   slojevi su TOČNO isti tekst prikazan kao providan preko background-clip:
+   text (background-image dolazi iz inline style-a) — poravnati preko
+   glavnog teksta za efekt materijala bez ijedne slike. */
+.slova-render-stage {
+  position: relative;
+  display: inline-flex;
+  z-index: 1;
+  max-width: 100%;
 }
 .slova-render-main {
   position: relative;
-  z-index: 1;
   display: block;
   max-width: 100%;
   overflow-wrap: break-word;
   text-align: center;
+}
+.slova-render-gloss,
+.slova-render-shine,
+.slova-render-grain {
+  position: absolute;
+  inset: 0;
+  display: block;
+  text-align: center;
+  overflow-wrap: break-word;
+  background-repeat: no-repeat;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  pointer-events: none;
+  user-select: none;
+}
+.slova-render-gloss { mix-blend-mode: overlay; }
+.slova-render-shine { mix-blend-mode: soft-light; }
+.slova-render-grain { mix-blend-mode: multiply; }
+
+/* Kontaktna sjena na podlozi ispod slova — ono što razlikuje fizički objekt
+   od plošne grafike: slova ne "lebde" nego bacaju meku sjenu na zid. */
+.slova-render-ground {
+  position: absolute;
+  left: -6%;
+  right: -6%;
+  bottom: -18px;
+  height: 20px;
+  background: radial-gradient(ellipse at center, rgba(10, 10, 26, 0.4), rgba(10, 10, 26, 0) 72%);
+  filter: blur(5px);
+  z-index: 0;
+  pointer-events: none;
+}
+.slova-render--black .slova-render-ground {
+  background: radial-gradient(ellipse at center, rgba(0, 0, 0, 0.6), rgba(0, 0, 0, 0) 72%);
 }
 
 .slova-render-caption {
@@ -253,6 +301,7 @@
   font-size: 10px;
   letter-spacing: 0.05em;
   color: rgba(10, 10, 26, 0.4);
+  z-index: 2;
 }
 .slova-render--black .slova-render-caption { color: rgba(255, 255, 255, 0.5); }
 
