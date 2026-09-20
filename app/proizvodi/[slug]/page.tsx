@@ -4,7 +4,6 @@ import { notFound } from "next/navigation";
 import { getProductBySlug } from "@/lib/db/queries";
 import InquiryForm from "@/components/InquiryForm";
 import ProductGallery from "@/components/ProductGallery";
-import { toVideoEmbedUrl } from "@/lib/video";
 
 export const revalidate = 0;
 
@@ -85,12 +84,7 @@ export default async function ProductPage({
 
             {product.videoUrl && (
               <div className="novo-product-video">
-                <iframe
-                  src={toVideoEmbedUrl(product.videoUrl)}
-                  title={`Video — ${product.name}`}
-                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                  allowFullScreen
-                />
+                <video src={product.videoUrl} controls playsInline preload="metadata" />
               </div>
             )}
           </div>
