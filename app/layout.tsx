@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Space_Grotesk, JetBrains_Mono, Zilla_Slab, Karla, Caveat, Inter, Fraunces } from "next/font/google";
+import { Space_Grotesk, JetBrains_Mono, Zilla_Slab, Karla, Caveat, Inter, Fraunces, Baloo_2, Nunito } from "next/font/google";
 import { Analytics } from "@vercel/analytics/next";
 import "./globals.css";
 
@@ -42,6 +42,19 @@ const fraunces = Fraunces({
   weight: ["300", "400", "500", "600"],
   style: ["normal", "italic"],
 });
+/** Drop mikrostranica (/drop) — igriv, "bubble" naslovni font za izmišljeni
+ * GenZ fizički-newsletter koncept (showcase primjer, ne pravi klijent). */
+const baloo2 = Baloo_2({
+  variable: "--font-baloo",
+  subsets: ["latin"],
+  weight: ["500", "600", "700", "800"],
+});
+/** Drop mikrostranica — zaobljeni, prijateljski font za tijelo teksta. */
+const nunito = Nunito({
+  variable: "--font-nunito",
+  subsets: ["latin"],
+  weight: ["400", "600", "700", "800"],
+});
 
 export const metadata: Metadata = {
   title: "NOVO",
@@ -55,7 +68,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html
       lang="hr"
-      className={`${spaceGrotesk.variable} ${jetbrainsMono.variable} ${zillaSlab.variable} ${karla.variable} ${caveat.variable} ${inter.variable} ${fraunces.variable}`}
+      className={`${spaceGrotesk.variable} ${jetbrainsMono.variable} ${zillaSlab.variable} ${karla.variable} ${caveat.variable} ${inter.variable} ${fraunces.variable} ${baloo2.variable} ${nunito.variable}`}
       >
     <body>
       {children}

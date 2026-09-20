@@ -1,0 +1,639 @@
+/* =====================================================================
+   Drop.hr — showcase mikrostranica (drop.probajnovo.com)
+   Izmišljeni GenZ "fizički newsletter" brend, portfolio primjer za NOVO.
+   Mood referenca (po dogovoru s klijentom): leoparpeix.com — igrivo,
+   ilustrirano, s likom koji reagira na klik i sadržajem koji se stvarno
+   pomiče/rotira na scroll (CSS 3D transform + IntersectionObserver),
+   umjesto klasičnog fade-in scrolla.
+
+   Sve klase su prefiksirane s "drop-" da se nikad ne poklope s ".novo-*"
+   klasama iz ostatka stranice (globals.css) — ovaj fajl se importira samo
+   unutar components/drop/DropExperience.tsx, pa utječe jedino na /drop.
+   ===================================================================== */
+
+.drop-page {
+  --drop-blue: #59bce6;
+  --drop-blue-deep: #2f8fc4;
+  --drop-pink: #f4aacb;
+  --drop-pink-deep: #e8749f;
+  --drop-yellow: #ffd34d;
+  --drop-cream: #fff8ef;
+  --drop-cream-deep: #ffefd6;
+  --drop-ink: #1b1b1f;
+
+  position: relative;
+  overflow-x: clip;
+  background: var(--drop-cream);
+  color: var(--drop-ink);
+  font-family: var(--font-nunito), "Nunito", system-ui, sans-serif;
+  line-height: 1.5;
+}
+
+.drop-page h1,
+.drop-page h2,
+.drop-page h3 {
+  font-family: var(--font-baloo), "Baloo 2", system-ui, sans-serif;
+  font-weight: 700;
+  line-height: 1.1;
+  margin: 0;
+  text-wrap: balance;
+}
+
+.drop-page a {
+  color: inherit;
+}
+
+/* ---------------------------- nav ---------------------------- */
+.drop-nav {
+  position: sticky;
+  top: 0;
+  z-index: 40;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px clamp(18px, 5vw, 48px);
+  background: rgba(255, 248, 239, 0.78);
+  backdrop-filter: blur(10px);
+  border-bottom: 2px solid rgba(27, 27, 31, 0.06);
+}
+.drop-nav-brand {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-family: var(--font-baloo), sans-serif;
+  font-weight: 700;
+  font-size: 1.25rem;
+  text-decoration: none;
+}
+.drop-nav-brand img {
+  border-radius: 50%;
+}
+.drop-nav-links {
+  display: flex;
+  align-items: center;
+  gap: clamp(10px, 2.5vw, 26px);
+  font-weight: 700;
+  font-size: 0.95rem;
+}
+.drop-nav-links a {
+  text-decoration: none;
+}
+.drop-nav-cta {
+  background: var(--drop-ink);
+  color: var(--drop-cream) !important;
+  padding: 9px 18px;
+  border-radius: 999px;
+  transition: transform 0.2s ease, background 0.2s ease;
+}
+.drop-nav-cta:hover {
+  background: var(--drop-blue-deep);
+  transform: translateY(-1px);
+}
+
+/* ---------------------------- hero ---------------------------- */
+.drop-hero {
+  position: relative;
+  min-height: 92dvh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 90px 20px 60px;
+  background: radial-gradient(120% 100% at 50% 0%, #eaf7fd 0%, var(--drop-cream) 55%, var(--drop-cream) 100%);
+  overflow: hidden;
+}
+
+.drop-hero-inner {
+  position: relative;
+  z-index: 3;
+  max-width: 760px;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 18px;
+}
+
+.drop-wordmark {
+  width: min(90vw, 640px);
+  height: auto;
+  filter: drop-shadow(0 18px 30px rgba(89, 188, 230, 0.35));
+}
+
+.drop-tagline {
+  font-family: var(--font-baloo), sans-serif;
+  font-weight: 700;
+  font-size: clamp(1.2rem, 2.6vw, 1.7rem);
+  max-width: 32ch;
+  margin: 0;
+}
+
+.drop-subcopy {
+  max-width: 46ch;
+  font-size: 1.05rem;
+  color: rgba(27, 27, 31, 0.72);
+  margin: 0;
+}
+
+.drop-hero-inner .drop-scroll-cue {
+  margin-top: 6px;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 800;
+  text-decoration: none;
+  padding: 10px 20px;
+  border-radius: 999px;
+  background: var(--drop-ink);
+  color: var(--drop-cream);
+}
+.drop-scroll-cue span {
+  animation: drop-bob 1.6s ease-in-out infinite;
+}
+
+/* mascot ("Kap") — CSS okvir za JS-vezanu rotaciju/translate na scroll */
+.drop-mascot {
+  position: absolute;
+  right: clamp(2%, 8vw, 14%);
+  bottom: 4%;
+  z-index: 2;
+  cursor: pointer;
+  transform-origin: 50% 60%;
+  will-change: transform;
+  filter: drop-shadow(0 20px 24px rgba(47, 143, 196, 0.28));
+}
+.drop-mascot:focus-visible {
+  outline: 3px solid var(--drop-blue-deep);
+  outline-offset: 6px;
+  border-radius: 50%;
+}
+.drop-mascot-eye {
+  transition: transform 0.18s ease;
+  transform-box: fill-box;
+  transform-origin: center;
+}
+.drop-mascot-mouth {
+  transition: d 0.2s ease;
+}
+.drop-mascot.is-poked .drop-mascot-eye {
+  transform: scaleY(0.15);
+}
+
+/* clouds */
+.drop-cloud {
+  position: absolute;
+  border-radius: 50%;
+  background: #ffffff;
+  opacity: 0.9;
+  filter: blur(0.5px);
+  animation: drop-float 7s ease-in-out infinite;
+}
+.drop-cloud--a {
+  width: 220px;
+  height: 90px;
+  top: 12%;
+  left: 4%;
+  box-shadow: 60px 18px 0 -10px #fff, -50px 10px 0 -14px #fff;
+}
+.drop-cloud--b {
+  width: 160px;
+  height: 70px;
+  top: 22%;
+  right: 8%;
+  box-shadow: 46px 14px 0 -10px #fff;
+  animation-delay: -3s;
+}
+.drop-cloud--c {
+  width: 130px;
+  height: 60px;
+  bottom: 16%;
+  left: 14%;
+  box-shadow: 34px 10px 0 -8px #fff;
+  animation-delay: -1.4s;
+}
+
+/* ---------------------------- bees ---------------------------- */
+.drop-bee-track {
+  position: absolute;
+  width: 4px;
+  height: 4px;
+  offset-path: var(--drop-bee-path);
+  offset-rotate: auto;
+  animation: drop-bee-fly var(--drop-bee-duration) linear infinite;
+  animation-delay: var(--drop-bee-delay);
+  z-index: 2;
+}
+.drop-bee {
+  display: block;
+  transform: scale(var(--drop-bee-scale, 1));
+  transform-origin: center;
+}
+.drop-bee-wing {
+  fill: #ffffff;
+  opacity: 0.85;
+  transform-box: fill-box;
+  transform-origin: bottom center;
+  animation: drop-wing-flap 0.18s ease-in-out infinite alternate;
+}
+.drop-bee-track.is-scared .drop-bee {
+  animation: drop-bee-dash 0.9s ease;
+}
+
+@keyframes drop-bee-fly {
+  0% {
+    offset-distance: 0%;
+  }
+  100% {
+    offset-distance: 100%;
+  }
+}
+@keyframes drop-wing-flap {
+  from {
+    transform: scaleY(1);
+  }
+  to {
+    transform: scaleY(0.55);
+  }
+}
+@keyframes drop-bee-dash {
+  0% {
+    transform: scale(var(--drop-bee-scale, 1)) translate(0, 0) rotate(0deg);
+  }
+  30% {
+    transform: scale(var(--drop-bee-scale, 1)) translate(14px, -18px) rotate(-18deg);
+  }
+  100% {
+    transform: scale(var(--drop-bee-scale, 1)) translate(0, 0) rotate(0deg);
+  }
+}
+@keyframes drop-float {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-10px);
+  }
+}
+@keyframes drop-bob {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(5px);
+  }
+}
+
+/* ---------------------------- sections ---------------------------- */
+.drop-section {
+  position: relative;
+  padding: clamp(56px, 9vw, 110px) clamp(20px, 6vw, 60px);
+}
+.drop-section--alt {
+  background: var(--drop-cream-deep);
+}
+.drop-section--cta {
+  background: linear-gradient(180deg, var(--drop-cream) 0%, #fde6ef 100%);
+}
+
+.drop-section-grid {
+  max-width: 1080px;
+  margin: 0 auto;
+  display: grid;
+  grid-template-columns: 1.1fr 0.9fr;
+  gap: clamp(30px, 6vw, 70px);
+  align-items: center;
+}
+
+.drop-eyebrow {
+  font-weight: 800;
+  color: var(--drop-blue-deep);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-size: 0.85rem;
+  margin: 0 0 10px;
+}
+.drop-eyebrow--center {
+  text-align: center;
+}
+.drop-h2-center {
+  text-align: center;
+  max-width: 720px;
+  margin: 0 auto 46px;
+  font-size: clamp(1.5rem, 3.4vw, 2.2rem);
+}
+
+.drop-copy h2 {
+  font-size: clamp(1.6rem, 3.6vw, 2.3rem);
+  margin-bottom: 16px;
+}
+.drop-copy p {
+  margin: 0 0 12px;
+  color: rgba(27, 27, 31, 0.78);
+  font-size: 1.05rem;
+}
+.drop-copy p:last-child {
+  font-weight: 800;
+  color: var(--drop-ink);
+}
+
+/* postcard / envelope 3D */
+.drop-postcard-stage {
+  perspective: 1300px;
+  display: flex;
+  justify-content: center;
+}
+.drop-postcard {
+  position: relative;
+  width: min(320px, 80vw);
+  aspect-ratio: 4 / 3;
+  transform-style: preserve-3d;
+  opacity: 0;
+  transform: rotateY(-38deg) rotateX(8deg) translateY(50px) scale(0.88);
+  transition: transform 1s cubic-bezier(0.22, 1, 0.36, 1), opacity 0.7s ease;
+}
+.drop-postcard-stage.is-in .drop-postcard {
+  opacity: 1;
+  transform: rotateY(-8deg) rotateX(4deg) translateY(0) scale(1);
+}
+.drop-postcard-face {
+  position: absolute;
+  inset: 0;
+  border-radius: 18px;
+  border: 3px solid var(--drop-ink);
+}
+.drop-postcard-back {
+  background: var(--drop-pink);
+  transform: translate(14px, 14px) translateZ(-30px);
+}
+.drop-postcard-flap {
+  position: absolute;
+  inset: 0;
+  clip-path: polygon(0 0, 50% 45%, 100% 0);
+  background: var(--drop-blue);
+  border-radius: 18px 18px 0 0;
+  transform: translateZ(4px);
+}
+.drop-postcard-front {
+  background: #ffffff;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  gap: 10px;
+  padding: 20px;
+  transform: translateZ(8px);
+}
+.drop-postcard-stamp {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  font-size: 1.6rem;
+}
+.drop-postcard-line {
+  display: block;
+  height: 8px;
+  border-radius: 999px;
+  background: rgba(27, 27, 31, 0.14);
+}
+.drop-postcard-line--short {
+  width: 60%;
+}
+
+/* steps */
+.drop-steps {
+  max-width: 1080px;
+  margin: 0 auto;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 24px;
+}
+.drop-step {
+  background: #ffffff;
+  border: 3px solid var(--drop-ink);
+  border-radius: 22px;
+  padding: 26px 22px;
+  text-align: center;
+  box-shadow: 6px 6px 0 rgba(27, 27, 31, 0.1);
+}
+.drop-step-emoji {
+  font-size: 2.4rem;
+  display: block;
+  margin-bottom: 10px;
+}
+.drop-step h3 {
+  font-size: 1.15rem;
+  margin-bottom: 8px;
+}
+.drop-step p {
+  margin: 0;
+  color: rgba(27, 27, 31, 0.72);
+  font-size: 0.98rem;
+}
+
+/* reveal (steps + milestone cards) */
+.drop-reveal {
+  opacity: 0;
+  transform: translateY(34px) scale(0.94);
+  transition: opacity 0.6s ease, transform 0.6s cubic-bezier(0.22, 1, 0.36, 1);
+}
+.drop-reveal.is-in {
+  opacity: 1;
+  transform: translateY(0) rotate(var(--drop-tilt, 0deg)) scale(1);
+}
+
+/* milestone grid */
+.drop-grid {
+  max-width: 1080px;
+  margin: 0 auto;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 22px;
+}
+.drop-card {
+  background: #ffffff;
+  border: 3px solid var(--drop-ink);
+  border-radius: 20px;
+  padding: 24px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  box-shadow: 6px 6px 0 rgba(27, 27, 31, 0.1);
+}
+.drop-card:nth-child(3n + 1) {
+  background: var(--drop-pink);
+}
+.drop-card:nth-child(3n + 2) {
+  background: var(--drop-yellow);
+}
+.drop-card:nth-child(3n + 3) {
+  background: var(--drop-blue);
+  color: #ffffff;
+}
+.drop-card:nth-child(3n + 3) strong {
+  color: #ffffff;
+}
+.drop-card strong {
+  font-family: var(--font-baloo), sans-serif;
+  font-size: clamp(1.8rem, 4vw, 2.3rem);
+  color: var(--drop-ink);
+}
+.drop-card span {
+  font-weight: 700;
+  font-size: 0.95rem;
+}
+.drop-fineprint {
+  text-align: center;
+  margin: 26px 0 0;
+  font-size: 0.85rem;
+  color: rgba(27, 27, 31, 0.5);
+}
+
+/* CTA */
+.drop-cta-hive {
+  position: relative;
+  max-width: 640px;
+  margin: 0 auto;
+  text-align: center;
+  padding: 20px 0;
+}
+.drop-cta-hive h2 {
+  font-size: clamp(1.8rem, 4vw, 2.6rem);
+  margin-bottom: 14px;
+}
+.drop-cta-hive > p {
+  margin: 0 0 26px;
+  color: rgba(27, 27, 31, 0.75);
+}
+
+.drop-form {
+  display: flex;
+  gap: 10px;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+.drop-form input {
+  font: inherit;
+  padding: 14px 20px;
+  border-radius: 999px;
+  border: 3px solid var(--drop-ink);
+  min-width: 240px;
+  flex: 1 1 240px;
+  max-width: 340px;
+  background: #fff;
+}
+.drop-form input:focus-visible {
+  outline: 3px solid var(--drop-blue-deep);
+  outline-offset: 2px;
+}
+.drop-form button {
+  font: inherit;
+  font-weight: 800;
+  padding: 14px 26px;
+  border-radius: 999px;
+  border: 3px solid var(--drop-ink);
+  background: var(--drop-ink);
+  color: var(--drop-cream);
+  cursor: pointer;
+  transition: transform 0.15s ease, background 0.15s ease;
+}
+.drop-form button:hover {
+  background: var(--drop-blue-deep);
+  border-color: var(--drop-blue-deep);
+  transform: translateY(-2px);
+}
+.drop-form-thanks {
+  font-weight: 700;
+  max-width: 46ch;
+  margin: 0 auto;
+  background: #ffffff;
+  border: 3px solid var(--drop-ink);
+  border-radius: 18px;
+  padding: 16px 20px;
+}
+
+/* footer */
+.drop-footer {
+  padding: 40px 20px 50px;
+  text-align: center;
+  background: var(--drop-ink);
+  color: rgba(255, 248, 239, 0.85);
+}
+.drop-footer-brand {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  font-family: var(--font-baloo), sans-serif;
+  font-weight: 700;
+  font-size: 1.1rem;
+  color: #fff;
+  margin-bottom: 10px;
+}
+.drop-footer-brand img {
+  border-radius: 50%;
+}
+.drop-footer p {
+  margin: 0;
+  font-size: 0.9rem;
+}
+.drop-footer a {
+  color: var(--drop-yellow);
+  font-weight: 700;
+  text-decoration: none;
+}
+.drop-footer a:hover {
+  text-decoration: underline;
+}
+
+/* ---------------------------- responsive ---------------------------- */
+@media (max-width: 860px) {
+  .drop-section-grid {
+    grid-template-columns: 1fr;
+    text-align: center;
+  }
+  .drop-copy {
+    order: 2;
+  }
+  .drop-steps,
+  .drop-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  .drop-mascot {
+    right: 6%;
+    bottom: 2%;
+    transform-origin: 50% 60%;
+  }
+  .drop-mascot svg {
+    width: 120px;
+    height: 132px;
+  }
+}
+
+@media (max-width: 560px) {
+  .drop-nav-links {
+    gap: 10px;
+    font-size: 0.85rem;
+  }
+  .drop-steps,
+  .drop-grid {
+    grid-template-columns: 1fr;
+  }
+  .drop-hero {
+    padding-top: 110px;
+  }
+  .drop-cloud--a,
+  .drop-cloud--b {
+    transform: scale(0.7);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .drop-page * {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+  }
+  .drop-bee-track {
+    offset-path: none;
+  }
+}
