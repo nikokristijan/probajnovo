@@ -23,6 +23,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const staticEntries: MetadataRoute.Sitemap = [
     { url: BASE_URL, changeFrequency: "weekly", priority: 1 },
     { url: `${BASE_URL}/proizvodi`, changeFrequency: "weekly", priority: 0.7 },
+    { url: `${BASE_URL}/slova`, changeFrequency: "monthly", priority: 0.7 },
   ];
 
   const propertyEntries: MetadataRoute.Sitemap = properties.map((p) => ({

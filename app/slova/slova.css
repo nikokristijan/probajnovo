@@ -1,0 +1,535 @@
+/* =====================================================================
+   /slova — konfigurator za prostorna (custom) slova, drugi fizički
+   proizvod NOVO studija uz NFC pločice. Namjerno tamna, "futuristička"
+   estetika (grid pozadina, neonski akcenti, glassmorphism paneli) da se
+   vizualno razlikuje od svijetlog /proizvodi kataloga i od igrivog /drop
+   showcasea — ovo je alat koji korisnik stvarno koristi, ne samo čita.
+
+   Sve klase su prefiksirane s "slova-" da se nikad ne poklope s ostatkom
+   sajta — fajl se importira samo unutar components/slova/SlovaCustomizer,
+   pa utječe jedino na /slova.
+   ===================================================================== */
+
+.slova-page {
+  --slova-bg: #06060b;
+  --slova-surface: rgba(255, 255, 255, 0.04);
+  --slova-surface-strong: rgba(255, 255, 255, 0.07);
+  --slova-border: rgba(255, 255, 255, 0.1);
+  --slova-text: #f3f3f8;
+  --slova-dim: #9998ab;
+  --slova-accent: #8b5cf6;
+  --slova-accent-2: #22d3ee;
+  --slova-orange: #ff7f00;
+
+  position: relative;
+  min-height: 100vh;
+  overflow-x: clip;
+  background: var(--slova-bg);
+  color: var(--slova-text);
+  font-family: var(--font-space-grotesk), "Arial", sans-serif;
+  line-height: 1.5;
+}
+
+.slova-page::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background-image:
+    linear-gradient(rgba(255, 255, 255, 0.035) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.035) 1px, transparent 1px);
+  background-size: 42px 42px;
+  mask-image: radial-gradient(ellipse 80% 60% at 50% 0%, #000 40%, transparent 90%);
+}
+
+.slova-page h1,
+.slova-page h2 {
+  font-family: var(--font-slova-orbitron), var(--font-space-grotesk), sans-serif;
+  line-height: 1.15;
+  margin: 0;
+  text-wrap: balance;
+}
+
+.slova-page a { color: inherit; }
+.slova-page button { font-family: inherit; }
+.slova-page button:focus-visible,
+.slova-page a:focus-visible,
+.slova-page input:focus-visible,
+.slova-page textarea:focus-visible {
+  outline: 2px solid var(--slova-accent-2);
+  outline-offset: 2px;
+}
+
+/* ---------------------------- topbar ---------------------------- */
+.slova-topbar {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 20px clamp(20px, 5vw, 56px);
+  border-bottom: 1px solid var(--slova-border);
+  background: rgba(6, 6, 11, 0.7);
+  backdrop-filter: blur(10px);
+  position: sticky;
+  top: 0;
+}
+.slova-logo { font-weight: 700; font-size: 15px; letter-spacing: -0.01em; color: var(--slova-orange); text-decoration: none; }
+.slova-back {
+  font-family: var(--font-jetbrains-mono), monospace;
+  font-size: 11px;
+  letter-spacing: 0.1em;
+  color: var(--slova-dim);
+  text-decoration: none;
+}
+.slova-back:hover { color: var(--slova-accent-2); }
+
+/* ---------------------------- hero ---------------------------- */
+.slova-hero {
+  position: relative;
+  z-index: 1;
+  max-width: 780px;
+  margin: 0 auto;
+  padding: clamp(56px, 9vw, 100px) clamp(20px, 5vw, 56px) clamp(28px, 5vw, 40px);
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 18px;
+}
+.slova-hero-glow {
+  position: absolute;
+  top: -120px;
+  left: 50%;
+  translate: -50% 0;
+  width: min(900px, 140vw);
+  height: 420px;
+  z-index: -1;
+  background:
+    radial-gradient(closest-side, rgba(139, 92, 246, 0.35), transparent 70%),
+    radial-gradient(closest-side, rgba(34, 211, 238, 0.25), transparent 70%);
+  background-position: 30% 50%, 70% 50%;
+  background-repeat: no-repeat;
+  filter: blur(10px);
+  animation: slova-glow-pulse 8s ease-in-out infinite alternate;
+}
+@keyframes slova-glow-pulse {
+  from { opacity: 0.7; transform: scale(1); }
+  to { opacity: 1; transform: scale(1.08); }
+}
+.slova-kicker {
+  font-family: var(--font-jetbrains-mono), monospace;
+  font-size: 11px;
+  letter-spacing: 0.18em;
+  color: var(--slova-accent-2);
+}
+.slova-hero h1 {
+  font-size: clamp(1.9rem, 5vw, 3.1rem);
+  letter-spacing: -0.01em;
+}
+.slova-hero-lede {
+  color: var(--slova-dim);
+  max-width: 52ch;
+  margin: 0;
+  font-size: 1.05rem;
+}
+.slova-hero-chips {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 10px;
+  margin-top: 6px;
+}
+.slova-hero-chips span {
+  font-family: var(--font-jetbrains-mono), monospace;
+  font-size: 10.5px;
+  letter-spacing: 0.06em;
+  color: var(--slova-dim);
+  border: 1px solid var(--slova-border);
+  background: var(--slova-surface);
+  padding: 7px 14px;
+  border-radius: 999px;
+}
+
+/* ---------------------------- builder ---------------------------- */
+.slova-builder {
+  position: relative;
+  z-index: 1;
+  max-width: 1180px;
+  margin: 0 auto;
+  padding: 0 clamp(20px, 5vw, 56px) clamp(40px, 6vw, 64px);
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: clamp(20px, 3vw, 32px);
+  align-items: start;
+}
+@media (max-width: 880px) {
+  .slova-builder { grid-template-columns: 1fr; }
+}
+
+.slova-controls {
+  display: flex;
+  flex-direction: column;
+  gap: 22px;
+  background: var(--slova-surface);
+  border: 1px solid var(--slova-border);
+  border-radius: 20px;
+  padding: clamp(18px, 3vw, 26px);
+  backdrop-filter: blur(14px);
+}
+
+.slova-field { display: flex; flex-direction: column; gap: 10px; }
+.slova-field label,
+.slova-field-label {
+  font-family: var(--font-jetbrains-mono), monospace;
+  font-size: 11px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--slova-dim);
+}
+.slova-field input[type="text"] {
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid var(--slova-border);
+  border-radius: 12px;
+  padding: 14px 16px;
+  color: var(--slova-text);
+  font-size: 1.1rem;
+  font-family: var(--font-slova-orbitron), sans-serif;
+  letter-spacing: 0.03em;
+}
+.slova-field input[type="text"]:focus {
+  border-color: var(--slova-accent-2);
+  box-shadow: 0 0 0 3px rgba(34, 211, 238, 0.15);
+}
+.slova-hint {
+  font-family: var(--font-jetbrains-mono), monospace;
+  font-size: 10.5px;
+  color: var(--slova-dim);
+}
+
+.slova-font-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
+  gap: 10px;
+}
+.slova-font-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid var(--slova-border);
+  border-radius: 14px;
+  padding: 12px 12px 10px;
+  cursor: pointer;
+  color: var(--slova-text);
+  text-align: left;
+  transition: border-color 0.15s ease, transform 0.15s ease, background 0.15s ease;
+}
+.slova-font-btn:hover { border-color: rgba(139, 92, 246, 0.5); transform: translateY(-1px); }
+.slova-font-btn.active {
+  border-color: var(--slova-accent);
+  background: rgba(139, 92, 246, 0.12);
+  box-shadow: 0 0 0 1px var(--slova-accent), 0 0 18px rgba(139, 92, 246, 0.35);
+}
+.slova-font-sample { font-size: 1.5rem; line-height: 1; }
+.slova-font-name { font-size: 0.78rem; font-weight: 600; }
+.slova-font-vibe { font-size: 0.68rem; color: var(--slova-dim); }
+
+.slova-size-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+}
+@media (max-width: 460px) { .slova-size-grid { grid-template-columns: 1fr; } }
+.slova-size-btn {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid var(--slova-border);
+  border-radius: 14px;
+  padding: 14px;
+  cursor: pointer;
+  color: var(--slova-text);
+  text-align: left;
+  transition: border-color 0.15s ease, background 0.15s ease;
+}
+.slova-size-btn:hover { border-color: rgba(34, 211, 238, 0.5); }
+.slova-size-btn.active {
+  border-color: var(--slova-accent-2);
+  background: rgba(34, 211, 238, 0.1);
+  box-shadow: 0 0 0 1px var(--slova-accent-2), 0 0 18px rgba(34, 211, 238, 0.3);
+}
+.slova-size-name { font-weight: 700; font-size: 0.95rem; }
+.slova-size-range { font-size: 0.72rem; color: var(--slova-dim); }
+.slova-size-price {
+  font-family: var(--font-jetbrains-mono), monospace;
+  font-size: 0.72rem;
+  color: var(--slova-orange);
+  margin-top: 2px;
+}
+
+.slova-color-row { display: flex; flex-wrap: wrap; gap: 12px; }
+.slova-color-swatch {
+  position: relative;
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  border: 2px solid var(--slova-border);
+  cursor: pointer;
+  padding: 0;
+}
+.slova-color-swatch:hover { transform: scale(1.08); }
+.slova-color-swatch.active {
+  border-color: #fff;
+  box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.15), 0 0 16px rgba(139, 92, 246, 0.5);
+}
+.slova-color-label {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+/* ---------------------------- preview ---------------------------- */
+.slova-preview {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  position: sticky;
+  top: 96px;
+}
+@media (max-width: 880px) { .slova-preview { position: static; } }
+
+.slova-preview-tabs {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.slova-env-tab {
+  font-family: var(--font-jetbrains-mono), monospace;
+  font-size: 10.5px;
+  letter-spacing: 0.06em;
+  color: var(--slova-dim);
+  background: var(--slova-surface);
+  border: 1px solid var(--slova-border);
+  border-radius: 999px;
+  padding: 8px 14px;
+  cursor: pointer;
+}
+.slova-env-tab.active {
+  color: var(--slova-bg);
+  background: var(--slova-accent-2);
+  border-color: var(--slova-accent-2);
+  font-weight: 700;
+}
+
+.slova-wall {
+  position: relative;
+  border-radius: 22px;
+  border: 1px solid var(--slova-border);
+  min-height: 340px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  padding: 24px;
+}
+.slova-wall-text {
+  display: inline-block;
+  max-width: 100%;
+  word-break: break-word;
+  text-align: center;
+  animation: slova-float 6s ease-in-out infinite alternate;
+}
+@keyframes slova-float {
+  from { transform: translateY(0); }
+  to { transform: translateY(-6px); }
+}
+
+.slova-env-office {
+  background:
+    radial-gradient(ellipse 70% 50% at 50% 0%, rgba(255, 255, 255, 0.5), transparent 70%),
+    linear-gradient(180deg, #e7e2d6 0%, #cfc9ba 78%, #b9b2a0 100%);
+}
+.slova-env-office::after {
+  content: "";
+  position: absolute;
+  left: 0; right: 0; bottom: 0;
+  height: 14%;
+  background: linear-gradient(180deg, transparent, rgba(0, 0, 0, 0.12));
+}
+
+.slova-env-cafe {
+  background:
+    repeating-linear-gradient(0deg, #3a2620 0px, #3a2620 22px, #33201b 22px, #33201b 24px),
+    repeating-linear-gradient(90deg, rgba(0,0,0,0.15) 0px, transparent 2px 90px);
+  background-blend-mode: multiply;
+}
+.slova-env-cafe::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(ellipse 60% 45% at 50% 40%, rgba(255, 170, 90, 0.18), transparent 70%);
+}
+
+.slova-env-home {
+  background:
+    repeating-linear-gradient(180deg, rgba(0,0,0,0.05) 0px, transparent 3px 26px),
+    linear-gradient(180deg, #caa06c 0%, #a97c50 55%, #8f6640 100%);
+}
+
+.slova-wall > .slova-wall-text { position: relative; z-index: 1; }
+
+.slova-price-readout {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  background: var(--slova-surface);
+  border: 1px solid var(--slova-border);
+  border-radius: 16px;
+  padding: 16px 18px;
+}
+.slova-price-label {
+  font-family: var(--font-jetbrains-mono), monospace;
+  font-size: 10.5px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--slova-dim);
+}
+.slova-price-value {
+  font-family: var(--font-slova-orbitron), sans-serif;
+  font-size: 1.7rem;
+  color: var(--slova-accent-2);
+}
+.slova-price-note { font-size: 0.78rem; color: var(--slova-dim); }
+
+/* ---------------------------- includes ---------------------------- */
+.slova-includes {
+  position: relative;
+  z-index: 1;
+  max-width: 1180px;
+  margin: 0 auto;
+  padding: clamp(20px, 5vw, 56px);
+}
+.slova-includes h2 {
+  font-size: clamp(1.3rem, 2.6vw, 1.8rem);
+  margin-bottom: 22px;
+}
+.slova-includes-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 16px;
+}
+.slova-include-card {
+  background: var(--slova-surface);
+  border: 1px solid var(--slova-border);
+  border-radius: 16px;
+  padding: 18px;
+}
+.slova-include-title {
+  display: block;
+  font-family: var(--font-jetbrains-mono), monospace;
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--slova-accent-2);
+  margin-bottom: 8px;
+}
+.slova-include-card p { margin: 0; color: var(--slova-dim); font-size: 0.9rem; line-height: 1.5; }
+
+/* ---------------------------- inquiry ---------------------------- */
+.slova-inquiry {
+  position: relative;
+  z-index: 1;
+  max-width: 640px;
+  margin: 0 auto;
+  padding: 0 clamp(20px, 5vw, 56px) clamp(64px, 9vw, 100px);
+}
+.slova-inquiry h2 { font-size: clamp(1.3rem, 2.6vw, 1.8rem); margin-bottom: 6px; }
+.slova-inquiry > p { color: var(--slova-dim); margin: 0 0 20px; }
+
+.slova-inquiry-form {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  background: var(--slova-surface);
+  border: 1px solid var(--slova-border);
+  border-radius: 20px;
+  padding: clamp(18px, 3vw, 26px);
+}
+.slova-inquiry-hp { position: absolute; left: -9999px; }
+.slova-inquiry-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+@media (max-width: 480px) { .slova-inquiry-row { grid-template-columns: 1fr; } }
+.slova-inquiry-field { display: flex; flex-direction: column; gap: 6px; font-size: 0.82rem; color: var(--slova-dim); }
+.slova-inquiry-field input,
+.slova-inquiry-field textarea {
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid var(--slova-border);
+  border-radius: 10px;
+  padding: 10px 12px;
+  color: var(--slova-text);
+  font-family: inherit;
+  font-size: 0.92rem;
+  resize: vertical;
+}
+.slova-inquiry-field input:focus,
+.slova-inquiry-field textarea:focus {
+  border-color: var(--slova-accent-2);
+  box-shadow: 0 0 0 3px rgba(34, 211, 238, 0.15);
+}
+.slova-inquiry-summary {
+  font-family: var(--font-jetbrains-mono), monospace;
+  font-size: 11px;
+  color: var(--slova-dim);
+  border-top: 1px dashed var(--slova-border);
+  padding-top: 12px;
+}
+.slova-inquiry-error { color: #ff8a8a; font-size: 0.85rem; margin: 0; }
+.slova-inquiry-submit {
+  align-self: flex-start;
+  border: none;
+  border-radius: 999px;
+  padding: 13px 28px;
+  font-weight: 700;
+  font-size: 0.92rem;
+  color: #0a0a12;
+  background: linear-gradient(90deg, var(--slova-accent-2), var(--slova-accent));
+  cursor: pointer;
+  transition: filter 0.15s ease, transform 0.15s ease;
+}
+.slova-inquiry-submit:hover { filter: brightness(1.08); transform: translateY(-1px); }
+.slova-inquiry-submit:disabled { opacity: 0.6; cursor: default; transform: none; }
+.slova-inquiry-done {
+  background: rgba(34, 211, 238, 0.1);
+  border: 1px solid rgba(34, 211, 238, 0.4);
+  border-radius: 16px;
+  padding: 18px 20px;
+  color: var(--slova-text);
+}
+
+/* ---------------------------- footer ---------------------------- */
+.slova-footer {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  justify-content: center;
+  gap: 10px;
+  padding: 24px;
+  border-top: 1px solid var(--slova-border);
+  font-family: var(--font-jetbrains-mono), monospace;
+  font-size: 11px;
+  color: var(--slova-dim);
+}
+.slova-footer a { color: var(--slova-accent-2); text-decoration: none; }
+
+@media (prefers-reduced-motion: reduce) {
+  .slova-hero-glow,
+  .slova-wall-text {
+    animation: none !important;
+  }
+}
