@@ -44,7 +44,6 @@ import {
   markInquiryReplied,
   deleteInquiry,
   getAdminById,
-  listAdmins,
   createAdmin,
   deleteAdmin,
   countAdmins,
@@ -2077,10 +2076,13 @@ export async function sendBroadcastPushAction(
 
 export type RunPushMigrationState = { error?: string; success?: boolean } | undefined;
 
+// useActionState traži oblik (state, payload) — ovaj gumb ne treba ni jedno ni drugo.
+/* eslint-disable @typescript-eslint/no-unused-vars */
 export async function runPushMigrationAction(
   _prevState: RunPushMigrationState,
   _formData: FormData
 ): Promise<RunPushMigrationState> {
+  /* eslint-enable @typescript-eslint/no-unused-vars */
   await requireAdmin();
   try {
     await ensurePushSubscriptionsTable();
