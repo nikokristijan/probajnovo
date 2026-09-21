@@ -65,7 +65,10 @@ html.novo-lock-scroll body {
   padding: 0 20px; border-bottom: 1px solid rgba(0,0,0,0.1);
 }
 .novo-os-logo { font-weight: 700; font-size: 18px; letter-spacing: -0.02em; color: var(--novo-orange); }
-.novo-os-brand { display: flex; align-items: center; }
+.novo-os-brand {
+  display: flex; align-items: center;
+  background: none; border: 0; padding: 0; margin: 0; cursor: pointer;
+}
 .novo-os-logo-img { height: 22px; width: auto; display: block; }
 @media (min-width: 720px) { .novo-os-logo-img { height: 26px; } }
 .novo-os-coords { font-size: 11px; letter-spacing: 0.05em; display: none; }
@@ -484,6 +487,13 @@ html.novo-lock-scroll body {
 /* Honeypot — vizualno i za čitače zaslona uklonjeno, ali i dalje popunjivo
    za botove koji ne poštuju CSS (svrha zamke). */
 .stay-inquiry-hp { position: absolute; width: 1px; height: 1px; overflow: hidden; opacity: 0; pointer-events: none; }
+.stay-inquiry-consent {
+  display: flex; align-items: flex-start; gap: 8px;
+  font-size: 12.5px; line-height: 1.5; color: var(--dim, rgba(0,0,0,0.6)); cursor: pointer;
+}
+.stay-inquiry-consent input { margin-top: 3px; flex-shrink: 0; }
+.stay-inquiry-consent a { color: var(--accent); }
+.stay-dark .stay-inquiry-consent { color: rgba(255,255,255,0.6); }
 .stay-inquiry-submit {
   align-self: flex-start; border: none; cursor: pointer; font-family: var(--font-karla), sans-serif;
   background: var(--accent); color: var(--paper); font-weight: 700; font-size: 14.5px;
@@ -1715,61 +1725,24 @@ a.owner-glass:active,
 .owner-quicklink:hover { border-color: var(--od-orange); color: var(--od-orange); transform: translateY(-1px); }
 
 /* ---- Hero kartica ------------------------------------------------- */
-/* Zadržava NOVO gradient kao "podlogu" (isti duh kao prije), ali sad s
-   pravim staklenim slojem preko: gornji sjaj + suptilna zrnatost + rub
-   svjetla po unutrašnjem obrubu, umjesto plosnatog gradijenta. Mobilno:
-   label+broj se prisilno slažu okomito ispod ~380px (owner-hero-top), a
-   streak bedž pada u vlastiti red umjesto neugodnog omatanja pored broja. */
+/* Na izričit zahtjev: pozadina je jednobojna, tamno neutralna (skoro crna)
+   umjesto prijašnjeg navy/narančasto/ljubičastog radial-gradient "staklenog"
+   izgleda (vidi git povijest za stari kod ako ga ikad zatreba natrag). NOVO
+   brand boje (navy/narančasta/ljubičasta) i dalje žive u akcentima unutar
+   kartice — streak bedž, prsten napretka, brojke — ne u samoj podlozi.
+   Mobilno: label+broj se prisilno slažu okomito ispod ~380px
+   (owner-hero-top), a streak bedž pada u vlastiti red umjesto neugodnog
+   omatanja pored broja. */
 .owner-hero {
   position: relative;
   overflow: hidden;
   border-radius: clamp(20px, 5vw, 28px);
   padding: clamp(20px, 4vw, 30px) clamp(18px, 4.5vw, 30px);
   color: #fff;
-  /* Sjaj je NAMJERNO u gornjem DESNOM kutu (iza streak bedža), daleko od
-     teksta u gornjem lijevom kutu (label + velika brojka) — obrnuto
-     pozicioniran sjaj preko teksta je bio uzrok "ne vidi se ništa"
-     problema (previše bijelog sjaja baš iza bijelog teksta). Donji tamni
-     sloj (::before) postoji ISKLJUČIVO da garantira kontrast teksta bez
-     obzira na boju/poziciju gradijenta ispod — ne dodaje sjaj.
-
-     NAMJERNO nije jedan gladak dijagonalni linear-gradient kroz sve tri
-     boje (navy → ljubičasta → narančasta) — to je upravo "AI stock
-     gradient" izgled (vidi feedback "gradient izgleda malo AI"). Umjesto
-     toga: čvrsta NOVO navy podloga (brand ostaje prepoznatljiv, dominira
-     >70% površine) s dva mala, lokalizirana "izvora svjetla" u suprotnim
-     donjim kutovima — narančasti i ljubičasti sjaj koji izgledaju kao da
-     dolaze iza stakla, ne kao ispisana boja preko cijele kartice. */
-  background: radial-gradient(120% 150% at 96% -15%, rgba(255, 255, 255, 0.22), transparent 48%),
-    radial-gradient(72% 85% at 2% 118%, rgba(255, 148, 40, 0.62), transparent 60%),
-    radial-gradient(62% 68% at 106% 88%, rgba(134, 52, 205, 0.4), transparent 62%),
-    var(--od-navy);
-  /* ČETVRTI krug feedbacka ("crta/jak prijelaz", u SVIJETLOJ i TAMNOJ temi) —
-     kartica je do sad bila potpuno neprozirna navy ploha s oštrim rubom
-     (border-radius, ali BEZ omekšanog prijelaza prema pozadini), pa je uvijek
-     djelovala kao "zalijepljena" preko pozadine, bez obzira koliko se sama
-     pozadina iza nje mijenjala (dva prijašnja kruga su dirala SAMO pozadinu,
-     ne i sam rub kartice — zato feedback nije nestajao). Rješenje ovdje: mekan
-     "halo" sjaj OKO kartice (box-shadow s offsetom 0/0, širok blur, BEZ
-     spreada) koji nosi iste tri NOVO boje i grubo iste pozicije kao unutarnji
-     radijalni sjajevi iznad (narančasti bliže dnu-lijevo, ljubičasti bliže
-     dnu-desno, navy posvuda) — rub kartice se tako vizualno nastavlja u
-     pozadinu umjesto da se reže ravnom linijom. Radi identično u obje teme jer
-     ne ovisi o --od-bg/--od-blob-* varijablama pozadine, samo o bojama same
-     kartice. */
-  box-shadow: 0 24px 60px -20px rgba(10, 5, 60, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.4),
-    inset 0 -50px 70px -50px rgba(0, 0, 0, 0.28), 0 0 110px 0 rgba(0, 0, 195, 0.42),
-    -24px 46px 100px 0 rgba(255, 148, 40, 0.22), 32px 54px 110px 0 rgba(134, 52, 205, 0.2);
-  border: 1px solid rgba(255, 255, 255, 0.22);
+  background: #121214;
+  box-shadow: 0 24px 60px -20px rgba(0, 0, 0, 0.55), inset 0 1px 0 rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.1);
   isolation: isolate;
-}
-.owner-hero::before {
-  content: "";
-  position: absolute;
-  inset: 0;
-  background: linear-gradient(200deg, rgba(0, 0, 0, 0.22) 0%, rgba(0, 0, 0, 0) 42%);
-  pointer-events: none;
-  z-index: 0;
 }
 .owner-hero > * { position: relative; z-index: 1; }
 
@@ -2431,7 +2404,28 @@ a.owner-glass:active,
   padding: clamp(32px, 6vw, 64px) clamp(20px, 5vw, 56px) clamp(56px, 8vw, 96px);
 }
 
-/* --- Listing (/proizvodi) --- */
+/* --- Pravne stranice (privatnost/uvjeti/povrat/kolačići) --- */
+.novo-legal { max-width: 760px; }
+.novo-legal h1 { font-size: clamp(1.7rem, 3.6vw, 2.3rem); font-weight: 500; letter-spacing: -0.01em; margin: 10px 0 4px; }
+.novo-legal-updated { font-family: var(--font-jetbrains-mono), monospace; font-size: 11.5px; color: var(--dim); margin: 0 0 clamp(28px, 5vw, 40px); }
+.novo-legal h2 { font-size: 1.15rem; font-weight: 600; margin: 2em 0 0.6em; }
+.novo-legal p { line-height: 1.7; color: rgba(10, 10, 26, 0.82); margin: 0 0 1em; }
+.novo-legal ul { margin: 0 0 1.2em; padding-left: 1.3em; line-height: 1.7; color: rgba(10, 10, 26, 0.82); }
+.novo-legal li { margin-bottom: 0.4em; }
+.novo-legal a { color: var(--accent); }
+.novo-legal strong { font-weight: 700; }
+.novo-legal-footer {
+  display: flex; flex-wrap: wrap; gap: 8px 18px;
+  margin-top: clamp(40px, 6vw, 60px); padding-top: 20px;
+  border-top: 1px solid rgba(10, 10, 26, 0.08);
+  font-family: var(--font-jetbrains-mono), monospace; font-size: 11px; letter-spacing: 0.06em;
+}
+.novo-legal-footer a { color: var(--dim); text-decoration: none; }
+.novo-legal-footer a:hover { color: var(--accent); }
+
+/* --- Listing proizvoda je spojena u homepage PROIZVODI tab (NovoHome.tsx) —
+   /proizvodi sad samo redirecta tamo. Klase ispod ostaju jer ih i dalje
+   koristi karticа-grid uzorak na detalj/legal stranicama gdje je relevantno. --- */
 .novo-products-header { display: flex; flex-direction: column; gap: 10px; margin-bottom: clamp(28px, 5vw, 44px); }
 .novo-products-kicker { font-family: var(--font-jetbrains-mono), monospace; font-size: 11px; letter-spacing: 0.16em; color: var(--accent); }
 .novo-products-header h1 { font-size: clamp(1.8rem, 4vw, 2.6rem); font-weight: 500; letter-spacing: -0.01em; margin: 0; }

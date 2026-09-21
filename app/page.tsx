@@ -3,7 +3,18 @@ import NovoHome, { type StudyProject, type ProductCard } from "@/components/Novo
 
 export const revalidate = 0; // uvijek svježe iz baze (admin izmjene odmah vidljive)
 
-export default async function HomePage() {
+const VALID_VIEWS = new Set(["home", "studies", "office", "products"]);
+
+export default async function HomePage({
+  searchParams,
+}: {
+  searchParams: Promise<{ view?: string }>;
+}) {
+  const { view } = await searchParams;
+  const initialView = VALID_VIEWS.has(view ?? "")
+    ? (view as "home" | "studies" | "office" | "products")
+    : undefined;
+
   const [agencyData, propertiesData, studiesData, productsData] = await Promise.all([
     getAgency(),
     listProperties({ onlyPublished: true }),
@@ -76,6 +87,7 @@ export default async function HomePage() {
       city={city}
       projects={projects}
       products={products}
+      initialView={initialView}
     />
   );
 }
