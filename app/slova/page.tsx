@@ -13,6 +13,7 @@ import {
   Righteous,
 } from "next/font/google";
 import SlovaCustomizer from "@/components/slova/SlovaCustomizer";
+import LegalFooterLinks from "@/components/LegalFooterLinks";
 
 /**
  * /slova — konfigurator za prostorna (custom) slova, drugi fizički proizvod
@@ -72,11 +73,14 @@ export default function SlovaPage() {
           <Link href="/" className="novo-product-logo">
             NOVO
           </Link>
-          <Link href="/proizvodi" className="novo-product-back">
+          <Link href="/?view=products" className="novo-product-back">
             ← SVI PROIZVODI
           </Link>
         </div>
         <SlovaCustomizer />
+        <div className="novo-product-wrap" style={{ paddingTop: 0 }}>
+          <LegalFooterLinks />
+        </div>
       </div>
     </div>
   );
