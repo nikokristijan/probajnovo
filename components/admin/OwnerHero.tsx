@@ -82,7 +82,6 @@ export default function OwnerHero({
     };
     raf = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(raf);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [netEur, currentDays]);
 
   useEffect(() => {
@@ -100,7 +99,6 @@ export default function OwnerHero({
     return () => {
       cancelled = true;
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const showConfetti = isRecord || (streakIsNew && streak > 0 && streak % 5 === 0);
@@ -112,7 +110,6 @@ export default function OwnerHero({
       delay: `${(i % 6) * 0.09}s`,
       color: colors[i % colors.length],
     }));
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [showConfetti]);
 
   const ringProgress = goalDays > 0 ? Math.min(1, currentDays / goalDays) : 0;

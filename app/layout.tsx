@@ -56,11 +56,58 @@ const nunito = Nunito({
   weight: ["400", "600", "700", "800"],
 });
 
+const SITE_URL = "https://www.probajnovo.com";
+
 export const metadata: Metadata = {
-  title: "NOVO",
-  description: "NOVO — kreativna agencija iz Slavonskog Broda.",
+  metadataBase: new URL(SITE_URL),
+  title: {
+    default: "NOVO — kreativni studio iz Slavonskog Broda",
+    template: "%s — NOVO",
+  },
+  description:
+    "NOVO je kreativni studio iz Slavonskog Broda — brend identitet, digitalni dizajn, web stranice za vikendice i firme, NFC pločice i prostorna slova po mjeri.",
   icons: {
     icon: "/favicon-orange.png",
+  },
+  openGraph: {
+    title: "NOVO — kreativni studio iz Slavonskog Broda",
+    description:
+      "Brend identitet, digitalni dizajn, web stranice za vikendice i firme, NFC pločice i prostorna slova po mjeri.",
+    url: SITE_URL,
+    siteName: "NOVO",
+    locale: "hr_HR",
+    type: "website",
+    images: [{ url: "/novo-logo.png", width: 1474, height: 497 }],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "NOVO — kreativni studio iz Slavonskog Broda",
+    description:
+      "Brend identitet, digitalni dizajn, web stranice za vikendice i firme, NFC pločice i prostorna slova po mjeri.",
+    images: ["/novo-logo.png"],
+  },
+};
+
+/**
+ * Organization JSON-LD — statični fallback podaci (isti defaulti kao u
+ * app/page.tsx kad admin još nije popunio agency zapis u bazi), ne dohvaća
+ * bazu jer je layout.tsx zajednički za sve rute uključujući /admin. Ako
+ * admin kasnije promijeni email/Instagram/grad u /admin/settings, ova
+ * strukturirana oznaka ostaje na zadanim vrijednostima dok se ručno ne
+ * ažurira — manji nedostatak, ne utječe na stvaran sadržaj stranice.
+ */
+const ORGANIZATION_JSON_LD = {
+  "@context": "https://schema.org",
+  "@type": "Organization",
+  name: "NOVO",
+  url: SITE_URL,
+  logo: `${SITE_URL}/novo-logo.png`,
+  email: "hello@novo.studio",
+  sameAs: ["https://instagram.com/novo.hr"],
+  address: {
+    "@type": "PostalAddress",
+    addressLocality: "Slavonski Brod",
+    addressCountry: "HR",
   },
 };
 
@@ -71,6 +118,11 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       className={`${spaceGrotesk.variable} ${jetbrainsMono.variable} ${zillaSlab.variable} ${karla.variable} ${caveat.variable} ${inter.variable} ${fraunces.variable} ${baloo2.variable} ${nunito.variable}`}
       >
     <body>
+      {/* Statični, hardkodirani JSON-LD (ne user input) — sigurno za dangerouslySetInnerHTML. */}
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(ORGANIZATION_JSON_LD) }}
+      />
       {children}
       <Analytics />
     </body>

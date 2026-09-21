@@ -17,18 +17,7 @@ import SaleForm from "@/components/admin/SaleForm";
 import AgencyLedgerTable from "@/components/admin/AgencyLedgerTable";
 import YearlyBarChart from "@/components/admin/YearlyBarChart";
 import Link from "next/link";
-
-function StatCard({ label, value, suffix }: { label: string; value: number; suffix?: string }) {
-  return (
-    <div className="border border-black/10 rounded-xl px-4 py-3 bg-white">
-      <div className="text-2xl font-bold tabular-nums">
-        {value}
-        {suffix ?? ""}
-      </div>
-      <div className="text-xs text-black/50 mt-0.5">{label}</div>
-    </div>
-  );
-}
+import { StatCard } from "@/components/admin/StatCard";
 
 /**
  * Financije — spojeni pregled NOVO-ove vlastite zarade od agencije:

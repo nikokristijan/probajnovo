@@ -4,6 +4,15 @@ import { notFound } from "next/navigation";
 import { getProductBySlug } from "@/lib/db/queries";
 import InquiryForm from "@/components/InquiryForm";
 import ProductGallery from "@/components/ProductGallery";
+import { HeroScrollVideoReveal, type TagItem } from "@/components/ui/hero-scroll-video-pin-reveal";
+import LegalFooterLinks from "@/components/LegalFooterLinks";
+
+const PRODUCT_HERO_COLORS: Omit<TagItem, "text">[] = [
+  { background: "#0000c3", color: "#ffffff" }, // navy
+  { background: "#ff7f00", color: "#1a1200" }, // orange
+  { background: "#6a21b0", color: "#ffffff" }, // purple
+  { background: "#f3f3fb", color: "#0a0a1a" }, // svijetla
+];
 
 export const revalidate = 0;
 
@@ -46,12 +55,25 @@ export default async function ProductPage({
   const product = await getProductBySlug(slug);
   if (!product || !product.published) notFound();
 
+  const heroTags: TagItem[] = product.features
+    .slice(0, 4)
+    .map((f, i) => ({ text: f, ...PRODUCT_HERO_COLORS[i % PRODUCT_HERO_COLORS.length] }));
+
   return (
     <div className="novo-product-page">
       <div className="novo-product-topbar">
         <Link href="/" className="novo-product-logo">NOVO</Link>
-        <Link href="/proizvodi" className="novo-product-back">← SVI PROIZVODI</Link>
+        <Link href="/?view=products" className="novo-product-back">← SVI PROIZVODI</Link>
       </div>
+
+      <HeroScrollVideoReveal
+        headingText={product.tagline || product.name}
+        tags={heroTags.length > 0 ? heroTags : undefined}
+        subText={product.description || undefined}
+        videoSrc={product.videoUrl || undefined}
+        posterSrc={product.images[0] || undefined}
+        bottomText="Detalji i upit ispod."
+      />
 
       <div className="novo-product-wrap">
         <div className="novo-product-hero">
@@ -81,18 +103,12 @@ export default async function ProductPage({
             )}
 
             <p className="novo-product-desc">{product.description}</p>
-
-            {product.videoUrl && (
-              <div className="novo-product-video">
-                <video src={product.videoUrl} controls playsInline preload="metadata" />
-              </div>
-            )}
           </div>
         </div>
 
         <div className="novo-product-inquiry">
           <h2>Zanima me ovaj proizvod</h2>
-          <p>Pošalji nam upit s nekoliko detalja — javljamo se uskoro.</p>
+          <p>Pošalji nam upit s nekoliko detalja — odgovaramo unutar 24h.</p>
           <InquiryForm
             source="product"
             sourceId={product.id}
@@ -100,6 +116,8 @@ export default async function ProductPage({
             ctaLabel={product.ctaButtonText || undefined}
           />
         </div>
+
+        <LegalFooterLinks />
       </div>
     </div>
   );

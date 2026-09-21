@@ -4,6 +4,7 @@ import { useActionState, useState } from "react";
 import type { ActionState } from "@/lib/actions";
 import type { Study } from "@/lib/db/schema";
 import ImageUploader from "./ImageUploader";
+import { Field } from "./Field";
 
 type StudyAction = (
   prevState: ActionState,
@@ -172,14 +173,5 @@ export default function StudyForm({
         {pending ? "Spremanje…" : submitLabel}
       </button>
     </form>
-  );
-}
-
-function Field({ label, children }: { label: string; children: React.ReactNode }) {
-  return (
-    <label className="flex flex-col gap-1.5">
-      <span className="text-sm font-medium">{label}</span>
-      {children}
-    </label>
   );
 }

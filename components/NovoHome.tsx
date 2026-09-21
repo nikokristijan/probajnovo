@@ -66,6 +66,10 @@ type NovoHomeProps = {
   city: string;
   projects: StudyProject[];
   products: ProductCard[];
+  /** Otvara stranicu izravno na jednom od tabova (npr. ?view=products) —
+      koristi ga /proizvodi redirect da gost koji je imao stari link ne
+      završi na POČETNA tabu nego direktno na PROIZVODI. */
+  initialView?: View;
 };
 
 type View = "home" | "studies" | "office" | "products";
@@ -489,8 +493,9 @@ export default function NovoHome({
   city,
   projects,
   products,
+  initialView,
 }: NovoHomeProps) {
-  const [view, setView] = useState<View>("home");
+  const [view, setView] = useState<View>(initialView ?? "home");
   const zCounter = useRef(10);
 
   const [exhibit, setExhibit] = useState({ x: 40, y: 100, z: 5, minimized: false });
@@ -593,6 +598,21 @@ export default function NovoHome({
       )
     );
 
+  // Esc zatvara prozor koji je trenutno navrh (najveći z) — tipkovničko
+  // korištenje bez miša, isto kao što bi se očekivalo od pravog OS prozora.
+  useEffect(() => {
+    function onKeyDown(e: KeyboardEvent) {
+      if (e.key !== "Escape") return;
+      const candidates = [
+        ...projectWindows.filter((w) => !w.minimized).map((w) => ({ z: w.z, close: () => closeProject(w.key) })),
+        ...productWindows.filter((w) => !w.minimized).map((w) => ({ z: w.z, close: () => closeProduct(w.key) })),
+      ];
+      candidates.sort((a, b) => b.z - a.z)[0]?.close();
+    }
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [projectWindows, productWindows]);
+
   const exhibitImages =
     projects.length > 0
       ? projects.map((p) => ({ src: p.images[0], alt: p.name }))
@@ -603,7 +623,12 @@ export default function NovoHome({
   return (
     <div className="novo-os">
       <div className="novo-os-topbar">
-        <div className="novo-os-brand">
+        <button
+          type="button"
+          className="novo-os-brand"
+          onClick={() => setView("home")}
+          aria-label="NOVO — natrag na početnu"
+        >
           <Image
             src="/novo-logo.png"
             alt="NOVO"
@@ -612,7 +637,7 @@ export default function NovoHome({
             height={497}
             priority
           />
-        </div>
+        </button>
         <span className="novo-os-coords mono muted">
           {coords.x}(X), {coords.y}(Y)
         </span>
@@ -692,14 +717,28 @@ export default function NovoHome({
         {view === "products" && (
           <div className="novo-os-panel">
             <h2 className="section-title">PROIZVODI</h2>
-            {products.length === 0 ? (
-              <p className="studies-empty">
-                Uskoro dostupno — 3D printane pločice s NFC oznakama za vikendice i firme.
-              </p>
-            ) : (
-              <div className="products-scroll">
-                <div className="products-grid">
-                  {products.map((p) => (
+            <div className="products-scroll">
+              <div className="products-grid">
+                {/* /slova konfigurator nije u `products` tablici (zaseban interaktivni
+                    alat, ne tekst/slika+upit kartica kao ostali proizvodi) — uvijek
+                    prikazan prvi, isto kao što je prije bio na zasebnoj /proizvodi
+                    listing stranici prije spajanja u ovaj tab. */}
+                <Link href="/slova" className="product-card">
+                  <div className="product-card-img" style={{ background: "#0b0b10" }} />
+                  <div className="product-card-body">
+                    <span className="product-card-name">Custom slova po mjeri</span>
+                    <span className="product-card-tagline">
+                      Odaberite font, veličinu i boju, pogledajte uživo i pošaljite upit.
+                    </span>
+                    <span className="product-card-price mono">od 4 €/slovo</span>
+                  </div>
+                </Link>
+                {products.length === 0 ? (
+                  <p className="studies-empty">
+                    Uskoro dostupno — 3D printane pločice s NFC oznakama za vikendice i firme.
+                  </p>
+                ) : (
+                  products.map((p) => (
                     <button key={p.id} className="product-card" onClick={() => openProduct(p)}>
                       <div className="product-card-img">
                         <ProjectImage src={p.images[0]} alt={p.name} className="product-card-thumb" />
@@ -712,10 +751,10 @@ export default function NovoHome({
                         </span>
                       </div>
                     </button>
-                  ))}
-                </div>
+                  ))
+                )}
               </div>
-            )}
+            </div>
           </div>
         )}
 
@@ -747,6 +786,13 @@ export default function NovoHome({
                   <a href={instaUrl} target="_blank" rel="noreferrer">
                     {instagramHandle}
                   </a>
+                </div>
+                <div className="office-block">
+                  <span className="mono muted">PRAVNO</span>
+                  <Link href="/privatnost">Politika privatnosti</Link>
+                  <Link href="/uvjeti">Uvjeti korištenja</Link>
+                  <Link href="/povrat">Politika povrata</Link>
+                  <Link href="/kolacici">Politika kolačića</Link>
                 </div>
               </div>
             </div>

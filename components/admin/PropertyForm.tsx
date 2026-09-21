@@ -5,6 +5,7 @@ import type { ActionState } from "@/lib/actions";
 import type { Property, Testimonial, FaqItem, SeasonalPrice } from "@/lib/db/schema";
 import ImageUploader from "./ImageUploader";
 import ReviewsImporter from "./ReviewsImporter";
+import { Field } from "./Field";
 
 /** Prigušeni, "tonalni" tonovi umjesto šarenog neona — Apple hero pozadina
     (radial gradient mesh u CSS-u) izvodi se iz accentColor, pa ovo samo
@@ -689,15 +690,6 @@ export default function PropertyForm({
         {pending ? "Spremanje…" : submitLabel}
       </button>
     </form>
-  );
-}
-
-function Field({ label, children }: { label: string; children: React.ReactNode }) {
-  return (
-    <label className="flex flex-col gap-1.5">
-      <span className="text-sm font-medium">{label}</span>
-      {children}
-    </label>
   );
 }
 

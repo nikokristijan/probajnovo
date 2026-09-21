@@ -20,6 +20,7 @@
     "bcryptjs": "^3.0.3",
     "drizzle-orm": "^0.45.2",
     "framer-motion": "^13.2.0",
+    "gsap": "^3.15.0",
     "jose": "^6.2.10",
     "next": "16.3.3",
     "otpauth": "^9.5.1",
