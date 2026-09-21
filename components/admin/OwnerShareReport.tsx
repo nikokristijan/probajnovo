@@ -119,12 +119,9 @@ function addConfetti(ctx: CanvasRenderingContext2D, w: number, h: number) {
 
 /** Iscrtava brendirani 1080×1080 PNG sažetak mjeseca na <canvas>-u, u
     memoriji (bez servera, bez novih npm paketa) — vidi handleShare niže.
-    Isti dizajn-jezik kao .owner-hero u globals.css nakon "gradient izgleda
-    AI" ispravke: čvrsta navy podloga koja dominira slikom + dva mala
-    lokalizirana sjaja u kutovima, umjesto glatkog dijagonalnog sweepa kroz
-    sve tri boje (taj sweep je bio točno ono na što se odnosila feedback
-    poruka — ista slika se dijeli van dashboarda pa mora nositi isti,
-    ispravljeni izgled, ne stari). */
+    Isti dizajn-jezik kao .owner-hero u globals.css nakon prelaska na
+    jednobojnu tamno neutralnu podlogu: čvrsta skoro-crna pozadina, NOVO
+    boje ostaju samo u akcentima (logo, brojke), ne u samoj podlozi. */
 async function drawReportCanvas(stats: ShareStats): Promise<HTMLCanvasElement> {
   const canvas = document.createElement("canvas");
   canvas.width = 1080;
@@ -132,30 +129,8 @@ async function drawReportCanvas(stats: ShareStats): Promise<HTMLCanvasElement> {
   const ctx = canvas.getContext("2d")!;
   const logoImg = await loadImage("/novo-logo.png");
 
-  // Navy podloga — dominira, brend ostaje prepoznatljiv.
-  ctx.fillStyle = "#0000c3";
-  ctx.fillRect(0, 0, 1080, 1080);
-
-  // Narančasti sjaj, donji lijevi kut (izvan platna, samo gornji luk vidljiv).
-  const orangeGlow = ctx.createRadialGradient(20, 1150, 20, 20, 1150, 820);
-  orangeGlow.addColorStop(0, "rgba(255,148,40,0.6)");
-  orangeGlow.addColorStop(1, "rgba(255,148,40,0)");
-  ctx.fillStyle = orangeGlow;
-  ctx.fillRect(0, 0, 1080, 1080);
-
-  // Ljubičasti sjaj, donji desni kut — suprotan kut, manji i suptilniji.
-  const purpleGlow = ctx.createRadialGradient(1150, 980, 20, 1150, 980, 700);
-  purpleGlow.addColorStop(0, "rgba(134,52,205,0.4)");
-  purpleGlow.addColorStop(1, "rgba(134,52,205,0)");
-  ctx.fillStyle = purpleGlow;
-  ctx.fillRect(0, 0, 1080, 1080);
-
-  // Stakleni sjaj gore desno, daleko od teksta gore lijevo (isti razlog kao
-  // .owner-hero pozadina u globals.css — sjaj preko teksta guta čitljivost).
-  const glow = ctx.createRadialGradient(980, 40, 20, 980, 40, 680);
-  glow.addColorStop(0, "rgba(255,255,255,0.22)");
-  glow.addColorStop(1, "rgba(255,255,255,0)");
-  ctx.fillStyle = glow;
+  // Tamno neutralna podloga — ista boja kao .owner-hero u globals.css.
+  ctx.fillStyle = "#121214";
   ctx.fillRect(0, 0, 1080, 1080);
 
   addGrain(ctx, 1080, 1080);
@@ -168,7 +143,7 @@ async function drawReportCanvas(stats: ShareStats): Promise<HTMLCanvasElement> {
 
   // Logo lockup gore lijevo — PRAVI NOVO logo (public/novo-logo.png, isti
   // file kao svugdje drugdje na stranici), ne izmišljeni krug sa slovom
-  // "N". Logo je već narančast pa čita jasno na navy podlozi bez ikakve
+  // "N". Logo je već narančast pa čita jasno na tamnoj podlozi bez ikakve
   // dodatne pozadine iza njega.
   const logoH = 46;
   const logoW = logoH * (logoImg.naturalWidth / logoImg.naturalHeight);

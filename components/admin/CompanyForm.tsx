@@ -5,6 +5,7 @@ import type { ActionState } from "@/lib/actions";
 import type { Company, Testimonial, FaqItem, ServiceItem } from "@/lib/db/schema";
 import ImageUploader from "./ImageUploader";
 import ReviewsImporter from "./ReviewsImporter";
+import { Field } from "./Field";
 
 const APPLE_COLOR_PRESETS: { label: string; value: string }[] = [
   { label: "Kamen", value: "#8f8272" },
@@ -480,15 +481,6 @@ export default function CompanyForm({
         {pending ? "Spremanje…" : submitLabel}
       </button>
     </form>
-  );
-}
-
-function Field({ label, children }: { label: string; children: React.ReactNode }) {
-  return (
-    <label className="flex flex-col gap-1.5">
-      <span className="text-sm font-medium">{label}</span>
-      {children}
-    </label>
   );
 }
 
