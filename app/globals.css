@@ -2385,10 +2385,13 @@ a.owner-glass:active,
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 20px clamp(20px, 5vw, 56px);
+  padding: 16px clamp(20px, 5vw, 56px);
   border-bottom: 1px solid rgba(10, 10, 26, 0.08);
+  background: var(--paper);
 }
-.novo-product-logo { font-weight: 700; font-size: 15px; letter-spacing: -0.01em; color: var(--novo-orange); text-decoration: none; }
+.novo-product-logo { display: flex; align-items: center; }
+.novo-product-logo-img { height: 22px; width: auto; display: block; }
+@media (min-width: 720px) { .novo-product-logo-img { height: 26px; } }
 .novo-product-back {
   font-family: var(--font-jetbrains-mono), monospace;
   font-size: 11px;
