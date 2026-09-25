@@ -222,6 +222,10 @@ html.novo-lock-scroll body {
 .proj-actions { display: flex; flex-direction: column; gap: 4px; margin-top: 2px; }
 .link { display: inline-flex; align-items: center; gap: 4px; color: #000; text-decoration: underline; font-size: 11px; width: fit-content; transition: color 0.15s ease; }
 .link:hover { color: var(--novo-orange); }
+/* .link na <button> (npr. "OTVORI KONFIGURATOR" koji ne navigira nego
+   otvara cijeli zaslon unutar SPA-a) — resetira UA button chrome da izgleda
+   identično .link <a>-u iznad. */
+.link-btn { background: none; border: none; padding: 0; cursor: pointer; text-align: left; }
 
 /* Cijeli zaslon proizvoda — klikom na ikonu širenja u prozoru proizvod
    "postane" vlastita stranica preko cijelog ekrana umjesto malog prozora. */

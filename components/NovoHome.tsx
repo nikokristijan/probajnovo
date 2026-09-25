@@ -3,6 +3,28 @@
 import { useEffect, useRef, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
+import dynamic from "next/dynamic";
+
+/* Konfigurator prostornih slova (fontovi + SlovaCustomizer) učitan tek kad
+   se stvarno otvori (klik na ikonu širenja u "CUSTOM SLOVA PO MJERI"
+   prozoru) — ssr:false + dynamic import, da posjetitelji naslovnice koji
+   ga ne otvore ne preuzimaju 10 dodatnih Google fontova. Vidi
+   components/slova/SlovaFullscreenOverlay.tsx. */
+const SlovaFullscreenOverlay = dynamic(() => import("@/components/slova/SlovaFullscreenOverlay"), {
+  ssr: false,
+  loading: () => (
+    <div className="product-full">
+      <div className="product-full-topbar">
+        <span className="product-full-brand mono muted">NOVO — PROSTORNA SLOVA</span>
+      </div>
+      <div className="product-full-scroll">
+        <div className="novo-product-wrap">
+          <p className="studies-empty">Učitavanje konfiguratora…</p>
+        </div>
+      </div>
+    </div>
+  ),
+});
 
 /* ------------------------------------------------------------------ */
 /* Tipovi                                                              */
@@ -381,6 +403,43 @@ function ProductContent({ product, contactEmail }: { product: ProductCard; conta
   );
 }
 
+/* Sadržaj malog pop-up prozora za "Custom slova po mjeri" — konfigurator sam
+   (SlovaCustomizer) je prevelik za mali plutajući prozor (puni desktop alat s
+   3D pregledom, biračem fonta/veličine/boje i formom za upit), zato ovdje
+   stoji samo kratak teaser s CTA-om koji ga otvara preko cijelog zaslona
+   (isti "proširi" mehanizam kao kod pravih proizvoda) — ne šalje gosta na
+   /slova, ostaje unutar OS shella kao i svi ostali proizvodi. */
+function SlovaTeaserContent({ onOpenFullscreen }: { onOpenFullscreen: () => void }) {
+  return (
+    <div className="proj-viewport">
+      <button
+        type="button"
+        className="proj-image-btn"
+        onClick={onOpenFullscreen}
+        aria-label="Otvori konfigurator prostornih slova"
+        style={{ background: "#0b0b10" }}
+      />
+      <div className="proj-info">
+        <p className="proj-desc">
+          Odaberite font, veličinu i boju prostornih slova, pogledajte uživo i pošaljite upit u dva
+          klika.
+        </p>
+        <div className="proj-meta">
+          <span className="mono muted">od 4 €/slovo</span>
+        </div>
+        <div className="proj-actions">
+          <button type="button" className="mono link link-btn" onClick={onOpenFullscreen}>
+            OTVORI KONFIGURATOR ↗
+          </button>
+          <Link href="/slova" className="mono link">
+            STRANICA PROIZVODA ↗
+          </Link>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 /* Cijeli zaslon proizvoda — umjesto malog plutajućeg prozora, proizvod
    "postane" vlastita stranica preko cijelog ekrana (veća galerija, čitljiviji
    opis). Otvara se klikom na ikonu širenja kraj minimiziranja, zatvara se
@@ -506,6 +565,12 @@ export default function NovoHome({
   const [productWindows, setProductWindows] = useState<
     { key: string; product: ProductCard; x: number; y: number; z: number; minimized: boolean; fullscreen: boolean }[]
   >([]);
+  /* "Custom slova po mjeri" nije u `products` tablici (zaseban interaktivni
+     alat, ne DB kartica) pa ima svoj, jednostruki prozor umjesto niza kao
+     projectWindows/productWindows — u svakom trenutku postoji najviše jedan. */
+  const [slovaWindow, setSlovaWindow] = useState<
+    { x: number; y: number; z: number; minimized: boolean; fullscreen: boolean } | null
+  >(null);
   const [coords, setCoords] = useState({ x: 0, y: 0 });
 
   // no page-scroll: zaključaj <html>/<body> dok je ova stranica montirana
@@ -598,6 +663,23 @@ export default function NovoHome({
       )
     );
 
+  const openSlova = () => {
+    setSlovaWindow((w) => {
+      if (w) return { ...w, z: ++zCounter.current, minimized: false };
+      const count = projectWindows.length + productWindows.length;
+      const vw = typeof window !== "undefined" ? window.innerWidth : 1200;
+      const vh = typeof window !== "undefined" ? window.innerHeight : 800;
+      const baseX = Math.min(220 + count * 36, Math.max(vw - 280, 60));
+      const baseY = Math.min(100 + count * 36, Math.max(vh - 420, 70));
+      return { x: baseX, y: baseY, z: ++zCounter.current, minimized: false, fullscreen: false };
+    });
+  };
+  const closeSlova = () => setSlovaWindow(null);
+  const toggleMinimizeSlova = () => setSlovaWindow((w) => (w ? { ...w, minimized: !w.minimized } : w));
+  const focusSlova = () => setSlovaWindow((w) => (w ? { ...w, z: ++zCounter.current } : w));
+  const toggleFullscreenSlova = () =>
+    setSlovaWindow((w) => (w ? { ...w, fullscreen: !w.fullscreen, minimized: false, z: ++zCounter.current } : w));
+
   // Esc zatvara prozor koji je trenutno navrh (najveći z) — tipkovničko
   // korištenje bez miša, isto kao što bi se očekivalo od pravog OS prozora.
   useEffect(() => {
@@ -606,12 +688,13 @@ export default function NovoHome({
       const candidates = [
         ...projectWindows.filter((w) => !w.minimized).map((w) => ({ z: w.z, close: () => closeProject(w.key) })),
         ...productWindows.filter((w) => !w.minimized).map((w) => ({ z: w.z, close: () => closeProduct(w.key) })),
+        ...(slovaWindow && !slovaWindow.minimized ? [{ z: slovaWindow.z, close: closeSlova }] : []),
       ];
       candidates.sort((a, b) => b.z - a.z)[0]?.close();
     }
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, [projectWindows, productWindows]);
+  }, [projectWindows, productWindows, slovaWindow]);
 
   const exhibitImages =
     projects.length > 0
@@ -722,8 +805,10 @@ export default function NovoHome({
                 {/* /slova konfigurator nije u `products` tablici (zaseban interaktivni
                     alat, ne tekst/slika+upit kartica kao ostali proizvodi) — uvijek
                     prikazan prvi, isto kao što je prije bio na zasebnoj /proizvodi
-                    listing stranici prije spajanja u ovaj tab. */}
-                <Link href="/slova" className="product-card">
+                    listing stranici prije spajanja u ovaj tab. Otvara se kao popup
+                    prozor (openSlova), isto kao svi ostali proizvodi — ne šalje gosta
+                    na /slova (ta stranica i dalje postoji za izravne/SEO posjete). */}
+                <button type="button" className="product-card" onClick={openSlova}>
                   <div className="product-card-img" style={{ background: "#0b0b10" }} />
                   <div className="product-card-body">
                     <span className="product-card-name">Custom slova po mjeri</span>
@@ -732,7 +817,7 @@ export default function NovoHome({
                     </span>
                     <span className="product-card-price mono">od 4 €/slovo</span>
                   </div>
-                </Link>
+                </button>
                 {products.length === 0 ? (
                   <p className="studies-empty">
                     Uskoro dostupno — 3D printane pločice s NFC oznakama za vikendice i firme.
@@ -881,6 +966,26 @@ export default function NovoHome({
           </FloatingWindow>
         )
       )}
+
+      {slovaWindow &&
+        (slovaWindow.fullscreen ? (
+          <SlovaFullscreenOverlay onExitFullscreen={toggleFullscreenSlova} onClose={closeSlova} />
+        ) : (
+          <FloatingWindow
+            title="CUSTOM SLOVA PO MJERI"
+            x={slovaWindow.x}
+            y={slovaWindow.y}
+            z={slovaWindow.z}
+            onFocus={focusSlova}
+            onClose={closeSlova}
+            minimized={slovaWindow.minimized}
+            onToggleMinimize={toggleMinimizeSlova}
+            onToggleFullscreen={toggleFullscreenSlova}
+            width={260}
+          >
+            <SlovaTeaserContent onOpenFullscreen={toggleFullscreenSlova} />
+          </FloatingWindow>
+        ))}
     </div>
   );
 }
