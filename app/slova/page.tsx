@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import Image from "next/image";
 import {
   Anton,
   Bebas_Neue,
@@ -70,8 +71,15 @@ export default function SlovaPage() {
     <div className={FONT_VARS}>
       <div className="novo-product-page slova-page">
         <div className="novo-product-topbar">
-          <Link href="/" className="novo-product-logo">
-            NOVO
+          <Link href="/" className="novo-product-logo" aria-label="NOVO — natrag na početnu">
+            <Image
+              src="/novo-logo.png"
+              alt="NOVO"
+              className="novo-product-logo-img"
+              width={1474}
+              height={497}
+              priority
+            />
           </Link>
           <Link href="/?view=products" className="novo-product-back">
             ← SVI PROIZVODI
