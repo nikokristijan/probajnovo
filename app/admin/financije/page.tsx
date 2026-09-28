@@ -146,7 +146,7 @@ export default async function AdminFinancijePage({
         <AgencyLedgerTable subscriptions={subscriptions} sales={sales} today={today} />
       </section>
 
-      <div className="grid sm:grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <SubscriptionForm
           properties={properties}
           companies={companies}
