@@ -335,6 +335,13 @@ export const adminUsers = pgTable("admin_users", {
       goalDays). Postavljen samo ako je vlasnik svjesno promijenio zadani
       cilj (OwnerGoalEditor). */
   customGoalDays: integer("custom_goal_days"),
+  /** Zadnji "otkucaj" prisutnosti (PresenceHeartbeat.tsx, svake minute dok
+      je puni admin/superadmin negdje u adminu) — null = nikad viđen otkad
+      je ovaj stupac dodan. Koristi se SAMO za "Ured" prikaz u app/admin/
+      poruke (radi/jede/spava po proteklom vremenu), vlasnicima se ne
+      prikazuje niti ažurira (PresenceHeartbeat se montira samo za
+      role!=="owner", vidi app/admin/layout.tsx). */
+  lastSeenAt: timestamp("last_seen_at"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
@@ -646,3 +653,59 @@ export const nfcTags = pgTable("nfc_tags", {
 
 export type NfcTag = typeof nfcTags.$inferSelect;
 export type NewNfcTag = typeof nfcTags.$inferInsert;
+
+/**
+ * FAZA 2 — interni tim (tim/zadaci/poruke), na izričit zahtjev nakon
+ * neumorphism redizajna dashboarda. Vidljivo SVIM punim adminima i
+ * superadminima (role="admin", provjera requireAdmin u lib/actions.ts),
+ * NIKAD vlasnicima (role="owner") — ovo je alat za agencijski tim, ne za
+ * pojedinog klijenta. Namjerno adminEmail/assignedToEmail/createdByEmail
+ * kao TEXT (ne admin_users.id FK) — isti obrazac denormalizacije kao
+ * activityLog.adminEmail gore (jednostavnije spajanje u UI-u, nema potrebe
+ * za JOIN-ovima, i zadatak/poruka ostaje čitljiv i ako se admin kasnije
+ * obriše). Tablice se same kreiraju pri prvom upitu (ensureTeamTasksTableOnce/
+ * ensureTeamMessagesTableOnce), isti obrazac kao subscriptions/nfc_tags —
+ * nema pristupa terminalu za ručnu migraciju.
+ */
+export const teamTasks = pgTable("team_tasks", {
+  id: serial("id").primaryKey(),
+  title: text("title").notNull(),
+  description: text("description"),
+  /** "todo" | "in_progress" | "done" */
+  status: text("status").notNull().default("todo"),
+  /** "low" | "normal" | "high" */
+  priority: text("priority").notNull().default("normal"),
+  /** Null = nedodijeljeno (vidljivo cijelom timu kao "za preuzeti"). */
+  assignedToEmail: text("assigned_to_email"),
+  createdByEmail: text("created_by_email").notNull(),
+  /** Opcionalna veza na klijenta — najviše jedno od dvoje postavljeno
+      (vidi TeamTaskForm). Klikom u app/admin/zadaci vodi izravno na tu
+      vikendicu/firmu u adminu, npr. "obnovi pretplatu — Vila Nada". */
+  propertyId: integer("property_id"),
+  companyId: integer("company_id"),
+  /** "YYYY-MM-DD" (Europe/Zagreb), null = bez roka. */
+  dueDate: text("due_date"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  completedAt: timestamp("completed_at"),
+});
+
+export type TeamTask = typeof teamTasks.$inferSelect;
+export type NewTeamTask = typeof teamTasks.$inferInsert;
+
+/**
+ * Interni feed/chat tima — kronološki, jednostavan (bez pravog real-time
+ * chata, osvježava se kao i ostatak admina preko revalidatePath). taskId
+ * null = opća poruka u glavnom feedu (app/admin/poruke); postavljen = poruka
+ * je komentar ispod konkretnog zadatka (app/admin/zadaci), prikazuje se na
+ * oba mjesta.
+ */
+export const teamMessages = pgTable("team_messages", {
+  id: serial("id").primaryKey(),
+  adminEmail: text("admin_email").notNull(),
+  body: text("body").notNull(),
+  taskId: integer("task_id"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export type TeamMessage = typeof teamMessages.$inferSelect;
+export type NewTeamMessage = typeof teamMessages.$inferInsert;
