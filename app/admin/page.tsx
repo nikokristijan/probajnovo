@@ -572,7 +572,7 @@ async function OwnerDashboard({ admin }: { admin: AdminUser }) {
         </div>
 
         {properties.length > 0 && (
-          <div className="grid lg:grid-cols-[1.7fr_1fr] gap-5 items-start">
+          <div className="grid grid-cols-1 lg:grid-cols-[1.7fr_1fr] gap-5 items-start">
             <OwnerHero
               monthLabel={monthLabel}
               netEur={netEurThisMonth}
@@ -628,7 +628,7 @@ async function OwnerDashboard({ admin }: { admin: AdminUser }) {
         )}
 
         {properties.length > 0 && recentTrend.length > 1 && (
-          <section className="grid sm:grid-cols-2 gap-4">
+          <section className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <OwnerTrendChart
               title="Zarada — zadnjih 6 mjeseci"
               labels={recentTrend.map((t) => t.monthLabel)}
@@ -651,7 +651,7 @@ async function OwnerDashboard({ admin }: { admin: AdminUser }) {
         )}
 
         {pageCount > 0 && (
-          <div className="grid lg:grid-cols-[1fr_300px] gap-5 items-start">
+          <div className="grid grid-cols-1 lg:grid-cols-[1fr_300px] gap-5 items-start">
             <section>
               <div className="flex items-center justify-between mb-3">
                 <h2 className="text-xs font-semibold uppercase tracking-wide" style={{ color: "var(--od-ink-faint)" }}>
