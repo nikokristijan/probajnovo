@@ -66,3 +66,89 @@ export function AlertIcon({ className, size = 22 }: IconProps) {
     </svg>
   );
 }
+
+/** "+" za akcije dodavanja (npr. novi zadatak) — FAZA 2 tim/zadaci/poruke. */
+export function PlusIcon({ className, size = 16 }: IconProps) {
+  return (
+    <svg {...base} width={size} height={size} className={className} aria-hidden="true">
+      <path d="M10 3.5v13M3.5 10h13" />
+    </svg>
+  );
+}
+
+/** Zadaci (app/admin/zadaci) — kvačica u okviru, dosljedno s "gotovo" stanjem
+    zadatka (status="done" koristi istu kvačicu, vidi TeamTaskCard). */
+export function ChecklistIcon({ className, size = 18 }: IconProps) {
+  return (
+    <svg {...base} width={size} height={size} className={className} aria-hidden="true">
+      <rect x="3.5" y="3.5" width="13" height="13" rx="3" />
+      <path d="M7 10.2l2 2 4-4.4" />
+    </svg>
+  );
+}
+
+/** Poruke/tim feed (app/admin/poruke). */
+export function ChatIcon({ className, size = 18 }: IconProps) {
+  return (
+    <svg {...base} width={size} height={size} className={className} aria-hidden="true">
+      <path d="M3.5 5.75A1.75 1.75 0 0 1 5.25 4h9.5A1.75 1.75 0 0 1 16.5 5.75v6a1.75 1.75 0 0 1-1.75 1.75H9l-3.6 2.9a.5.5 0 0 1-.81-.39v-2.51H5.25A1.75 1.75 0 0 1 3.5 11.75v-6Z" />
+    </svg>
+  );
+}
+
+/* --- "Ured" prisutnost (app/admin/poruke, OfficePresence.tsx) — status
+   bedž po pikseliziranom avataru: monitor=radi, šalica=jede, mjesec=spava. */
+
+export function MonitorIcon({ className, size = 12 }: IconProps) {
+  return (
+    <svg {...base} width={size} height={size} className={className} aria-hidden="true">
+      <rect x="3" y="4" width="14" height="9.5" rx="1.5" />
+      <path d="M7.5 17h5M10 13.5V17" />
+    </svg>
+  );
+}
+
+export function CupIcon({ className, size = 12 }: IconProps) {
+  return (
+    <svg {...base} width={size} height={size} className={className} aria-hidden="true">
+      <path d="M4.5 5.5h9v6.5a4.5 4.5 0 0 1-4.5 4.5v0a4.5 4.5 0 0 1-4.5-4.5V5.5Z" />
+      <path d="M13.5 7h1.25a2 2 0 0 1 0 4H13.5" />
+      <path d="M6.5 3v1.2M10 3v1.2" />
+    </svg>
+  );
+}
+
+export function MoonIcon({ className, size = 12 }: IconProps) {
+  return (
+    <svg {...base} width={size} height={size} className={className} aria-hidden="true">
+      <path d="M16.5 12.3A7 7 0 1 1 8.2 3.6a5.5 5.5 0 0 0 8.3 8.7Z" />
+    </svg>
+  );
+}
+
+/* --- Redizajn vlasničkog/adminskog izbornika (app/admin/rezervacije) — na
+   izričit zahtjev "vlasnik menu izgleda jako nepregledno": raniji stupac od
+   5 owner-quicklink/admin-quicklink pilula (Izvezi CSV/Godišnji izvještaj/
+   Backup/Knjigovođa CSV/PDF) slaganih jedna preko druge sad je skriven iza
+   jednog neu-disclosure elementa, vidi .neu-disclosure u globals.css. */
+
+/** "Izvoz i izvještaji" — glava disclosure sažetka. */
+export function DownloadIcon({ className, size = 16 }: IconProps) {
+  return (
+    <svg {...base} width={size} height={size} className={className} aria-hidden="true">
+      <path d="M10 3v9.5M6.2 9.3 10 13l3.8-3.7" />
+      <path d="M4 15.5v.75A1.75 1.75 0 0 0 5.75 18h8.5A1.75 1.75 0 0 0 16 16.25v-.75" />
+    </svg>
+  );
+}
+
+/** Strelica koja se rotira 180° kad je <details> otvoren (vidi
+    .neu-disclosure[open] u globals.css) — jedini vizualni signal
+    otvoreno/zatvoreno, bez JS-a. */
+export function ChevronDownIcon({ className, size = 14 }: IconProps) {
+  return (
+    <svg {...base} width={size} height={size} className={className} aria-hidden="true">
+      <path d="M4.5 7.5 10 13l5.5-5.5" />
+    </svg>
+  );
+}

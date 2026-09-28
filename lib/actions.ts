@@ -79,6 +79,12 @@ import {
   createNfcTag,
   updateNfcTag,
   deleteNfcTag,
+  createTeamTask,
+  updateTeamTaskStatus,
+  assignTeamTask,
+  deleteTeamTask,
+  createTeamMessage,
+  updateAdminLastSeen,
 } from "@/lib/db/queries";
 import { sendInquiryNotification, sendGuestConfirmation, sendReservationConfirmation, sendInquiryReply } from "@/lib/email";
 import { resolveCoordinates, geoMissWarning } from "@/lib/geocode";
@@ -2250,4 +2256,120 @@ export async function updateOwnerGoalAction(days: number | null): Promise<void> 
   const clamped = days === null ? null : Math.min(31, Math.max(1, Math.round(days)));
   await updateOwnerCustomGoal(admin.id, clamped);
   revalidatePath("/admin");
+}
+
+/* ---------------------------------------------------------------- */
+/* FAZA 2 — tim: zadaci + interni feed poruka (app/admin/zadaci,      */
+/* app/admin/poruke). Dostupno SVIM punim adminima/superadminima      */
+/* (requireAdmin), nikad vlasnicima — na izričit zahtjev: "svi puni   */
+/* admini + superadmini vide zadatke i poruke". */
+/* ---------------------------------------------------------------- */
+
+const TeamTaskSchema = z.object({
+  title: z.string().min(1, "Naslov je obavezan.").max(200),
+  description: z.string().max(2000).optional(),
+  priority: z.enum(["low", "normal", "high"]).default("normal"),
+  assignedToEmail: z.string().email().optional().or(z.literal("")),
+  /** "" | "property:<id>" | "company:<id>" — vidi TeamTaskForm, jedan
+      <select> garantira da je najviše jedno od dvoje ikad postavljeno
+      (umjesto dva neovisna polja koja bi mogla oba biti popunjena). */
+  client: z.string().optional().or(z.literal("")),
+  dueDate: z.string().regex(DATE_RE, "Datum nije ispravan.").optional().or(z.literal("")),
+});
+
+export async function createTeamTaskAction(
+  _prevState: ActionState,
+  formData: FormData
+): Promise<ActionState> {
+  const admin = await requireAdmin();
+
+  const parsed = TeamTaskSchema.safeParse({
+    title: formData.get("title"),
+    description: formData.get("description") || undefined,
+    priority: formData.get("priority") || "normal",
+    assignedToEmail: formData.get("assignedToEmail") || "",
+    client: formData.get("client") || "",
+    dueDate: formData.get("dueDate") || "",
+  });
+  if (!parsed.success) {
+    return { error: parsed.error.issues[0]?.message ?? "Provjeri unesene podatke." };
+  }
+
+  const [clientKind, clientIdStr] = (parsed.data.client || "").split(":");
+  const propertyId = clientKind === "property" ? Number(clientIdStr) : null;
+  const companyId = clientKind === "company" ? Number(clientIdStr) : null;
+
+  await createTeamTask({
+    title: parsed.data.title,
+    description: parsed.data.description || null,
+    priority: parsed.data.priority,
+    assignedToEmail: parsed.data.assignedToEmail || null,
+    createdByEmail: admin.email,
+    propertyId: propertyId && !Number.isNaN(propertyId) ? propertyId : null,
+    companyId: companyId && !Number.isNaN(companyId) ? companyId : null,
+    dueDate: parsed.data.dueDate || null,
+  });
+  revalidatePath("/admin/zadaci");
+  redirect("/admin/zadaci");
+}
+
+/** status: "todo" | "in_progress" | "done" — jednostavan bound-action gumb
+ * u app/admin/zadaci (bez potvrde, radnja je lako reverzibilna). */
+export async function updateTeamTaskStatusAction(id: number, status: string) {
+  await requireAdmin();
+  await updateTeamTaskStatus(id, status);
+  revalidatePath("/admin/zadaci");
+}
+
+/** email "" iz <select> znači "nedodijeli" — pretvara se u null. */
+export async function assignTeamTaskAction(id: number, formData: FormData) {
+  await requireAdmin();
+  const email = String(formData.get("assignedToEmail") ?? "").trim();
+  await assignTeamTask(id, email || null);
+  revalidatePath("/admin/zadaci");
+}
+
+export async function deleteTeamTaskAction(id: number) {
+  await requireAdmin();
+  await deleteTeamTask(id);
+  revalidatePath("/admin/zadaci");
+}
+
+const TeamMessageSchema = z.object({
+  body: z.string().min(1, "Poruka ne smije biti prazna.").max(4000),
+});
+
+/** taskId "" (opći feed) ili broj (komentar ispod zadatka) — vidi
+ * TeamMessageForm skriveno polje. redirectTo vraća na stranicu s koje je
+ * forma poslana (glavni feed ili konkretan zadatak), isti obrazac čišćenja
+ * forme kao ExpenseForm/ReservationForm (redirect umjesto { success }). */
+export async function createTeamMessageAction(
+  taskId: number | null,
+  redirectTo: string,
+  _prevState: ActionState,
+  formData: FormData
+): Promise<ActionState> {
+  const admin = await requireAdmin();
+
+  const parsed = TeamMessageSchema.safeParse({ body: formData.get("body") });
+  if (!parsed.success) {
+    return { error: parsed.error.issues[0]?.message ?? "Provjeri unos." };
+  }
+
+  await createTeamMessage({ adminEmail: admin.email, body: parsed.data.body, taskId: taskId ?? null });
+  revalidatePath("/admin/poruke");
+  revalidatePath("/admin/zadaci");
+  redirect(redirectTo);
+}
+
+/** "Otkucaj" prisutnosti za "Ured" prikaz (components/admin/
+ * PresenceHeartbeat.tsx, poziva se svake minute dok je puni admin negdje u
+ * adminu — NE samo na /admin/poruke, da status prati stvarnu aktivnost).
+ * Namjerno BEZ revalidatePath — vidi app/api/admin/presence koji ovo čita
+ * kratkim pollingom umjesto pune revalidacije stranice svih otvorenih
+ * tabova tima. Ne baca ako admin sesija istekne usred pozadinskog poziva. */
+export async function heartbeatAction(): Promise<void> {
+  const session = await getCurrentAdmin();
+  if (!session) return;
+  await updateAdminLastSeen(session.adminId);
 }

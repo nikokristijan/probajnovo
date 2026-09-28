@@ -1,4 +1,4 @@
-import { eq, desc, asc, and, gt, inArray, isNull, sql } from "drizzle-orm";
+import { eq, ne, desc, asc, and, gt, inArray, isNull, sql } from "drizzle-orm";
 import { db } from "./index";
 import {
   todayDateStringZagreb,
@@ -24,6 +24,8 @@ import {
   pushSubscriptions,
   subscriptions,
   nfcTags,
+  teamTasks,
+  teamMessages,
   type NewProperty,
   type NewCompany,
   type NewStudy,
@@ -32,6 +34,8 @@ import {
   type NewPropertyTranslationEn,
   type NewSubscription,
   type NewNfcTag,
+  type NewTeamTask,
+  type NewTeamMessage,
 } from "./schema";
 
 const AGENCY_ROW_ID = 1;
@@ -460,11 +464,15 @@ export async function deleteInquiry(id: number) {
 }
 
 /** Dodaje login_streak_count/last_login_date/theme_preference/
-    custom_goal_days stupce na admin_users ako još ne postoje — isti obrazac
-    kao ensureBrandingColumns gore. Prva dva su za Duolingo-stil streak,
-    zadnja dva za vlasničke postavke dashboarda (tamna tema, prilagodljiv
-    cilj dana) — vidi updateAdminLoginStreak/updateOwnerTheme/
-    updateOwnerCustomGoal niže i app/admin/page.tsx OwnerDashboard. */
+    custom_goal_days/last_seen_at stupce na admin_users ako još ne postoje —
+    isti obrazac kao ensureBrandingColumns gore. Prva dva su za Duolingo-stil
+    streak, sljedeća dva za vlasničke postavke dashboarda (tamna tema,
+    prilagodljiv cilj dana) — vidi updateAdminLoginStreak/updateOwnerTheme/
+    updateOwnerCustomGoal niže i app/admin/page.tsx OwnerDashboard.
+    last_seen_at je za "Ured" prisutnost tima (Faza 2, app/admin/poruke) —
+    vidi updateAdminLastSeen/heartbeatAction i components/admin/
+    PresenceHeartbeat.tsx (šalje "otkucaj" svake minute dok je puni admin
+    negdje u adminu, ne samo na /admin/poruke). */
 async function ensureAdminStreakColumns(): Promise<void> {
   await db.execute(
     sql`ALTER TABLE admin_users ADD COLUMN IF NOT EXISTS login_streak_count INTEGER NOT NULL DEFAULT 0`
@@ -474,6 +482,7 @@ async function ensureAdminStreakColumns(): Promise<void> {
   await db.execute(
     sql`ALTER TABLE admin_users ADD COLUMN IF NOT EXISTS custom_goal_days INTEGER`
   );
+  await db.execute(sql`ALTER TABLE admin_users ADD COLUMN IF NOT EXISTS last_seen_at TIMESTAMP`);
 }
 
 let adminStreakColumnsPromise: Promise<void> | null = null;
@@ -1741,4 +1750,163 @@ export async function updateNfcTag(id: number, data: Partial<NewNfcTag>) {
 export async function deleteNfcTag(id: number) {
   await ensureNfcTagsTableOnce();
   await db.delete(nfcTags).where(eq(nfcTags.id, id));
+}
+
+/* ---------------------------------------------------------------- */
+/* FAZA 2 — tim: zadaci + interni feed poruka (app/admin/zadaci,      */
+/* app/admin/poruke). Vidi opsežan komentar uz teamTasks/teamMessages */
+/* u lib/db/schema.ts. Tablice se same kreiraju pri prvom upitu, isti */
+/* obrazac kao ensureSubscriptionsTable/ensureNfcTagsTable gore —     */
+/* nema pristupa terminalu za ručnu migraciju. */
+/* ---------------------------------------------------------------- */
+
+export async function ensureTeamTasksTable(): Promise<void> {
+  await db.execute(sql`
+    CREATE TABLE IF NOT EXISTS team_tasks (
+      id SERIAL PRIMARY KEY,
+      title TEXT NOT NULL,
+      description TEXT,
+      status TEXT NOT NULL DEFAULT 'todo',
+      priority TEXT NOT NULL DEFAULT 'normal',
+      assigned_to_email TEXT,
+      created_by_email TEXT NOT NULL,
+      property_id INTEGER,
+      company_id INTEGER,
+      due_date TEXT,
+      created_at TIMESTAMP NOT NULL DEFAULT now(),
+      completed_at TIMESTAMP
+    )
+  `);
+}
+
+let teamTasksTablePromise: Promise<void> | null = null;
+function ensureTeamTasksTableOnce(): Promise<void> {
+  if (!teamTasksTablePromise) {
+    teamTasksTablePromise = ensureTeamTasksTable().catch((err) => {
+      teamTasksTablePromise = null;
+      throw err;
+    });
+  }
+  return teamTasksTablePromise;
+}
+
+export async function ensureTeamMessagesTable(): Promise<void> {
+  await db.execute(sql`
+    CREATE TABLE IF NOT EXISTS team_messages (
+      id SERIAL PRIMARY KEY,
+      admin_email TEXT NOT NULL,
+      body TEXT NOT NULL,
+      task_id INTEGER,
+      created_at TIMESTAMP NOT NULL DEFAULT now()
+    )
+  `);
+}
+
+let teamMessagesTablePromise: Promise<void> | null = null;
+function ensureTeamMessagesTableOnce(): Promise<void> {
+  if (!teamMessagesTablePromise) {
+    teamMessagesTablePromise = ensureTeamMessagesTable().catch((err) => {
+      teamMessagesTablePromise = null;
+      throw err;
+    });
+  }
+  return teamMessagesTablePromise;
+}
+
+/** Cijeli tim (puni admini + superadmini) za dodjelu zadataka/prikaz autora
+    poruka/"Ured" prisutnost — NAMJERNO isključuje role="owner" (vlasnici
+    nisu dio agencijskog tima, vidi standing rule uz requireAdmin u
+    lib/actions.ts). ensureAdminStreakColumnsOnce garantira da last_seen_at
+    postoji prije nego se pročita (select() vraća SVE stupce). */
+export async function listTeamMembers() {
+  await ensureAdminStreakColumnsOnce();
+  return db.select().from(adminUsers).where(ne(adminUsers.role, "owner")).orderBy(asc(adminUsers.email));
+}
+
+/** "Otkucaj" prisutnosti (PresenceHeartbeat.tsx) — samo ažurira
+    last_seen_at, ne baca grešku ako admin u međuvremenu ne postoji (npr.
+    obrisan dok mu je tab ostao otvoren). */
+export async function updateAdminLastSeen(adminId: number): Promise<void> {
+  await ensureAdminStreakColumnsOnce();
+  await db.update(adminUsers).set({ lastSeenAt: new Date() }).where(eq(adminUsers.id, adminId));
+}
+
+/** Svi zadaci, najnoviji prvi — app/admin/zadaci grupira u 3 stupca (todo/
+    in_progress/done) na strani stranice, ovdje samo jedan upit. */
+export async function listTeamTasks() {
+  await ensureTeamTasksTableOnce();
+  return db.select().from(teamTasks).orderBy(desc(teamTasks.createdAt));
+}
+
+export async function getTeamTaskById(id: number) {
+  await ensureTeamTasksTableOnce();
+  const rows = await db.select().from(teamTasks).where(eq(teamTasks.id, id)).limit(1);
+  return rows[0] ?? null;
+}
+
+export async function createTeamTask(data: NewTeamTask) {
+  await ensureTeamTasksTableOnce();
+  const [row] = await db.insert(teamTasks).values(data).returning();
+  return row;
+}
+
+/** status: "todo" | "in_progress" | "done" — completedAt se postavlja/briše
+    ovdje (ne u pozivatelju) da se ne zaboravi kod budućih poziva. */
+export async function updateTeamTaskStatus(id: number, status: string) {
+  await ensureTeamTasksTableOnce();
+  const [row] = await db
+    .update(teamTasks)
+    .set({ status, completedAt: status === "done" ? new Date() : null })
+    .where(eq(teamTasks.id, id))
+    .returning();
+  return row;
+}
+
+/** email = null briše dodjelu (vraća zadatak u "za preuzeti"). */
+export async function assignTeamTask(id: number, email: string | null) {
+  await ensureTeamTasksTableOnce();
+  const [row] = await db
+    .update(teamTasks)
+    .set({ assignedToEmail: email })
+    .where(eq(teamTasks.id, id))
+    .returning();
+  return row;
+}
+
+export async function deleteTeamTask(id: number) {
+  await ensureTeamTasksTableOnce();
+  await db.delete(teamTasks).where(eq(teamTasks.id, id));
+  // Komentari vezani uz obrisan zadatak ostaju u glavnom feedu kao opće
+  // poruke (taskId veza jednostavno postane "viseća") — namjerno se ne
+  // brišu, poruka je i dalje čitljiva ("dogovorili smo se da...").
+}
+
+/** Opći feed (app/admin/poruke) — samo poruke BEZ taskId, kronološki
+    (najstarije prvo, kao chat). limit brani od neograničenog rasta upita
+    na vrlo aktivnom timu. */
+export async function listTeamMessages(limit = 200) {
+  await ensureTeamMessagesTableOnce();
+  const rows = await db
+    .select()
+    .from(teamMessages)
+    .where(isNull(teamMessages.taskId))
+    .orderBy(desc(teamMessages.createdAt))
+    .limit(limit);
+  return rows.reverse();
+}
+
+/** Komentari ispod jednog zadatka (app/admin/zadaci), kronološki. */
+export async function listTaskComments(taskId: number) {
+  await ensureTeamMessagesTableOnce();
+  return db
+    .select()
+    .from(teamMessages)
+    .where(eq(teamMessages.taskId, taskId))
+    .orderBy(asc(teamMessages.createdAt));
+}
+
+export async function createTeamMessage(data: NewTeamMessage) {
+  await ensureTeamMessagesTableOnce();
+  const [row] = await db.insert(teamMessages).values(data).returning();
+  return row;
 }
