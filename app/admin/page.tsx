@@ -525,165 +525,190 @@ async function OwnerDashboard({ admin }: { admin: AdminUser }) {
   const effectiveGoalDays = admin.customGoalDays ?? autoGoalDays;
 
   return (
-    <div
-      className="owner-dash flex flex-col gap-8"
-      data-theme={admin.themePreference ?? "system"}
-    >
-      <div className="flex items-start justify-between gap-4 flex-wrap">
-        <div>
-          <h1 className="text-xl font-bold">Pozdrav{hostName ? `, ${hostName}` : ""}!</h1>
-          <p className="text-sm mt-1" style={{ color: "var(--od-ink-faint)" }}>
-            {pageCount === 0
-              ? "Nemaš dodijeljenu nijednu vikendicu ili firmu — javi se glavnom adminu."
-              : singleName
-                ? `Pregled za ${singleName}.`
-                : "Pregled tvojih dodijeljenih stranica."}
-          </p>
+    // Redizajn (Faza 3, na izričit zahtjev "lijep i pregledan... ne treba
+    // biti sve u sredini, nego nek se rasporedi fino preko cijelog ekrana"):
+    // .admin-breakout izbija iz dijeljenog max-w-4xl <main> (app/admin/
+    // layout.tsx, koji omata svih 28 admin stranica pa se ne mijenja
+    // globalno), .admin-breakout-inner onda sam sebe centrira do razumne
+    // maksimalne širine (vidi opsežan komentar uz te dvije klase u
+    // globals.css). Sadržaj ispod je isti (ista djeca, ISTI podaci) samo
+    // PREGRUPIRAN u dvostupčane retke na širem zaslonu (hero+bedževi/
+    // kalendar jedan pored drugog, upiti+brze radnje jedan pored drugog)
+    // umjesto jedne duge vertikalne trake — na mobitelu se sve svejedno
+    // slaže natrag u jedan stupac (lg: prefiksi).
+    <div className="admin-breakout">
+      <div
+        className="admin-breakout-inner owner-dash flex flex-col gap-6"
+        data-theme={admin.themePreference ?? "system"}
+      >
+        <div className="flex items-start justify-between gap-4 flex-wrap">
+          <div>
+            <h1 className="text-xl font-bold">Pozdrav{hostName ? `, ${hostName}` : ""}!</h1>
+            <p className="text-sm mt-1" style={{ color: "var(--od-ink-faint)" }}>
+              {pageCount === 0
+                ? "Nemaš dodijeljenu nijednu vikendicu ili firmu — javi se glavnom adminu."
+                : singleName
+                  ? `Pregled za ${singleName}.`
+                  : "Pregled tvojih dodijeljenih stranica."}
+            </p>
+          </div>
+          <div className="flex items-center gap-2">
+            {properties.length > 0 && (
+              <OwnerShareReport
+                stats={{
+                  monthLabel,
+                  subtitle: singleName,
+                  netEur: netEurThisMonth,
+                  currentDays: daysBookedThisMonth,
+                  goalDays: effectiveGoalDays,
+                  deltaPct,
+                  streak: admin.loginStreakCount,
+                  isRecord,
+                }}
+              />
+            )}
+            <OwnerThemeToggle initialTheme={(admin.themePreference as "light" | "dark" | "system" | null) ?? "system"} />
+          </div>
         </div>
-        <div className="flex items-center gap-2">
-          {properties.length > 0 && (
-            <OwnerShareReport
-              stats={{
-                monthLabel,
-                subtitle: singleName,
-                netEur: netEurThisMonth,
-                currentDays: daysBookedThisMonth,
-                goalDays: effectiveGoalDays,
-                deltaPct,
-                streak: admin.loginStreakCount,
-                isRecord,
-              }}
+
+        {properties.length > 0 && (
+          <div className="grid lg:grid-cols-[1.7fr_1fr] gap-5 items-start">
+            <OwnerHero
+              monthLabel={monthLabel}
+              netEur={netEurThisMonth}
+              deltaPct={deltaPct}
+              isRecord={isRecord}
+              initialStreak={admin.loginStreakCount}
+              autoGoalDays={autoGoalDays}
+              initialCustomGoalDays={admin.customGoalDays}
+              currentDays={daysBookedThisMonth}
+              yoyDeltaDays={yoyDeltaDays}
             />
-          )}
-          <OwnerThemeToggle initialTheme={(admin.themePreference as "light" | "dark" | "system" | null) ?? "system"} />
-        </div>
-      </div>
-
-      {properties.length > 0 && (
-        <OwnerHero
-          monthLabel={monthLabel}
-          netEur={netEurThisMonth}
-          deltaPct={deltaPct}
-          isRecord={isRecord}
-          initialStreak={admin.loginStreakCount}
-          autoGoalDays={autoGoalDays}
-          initialCustomGoalDays={admin.customGoalDays}
-          currentDays={daysBookedThisMonth}
-          yoyDeltaDays={yoyDeltaDays}
-        />
-      )}
-
-      {properties.length > 0 && (
-        <OwnerBadges
-          stats={{
-            streak: admin.loginStreakCount,
-            isRecord,
-            currentDays: daysBookedThisMonth,
-            goalDays: effectiveGoalDays,
-            deltaPct,
-            yoyDeltaDays,
-          }}
-        />
-      )}
-
-      {pageCount > 0 && (
-        <section className="admin-animate-grid grid grid-cols-2 sm:grid-cols-3 gap-3">
-          <OwnerStatCard label={pendingCount === 1 ? "Novi upit" : "Novih upita"} value={pendingCount} accent="orange" />
-          <OwnerStatCard label="Dana zauzeto ovaj mjesec" value={daysBookedThisMonth} accent="navy" />
-          <OwnerStatCard label="Zarada ovaj mjesec (neto)" value={netEurThisMonth} suffix=" €" accent="purple" />
-        </section>
-      )}
-
-      {properties.length > 0 && recentTrend.length > 1 && (
-        <section className="grid sm:grid-cols-2 gap-4">
-          <OwnerTrendChart
-            title="Zarada — zadnjih 6 mjeseci"
-            labels={recentTrend.map((t) => t.monthLabel)}
-            data={recentTrend.map((t) => t.netEur)}
-            suffix=" €"
-            color="#0000c3"
-          />
-          <OwnerTrendChart
-            title="Dana zauzeto — zadnjih 6 mjeseci"
-            labels={recentTrend.map((t) => t.monthLabel)}
-            data={recentTrend.map((t) => t.daysBooked)}
-            suffix=" dana"
-            color="#ff7f00"
-          />
-        </section>
-      )}
-
-      {properties.length > 1 && (
-        <OwnerPropertyCarousel properties={properties} breakdown={breakdown} monthLabel={monthLabel} />
-      )}
-
-      {firstProperty && (
-        <OwnerMiniCalendar
-          propertyId={firstProperty.id}
-          propertyName={firstProperty.name}
-          blocked={blockedByProperty[0] ?? []}
-          now={now}
-        />
-      )}
-
-      {pageCount > 0 && (
-        <section>
-          <div className="flex items-center justify-between mb-3">
-            <h2 className="text-xs font-semibold uppercase tracking-wide" style={{ color: "var(--od-ink-faint)" }}>
-              Zadnji upiti
-            </h2>
-            <Link href="/admin/inquiries" className="text-xs font-semibold text-[#ff7f00]">
-              Svi upiti →
-            </Link>
-          </div>
-          {recentInquiries.length === 0 ? (
-            <EmptyState title="Još nema upita" />
-          ) : (
-            <div className="flex flex-col gap-2">
-              {recentInquiries.map((i) => (
-                <Link
-                  key={i.id}
-                  href="/admin/inquiries"
-                  className="owner-glass owner-glass-interactive flex items-center justify-between rounded-xl px-4 py-3"
-                >
-                  <div>
-                    <div className="font-semibold text-sm" style={{ color: "var(--od-ink)" }}>
-                      {i.name}
-                    </div>
-                    <div className="text-xs mt-0.5" style={{ color: "var(--od-ink-faint)" }}>
-                      {i.sourceName} · {new Date(i.createdAt).toLocaleDateString("hr-HR")}
-                    </div>
-                  </div>
-                  {!i.read && (
-                    <span className="text-xs font-semibold px-2.5 py-1 rounded-full bg-[#ff7f00]/10 text-[#ff7f00] shrink-0">
-                      novo
-                    </span>
-                  )}
-                </Link>
-              ))}
+            <div className="flex flex-col gap-5">
+              <OwnerBadges
+                stats={{
+                  streak: admin.loginStreakCount,
+                  isRecord,
+                  currentDays: daysBookedThisMonth,
+                  goalDays: effectiveGoalDays,
+                  deltaPct,
+                  yoyDeltaDays,
+                }}
+              />
+              {firstProperty && (
+                <OwnerMiniCalendar
+                  propertyId={firstProperty.id}
+                  propertyName={firstProperty.name}
+                  blocked={blockedByProperty[0] ?? []}
+                  now={now}
+                />
+              )}
             </div>
-          )}
-        </section>
-      )}
-
-      {pageCount > 0 && (
-        <section>
-          <h2 className="text-xs font-semibold uppercase tracking-wide mb-3" style={{ color: "var(--od-ink-faint)" }}>
-            Brze radnje
-          </h2>
-          <div className="flex flex-wrap gap-2">
-            <Link href="/admin/rezervacije" className="owner-quicklink">
-              Rezervacije
-            </Link>
-            <Link href="/admin/kalendar" className="owner-quicklink">
-              Kalendar
-            </Link>
-            <Link href="/admin/inquiries" className="owner-quicklink">
-              Svi upiti
-            </Link>
           </div>
-        </section>
-      )}
+        )}
+
+        {/* Bez ijedne dodijeljene vikendice (samo firma, ili ništa) hero/
+            desni stupac iznad se ne prikazuju — kalendar onda ostaje ovdje
+            samostalno da ne nestane potpuno. */}
+        {properties.length === 0 && firstProperty && (
+          <OwnerMiniCalendar
+            propertyId={firstProperty.id}
+            propertyName={firstProperty.name}
+            blocked={blockedByProperty[0] ?? []}
+            now={now}
+          />
+        )}
+
+        {pageCount > 0 && (
+          <section className="admin-animate-grid grid grid-cols-2 sm:grid-cols-3 gap-4">
+            <OwnerStatCard label={pendingCount === 1 ? "Novi upit" : "Novih upita"} value={pendingCount} accent="orange" />
+            <OwnerStatCard label="Dana zauzeto ovaj mjesec" value={daysBookedThisMonth} accent="navy" />
+            <OwnerStatCard label="Zarada ovaj mjesec (neto)" value={netEurThisMonth} suffix=" €" accent="purple" />
+          </section>
+        )}
+
+        {properties.length > 0 && recentTrend.length > 1 && (
+          <section className="grid sm:grid-cols-2 gap-4">
+            <OwnerTrendChart
+              title="Zarada — zadnjih 6 mjeseci"
+              labels={recentTrend.map((t) => t.monthLabel)}
+              data={recentTrend.map((t) => t.netEur)}
+              suffix=" €"
+              color="#0000c3"
+            />
+            <OwnerTrendChart
+              title="Dana zauzeto — zadnjih 6 mjeseci"
+              labels={recentTrend.map((t) => t.monthLabel)}
+              data={recentTrend.map((t) => t.daysBooked)}
+              suffix=" dana"
+              color="#ff7f00"
+            />
+          </section>
+        )}
+
+        {properties.length > 1 && (
+          <OwnerPropertyCarousel properties={properties} breakdown={breakdown} monthLabel={monthLabel} />
+        )}
+
+        {pageCount > 0 && (
+          <div className="grid lg:grid-cols-[1fr_300px] gap-5 items-start">
+            <section>
+              <div className="flex items-center justify-between mb-3">
+                <h2 className="text-xs font-semibold uppercase tracking-wide" style={{ color: "var(--od-ink-faint)" }}>
+                  Zadnji upiti
+                </h2>
+                <Link href="/admin/inquiries" className="text-xs font-semibold text-[#ff7f00]">
+                  Svi upiti →
+                </Link>
+              </div>
+              {recentInquiries.length === 0 ? (
+                <EmptyState title="Još nema upita" />
+              ) : (
+                <div className="flex flex-col gap-2">
+                  {recentInquiries.map((i) => (
+                    <Link
+                      key={i.id}
+                      href="/admin/inquiries"
+                      className="owner-glass owner-glass-interactive flex items-center justify-between rounded-xl px-4 py-3"
+                    >
+                      <div>
+                        <div className="font-semibold text-sm" style={{ color: "var(--od-ink)" }}>
+                          {i.name}
+                        </div>
+                        <div className="text-xs mt-0.5" style={{ color: "var(--od-ink-faint)" }}>
+                          {i.sourceName} · {new Date(i.createdAt).toLocaleDateString("hr-HR")}
+                        </div>
+                      </div>
+                      {!i.read && (
+                        <span className="text-xs font-semibold px-2.5 py-1 rounded-full bg-[#ff7f00]/10 text-[#ff7f00] shrink-0">
+                          novo
+                        </span>
+                      )}
+                    </Link>
+                  ))}
+                </div>
+              )}
+            </section>
+
+            <section>
+              <h2 className="text-xs font-semibold uppercase tracking-wide mb-3" style={{ color: "var(--od-ink-faint)" }}>
+                Brze radnje
+              </h2>
+              <div className="flex flex-wrap lg:flex-col gap-2">
+                <Link href="/admin/rezervacije" className="owner-quicklink">
+                  Rezervacije
+                </Link>
+                <Link href="/admin/kalendar" className="owner-quicklink">
+                  Kalendar
+                </Link>
+                <Link href="/admin/inquiries" className="owner-quicklink">
+                  Svi upiti
+                </Link>
+              </div>
+            </section>
+          </div>
+        )}
+      </div>
     </div>
   );
 }
