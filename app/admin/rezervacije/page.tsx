@@ -132,11 +132,11 @@ function formatDate(dateStr: string): string {
 
 function EarningsCard({ label, value, unit = "€" }: { label: string; value: number; unit?: string }) {
   return (
-    <div className="border border-black/10 rounded-xl px-4 py-3 bg-white">
+    <div className="neu-card px-4 py-3">
       <div className="text-2xl font-bold tabular-nums">
         {value} {unit}
       </div>
-      <div className="text-xs text-black/50 mt-0.5">{label}</div>
+      <div className="text-xs mt-0.5" style={{ color: "var(--neu-ink-faint)" }}>{label}</div>
     </div>
   );
 }
@@ -162,8 +162,8 @@ function PricingInsight({
   const hasLastYearData = lastYear.daysBooked > 0;
   if (!hasLastYearData) {
     return (
-      <div className="border border-black/10 rounded-xl px-4 py-3 bg-white">
-        <p className="text-xs text-black/50">
+      <div className="neu-card px-4 py-3">
+        <p className="text-xs" style={{ color: "var(--neu-ink-faint)" }}>
           Nema dovoljno podataka iz {monthLabel} prošle godine za usporedbu popunjenosti/cijene.
         </p>
       </div>
@@ -267,7 +267,7 @@ export default async function AdminReservationsPage({
     listExpensesForProperty(property.id),
   ]);
 
-  // Mjesec za koji se prikazuje zarada — podrazumijevano tekući, ali
+  // Mjesec za koji se prikazuje zarada — podrazmijevano tekući, ali
   // navigacija ← → (linkFor ispod) omogućuje pregled bilo kojeg mjeseca, ne
   // samo trenutnog (isti obrazac kao app/admin/kalendar).
   const nowZagreb = currentYearMonthZagreb();
@@ -355,7 +355,7 @@ export default async function AdminReservationsPage({
             </span>
             <div className="flex items-center gap-2">
               <Link href={monthLinkFor(prevYear, prevMonth)} className="owner-quicklink">
-                ← Prošli
+                ←� Prošli
               </Link>
               {!isCurrentMonth && (
                 <Link href={`/admin/rezervacije?property=${property.id}`} className="text-xs font-semibold text-[#ff7f00]">
@@ -656,7 +656,7 @@ export default async function AdminReservationsPage({
         <h2 className="text-xs font-semibold uppercase tracking-wide text-black/40">
           Troškovi (opcionalno)
         </h2>
-        <p className="text-xs text-black/50 -mt-2">
+        <p className="text-xs text-black-50 -mt-2">
           Nije obavezno — unesi ih samo ako želiš da dashboard pokazuje i neto zaradu (bruto minus
           troškovi), npr. čišćenje ili održavanje.
         </p>
@@ -669,7 +669,7 @@ export default async function AdminReservationsPage({
               >
                 <div>
                   <span className="font-semibold text-sm">{e.description}</span>
-                  <span className="text-xs text-black/50 ml-2">{formatDate(e.date)}</span>
+                  <span className="text-xs text-black-50 ml-2">{formatDate(e.date)}</span>
                 </div>
                 <div className="flex items-center gap-3">
                   <span className="text-sm tabular-nums">{e.amountEur} €</span>
