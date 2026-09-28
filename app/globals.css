@@ -1719,145 +1719,365 @@ html:has(.owner-page-bg)::-webkit-scrollbar {
 }
 
 /* =====================================================================
-   "URED" — pikselizirani tlocrt tima (Faza 2, app/admin/poruke), na
-   izričit zahtjev: "probaj napraviti da u tom novom 'slack' djelu bude
-   kao 2d pikselizirani tlocrt zaposlenika koji su trenutno online i koji
-   nisu... nek bude kao nekakav ured i nek bude zanimljivo". NAMJERNO oštri
-   (ne zaobljeni) rubovi i image-rendering:pixelated ovdje — jedini svjesno
-   "8-bit" kutak dashboarda, u kontrastu s mekim neumorphism okolo, jer
-   igrivost je bit zahtjeva. I dalje BEZ gradijenata (svaka "pločica poda"
-   je puna boja, ne CSS gradient) i i dalje samo --neu-accent kao brend
-   akcent — status boje (radi/jede/spava) su NAMJERNO odvojen semantički
-   set (isti obrazac kao postojeće crveno=greška/jantar=upozorenje), ne
-   dodatni akcenti. Nema vanjskih slika/sprite-ova, sve je CSS (isti "sam
-   sve nacrtao" pristup kao Icons.tsx).
-   ===================================================================== */
-.office-scene {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-  gap: 14px;
-}
-.office-zone {
-  border-radius: 14px;
-  overflow: hidden;
+   "URED" v2 — pravi pikselizirani TLOCRT ureda (Portal, Faza 3), na
+   izričit zahtjev nakon prve verzije ("uopće nije kao što sam zamislio"):
+   sad je ovo stvaran plan kata (stolovi u paru, sastanačka soba s
+   tepihom, kutak za odmor s kaučem, biljke, ormar) umjesto tri odvojene
+   "zone", s avatarima koji stvarno HODAJU po prostoru (CSS keyframes po
+   dijeljenoj putanji, vidi .office-char-pos.is-walking niže) dok su
+   online. "Jede" više NIJE animacija na liku — away lik SJEDI za svojim
+   stolom, a kava/keks je nacrtan NA STOLU pored njega (.office-snack), na
+   izričitu ispravku "ovaj 'jede' ne treba biti jede nego nek se
+   vizualizira kao na stolu da je hrana". Offline lik leži na kauču u
+   kutku za odmor (i dalje "spava", samo sad kao dio stvarnog tlocrta, ne
+   posebna odvojena zona). Sve je SVG (ne raster/sprite slike) da ostane
+   oštro na svakoj rezoluciji — shape-rendering:crispEdges + isključivo
+   pravokutnici bez zaobljenih rubova daju "8-bit" dojam bez pravih pixel
+   slika. I dalje BEZ gradijenata (svaka ploha je puna boja) i I DALJE
+   samo NOVO narančasta (--neu-accent) kao jedini brend akcent (mala
+   "lampica napajanja" na svakom monitoru) — svi ostali tonovi (drvo,
+   tekstil, bilje) su namjerno neutralna paleta OKO tog akcenta, ne
+   dodatni brend akcenti. Nadahnuto RPG-tilemap referentnim slikama koje
+   je korisnik priložio, ali NAMJERNO originalan raspored/paleta — ne
+   kopija tih slika. */
+
+.office-wrap {
+  border-radius: 16px;
+  padding: 12px;
   background: var(--neu-base);
   box-shadow: inset 2px 2px 6px var(--neu-shadow), inset -2px -2px 6px var(--neu-highlight);
 }
-.office-zone-label {
+.office-frame {
+  border-radius: 10px;
+  overflow: hidden;
+  display: block;
+  width: 100%;
+  height: auto;
+  /* KLJUČNO za pikselizirani izgled — bez ovoga preglednik zaglađuje
+     rubove pravokutnika i cijela scena izgleda mutno na necjelobrojnim
+     CSS širinama (responzivno skaliranje). */
+  shape-rendering: crispEdges;
+}
+
+/* --- Likovi (avatari) --------------------------------------------- */
+
+/* Vanjska grupa nosi POZICIJU (statičnu za away/offline preko inline
+   transform, ili hodajuću animaciju za online) — odvojeno od unutarnje
+   grupe (.office-char-sprite) koja nosi idle/hod/disanje mikro-animaciju,
+   da se dva transforma nikad ne sudare na istom elementu. */
+.office-char-pos.is-walking {
+  animation-name: office-walk-loop;
+  animation-timing-function: linear;
+  animation-iteration-count: infinite;
+  animation-duration: var(--walk-dur, 19s);
+  animation-delay: var(--walk-delay, 0s);
+}
+/* Putanja je JEDNA dijeljena petlja kroz hodnike tlocrta (vidi OFFICE_LOOP
+   u OfficePresence.tsx) — svaki online avatar dobiva različit negativni
+   animation-delay pa svi hodaju ISTOM stazom ali u različitim točkama,
+   umjesto da se svi kreću u koraku. */
+@keyframes office-walk-loop {
+  0%   { transform: translate(56px, 56px); }
+  20%  { transform: translate(152px, 56px); }
+  40%  { transform: translate(248px, 136px); }
+  60%  { transform: translate(152px, 168px); }
+  80%  { transform: translate(72px, 120px); }
+  100% { transform: translate(56px, 56px); }
+}
+
+.office-char-sprite.is-walk-bob { animation: office-char-bob 0.55s ease-in-out infinite; }
+.office-char-sprite.is-idle-sway { animation: office-char-idle 2.6s ease-in-out infinite; }
+.office-char-sprite.is-sleep-breathe { animation: office-char-breathe 2.8s ease-in-out infinite; }
+@keyframes office-char-bob {
+  0%, 100% { transform: translateY(0) rotate(0deg); }
+  50% { transform: translateY(-1.5px) rotate(3deg); }
+}
+@keyframes office-char-idle {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-0.8px); }
+}
+@keyframes office-char-breathe {
+  0%, 100% { opacity: 0.72; }
+  50% { opacity: 1; }
+}
+/* Kava/keks na stolu pored away lika — blagi "para se diže" titraj. */
+.office-snack-steam { animation: office-steam 1.8s ease-in-out infinite; }
+@keyframes office-steam {
+  0%, 100% { opacity: 0.2; transform: translateY(0); }
+  50% { opacity: 0.65; transform: translateY(-2px); }
+}
+/* "Zzz" iznad lika koji spava na kauču. */
+.office-zzz { animation: office-zzz-float 2.4s ease-in-out infinite; }
+@keyframes office-zzz-float {
+  0%, 100% { opacity: 0.35; transform: translate(0, 0); }
+  50% { opacity: 0.85; transform: translate(2px, -3px); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .office-char-pos.is-walking { animation: none; }
+  .office-char-sprite.is-walk-bob,
+  .office-char-sprite.is-idle-sway,
+  .office-char-sprite.is-sleep-breathe,
+  .office-snack-steam,
+  .office-zzz { animation: none; }
+}
+
+/* --- Popis tima ispod scene (čitljiva imena — pikselizirani likovi u
+   maloj razmjeri nisu dovoljno čitljivi sami za sebe, ovo je dosljedan
+   fallback isto kao title="" hover na avataru u sceni). --- */
+.office-roster {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 10px;
+}
+.office-roster-item {
   display: flex;
   align-items: center;
   gap: 6px;
   font-size: 11px;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-  padding: 8px 10px 6px;
+  font-weight: 600;
   color: var(--neu-ink-faint);
+  background: var(--neu-base);
+  border-radius: 999px;
+  padding: 4px 10px 4px 5px;
+  box-shadow: 2px 2px 5px var(--neu-shadow), -2px -2px 5px var(--neu-highlight);
 }
-.office-zone-dot { width: 7px; height: 7px; border-radius: 2px; flex-shrink: 0; }
-.office-zone-working .office-zone-dot { background: #16a34a; }
-.office-zone-away .office-zone-dot { background: #d97706; }
-.office-zone-sleeping .office-zone-dot { background: #64748b; }
+.office-roster-swatch { width: 12px; height: 12px; border-radius: 4px; flex-shrink: 0; }
+.office-roster-status {
+  width: 6px;
+  height: 6px;
+  border-radius: 2px;
+  flex-shrink: 0;
+  margin-left: -1px;
+}
+.office-roster-status.is-working { background: #16a34a; }
+.office-roster-status.is-away { background: #d97706; }
+.office-roster-status.is-offline { background: #94a3b8; }
 
-/* Pod — stvarna mreža sitnih "pločica" (nth-child naizmjenično), ne
-   gradient-trik: svaka pločica je puna boja. */
-.office-floor {
+/* =====================================================================
+   Full-bleed "breakout" — vlasnički meni i Portal (Faza 3) trebaju se
+   rasporediti preko CIJELOG ekrana ("Ne treba biti sve u sredini, nego
+   nek se rasporedi fino preko cijelog ekrana"), ali dijeljeni
+   <main className="max-w-4xl mx-auto ..."> u app/admin/layout.tsx omata
+   SVIH 28 admin stranica — mijenjati taj wrapper globalno ima prevelik
+   doseg (svaka druga stranica bi se morala redizajnirati za punu širinu
+   istovremeno). Umjesto toga ovaj CSS trik izbija BAŠ OVAJ element iz
+   roditeljevog max-w-4xl stupca do pune širine viewporta, bez obzira na
+   ugniježđenje — sve ostale stranice ostaju netaknute. */
+.admin-breakout {
+  width: 100vw;
+  position: relative;
+  left: 50%;
+  right: 50%;
+  margin-left: -50vw;
+  margin-right: -50vw;
+  box-sizing: border-box;
+}
+/* Unutarnji omotač — bez ovoga bi "puna širina viewporta" na vrlo širokim
+   monitorima (2000px+) razvukla kartice/grafove do apsurdno tankih traka.
+   Umjesto toga vanjski .admin-breakout izbija do ruba viewporta (rješava
+   "sve u sredini"), a UNUTARNJI wrapper onda sam sebe centrira do razumne
+   maksimalne širine nadzorne ploče — "raspoređeno preko cijelog ekrana" na
+   laptopu/tabletu (896px → do 1560px), ali i dalje pregledno na 4K-u. */
+.admin-breakout-inner {
+  max-width: 1560px;
+  margin: 0 auto;
+  padding-left: clamp(16px, 4vw, 56px);
+  padding-right: clamp(16px, 4vw, 56px);
+  box-sizing: border-box;
+}
+
+/* =====================================================================
+   PORTAL (Faza 3) — spojeni Zadaci+Poruke tab ("Zadaci i poruke nek budu
+   u jednom tabu, 'Portal'"), app-shell raspored kao Slack/Teams: fiksni
+   bočni izbornik (kanal, DM razgovori, brzi linkovi) + glavni sadržaj koji
+   se prebacuje između Poruka/Zadataka/Statistike bez ponovnog učitavanja
+   stranice. Isti --neu-* tokeni kao ostatak .admin-shell (Portal NIJE
+   .owner-dash — dostupan je punim adminima, nikad vlasniku), i dalje BEZ
+   gradijenata (samo box-shadow neumorphism udubljenja/ispupčenja). */
+
+.portal-shell {
   display: grid;
-  grid-template-columns: repeat(8, 1fr);
-  gap: 1px;
-  padding: 8px;
-  min-height: 64px;
-  align-content: start;
+  grid-template-columns: 264px minmax(0, 1fr);
+  gap: 22px;
+  align-items: start;
 }
-.office-tile {
-  aspect-ratio: 1;
-  border-radius: 1px;
-  background: var(--neu-shadow);
-  opacity: 0.35;
+@media (max-width: 860px) {
+  .portal-shell { grid-template-columns: 1fr; gap: 16px; }
 }
-.office-tile:nth-child(odd) { opacity: 0.22; }
 
-.office-avatars {
-  grid-column: 1 / -1;
-  margin-top: -46px;
-  padding: 0 8px 10px;
-  display: flex;
-  flex-wrap: wrap;
-  gap: 10px;
-}
-.office-avatar {
+.portal-sidebar {
   display: flex;
   flex-direction: column;
-  align-items: center;
-  gap: 3px;
-  width: 44px;
+  gap: 18px;
+  position: sticky;
+  top: 18px;
 }
-.office-avatar-body {
-  position: relative;
-  width: 30px;
-  height: 30px;
-  border-radius: 6px;
-  image-rendering: pixelated;
-  box-shadow: 0 2px 0 rgba(0,0,0,0.15);
+@media (max-width: 860px) {
+  .portal-sidebar { position: static; }
 }
-.office-avatar-eyes {
-  position: absolute;
-  top: 11px;
-  left: 6px;
-  width: 18px;
+
+.portal-nav-label {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--neu-ink-faint);
+  padding: 0 10px;
+  margin-bottom: 4px;
+}
+.portal-nav-group { display: flex; flex-direction: column; gap: 2px; }
+.portal-nav-item {
   display: flex;
-  justify-content: space-between;
+  align-items: center;
+  gap: 9px;
+  padding: 7px 10px;
+  border-radius: 10px;
+  font-size: 13.5px;
+  font-weight: 600;
+  color: var(--neu-ink);
+  text-decoration: none;
+  min-width: 0;
 }
-.office-avatar-eyes span {
-  width: 4px;
-  height: 4px;
-  background: #fff;
-  border-radius: 1px;
-  display: block;
+.portal-nav-item:hover { background: var(--neu-shadow); }
+.portal-nav-item.is-active {
+  background: var(--neu-base);
+  box-shadow: inset 2px 2px 5px var(--neu-shadow), inset -2px -2px 5px var(--neu-highlight);
+  color: var(--neu-accent);
 }
-.office-avatar-badge {
-  position: absolute;
-  bottom: -3px;
-  right: -3px;
-  width: 16px;
-  height: 16px;
-  border-radius: 5px;
+.portal-nav-item-label { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1; min-width: 0; }
+.portal-nav-avatar {
+  width: 20px;
+  height: 20px;
+  border-radius: 6px;
+  flex-shrink: 0;
   display: flex;
   align-items: center;
   justify-content: center;
-  background: var(--neu-base);
-  box-shadow: 1px 1px 3px var(--neu-shadow), -1px -1px 3px var(--neu-highlight);
-}
-.office-avatar-badge svg { width: 10px; height: 10px; }
-.office-avatar-label {
   font-size: 9px;
-  font-weight: 600;
+  font-weight: 700;
+  color: #fff;
+}
+.portal-nav-badge {
+  margin-left: auto;
+  font-size: 10px;
+  font-weight: 700;
+  background: var(--neu-accent);
+  color: #fff;
+  border-radius: 999px;
+  padding: 1px 6px;
+  min-width: 16px;
+  text-align: center;
+  flex-shrink: 0;
+}
+
+.portal-main { min-width: 0; display: flex; flex-direction: column; gap: 16px; }
+
+.portal-tabs { display: flex; gap: 6px; flex-wrap: wrap; }
+.portal-tab {
+  padding: 7px 14px;
+  border-radius: 999px;
+  font-size: 12.5px;
+  font-weight: 700;
+  background: var(--neu-base);
+  box-shadow: 2px 2px 5px var(--neu-shadow), -2px -2px 5px var(--neu-highlight);
   color: var(--neu-ink-faint);
-  max-width: 44px;
+  border: none;
+  cursor: pointer;
+}
+.portal-tab.is-active { color: #fff; background: var(--neu-accent); box-shadow: none; }
+
+/* --- Chat nit (Teams-stil) — dijeli se između tim kanala i DM-a --- */
+.portal-thread {
+  display: flex;
+  flex-direction: column;
+  height: min(620px, 72vh);
+  background: var(--neu-base);
+  border-radius: 16px;
+  box-shadow: inset 2px 2px 6px var(--neu-shadow), inset -2px -2px 6px var(--neu-highlight);
   overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
 }
-
-@keyframes office-bob { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-2px); } }
-@keyframes office-sway { 0%, 100% { transform: rotate(-4deg); } 50% { transform: rotate(4deg); } }
-@keyframes office-breathe { 0%, 100% { opacity: 0.55; } 50% { opacity: 0.85; } }
-.office-avatar-body.is-working { animation: office-bob 1.1s ease-in-out infinite; }
-.office-avatar-body.is-away { animation: office-sway 1.6s ease-in-out infinite; }
-.office-avatar-body.is-sleeping { animation: office-breathe 2.4s ease-in-out infinite; }
-
-.office-empty {
-  grid-column: 1 / -1;
-  margin-top: -46px;
-  padding: 0 10px 12px;
-  font-size: 11px;
+.portal-thread-messages {
+  flex: 1;
+  overflow-y: auto;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+.portal-thread-empty {
+  margin: auto;
+  font-size: 13px;
   color: var(--neu-ink-faint);
+  text-align: center;
 }
+.portal-msg-group {
+  display: flex;
+  gap: 10px;
+  padding: 6px 8px;
+  border-radius: 10px;
+}
+.portal-msg-group.is-own { background: rgba(255, 127, 0, 0.07); }
+.portal-msg-avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 9px;
+  flex-shrink: 0;
+  margin-top: 1px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  font-weight: 700;
+  color: #fff;
+}
+.portal-msg-body { min-width: 0; flex: 1; }
+.portal-msg-head { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; }
+.portal-msg-name { font-size: 13px; font-weight: 700; color: var(--neu-ink); }
+.portal-msg-time { font-size: 10.5px; color: var(--neu-ink-faint); }
+.portal-msg-text {
+  font-size: 13.5px;
+  line-height: 1.5;
+  white-space: pre-wrap;
+  word-break: break-word;
+  color: var(--neu-ink);
+  margin-top: 1px;
+}
+.portal-thread-form {
+  border-top: 1px solid var(--neu-shadow);
+  padding: 10px 12px;
+  display: flex;
+  gap: 8px;
+  align-items: flex-end;
+  background: var(--neu-base);
+}
+.portal-thread-textarea { flex: 1; resize: none; }
 
-@media (prefers-reduced-motion: reduce) {
-  .office-avatar-body.is-working,
-  .office-avatar-body.is-away,
-  .office-avatar-body.is-sleeping { animation: none; }
+/* --- Statistika kartice (grafovi) --- */
+.portal-stat-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 16px; }
+.portal-donut-legend { display: flex; flex-direction: column; gap: 6px; margin-top: 10px; }
+.portal-donut-legend-item { display: flex; align-items: center; gap: 8px; font-size: 12.5px; color: var(--neu-ink-faint); }
+.portal-donut-swatch { width: 10px; height: 10px; border-radius: 3px; flex-shrink: 0; }
+.portal-bar-row { display: flex; align-items: center; gap: 10px; font-size: 12.5px; }
+.portal-bar-row-label { width: 96px; flex-shrink: 0; color: var(--neu-ink-faint); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.portal-bar-track { flex: 1; height: 10px; border-radius: 999px; background: var(--neu-shadow); overflow: hidden; }
+.portal-bar-fill { height: 100%; border-radius: 999px; background: var(--neu-accent); }
+.portal-bar-row-count { width: 22px; text-align: right; font-weight: 700; color: var(--neu-ink); flex-shrink: 0; }
+
+/* --- Profil --- */
+.portal-profile-header { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; }
+.portal-profile-avatar {
+  width: 64px;
+  height: 64px;
+  border-radius: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 22px;
+  font-weight: 700;
+  color: #fff;
+  flex-shrink: 0;
 }
 
 .owner-dash {
