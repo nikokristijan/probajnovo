@@ -558,7 +558,7 @@ html.novo-lock-scroll body {
    token koji koristimo za tekst/rubove/sjene "na trenutnoj paper/plaster
    podlozi" — kad se ta podloga zbog tamne varijante zapravo zatamni, boja se
    automatski posvijetli umjesto da ostane pretamna i nečitljiva. Isti token
-   se koristi u SVIM layoutima (eyebrow, oznake, cijena po sezoni, raw sjene),
+   se koristi u SVIM layoutima (eyebrow, oznake, cijena po sezonu, raw sjene),
    pa se popravak automatski primijeni posvuda. */
 .stay-dark {
   --ink: #f2ede1; --paper: #15120f; --plaster: #211c17; --dim: #a89c86;
@@ -1251,7 +1251,28 @@ html.novo-lock-scroll body {
    ===================================================================== */
 .admin-quicklink { font-size: 13px; font-weight: 600; border: 1px solid rgba(0,0,0,0.12); border-radius: 999px; padding: 8px 16px; background: #fff; text-decoration: none; color: #000; transition: border-color 0.15s ease, color 0.15s ease; }
 .admin-quicklink:hover { border-color: #ff7f00; color: #ff7f00; }
-.admin-shell { min-height: 100vh; background: #f7f7f5; font-family: var(--font-space-grotesk), sans-serif; }
+.admin-shell {
+  min-height: 100vh;
+  background: #f7f7f5;
+  font-family: var(--font-space-grotesk), sans-serif;
+  /* Neumorphism tokeni za IZBORNIK (vidi .neu-header/.neu-nav niže) —
+     definirani ovdje jer je .admin-shell zajednički predak i vlasniku i
+     superadminu. Vrijednosti ovdje su LIGHT-ONLY zadano stanje (koristi ih
+     puni admin, koji nema temu po korisniku) — .owner-page-bg niže
+     (postavlja se SAMO za role="owner", vidi app/admin/layout.tsx)
+     prepisuje ista imena svojim (light/dark/system) paletama, pa se
+     .neu-header ne mora granati po ulozi: čita iste --neu-* varijable, a
+     koja se vrijednost primijeni ovisi samo o tome je li .owner-page-bg
+     prisutan na istom elementu. --neu-base namjerno = --admin-shell
+     pozadina (#f7f7f5) da izbornik izgleda "izrezan" iz iste podloge, ne
+     kao naljepljena pločica druge boje — to je bit neumorphism efekta. */
+  --neu-base: #f7f7f5;
+  --neu-highlight: #ffffff;
+  --neu-shadow: #d3d3cd;
+  --neu-ink: #14142b;
+  --neu-ink-faint: rgba(20, 20, 43, 0.5);
+  --neu-accent: #ff7f00;
+}
 .admin-input {
   border: 1px solid rgba(0, 0, 0, 0.15);
   border-radius: 10px;
@@ -1336,8 +1357,9 @@ html.novo-lock-scroll body {
      vlasnik adminu (kalendar, rezervacije...) treba istu temu kao početna".
      Ovi --oh-* tokeni žive OVDJE (na .owner-page-bg = .admin-shell omotač,
      iznad i headera i <main>-a) umjesto na .owner-dash (koji headeru nije
-     predak) — tako i .owner-header niže i bilo koja buduća vlasnička
-     stranica izvan .owner-dash mogu čitati istu paletu bez ponavljanja.
+     predak) — tako i izbornik niže (.neu-header, .owner-header-chip/-faint)
+     i bilo koja buduća vlasnička stranica izvan .owner-dash mogu čitati
+     istu paletu bez ponavljanja.
      Namjerno ODVOJENO od --od-* tokena na .owner-dash (isti brojevi, ali
      zasebne varijable) da uređivanje jednog sustava slučajno ne pomakne
      drugi. */
@@ -1346,6 +1368,17 @@ html.novo-lock-scroll body {
   --oh-glass: rgba(243, 244, 255, 0.72);
   --oh-glass-chip: rgba(11, 11, 31, 0.05);
   --oh-hairline: rgba(11, 11, 31, 0.1);
+  /* Vlasnička (light) neumorphism paleta za izbornik — vidi opsežan
+     komentar uz --neu-* na .admin-shell gore za zašto ova imena postoje na
+     dva mjesta. --neu-base = ISTA boja kao pozadina ispod (#f2f3f9, vidi
+     "background" gore) iz istog razloga: izbornik mora izgledati kao dio
+     iste podloge, ne naljepljena pločica. */
+  --neu-base: #f2f3f9;
+  --neu-highlight: #ffffff;
+  --neu-shadow: #c9cbe1;
+  --neu-ink: var(--oh-ink);
+  --neu-ink-faint: var(--oh-ink-faint);
+  --neu-accent: #ff7f00;
 }
 /* DESETI krug feedbacka ("odmah iznad Juraj Filipović, i lijevo i desno,
    kao da je sve u okviru", samo u tamnom modu) — .owner-dash (vidi
@@ -1359,8 +1392,10 @@ html.novo-lock-scroll body {
    oko sadržaja. Rješenje: isti ambient sjaj (identične brojke kao
    --od-glow-navy-wash u tamnoj temi niže) i na .owner-page-bg — proviri li
    sad kroz padding ili ne, boja se svugdje nastavlja pa nema ruba. Dodatna
-   korist: .owner-header (glass/backdrop-filter, vidi niže) sad ima stvarnu
-   boju ispod sebe za "liquid glass" efekt umjesto ravne navy podloge. */
+   korist: izbornik (.neu-header, vidi niže — bio je .owner-header
+   glass/backdrop-filter u ranijoj verziji) i dalje ima stvarnu boju ispod
+   sebe umjesto ravne navy podloge, sad kao osnova za neumorphism sjene
+   umjesto za "liquid glass" prozirnost. */
 .owner-page-bg[data-theme="dark"] {
   background: radial-gradient(140% 70% at 50% -4%, rgba(70, 70, 255, 0.32), transparent 62%),
     #0a0a24;
@@ -1369,6 +1404,17 @@ html.novo-lock-scroll body {
   --oh-glass: rgba(20, 20, 36, 0.72);
   --oh-glass-chip: rgba(255, 255, 255, 0.1);
   --oh-hairline: rgba(255, 255, 255, 0.14);
+  /* Vlasnička (dark) neumorphism paleta — --neu-base blizu solidne baze
+     gornjeg gradijenta (#0a0a24) tako da izbornik u mirovanju vizualno
+     nastavlja pozadinu ispod sebe umjesto da izgleda kao odvojena pločica;
+     --neu-highlight svjetlija navy nijansa (ne bijela — bijeli highlight na
+     tamnoj bazi bi izgledao kao žarulja, ne kao mekana ispupčenost). */
+  --neu-base: #0d0d29;
+  --neu-highlight: #1a1a4a;
+  --neu-shadow: #020208;
+  --neu-ink: var(--oh-ink);
+  --neu-ink-faint: var(--oh-ink-faint);
+  --neu-accent: #ff7f00;
 }
 @media (prefers-color-scheme: dark) {
   .owner-page-bg:not([data-theme="light"]):not([data-theme="dark"]) {
@@ -1379,6 +1425,12 @@ html.novo-lock-scroll body {
     --oh-glass: rgba(20, 20, 36, 0.72);
     --oh-glass-chip: rgba(255, 255, 255, 0.1);
     --oh-hairline: rgba(255, 255, 255, 0.14);
+    --neu-base: #0d0d29;
+    --neu-highlight: #1a1a4a;
+    --neu-shadow: #020208;
+    --neu-ink: var(--oh-ink);
+    --neu-ink-faint: var(--oh-ink-faint);
+    --neu-accent: #ff7f00;
   }
 }
 
@@ -1433,38 +1485,105 @@ html:has(.owner-page-bg)::-webkit-scrollbar {
   height: 0;
 }
 
-/* Header postaje stakleni sloj PREKO vlasničke pozadine umjesto fiksno
-   bijele trake — bez ovoga je u tamnom modu bio ostar bijeli pojas na vrhu
-   koji se sudarao s tamnom .owner-dash pozadinom ispod (isti "crta" problem
-   kao PETI krug gore, samo za header umjesto za samu kutiju). border-bottom
-   boja MORA biti eksplicitna (var(--oh-hairline)) jer bez border-color
-   utility klase Tailwind "border-b" pada natrag na currentColor, što bi
-   headeru dalo rub boje teksta umjesto suptilne linije. */
-.owner-header {
-  background: var(--oh-glass);
-  backdrop-filter: blur(20px) saturate(160%);
-  -webkit-backdrop-filter: blur(20px) saturate(160%);
-  color: var(--oh-ink);
-  border-bottom-color: var(--oh-hairline);
-  transition: background-color 0.25s ease, border-color 0.25s ease, color 0.25s ease;
-}
-/* Sticky da staklo ostane vidljivo i pri scrollu dužih vlasničkih stranica
-   (kalendar/rezervacije) — bez ovoga bi header "nestao" iza sadržaja čim
-   stranica prijeđe visinu ekrana. */
-.owner-header {
+/* =====================================================================
+   ADMIN IZBORNIK — neumorphism (zamjenjuje raniji "liquid glass" header
+   za vlasnika i ravni bijeli header za superadmina jednim dijeljenim
+   "soft UI" tretmanom). Oba sučelja sad koriste ISTE klase (.neu-header/
+   .neu-nav/.neu-btn/.neu-toggle) — koja se paleta primijeni ovisi samo o
+   tome čita li se --neu-* preko .owner-page-bg (vlasnik, light/dark/
+   sustav) ili izravno preko .admin-shell (superadmin, uvijek light) —
+   vidi te varijable uz "background" na oba mjesta gore. Cilj: baza
+   izbornika (--neu-base) NAMJERNO ista boja kao stranica ispod (ne
+   naljepljena pločica), a dubina dolazi isključivo iz dvostruke sjene
+   (svijetla + tamna), ne iz ruba ili prozirnosti — to je razlika prema
+   ranijem "liquid glass" pristupu (staklo/blur) koji ostaje netaknut na
+   .owner-dash (kalendar/rezervacije/postavke) ispod izbornika. */
+.neu-header {
   position: sticky;
   top: 0;
   z-index: 40;
+  background: var(--neu-base);
+  color: var(--neu-ink);
+  /* Rub zamijenjen mekom sjenom ispod trake (umjesto border-b) + tankom
+     svijetlom linijom pri vrhu (inset) koja glumi gornji "highlight" ruba
+     ispupčene površine. */
+  box-shadow: 0 1px 0 var(--neu-highlight) inset, 0 1px 2px var(--neu-shadow), 0 12px 24px -20px var(--neu-shadow);
+  transition: background-color 0.25s ease, color 0.25s ease, box-shadow 0.25s ease;
 }
-.owner-header-border {
-  border-color: var(--oh-hairline);
+
+/* Svaka nav stavka postaje zasebna meka pločica — cilja SVE izravne <a>
+   potomke (next/link renderira <a>), pa i vlasnički i superadmin set
+   linkova (4 vs ~9) te zajednički "Postavke"/"Pogledaj stranicu" dobivaju
+   identičan tretman bez posebne komponente po linku. U mirovanju ispupčena
+   (dvostruka vanjska sjena), pri hoveru "podignutija" (uža sjena + narančasti
+   tekst), pri kliku "utisnuta" (inset sjena + lagano smanjenje) — klasični
+   raised → hover → pressed neumorphism ciklus. */
+.neu-nav > a {
+  display: inline-block;
+  padding: 8px 14px;
+  border-radius: 14px;
+  background: var(--neu-base);
+  box-shadow: 4px 4px 8px var(--neu-shadow), -4px -4px 8px var(--neu-highlight);
+  transition: box-shadow 0.18s cubic-bezier(0.22, 1, 0.36, 1), transform 0.18s cubic-bezier(0.22, 1, 0.36, 1),
+    color 0.18s ease;
+}
+.neu-nav > a:hover {
+  color: var(--neu-accent);
+  box-shadow: 2px 2px 5px var(--neu-shadow), -2px -2px 5px var(--neu-highlight);
+}
+.neu-nav > a:active {
+  transform: scale(0.96);
+  box-shadow: inset 3px 3px 6px var(--neu-shadow), inset -3px -3px 6px var(--neu-highlight);
+}
+
+/* Hamburger toggle (mobitel) i "Odjava" gumb — isti raised/pressed jezik
+   kao .neu-nav > a gore, odvojeno definirano jer nisu <a> (label i
+   button). .neu-toggle zadržava blaže zaobljen kvadratni oblik (ikonski
+   gumb), .neu-btn pilulu (tekstualni gumb poput "Odjava"). */
+.neu-btn,
+.neu-toggle {
+  border: none;
+  background: var(--neu-base);
+  color: inherit;
+  box-shadow: 4px 4px 8px var(--neu-shadow), -4px -4px 8px var(--neu-highlight);
+  transition: box-shadow 0.18s cubic-bezier(0.22, 1, 0.36, 1), transform 0.18s cubic-bezier(0.22, 1, 0.36, 1),
+    color 0.18s ease;
+}
+.neu-btn { border-radius: 999px; }
+.neu-toggle { border-radius: 12px; }
+.neu-btn:hover,
+.neu-toggle:hover {
+  color: var(--neu-accent);
+}
+.neu-btn:active,
+.neu-toggle:active {
+  transform: scale(0.96);
+  box-shadow: inset 3px 3px 6px var(--neu-shadow), inset -3px -3px 6px var(--neu-highlight);
+}
+
+/* Email/rola značke — TRAJNO utisnute (inset sjena), za razliku od
+   klikabilnih elemenata gore koji su ispupčeni dok miruju; vizualno
+   odmah jasno da je ovo statusni natpis, ne gumb. */
+.owner-header-chip {
+  background: var(--neu-base);
+  color: var(--neu-ink-faint);
+  box-shadow: inset 2px 2px 4px var(--neu-shadow), inset -2px -2px 4px var(--neu-highlight);
 }
 .owner-header-faint {
-  color: var(--oh-ink-faint);
+  color: var(--neu-ink-faint);
 }
-.owner-header-chip {
-  background: var(--oh-glass-chip);
-  color: var(--oh-ink-faint);
+
+@media (prefers-reduced-motion: reduce) {
+  .neu-nav > a,
+  .neu-btn,
+  .neu-toggle {
+    transition: color 0.18s ease;
+  }
+  .neu-nav > a:active,
+  .neu-btn:active,
+  .neu-toggle:active {
+    transform: none;
+  }
 }
 
 .owner-dash {

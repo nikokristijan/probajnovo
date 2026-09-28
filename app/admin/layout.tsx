@@ -12,7 +12,7 @@ import PwaRegister from "@/components/admin/PwaRegister";
    crta preko nje), pa je nijedan CSS unutar stranice ne može obojiti — samo
    ovaj meta podatak. Zato metadata mora postati generateMetadata(): čita
    trenutnog admina i za role="owner" u eksplicitnoj tamnoj temi vraća
-   "black" (puna tamna traka, sljubljuje se s .owner-header ispod umjesto
+   "black" (puna tamna traka, sljubljuje se s .neu-header ispod umjesto
    bijelog reza) — za sve ostalo (puni/superadmin, ili vlasnik u
    svijetloj/sustavnoj temi) ostaje "default" kao i dosad, potpuno
    nepromijenjeno ponašanje na tom putu. "Sustav" tema nema poseban slučaj
@@ -81,18 +81,13 @@ export default async function AdminLayout({ children }: { children: React.ReactN
       data-theme={isOwner ? (admin.themePreference ?? "system") : undefined}
     >
       <PwaRegister />
-      {/* ŠESTI krug feedbacka ("gornji navbar ostaje bijel u tamnom modu") —
-          header dobiva "owner-header" stakleni sloj SAMO za role="owner"
-          (vidi .owner-header u globals.css); puni (super)admin zadržava
-          identičan bg-white/border-black izgled kao i prije, ništa se ne
-          dira na tom putu. */}
-      <header
-        className={
-          isOwner
-            ? "flex items-center justify-between px-6 py-4 border-b owner-header flex-wrap gap-3"
-            : "flex items-center justify-between px-6 py-4 border-b border-black/10 bg-white flex-wrap gap-3"
-        }
-      >
+      {/* Neumorphism izbornik — ".neu-header"/".neu-nav"/".neu-btn"/".neu-toggle"
+          (vidi opsežan komentar uz te klase u globals.css) zamjenjuju raniji
+          par "owner-header staklo" vs "bg-white/border-black" jednim
+          dijeljenim tretmanom za obje uloge; koja se paleta primijeni (light
+          vlasnik / dark vlasnik / superadmin) ovisi samo o tome je li
+          .owner-page-bg prisutan na omotaču gore, ne o ovom className-u. */}
+      <header className="flex items-center justify-between px-6 py-4 neu-header flex-wrap gap-3">
         <span className="font-bold tracking-tight">
           NOVO <span className="text-[#ff7f00]">admin</span>
         </span>
@@ -107,77 +102,73 @@ export default async function AdminLayout({ children }: { children: React.ReactN
             <input type="checkbox" id="admin-nav-toggle" className="peer hidden" />
             <label
               htmlFor="admin-nav-toggle"
-              className={
-                isOwner
-                  ? "sm:hidden cursor-pointer border owner-header-border rounded-lg px-3 py-1.5 text-sm font-semibold"
-                  : "sm:hidden cursor-pointer border border-black/15 rounded-lg px-3 py-1.5 text-sm font-semibold"
-              }
+              className="sm:hidden neu-toggle px-3 py-1.5 text-sm font-semibold"
               aria-label="Izbornik"
             >
               ☰
             </label>
-            <nav className="hidden peer-checked:flex sm:flex items-start sm:items-center gap-3 sm:gap-5 text-sm flex-col sm:flex-row w-full sm:w-auto flex-wrap">
+            <nav className="hidden peer-checked:flex sm:flex items-start sm:items-center gap-3 sm:gap-5 text-sm flex-col sm:flex-row w-full sm:w-auto flex-wrap neu-nav">
             {admin.role === "owner" ? (
               // Vlasnik ima samo ograničen pregled — ne smije uređivati stranicu.
               // /admin sad prikazuje njegov vlastiti dashboard (vidi app/admin/page.tsx),
               // ne puni pregled kao za role="admin".
               <>
-                <Link href="/admin" className="hover:text-[#ff7f00]">
+                <Link href="/admin">
                   Početna
                 </Link>
-                <Link href="/admin/inquiries" className="hover:text-[#ff7f00]">
+                <Link href="/admin/inquiries">
                   Upiti
                 </Link>
-                <Link href="/admin/rezervacije" className="hover:text-[#ff7f00]">
+                <Link href="/admin/rezervacije">
                   Rezervacije
                 </Link>
-                <Link href="/admin/kalendar" className="hover:text-[#ff7f00]">
+                <Link href="/admin/kalendar">
                   Kalendar
                 </Link>
               </>
             ) : (
               <>
-                <Link href="/admin" className="hover:text-[#ff7f00]">
+                <Link href="/admin">
                   Pregled
                 </Link>
-                <Link href="/admin/agency" className="hover:text-[#ff7f00]">
+                <Link href="/admin/agency">
                   Sadržaj agencije
                 </Link>
-                <Link href="/admin#firme" className="hover:text-[#ff7f00]">
+                <Link href="/admin#firme">
                   Firme
                 </Link>
                 {/* Kalendar/Rezervacije/Upiti su grupirani pod jedan hub (bira se
                     vikendica pa se tek onda vidi njen kalendar/rezervacije/upiti)
                     umjesto tri zasebna taba koja su miješala sve vikendice odjednom
                     i postajala krcata — vidi app/admin/vikendice. */}
-                <Link href="/admin/vikendice" className="hover:text-[#ff7f00]">
+                <Link href="/admin/vikendice">
                   Vikendice
                 </Link>
                 {/* Prodaja je spojena u Financije (na izričit zahtjev korisnika:
                     "spoji tab financije i prodaja u jedan") — jedan link, jedna
                     stranica, vidi app/admin/financije AgencyLedgerTable. */}
                 {admin.isSuperAdmin && (
-                  <Link href="/admin/financije" className="hover:text-[#ff7f00]">
+                  <Link href="/admin/financije">
                     Financije
                   </Link>
                 )}
-                <Link href="/admin/aktivnost" className="hover:text-[#ff7f00]">
+                <Link href="/admin/aktivnost">
                   Aktivnost
                 </Link>
                 {admin.isSuperAdmin && (
-                  <Link href="/admin/admins" className="hover:text-[#ff7f00]">
+                  <Link href="/admin/admins">
                     Admini
                   </Link>
                 )}
               </>
             )}
-            <Link href="/admin/settings" className="hover:text-[#ff7f00]">
+            <Link href="/admin/settings">
               Postavke
             </Link>
-            <Link href={ownerPageHref ?? "/"} className="hover:text-[#ff7f00]" target="_blank">
+            <Link href={ownerPageHref ?? "/"} target="_blank">
               Pogledaj stranicu ↗
             </Link>
-            <span className={isOwner ? "owner-header-faint flex items-center gap-1.5" : "text-black/40 flex items-center gap-1.5"}>
+            <span className="owner-header-faint flex items-center gap-1.5">
               {admin.email}
               {admin.isSuperAdmin && (
                 <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-[#ff7f00]/10 text-[#ff7f00]">
@@ -185,26 +176,13 @@ export default async function AdminLayout({ children }: { children: React.ReactN
                 </span>
               )}
               {admin.role === "owner" && (
-                <span
-                  className={
-                    isOwner
-                      ? "text-[10px] font-semibold px-1.5 py-0.5 rounded-full owner-header-chip"
-                      : "text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-black/5 text-black/50"
-                  }
-                >
+                <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full owner-header-chip">
                   vlasnik{ownerLabel ? ` · ${ownerLabel}` : ""}
                 </span>
               )}
             </span>
             <form action={logoutAction}>
-              <button
-                type="submit"
-                className={
-                  isOwner
-                    ? "rounded-full border owner-header-border px-3 py-1.5 hover:border-[#ff7f00] hover:text-[#ff7f00]"
-                    : "rounded-full border border-black/15 px-3 py-1.5 hover:border-[#ff7f00] hover:text-[#ff7f00]"
-                }
-              >
+              <button type="submit" className="neu-btn px-3 py-1.5">
                 Odjava
               </button>
             </form>
