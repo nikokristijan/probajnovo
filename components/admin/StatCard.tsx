@@ -18,12 +18,12 @@ export function StatCard({
   suffix?: string;
 }) {
   return (
-    <div className="border border-black/10 rounded-xl px-4 py-3 bg-white">
+    <div className="neu-card px-4 py-3">
       <div className="text-2xl font-bold tabular-nums">
         {value.toLocaleString("hr-HR")}
         {suffix ?? ""}
       </div>
-      <div className="text-xs text-black/50 mt-0.5">{label}</div>
+      <div className="text-xs mt-0.5" style={{ color: "var(--neu-ink-faint)" }}>{label}</div>
     </div>
   );
 }
