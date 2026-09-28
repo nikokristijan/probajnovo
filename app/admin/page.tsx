@@ -19,6 +19,7 @@ import {
 } from "@/lib/db/queries";
 import type { AdminUser } from "@/lib/db/schema";
 import { StatCard } from "@/components/admin/StatCard";
+import { EmptyState } from "@/components/admin/EmptyState";
 import { currentYearMonthZagreb } from "@/lib/date";
 import OwnerHero from "@/components/admin/OwnerHero";
 import OwnerTrendChart from "@/components/admin/OwnerTrendChart";
@@ -189,16 +190,14 @@ export default async function AdminDashboard() {
         </div>
 
         {properties.length === 0 ? (
-          <p className="text-sm text-black/60">
-            Još nema dodanih vikendica. Klikni &ldquo;Dodaj vikendicu&rdquo; da napraviš prvu.
-          </p>
+          <EmptyState title="Još nema vikendica" hint="Klikni „Dodaj vikendicu” da napraviš prvu." />
         ) : (
           <div className="flex flex-col gap-2">
             {properties.map((p) => (
               <Link
                 key={p.id}
                 href={`/admin/properties/${p.id}`}
-                className="flex items-center justify-between border border-black/10 rounded-xl px-4 py-3 bg-white hover:border-[#0000c3]/40"
+                className="flex items-center justify-between neu-card neu-card-interactive px-4 py-3"
               >
                 <div>
                   <div className="font-semibold text-sm">{p.name}</div>
@@ -248,16 +247,14 @@ export default async function AdminDashboard() {
         </div>
 
         {companies.length === 0 ? (
-          <p className="text-sm text-black/60">
-            Još nema dodanih firmi. Klikni &ldquo;Dodaj firmu&rdquo; da napraviš prvu.
-          </p>
+          <EmptyState title="Još nema firmi" hint="Klikni „Dodaj firmu” da napraviš prvu." />
         ) : (
           <div className="flex flex-col gap-2">
             {companies.map((c) => (
               <Link
                 key={c.id}
                 href={`/admin/companies/${c.id}`}
-                className="flex items-center justify-between border border-black/10 rounded-xl px-4 py-3 bg-white hover:border-[#0000c3]/40"
+                className="flex items-center justify-between neu-card neu-card-interactive px-4 py-3"
               >
                 <div>
                   <div className="font-semibold text-sm">{c.name}</div>
@@ -298,16 +295,14 @@ export default async function AdminDashboard() {
         </div>
 
         {studies.length === 0 ? (
-          <p className="text-sm text-black/60">
-            Još nema dodanih Studies unosa. Klikni &ldquo;Dodaj Study&rdquo; da napraviš prvi.
-          </p>
+          <EmptyState title="Još nema Studies unosa" hint="Klikni „Dodaj Study” da napraviš prvi." />
         ) : (
           <div className="flex flex-col gap-2">
             {studies.map((s) => (
               <Link
                 key={s.id}
                 href={`/admin/studies/${s.id}`}
-                className="flex items-center justify-between border border-black/10 rounded-xl px-4 py-3 bg-white hover:border-[#0000c3]/40"
+                className="flex items-center justify-between neu-card neu-card-interactive px-4 py-3"
               >
                 <div>
                   <div className="font-semibold text-sm">{s.title}</div>
@@ -349,16 +344,14 @@ export default async function AdminDashboard() {
         </div>
 
         {products.length === 0 ? (
-          <p className="text-sm text-black/60">
-            Još nema dodanih proizvoda. Klikni &ldquo;Dodaj proizvod&rdquo; da napraviš prvi.
-          </p>
+          <EmptyState title="Još nema proizvoda" hint="Klikni „Dodaj proizvod” da napraviš prvi." />
         ) : (
           <div className="flex flex-col gap-2">
             {products.map((p) => (
               <Link
                 key={p.id}
                 href={`/admin/products/${p.id}`}
-                className="flex items-center justify-between border border-black/10 rounded-xl px-4 py-3 bg-white hover:border-[#0000c3]/40"
+                className="flex items-center justify-between neu-card neu-card-interactive px-4 py-3"
               >
                 <div>
                   <div className="font-semibold text-sm flex items-center gap-2">
@@ -408,16 +401,14 @@ export default async function AdminDashboard() {
         </div>
 
         {nfcTags.length === 0 ? (
-          <p className="text-sm text-black/60">
-            Još nema dodanih NFC oznaka. Klikni &ldquo;Dodaj NFC oznaku&rdquo; da napraviš prvu.
-          </p>
+          <EmptyState title="Još nema NFC oznaka" hint="Klikni „Dodaj NFC oznaku” da napraviš prvu." />
         ) : (
           <div className="flex flex-col gap-2">
             {nfcTags.map((tag) => (
               <Link
                 key={tag.id}
                 href={`/admin/nfc/${tag.id}`}
-                className="flex items-center justify-between border border-black/10 rounded-xl px-4 py-3 bg-white hover:border-[#0000c3]/40"
+                className="flex items-center justify-between neu-card neu-card-interactive px-4 py-3"
               >
                 <div>
                   <div className="font-semibold text-sm">{tag.label}</div>
@@ -449,7 +440,7 @@ export default async function AdminDashboard() {
 /* Netflix-stil hero kartica (neto zarada, Duolingo streak, cilj dana */
 /* zauzeća s prstenom, konfeti na rekordu), dva animirana trend grafa */
 /* (zarada i zauzetost zadnjih 6 mjeseci) i, ako vlasnik ima više od  */
-/* jedne vikendice, vodoravni red kartica po vikendici (Netflix row). */
+/* jrdne vikendice, vodoravni red kartica po vikendici (Netflix row). */
 /* Vlasnik i dalje ne smije ništa uređivati ovdje — samo grafovi i    */
 /* linkovi na /admin/kalendar, /admin/rezervacije i /admin/inquiries, */
 /* gdje se sva stvarna radnja događa. Superadmin dashboard iznad ovoga */
@@ -516,7 +507,7 @@ async function OwnerDashboard({ admin }: { admin: AdminUser }) {
   const historicalNets = trend.slice(0, -1).map((t) => t.netEur);
   const isRecord = netEurThisMonth > 0 && historicalNets.length > 0 && netEurThisMonth > Math.max(...historicalNets);
   // trend[0] je, uz monthsBack=13, isti mjesec prošle godine — YoY usporedba
-  // ima smisla samo kad imamo punih 13 točaka (dovoljno dug povijesni niz).
+  // ima smisla samo kada imamo punih 13 točaka (dovoljno dug povijesni niz).
   const yoyDeltaDays = trend.length >= 13 ? daysBookedThisMonth - trend[0].daysBooked : null;
 
   // Dana u tekućem mjesecu (Date.UTC(year, month, 0) s mjesecom 1-12 vraća
@@ -646,9 +637,7 @@ async function OwnerDashboard({ admin }: { admin: AdminUser }) {
             </Link>
           </div>
           {recentInquiries.length === 0 ? (
-            <p className="text-sm" style={{ color: "var(--od-ink-faint)" }}>
-              Još nema upita.
-            </p>
+            <EmptyState title="Još nema upita" />
           ) : (
             <div className="flex flex-col gap-2">
               {recentInquiries.map((i) => (
