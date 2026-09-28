@@ -22,6 +22,7 @@ import OwnerExpenseForm from "@/components/admin/OwnerExpenseForm";
 import OwnerDeleteButton from "@/components/admin/OwnerDeleteButton";
 import OwnerTrendChart from "@/components/admin/OwnerTrendChart";
 import { currentYearMonthZagreb, todayDateStringZagreb } from "@/lib/date";
+import { DownloadIcon, ChevronDownIcon } from "@/components/admin/Icons";
 
 const MONTH_ABBR = ["Sij", "Velj", "Ožu", "Tra", "Svi", "Lip", "Srp", "Kol", "Ruj", "Lis", "Stu", "Pro"];
 
@@ -355,7 +356,7 @@ export default async function AdminReservationsPage({
             </span>
             <div className="flex items-center gap-2">
               <Link href={monthLinkFor(prevYear, prevMonth)} className="owner-quicklink">
-                ←� Prošli
+                ← Prošli
               </Link>
               {!isCurrentMonth && (
                 <Link href={`/admin/rezervacije?property=${property.id}`} className="text-xs font-semibold text-[#ff7f00]">
@@ -421,32 +422,40 @@ export default async function AdminReservationsPage({
               Sve rezervacije
             </h2>
             {reservations.length > 0 && (
-              <div className="flex items-center gap-2 flex-wrap">
-                <a href={`/api/admin/reservations/export?property=${property.id}`} className="owner-quicklink">
-                  Izvezi CSV
-                </a>
-                <a
-                  href={`/api/admin/reservations/export-year?property=${property.id}&year=${year}`}
-                  className="owner-quicklink"
-                >
-                  Godišnji izvještaj ({year})
-                </a>
-                <a href={`/api/admin/backup?property=${property.id}`} className="owner-quicklink">
-                  Backup (JSON)
-                </a>
-                <a
-                  href={`/api/admin/reports/accounting?property=${property.id}&year=${year}&format=csv`}
-                  className="owner-quicklink"
-                >
-                  Izvještaj za knjigovođu (CSV)
-                </a>
-                <a
-                  href={`/api/admin/reports/accounting?property=${property.id}&year=${year}&format=pdf`}
-                  className="owner-quicklink"
-                >
-                  Izvještaj za knjigovođu (PDF)
-                </a>
-              </div>
+              <details className="neu-disclosure">
+                <summary>
+                  <DownloadIcon />
+                  Izvoz i izvještaji
+                  <span className="neu-disclosure-count">(5)</span>
+                  <ChevronDownIcon className="neu-disclosure-chevron" />
+                </summary>
+                <div className="neu-disclosure-body">
+                  <a href={`/api/admin/reservations/export?property=${property.id}`} className="owner-quicklink">
+                    Izvezi CSV
+                  </a>
+                  <a
+                    href={`/api/admin/reservations/export-year?property=${property.id}&year=${year}`}
+                    className="owner-quicklink"
+                  >
+                    Godišnji izvještaj ({year})
+                  </a>
+                  <a href={`/api/admin/backup?property=${property.id}`} className="owner-quicklink">
+                    Backup (JSON)
+                  </a>
+                  <a
+                    href={`/api/admin/reports/accounting?property=${property.id}&year=${year}&format=csv`}
+                    className="owner-quicklink"
+                  >
+                    Izvještaj za knjigovođu (CSV)
+                  </a>
+                  <a
+                    href={`/api/admin/reports/accounting?property=${property.id}&year=${year}&format=pdf`}
+                    className="owner-quicklink"
+                  >
+                    Izvještaj za knjigovođu (PDF)
+                  </a>
+                </div>
+              </details>
             )}
           </div>
           <OwnerReservationsTable propertyId={property.id} reservations={reservations} today={today} />
@@ -613,38 +622,40 @@ export default async function AdminReservationsPage({
             Sve rezervacije
           </h2>
           {reservations.length > 0 && (
-            <div className="flex items-center gap-2">
-              <a
-                href={`/api/admin/reservations/export?property=${property.id}`}
-                className="text-xs font-semibold px-3 py-1.5 rounded-full border border-black/15 hover:border-black/40"
-              >
-                Izvezi CSV
-              </a>
-              <a
-                href={`/api/admin/reservations/export-year?property=${property.id}&year=${year}`}
-                className="text-xs font-semibold px-3 py-1.5 rounded-full border border-black/15 hover:border-black/40"
-              >
-                Godišnji izvještaj ({year})
-              </a>
-              <a
-                href={`/api/admin/backup?property=${property.id}`}
-                className="text-xs font-semibold px-3 py-1.5 rounded-full border border-black/15 hover:border-black/40"
-              >
-                Backup (JSON)
-              </a>
-              <a
-                href={`/api/admin/reports/accounting?property=${property.id}&year=${year}&format=csv`}
-                className="text-xs font-semibold px-3 py-1.5 rounded-full border border-black/15 hover:border-black/40"
-              >
-                Izvještaj za knjigovođu (CSV)
-              </a>
-              <a
-                href={`/api/admin/reports/accounting?property=${property.id}&year=${year}&format=pdf`}
-                className="text-xs font-semibold px-3 py-1.5 rounded-full border border-black/15 hover:border-black/40"
-              >
-                Izvještaj za knjigovođu (PDF)
-              </a>
-            </div>
+            <details className="neu-disclosure">
+              <summary>
+                <DownloadIcon />
+                Izvoz i izvještaji
+                <span className="neu-disclosure-count">(5)</span>
+                <ChevronDownIcon className="neu-disclosure-chevron" />
+              </summary>
+              <div className="neu-disclosure-body">
+                <a href={`/api/admin/reservations/export?property=${property.id}`} className="admin-quicklink">
+                  Izvezi CSV
+                </a>
+                <a
+                  href={`/api/admin/reservations/export-year?property=${property.id}&year=${year}`}
+                  className="admin-quicklink"
+                >
+                  Godišnji izvještaj ({year})
+                </a>
+                <a href={`/api/admin/backup?property=${property.id}`} className="admin-quicklink">
+                  Backup (JSON)
+                </a>
+                <a
+                  href={`/api/admin/reports/accounting?property=${property.id}&year=${year}&format=csv`}
+                  className="admin-quicklink"
+                >
+                  Izvještaj za knjigovođu (CSV)
+                </a>
+                <a
+                  href={`/api/admin/reports/accounting?property=${property.id}&year=${year}&format=pdf`}
+                  className="admin-quicklink"
+                >
+                  Izvještaj za knjigovođu (PDF)
+                </a>
+              </div>
+            </details>
           )}
         </div>
         <ReservationsTable propertyId={property.id} reservations={reservations} today={today} />
