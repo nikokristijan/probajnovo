@@ -1,4 +1,4 @@
-import { eq, ne, desc, asc, and, gt, inArray, isNull, sql } from "drizzle-orm";
+import { eq, ne, desc, asc, and, or, gt, inArray, isNull, sql } from "drizzle-orm";
 import { db } from "./index";
 import {
   todayDateStringZagreb,
@@ -26,6 +26,7 @@ import {
   nfcTags,
   teamTasks,
   teamMessages,
+  directMessages,
   type NewProperty,
   type NewCompany,
   type NewStudy,
@@ -36,6 +37,7 @@ import {
   type NewNfcTag,
   type NewTeamTask,
   type NewTeamMessage,
+  type NewDirectMessage,
 } from "./schema";
 
 const AGENCY_ROW_ID = 1;
@@ -483,6 +485,11 @@ async function ensureAdminStreakColumns(): Promise<void> {
     sql`ALTER TABLE admin_users ADD COLUMN IF NOT EXISTS custom_goal_days INTEGER`
   );
   await db.execute(sql`ALTER TABLE admin_users ADD COLUMN IF NOT EXISTS last_seen_at TIMESTAMP`);
+  // Portal profil (Faza 3, app/admin/portal/profil) — display_name/job_title/bio,
+  // vidi komentar uz adminUsers.displayName u schema.ts.
+  await db.execute(sql`ALTER TABLE admin_users ADD COLUMN IF NOT EXISTS display_name TEXT`);
+  await db.execute(sql`ALTER TABLE admin_users ADD COLUMN IF NOT EXISTS job_title TEXT`);
+  await db.execute(sql`ALTER TABLE admin_users ADD COLUMN IF NOT EXISTS bio TEXT`);
 }
 
 let adminStreakColumnsPromise: Promise<void> | null = null;
@@ -1909,4 +1916,195 @@ export async function createTeamMessage(data: NewTeamMessage) {
   await ensureTeamMessagesTableOnce();
   const [row] = await db.insert(teamMessages).values(data).returning();
   return row;
+}
+
+/* ---------------------------------------------------------------- */
+/* Portal (Faza 3) — direktno dopisivanje + profil + statistika,      */
+/* nadovezuje se na Fazu 2 (zadaci/poruke) iznad. Ista "self-healing" */
+/* shema kao ostatak datoteke — tablica se sama kreira pri prvom      */
+/* upitu, nema pristupa terminalu za ručnu migraciju. */
+/* ---------------------------------------------------------------- */
+
+export async function ensureDirectMessagesTable(): Promise<void> {
+  await db.execute(sql`
+    CREATE TABLE IF NOT EXISTS direct_messages (
+      id SERIAL PRIMARY KEY,
+      from_email TEXT NOT NULL,
+      to_email TEXT NOT NULL,
+      body TEXT NOT NULL,
+      read_at TIMESTAMP,
+      created_at TIMESTAMP NOT NULL DEFAULT now()
+    )
+  `);
+}
+
+let directMessagesTablePromise: Promise<void> | null = null;
+function ensureDirectMessagesTableOnce(): Promise<void> {
+  if (!directMessagesTablePromise) {
+    directMessagesTablePromise = ensureDirectMessagesTable().catch((err) => {
+      directMessagesTablePromise = null;
+      throw err;
+    });
+  }
+  return directMessagesTablePromise;
+}
+
+/** Razgovor između dvoje admina, kronološki (najstarije prvo, kao chat) —
+    simetrično (A→B i B→A u istoj niti), isti princip kao WhatsApp/Messenger
+    1:1 niti. limit brani od neograničenog rasta na vrlo aktivnom razgovoru. */
+export async function listDirectMessages(emailA: string, emailB: string, limit = 300) {
+  await ensureDirectMessagesTableOnce();
+  const rows = await db
+    .select()
+    .from(directMessages)
+    .where(
+      or(
+        and(eq(directMessages.fromEmail, emailA), eq(directMessages.toEmail, emailB)),
+        and(eq(directMessages.fromEmail, emailB), eq(directMessages.toEmail, emailA))
+      )
+    )
+    .orderBy(desc(directMessages.createdAt))
+    .limit(limit);
+  return rows.reverse();
+}
+
+export async function createDirectMessage(data: NewDirectMessage) {
+  await ensureDirectMessagesTableOnce();
+  const [row] = await db.insert(directMessages).values(data).returning();
+  return row;
+}
+
+/** Označava SVE poruke koje je `viewerEmail` primio od `otherEmail` kao
+    pročitane — poziva se čim viewer otvori tu nit (vidi
+    app/admin/portal/dm/[email]/page.tsx). */
+export async function markDirectMessagesRead(viewerEmail: string, otherEmail: string): Promise<void> {
+  await ensureDirectMessagesTableOnce();
+  await db
+    .update(directMessages)
+    .set({ readAt: new Date() })
+    .where(
+      and(
+        eq(directMessages.fromEmail, otherEmail),
+        eq(directMessages.toEmail, viewerEmail),
+        isNull(directMessages.readAt)
+      )
+    );
+}
+
+/** Popis razgovora za Portal sidebar — jedan redak po sugovorniku s kojim
+    viewer ima BAREM jednu poruku (u bilo kojem smjeru), zadnja poruka +
+    broj nepročitanih od tog sugovornika, sortirano po zadnjoj aktivnosti
+    (najnovije prvo). Sirovi SQL (ne Drizzle query builder) jer je ovo
+    agregacija po "drugoj strani" niti — jednostavnije napisati kao dva
+    UNION-ana upita nego graditi kroz builder. */
+export async function listDmConversations(
+  viewerEmail: string
+): Promise<{ email: string; lastBody: string; lastAt: Date; unreadCount: number }[]> {
+  await ensureDirectMessagesTableOnce();
+  const result = await db.execute<{
+    counterpart: string;
+    last_body: string;
+    last_at: Date;
+    unread_count: string;
+  }>(sql`
+    WITH thread AS (
+      SELECT
+        CASE WHEN from_email = ${viewerEmail} THEN to_email ELSE from_email END AS counterpart,
+        body,
+        created_at,
+        (to_email = ${viewerEmail} AND read_at IS NULL) AS is_unread
+      FROM direct_messages
+      WHERE from_email = ${viewerEmail} OR to_email = ${viewerEmail}
+    ),
+    latest AS (
+      SELECT DISTINCT ON (counterpart) counterpart, body AS last_body, created_at AS last_at
+      FROM thread
+      ORDER BY counterpart, created_at DESC
+    ),
+    unread AS (
+      SELECT counterpart, COUNT(*) AS unread_count
+      FROM thread
+      WHERE is_unread
+      GROUP BY counterpart
+    )
+    SELECT latest.counterpart, latest.last_body, latest.last_at, COALESCE(unread.unread_count, 0) AS unread_count
+    FROM latest
+    LEFT JOIN unread ON unread.counterpart = latest.counterpart
+    ORDER BY latest.last_at DESC
+  `);
+  return result.map((r) => ({
+    email: r.counterpart,
+    lastBody: r.last_body,
+    lastAt: new Date(r.last_at),
+    unreadCount: Number(r.unread_count),
+  }));
+}
+
+/** Ukupan broj nepročitanih DM-ova za viewera (preko svih razgovora) — za
+    značku uz "Portal" link u izborniku, vidi app/admin/layout.tsx. */
+export async function countUnreadDirectMessages(viewerEmail: string): Promise<number> {
+  await ensureDirectMessagesTableOnce();
+  const rows = await db
+    .select()
+    .from(directMessages)
+    .where(and(eq(directMessages.toEmail, viewerEmail), isNull(directMessages.readAt)));
+  return rows.length;
+}
+
+/** Sprema Portal profil (ime/titula/bio) — vidi
+    app/admin/portal/profil/[email]/page.tsx i updateAdminProfileAction. */
+export async function updateAdminProfile(
+  adminId: number,
+  data: { displayName: string | null; jobTitle: string | null; bio: string | null }
+): Promise<void> {
+  await ensureAdminStreakColumnsOnce();
+  await db.update(adminUsers).set(data).where(eq(adminUsers.id, adminId));
+}
+
+/** Broj poruka (opći feed, taskId null) po danu (Europe/Zagreb) za zadnjih
+    `days` dana — za aktivnost graf u Portalu (vidi TeamActivityChart).
+    Uvijek vraća `days` točaka, popunjeno nulama gdje nema poruka, kronološki
+    (najstariji dan prvi) — isti "uvijek pun niz" obrazac kao
+    getOwnerMonthlyTrend. */
+export async function getTeamMessageCountsByDay(days = 7): Promise<{ dateKey: string; count: number }[]> {
+  await ensureTeamMessagesTableOnce();
+  const result = await db.execute<{ day: string; count: string }>(sql`
+    SELECT to_char(created_at AT TIME ZONE 'Europe/Zagreb', 'YYYY-MM-DD') AS day, COUNT(*) AS count
+    FROM team_messages
+    WHERE task_id IS NULL
+      AND created_at >= now() - (${days}::text || ' days')::interval
+    GROUP BY day
+  `);
+  const countByDay = new Map(result.map((r) => [r.day, Number(r.count)]));
+  const out: { dateKey: string; count: number }[] = [];
+  for (let i = days - 1; i >= 0; i--) {
+    const dateKey = dateStringOffsetFromTodayZagreb(-i);
+    out.push({ dateKey, count: countByDay.get(dateKey) ?? 0 });
+  }
+  return out;
+}
+
+/** Broj zadataka po statusu (todo/in_progress/done) — za donut graf u
+    Portalu. */
+export async function getTeamTaskStatusCounts(): Promise<{ status: string; count: number }[]> {
+  await ensureTeamTasksTableOnce();
+  const result = await db.execute<{ status: string; count: string }>(sql`
+    SELECT status, COUNT(*) AS count FROM team_tasks GROUP BY status
+  `);
+  return result.map((r) => ({ status: r.status, count: Number(r.count) }));
+}
+
+/** Broj DOVRŠENIH zadataka po dodijeljenom adminu — za "tko je koliko
+    završio" stupčasti graf u Portalu. Namjerno isključuje nedodijeljene
+    (assigned_to_email IS NULL) — nema smisla u grafu "po osobi". */
+export async function getTeamTaskCompletionByAdmin(): Promise<{ email: string; count: number }[]> {
+  await ensureTeamTasksTableOnce();
+  const result = await db.execute<{ assigned_to_email: string; count: string }>(sql`
+    SELECT assigned_to_email, COUNT(*) AS count
+    FROM team_tasks
+    WHERE status = 'done' AND assigned_to_email IS NOT NULL
+    GROUP BY assigned_to_email
+    ORDER BY count DESC
+  `);
+  return result.map((r) => ({ email: r.assigned_to_email, count: Number(r.count) }));
 }
