@@ -85,6 +85,9 @@ import {
   deleteTeamTask,
   createTeamMessage,
   updateAdminLastSeen,
+  createDirectMessage,
+  markDirectMessagesRead,
+  updateAdminProfile,
 } from "@/lib/db/queries";
 import { sendInquiryNotification, sendGuestConfirmation, sendReservationConfirmation, sendInquiryReply } from "@/lib/email";
 import { resolveCoordinates, geoMissWarning } from "@/lib/geocode";
@@ -2309,16 +2312,17 @@ export async function createTeamTaskAction(
     companyId: companyId && !Number.isNaN(companyId) ? companyId : null,
     dueDate: parsed.data.dueDate || null,
   });
-  revalidatePath("/admin/zadaci");
-  redirect("/admin/zadaci");
+  revalidatePath("/admin/portal");
+  redirect("/admin/portal");
 }
 
 /** status: "todo" | "in_progress" | "done" — jednostavan bound-action gumb
- * u app/admin/zadaci (bez potvrde, radnja je lako reverzibilna). */
+ * u Portalu (Faza 3, tab "Zadaci" — bivši app/admin/zadaci), bez potvrde,
+ * radnja je lako reverzibilna. */
 export async function updateTeamTaskStatusAction(id: number, status: string) {
   await requireAdmin();
   await updateTeamTaskStatus(id, status);
-  revalidatePath("/admin/zadaci");
+  revalidatePath("/admin/portal");
 }
 
 /** email "" iz <select> znači "nedodijeli" — pretvara se u null. */
@@ -2326,13 +2330,13 @@ export async function assignTeamTaskAction(id: number, formData: FormData) {
   await requireAdmin();
   const email = String(formData.get("assignedToEmail") ?? "").trim();
   await assignTeamTask(id, email || null);
-  revalidatePath("/admin/zadaci");
+  revalidatePath("/admin/portal");
 }
 
 export async function deleteTeamTaskAction(id: number) {
   await requireAdmin();
   await deleteTeamTask(id);
-  revalidatePath("/admin/zadaci");
+  revalidatePath("/admin/portal");
 }
 
 const TeamMessageSchema = z.object({
@@ -2362,6 +2366,27 @@ export async function createTeamMessageAction(
   redirect(redirectTo);
 }
 
+/** Isto kao createTeamMessageAction (opći feed, taskId null), ali BEZ
+ * redirecta — koristi ga Portal tim kanal (components/admin/
+ * TeamChannelThread.tsx), klijentska komponenta koja poruke šalje preko
+ * useActionState i osvježava se vlastitim pollingom, ne punom navigacijom
+ * stranice (Teams/Slack-stil "ostani u niti dok šalješ"). */
+export async function createTeamChannelMessageInlineAction(
+  _prevState: ActionState,
+  formData: FormData
+): Promise<ActionState> {
+  const admin = await requireAdmin();
+
+  const parsed = TeamMessageSchema.safeParse({ body: formData.get("body") });
+  if (!parsed.success) {
+    return { error: parsed.error.issues[0]?.message ?? "Provjeri unos." };
+  }
+
+  await createTeamMessage({ adminEmail: admin.email, body: parsed.data.body, taskId: null });
+  revalidatePath("/admin/portal");
+  return { success: true };
+}
+
 /** "Otkucaj" prisutnosti za "Ured" prikaz (components/admin/
  * PresenceHeartbeat.tsx, poziva se svake minute dok je puni admin negdje u
  * adminu — NE samo na /admin/poruke, da status prati stvarnu aktivnost).
@@ -2372,4 +2397,79 @@ export async function heartbeatAction(): Promise<void> {
   const session = await getCurrentAdmin();
   if (!session) return;
   await updateAdminLastSeen(session.adminId);
+}
+
+/* ---------------------------------------------------------------- */
+/* Portal (Faza 3) — direktno dopisivanje + profil, isti requireAdmin */
+/* gate kao Faza 2 iznad (nikad vlasnicima). */
+/* ---------------------------------------------------------------- */
+
+const DirectMessageSchema = z.object({
+  body: z.string().min(1, "Poruka ne smije biti prazna.").max(4000),
+});
+
+/** to = email primatelja (mora biti član tima, provjereno u pozivatelju
+ * preko poznatog popisa — ovdje se ne provjerava dodatno jer requireAdmin
+ * već jamči da je pošiljatelj punopravni admin, a slanje "nepostojećem"
+ * emailu samo ostaje viseća poruka koju nitko ne vidi, bez sigurnosnog
+ * rizika). Bez redirecta (za razliku od createTeamMessageAction) — poziva
+ * se iz DmThread.tsx klijentske komponente preko fetch/useActionState, ne
+ * iz obične <form> objave cijele stranice. */
+export async function createDirectMessageAction(
+  to: string,
+  _prevState: ActionState,
+  formData: FormData
+): Promise<ActionState> {
+  const admin = await requireAdmin();
+
+  const parsed = DirectMessageSchema.safeParse({ body: formData.get("body") });
+  if (!parsed.success) {
+    return { error: parsed.error.issues[0]?.message ?? "Provjeri unos." };
+  }
+
+  await createDirectMessage({ fromEmail: admin.email, toEmail: to, body: parsed.data.body });
+  revalidatePath(`/admin/portal/dm/${encodeURIComponent(to)}`);
+  revalidatePath("/admin/portal");
+  return { success: true };
+}
+
+/** Poziva se pri otvaranju niti (app/admin/portal/dm/[email]/page.tsx) da
+ * označi primljene poruke pročitanima — obična async funkcija, ne bound
+ * server action (nema forme/gumba, samo nuzučinak pri renderu stranice). */
+export async function markDirectMessagesReadAction(otherEmail: string): Promise<void> {
+  const admin = await requireAdmin();
+  await markDirectMessagesRead(admin.email, otherEmail);
+}
+
+const ProfileSchema = z.object({
+  displayName: z.string().max(80).optional().or(z.literal("")),
+  jobTitle: z.string().max(80).optional().or(z.literal("")),
+  bio: z.string().max(500).optional().or(z.literal("")),
+});
+
+/** Portal profil (app/admin/portal/profil/[email]/page.tsx) — admin smije
+ * urediti SAMO svoj vlastiti profil (provjera ispod), ne tuđi, čak i ako
+ * zna nečiji email u URL-u. */
+export async function updateAdminProfileAction(
+  _prevState: ActionState,
+  formData: FormData
+): Promise<ActionState> {
+  const admin = await requireAdmin();
+
+  const parsed = ProfileSchema.safeParse({
+    displayName: formData.get("displayName") || "",
+    jobTitle: formData.get("jobTitle") || "",
+    bio: formData.get("bio") || "",
+  });
+  if (!parsed.success) {
+    return { error: parsed.error.issues[0]?.message ?? "Provjeri unesene podatke." };
+  }
+
+  await updateAdminProfile(admin.adminId, {
+    displayName: parsed.data.displayName || null,
+    jobTitle: parsed.data.jobTitle || null,
+    bio: parsed.data.bio || null,
+  });
+  revalidatePath(`/admin/portal/profil/${encodeURIComponent(admin.email)}`);
+  return { success: true };
 }

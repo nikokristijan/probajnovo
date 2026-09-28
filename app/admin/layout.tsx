@@ -2,11 +2,11 @@ import type { Metadata, Viewport } from "next";
 import Link from "next/link";
 import { getCurrentAdminRecord } from "@/lib/auth";
 import { logoutAction } from "@/lib/actions";
-import { listPropertiesForAdmin, listCompaniesForAdmin } from "@/lib/db/queries";
+import { listPropertiesForAdmin, listCompaniesForAdmin, countUnreadDirectMessages } from "@/lib/db/queries";
 import PwaRegister from "@/components/admin/PwaRegister";
 import PresenceHeartbeat from "@/components/admin/PresenceHeartbeat";
 import AdminNavLink from "@/components/admin/AdminNavLink";
-import { MenuIcon, LogOutIcon, ExternalLinkIcon } from "@/components/admin/Icons";
+import { MenuIcon, LogOutIcon, ExternalLinkIcon, PortalIcon } from "@/components/admin/Icons";
 
 /* OSMI krug feedbacka ("vrh je oštra kocka, bijelo gore i dole", potvrđeno
    da je admin dodan na početni zaslon kao PWA) — statusBarStyle "default"
@@ -68,6 +68,13 @@ export default async function AdminLayout({ children }: { children: React.ReactN
     ownerLabel = names.length > 0 ? names.join(", ") : null;
     const slug = ownedProperties[0]?.slug ?? ownedCompanies[0]?.slug;
     ownerPageHref = slug ? `/${slug}` : null;
+  }
+
+  // Značka nepročitanih DM-ova uz "Portal" link (Faza 3) — samo punim
+  // adminima/superadminima, isto ograničenje kao sam Portal (requireFullAdmin).
+  let unreadDmCount = 0;
+  if (admin && admin.role !== "owner") {
+    unreadDmCount = await countUnreadDirectMessages(admin.email);
   }
 
   // "owner-page-bg" + data-theme dolje SAMO za role="owner" (vidi opsežan
@@ -163,16 +170,20 @@ export default async function AdminLayout({ children }: { children: React.ReactN
                 <AdminNavLink href="/admin/aktivnost">
                   Aktivnost
                 </AdminNavLink>
-                {/* Tim/zadaci/poruke (Faza 2) — dostupno SVIM punim adminima i
-                    superadminima, ne samo glavnom (na izričit zahtjev: "svi
-                    puni admini + superadmini vide zadatke i poruke, dodjeljuju
-                    ih jedni drugima"), za razliku od Financije/Admini ispod
-                    koji ostaju samo za superadmina. */}
-                <AdminNavLink href="/admin/zadaci">
-                  Zadaci
-                </AdminNavLink>
-                <AdminNavLink href="/admin/poruke">
-                  Poruke
+                {/* Portal (Faza 3) — spojeni Zadaci+Poruke+DM+statistika tab
+                    ("Zadaci i poruke nek budu u jednom tabu, 'Portal'"),
+                    dostupno SVIM punim adminima i superadminima, ne samo
+                    glavnom (na izričit zahtjev iz Faze 2, i dalje vrijedi),
+                    za razliku od Financije/Admini ispod koji ostaju samo za
+                    superadmina. */}
+                <AdminNavLink href="/admin/portal" className="inline-flex items-center gap-1.5">
+                  <PortalIcon size={15} />
+                  Portal
+                  {unreadDmCount > 0 && (
+                    <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-[#ff7f00] text-white leading-none">
+                      {unreadDmCount}
+                    </span>
+                  )}
                 </AdminNavLink>
                 {admin.isSuperAdmin && (
                   <AdminNavLink href="/admin/admins">

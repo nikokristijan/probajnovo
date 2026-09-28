@@ -342,6 +342,15 @@ export const adminUsers = pgTable("admin_users", {
       prikazuje niti ažurira (PresenceHeartbeat se montira samo za
       role!=="owner", vidi app/admin/layout.tsx). */
   lastSeenAt: timestamp("last_seen_at"),
+  /** Profil admina (Portal, app/admin/portal/profil/[email]) — na izričit
+      zahtjev "svaki admin da ima svoj profil". Sve null = koristi dio
+      emaila prije @ kao ime (isti fallback kao stari "Ured" labelFor).
+      Vlasnicima se ne prikazuje/uređuje (Portal je nedostupan role="owner"). */
+  displayName: text("display_name"),
+  /** Kratka titula/uloga, npr. "Voditelj projekata" — slobodan tekst, bez
+      fiksnog popisa (agencijski tim od par ljudi ne treba strogu taksonomiju). */
+  jobTitle: text("job_title"),
+  bio: text("bio"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
@@ -709,3 +718,28 @@ export const teamMessages = pgTable("team_messages", {
 
 export type TeamMessage = typeof teamMessages.$inferSelect;
 export type NewTeamMessage = typeof teamMessages.$inferInsert;
+
+/**
+ * Direktne (1:1) poruke između dvoje admina — Portal (app/admin/portal),
+ * na izričit zahtjev "direktno dopisivanje, svaki admin ima svoj profil".
+ * Namjerno odvojeno od teamMessages (opći feed) jer su pravila čitanja
+ * drugačija (samo dvoje sudionika, ne cijeli tim) i treba readAt za
+ * "nepročitano" značku u Portal sidebaru. fromEmail/toEmail kao TEXT (isti
+ * obrazac denormalizacije kao teamMessages.adminEmail) — razgovor ostaje
+ * čitljiv i ako se jedan sudionik kasnije obriše. Brzi polling (~3-5s dok
+ * je razgovor otvoren, vidi DmThread.tsx) umjesto prave real-time
+ * infrastrukture (WebSocket/Pusher) — nema potrebe za dodatnim servisom za
+ * tim od par ljudi.
+ */
+export const directMessages = pgTable("direct_messages", {
+  id: serial("id").primaryKey(),
+  fromEmail: text("from_email").notNull(),
+  toEmail: text("to_email").notNull(),
+  body: text("body").notNull(),
+  /** Null dok primatelj nije otvorio razgovor. */
+  readAt: timestamp("read_at"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export type DirectMessage = typeof directMessages.$inferSelect;
+export type NewDirectMessage = typeof directMessages.$inferInsert;

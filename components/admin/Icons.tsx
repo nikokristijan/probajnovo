@@ -152,3 +152,59 @@ export function ChevronDownIcon({ className, size = 14 }: IconProps) {
     </svg>
   );
 }
+
+/* --- Portal (Faza 3) — spojeni Zadaci+Poruke+DM+profil+statistika tab,
+   vidi app/admin/portal. Isti stroke-jezik kao gornje ikone. --- */
+
+/** Glavni nav link "Portal" u headeru (app/admin/layout.tsx) — mreža/pločice,
+    dosljedno "sve na jednom mjestu" konceptu spojenog taba. */
+export function PortalIcon({ className, size = 18 }: IconProps) {
+  return (
+    <svg {...base} width={size} height={size} className={className} aria-hidden="true">
+      <rect x="3" y="3" width="6" height="6" rx="1.5" />
+      <rect x="11" y="3" width="6" height="6" rx="1.5" />
+      <rect x="3" y="11" width="6" height="6" rx="1.5" />
+      <rect x="11" y="11" width="6" height="6" rx="1.5" />
+    </svg>
+  );
+}
+
+/** Pošalji poruku — gumb u dnu chat niti (TeamChannelThread/DirectMessageThread). */
+export function SendIcon({ className, size = 16 }: IconProps) {
+  return (
+    <svg {...base} width={size} height={size} className={className} aria-hidden="true">
+      <path d="M17 3 3 9.2l6 2.2M17 3l-5.7 14-2.3-6.6M17 3 8.3 11.4" />
+    </svg>
+  );
+}
+
+/** Profil admina (Portal sidebar + /admin/portal/profil/[email]). */
+export function UserIcon({ className, size = 16 }: IconProps) {
+  return (
+    <svg {...base} width={size} height={size} className={className} aria-hidden="true">
+      <circle cx="10" cy="6.8" r="3.3" />
+      <path d="M3.8 17c.6-3.4 3.3-5.5 6.2-5.5s5.6 2.1 6.2 5.5" />
+    </svg>
+  );
+}
+
+/** Statistika/grafovi sekcija u Portalu. */
+export function ChartIcon({ className, size = 18 }: IconProps) {
+  return (
+    <svg {...base} width={size} height={size} className={className} aria-hidden="true">
+      <path d="M3.5 16.5h13" />
+      <rect x="5" y="10.5" width="3" height="6" rx="1" />
+      <rect x="9.5" y="6.5" width="3" height="10" rx="1" />
+      <rect x="14" y="3" width="3" height="13.5" rx="1" />
+    </svg>
+  );
+}
+
+/** "#" kanal (Tim poruke) u Portal sidebaru — Slack/Teams jezik. */
+export function HashIcon({ className, size = 15 }: IconProps) {
+  return (
+    <svg {...base} width={size} height={size} className={className} aria-hidden="true">
+      <path d="M7.5 3 5.5 17M14.5 3l-2 14M3.5 7.5h13M2.5 12.5h13" />
+    </svg>
+  );
+}
