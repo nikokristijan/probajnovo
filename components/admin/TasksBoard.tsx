@@ -46,7 +46,7 @@ export default function TasksBoard({
 
   return (
     <div className="flex flex-col gap-6">
-      <div className="grid sm:grid-cols-3 gap-4 admin-animate-grid">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 admin-animate-grid">
         {grouped.map((col) => (
           <section key={col.status} className="flex flex-col gap-3">
             <div className="flex items-center justify-between">

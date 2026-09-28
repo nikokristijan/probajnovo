@@ -43,7 +43,7 @@ export default async function AdminVikendicePage() {
       {cards.length === 0 ? (
         <p className="text-sm text-black/60">Još nema dodanih vikendica.</p>
       ) : (
-        <div className="grid sm:grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           {cards.map(({ property: p, earnings, pendingCount, daysBooked }) => (
             <Link
               key={p.id}

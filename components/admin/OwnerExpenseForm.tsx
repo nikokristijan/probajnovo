@@ -22,7 +22,7 @@ export default function OwnerExpenseForm({
   return (
     <form action={action} className="owner-glass owner-glass-grain rounded-2xl p-5 flex flex-col gap-3">
       <span className="text-sm font-semibold">Novi trošak</span>
-      <div className="grid sm:grid-cols-4 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
         <label className="flex flex-col gap-1 text-xs font-medium sm:col-span-1" style={{ color: "var(--od-ink-soft)" }}>
           Opis
           <input name="description" required className="owner-input" placeholder="npr. Čišćenje" />

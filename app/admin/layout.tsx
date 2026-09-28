@@ -6,7 +6,7 @@ import { listPropertiesForAdmin, listCompaniesForAdmin, countUnreadDirectMessage
 import PwaRegister from "@/components/admin/PwaRegister";
 import PresenceHeartbeat from "@/components/admin/PresenceHeartbeat";
 import AdminNavLink from "@/components/admin/AdminNavLink";
-import { MenuIcon, LogOutIcon, ExternalLinkIcon, PortalIcon } from "@/components/admin/Icons";
+import { MenuIcon, LogOutIcon, ExternalLinkIcon } from "@/components/admin/Icons";
 
 /* OSMI krug feedbacka ("vrh je oštra kocka, bijelo gore i dole", potvrđeno
    da je admin dodan na početni zaslon kao PWA) — statusBarStyle "default"
@@ -177,7 +177,6 @@ export default async function AdminLayout({ children }: { children: React.ReactN
                     za razliku od Financije/Admini ispod koji ostaju samo za
                     superadmina. */}
                 <AdminNavLink href="/admin/portal" className="inline-flex items-center gap-1.5">
-                  <PortalIcon size={15} />
                   Portal
                   {unreadDmCount > 0 && (
                     <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-[#ff7f00] text-white leading-none">

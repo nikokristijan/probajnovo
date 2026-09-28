@@ -108,10 +108,7 @@ export default function OwnerTrendChart({
 
         {points.map((p, i) => (
           <g key={i}>
-            <title>
-              {labels[i]}: {data[i]}
-              {suffix}
-            </title>
+            <title>{`${labels[i]}: ${data[i]}${suffix}`}</title>
             <circle
               cx={p.x}
               cy={p.y}

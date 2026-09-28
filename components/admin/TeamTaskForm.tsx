@@ -24,7 +24,7 @@ export default function TeamTaskForm({
   return (
     <form action={action} className="neu-card p-5 flex flex-col gap-3">
       <span className="text-sm font-semibold">Novi zadatak</span>
-      <div className="grid sm:grid-cols-2 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <label className="flex flex-col gap-1 text-xs font-medium" style={{ color: "var(--neu-ink-faint)" }}>
           Naslov
           <input name="title" required maxLength={200} className="neu-input" placeholder="npr. Obnovi pretplatu" />
@@ -44,7 +44,7 @@ export default function TeamTaskForm({
         <textarea name="description" rows={2} maxLength={2000} className="neu-input" placeholder="Detalji zadatka…" />
       </label>
 
-      <div className="grid sm:grid-cols-3 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
         <label className="flex flex-col gap-1 text-xs font-medium" style={{ color: "var(--neu-ink-faint)" }}>
           Dodijeli
           <select name="assignedToEmail" className="neu-input" defaultValue="">

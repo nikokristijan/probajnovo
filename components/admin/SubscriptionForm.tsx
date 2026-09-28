@@ -79,7 +79,7 @@ export default function SubscriptionForm({
       <input type="hidden" name="source" value={source} />
       <input type="hidden" name="sourceId" value={id || ""} />
 
-      <div className="grid sm:grid-cols-2 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <label className="flex flex-col gap-1 text-xs font-medium text-black/60 sm:col-span-2">
           Vikendica / firma
           <select

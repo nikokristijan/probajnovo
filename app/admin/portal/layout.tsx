@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import { requireFullAdmin } from "@/lib/auth";
 import { listTeamMembers, listDmConversations } from "@/lib/db/queries";
 import OfficePresence from "@/components/admin/OfficePresence";
@@ -47,12 +48,18 @@ export default async function PortalLayout({ children }: { children: React.React
         <OfficePresence initialMembers={officeMembers} />
 
         <div className="portal-shell">
-          <PortalSidebar currentEmail={admin.email} roster={roster} initialConversations={conversations.map((c) => ({
-            email: c.email,
-            lastBody: c.lastBody,
-            lastAt: c.lastAt.toISOString(),
-            unreadCount: c.unreadCount,
-          }))} />
+          {/* useSearchParams() unutar PortalSidebar (za isticanje aktivnog
+              taba preko ?tab=) treba Suspense granicu — bez nje Next.js baca
+              upozorenje o CSR bailoutu za cijelu rutu (vidi identičan
+              slučaj u app/admin/portal/page.tsx PortalMain). */}
+          <Suspense fallback={<aside className="portal-sidebar" />}>
+            <PortalSidebar currentEmail={admin.email} roster={roster} initialConversations={conversations.map((c) => ({
+              email: c.email,
+              lastBody: c.lastBody,
+              lastAt: c.lastAt.toISOString(),
+              unreadCount: c.unreadCount,
+            }))} />
+          </Suspense>
           <div className="portal-main">{children}</div>
         </div>
       </div>
