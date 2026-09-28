@@ -4,6 +4,7 @@ import { getCurrentAdminRecord } from "@/lib/auth";
 import { logoutAction } from "@/lib/actions";
 import { listPropertiesForAdmin, listCompaniesForAdmin } from "@/lib/db/queries";
 import PwaRegister from "@/components/admin/PwaRegister";
+import PresenceHeartbeat from "@/components/admin/PresenceHeartbeat";
 import AdminNavLink from "@/components/admin/AdminNavLink";
 import { MenuIcon, LogOutIcon, ExternalLinkIcon } from "@/components/admin/Icons";
 
@@ -83,6 +84,11 @@ export default async function AdminLayout({ children }: { children: React.ReactN
       data-theme={isOwner ? (admin.themePreference ?? "system") : undefined}
     >
       <PwaRegister />
+      {/* "Ured" prisutnost (Faza 2, app/admin/poruke) — otkucaj svake minute
+          dok je PUNI admin/superadmin bilo gdje u adminu, ne samo na
+          /admin/poruke, da pikselizirani ured prati stvarnu aktivnost.
+          Vlasnici namjerno isključeni (nisu dio agencijskog tima). */}
+      {admin && admin.role !== "owner" && <PresenceHeartbeat />}
       {/* Neumorphism izbornik — ".neu-header"/".neu-nav"/".neu-btn"/".neu-toggle"
           (vidi opsežan komentar uz te klase u globals.css) zamjenjuju raniji
           par "owner-header staklo" vs "bg-white/border-black" jednim
@@ -156,6 +162,17 @@ export default async function AdminLayout({ children }: { children: React.ReactN
                 )}
                 <AdminNavLink href="/admin/aktivnost">
                   Aktivnost
+                </AdminNavLink>
+                {/* Tim/zadaci/poruke (Faza 2) — dostupno SVIM punim adminima i
+                    superadminima, ne samo glavnom (na izričit zahtjev: "svi
+                    puni admini + superadmini vide zadatke i poruke, dodjeljuju
+                    ih jedni drugima"), za razliku od Financije/Admini ispod
+                    koji ostaju samo za superadmina. */}
+                <AdminNavLink href="/admin/zadaci">
+                  Zadaci
+                </AdminNavLink>
+                <AdminNavLink href="/admin/poruke">
+                  Poruke
                 </AdminNavLink>
                 {admin.isSuperAdmin && (
                   <AdminNavLink href="/admin/admins">
