@@ -110,9 +110,7 @@ export default function YearlyBarChart({
 
         {points.map((p, i) => (
           <g key={i}>
-            <title>
-              {MONTH_ABBR[i]} {year}: {data[i]} €
-            </title>
+            <title>{`${MONTH_ABBR[i]} ${year}: ${data[i]} €`}</title>
             <circle
               cx={p.x}
               cy={p.y}

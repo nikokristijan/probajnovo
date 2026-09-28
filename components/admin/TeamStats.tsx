@@ -61,9 +61,7 @@ function TeamActivityChart({ counts }: { counts: { dateKey: string; count: numbe
         {linePath && <path d={linePath} fill="none" stroke="var(--neu-accent)" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round" />}
         {points.map((p, i) => (
           <g key={i}>
-            <title>
-              {counts[i].dateKey}: {counts[i].count}
-            </title>
+            <title>{`${counts[i].dateKey}: ${counts[i].count}`}</title>
             <circle cx={p.x} cy={p.y} r={3} fill="var(--neu-base)" stroke="var(--neu-accent)" strokeWidth={2} />
             <text x={p.x} y={baseline + 15} textAnchor="middle" fontSize="9.5" fill="var(--neu-ink-faint)">
               {new Date(`${counts[i].dateKey}T00:00:00Z`).toLocaleDateString("hr-HR", { timeZone: "UTC", weekday: "short" })}
@@ -121,9 +119,7 @@ function TaskStatusDonut({ statusCounts }: { statusCounts: { status: string; cou
                   strokeDashoffset={offset}
                   transform="rotate(-90 60 60)"
                 >
-                  <title>
-                    {STATUS_META[d.status]?.label}: {d.count}
-                  </title>
+                  <title>{`${STATUS_META[d.status]?.label}: ${d.count}`}</title>
                 </circle>
               );
             })

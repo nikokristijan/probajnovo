@@ -27,7 +27,7 @@ export default function OwnerReservationForm({
   return (
     <form action={action} className="owner-glass owner-glass-grain rounded-2xl p-5 flex flex-col gap-3">
       <span className="text-sm font-semibold">Nova rezervacija</span>
-      <div className="grid sm:grid-cols-2 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <label className="flex flex-col gap-1 text-xs font-medium" style={{ color: "var(--od-ink-soft)" }}>
           Ime gosta
           <input name="guestName" required className="owner-input" placeholder="npr. Ivan Ivić" />

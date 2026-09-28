@@ -20,7 +20,7 @@ export default function SaleForm({ redirectTo }: { redirectTo: string }) {
   return (
     <form action={action} className="border border-black/10 rounded-xl p-5 bg-white flex flex-col gap-3">
       <span className="text-sm font-semibold">Nova prodaja</span>
-      <div className="grid sm:grid-cols-2 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <label className="flex flex-col gap-1 text-xs font-medium text-black/60">
           Kategorija
           <select name="category" required className="admin-input" defaultValue="stranica">
