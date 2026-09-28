@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import { requireFullAdmin } from "@/lib/auth";
 import {
   listTeamMessages,
@@ -39,6 +40,9 @@ export default async function PortalPage() {
   const roster = teamMembers.map((m) => ({ email: m.email, displayName: m.displayName ?? null }));
 
   return (
+    // useSearchParams() unutar PortalMain (za ?tab=) treba Suspense granicu,
+    // vidi identičan komentar uz PortalSidebar u app/admin/portal/layout.tsx.
+    <Suspense fallback={null}>
     <PortalMain
       channelSlot={
         <TeamChannelThread
@@ -55,5 +59,6 @@ export default async function PortalPage() {
       tasksSlot={<TasksBoard tasks={tasks} teamMembers={teamMembers.map((m) => ({ email: m.email }))} properties={properties} companies={companies} />}
       statsSlot={<TeamStats messageCounts={messageCounts} statusCounts={statusCounts} completionByAdmin={completionByAdmin} roster={roster} />}
     />
+    </Suspense>
   );
 }
