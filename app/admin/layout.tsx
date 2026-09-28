@@ -4,6 +4,8 @@ import { getCurrentAdminRecord } from "@/lib/auth";
 import { logoutAction } from "@/lib/actions";
 import { listPropertiesForAdmin, listCompaniesForAdmin } from "@/lib/db/queries";
 import PwaRegister from "@/components/admin/PwaRegister";
+import AdminNavLink from "@/components/admin/AdminNavLink";
+import { MenuIcon, LogOutIcon, ExternalLinkIcon } from "@/components/admin/Icons";
 
 /* OSMI krug feedbacka ("vrh je oštra kocka, bijelo gore i dole", potvrđeno
    da je admin dodan na početni zaslon kao PWA) — statusBarStyle "default"
@@ -102,10 +104,10 @@ export default async function AdminLayout({ children }: { children: React.ReactN
             <input type="checkbox" id="admin-nav-toggle" className="peer hidden" />
             <label
               htmlFor="admin-nav-toggle"
-              className="sm:hidden neu-toggle px-3 py-1.5 text-sm font-semibold"
+              className="sm:hidden neu-toggle px-3 py-1.5"
               aria-label="Izbornik"
             >
-              ☰
+              <MenuIcon />
             </label>
             <nav className="hidden peer-checked:flex sm:flex items-start sm:items-center gap-3 sm:gap-5 text-sm flex-col sm:flex-row w-full sm:w-auto flex-wrap neu-nav">
             {admin.role === "owner" ? (
@@ -113,60 +115,63 @@ export default async function AdminLayout({ children }: { children: React.ReactN
               // /admin sad prikazuje njegov vlastiti dashboard (vidi app/admin/page.tsx),
               // ne puni pregled kao za role="admin".
               <>
-                <Link href="/admin">
+                <AdminNavLink href="/admin" exact>
                   Početna
-                </Link>
-                <Link href="/admin/inquiries">
+                </AdminNavLink>
+                <AdminNavLink href="/admin/inquiries">
                   Upiti
-                </Link>
-                <Link href="/admin/rezervacije">
+                </AdminNavLink>
+                <AdminNavLink href="/admin/rezervacije">
                   Rezervacije
-                </Link>
-                <Link href="/admin/kalendar">
+                </AdminNavLink>
+                <AdminNavLink href="/admin/kalendar">
                   Kalendar
-                </Link>
+                </AdminNavLink>
               </>
             ) : (
               <>
-                <Link href="/admin">
+                <AdminNavLink href="/admin" exact>
                   Pregled
-                </Link>
-                <Link href="/admin/agency">
+                </AdminNavLink>
+                <AdminNavLink href="/admin/agency">
                   Sadržaj agencije
-                </Link>
-                <Link href="/admin#firme">
+                </AdminNavLink>
+                <AdminNavLink href="/admin#firme">
                   Firme
-                </Link>
+                </AdminNavLink>
                 {/* Kalendar/Rezervacije/Upiti su grupirani pod jedan hub (bira se
                     vikendica pa se tek onda vidi njen kalendar/rezervacije/upiti)
                     umjesto tri zasebna taba koja su miješala sve vikendice odjednom
                     i postajala krcata — vidi app/admin/vikendice. */}
-                <Link href="/admin/vikendice">
+                <AdminNavLink href="/admin/vikendice">
                   Vikendice
-                </Link>
+                </AdminNavLink>
                 {/* Prodaja je spojena u Financije (na izričit zahtjev korisnika:
                     "spoji tab financije i prodaja u jedan") — jedan link, jedna
                     stranica, vidi app/admin/financije AgencyLedgerTable. */}
                 {admin.isSuperAdmin && (
-                  <Link href="/admin/financije">
+                  <AdminNavLink href="/admin/financije">
                     Financije
-                  </Link>
+                  </AdminNavLink>
                 )}
-                <Link href="/admin/aktivnost">
+                <AdminNavLink href="/admin/aktivnost">
                   Aktivnost
-                </Link>
+                </AdminNavLink>
                 {admin.isSuperAdmin && (
-                  <Link href="/admin/admins">
+                  <AdminNavLink href="/admin/admins">
                     Admini
-                  </Link>
+                  </AdminNavLink>
                 )}
               </>
             )}
-            <Link href="/admin/settings">
+            <AdminNavLink href="/admin/settings">
               Postavke
-            </Link>
-            <Link href={ownerPageHref ?? "/"} target="_blank">
-              Pogledaj stranicu ↗
+            </AdminNavLink>
+            {/* "Pogledaj stranicu" namjerno OSTAJE obični Link, ne AdminNavLink
+                — vodi na javnu stranicu (druga domena/ruta), nije "sekcija"
+                admina u kojoj se može "biti", pa aktivno stanje nema smisla. */}
+            <Link href={ownerPageHref ?? "/"} target="_blank" className="inline-flex items-center gap-1">
+              Pogledaj stranicu <ExternalLinkIcon />
             </Link>
             <span className="owner-header-faint flex items-center gap-1.5">
               {admin.email}
@@ -183,7 +188,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
             </span>
             <form action={logoutAction}>
               <button type="submit" className="neu-btn px-3 py-1.5">
-                Odjava
+                <LogOutIcon /> Odjava
               </button>
             </form>
             </nav>

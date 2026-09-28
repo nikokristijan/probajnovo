@@ -1154,7 +1154,7 @@ html.novo-lock-scroll body {
 .stay-grand .stay-avail-day-selected { background: var(--accent-dark); color: var(--paper); }
 .stay-grand .stay-avail-day-inrange { background: color-mix(in srgb, var(--accent-dark) 24%, var(--plaster)); }
 
-/* --- Rezervacijska traka: JEDINO mjesto gdje se paleta namjerno okreće —
+/* --- Rezervacijska traka: JEDINO mjesto gdje se paleta namjerno okreće—
    uvijek tamna kartica, bez obzira je li ostatak stranice svijetao ili
    taman (isti "hrabrost na jednom mjestu" potez kao i prije), zato fiksne
    boje umjesto --ink/--paper tokena koji prate opću temu stranice. */
@@ -1249,8 +1249,30 @@ html.novo-lock-scroll body {
 /* =====================================================================
    ADMIN — jednostavno, funkcionalno sučelje (Tailwind za layout/forme).
    ===================================================================== */
-.admin-quicklink { font-size: 13px; font-weight: 600; border: 1px solid rgba(0,0,0,0.12); border-radius: 999px; padding: 8px 16px; background: #fff; text-decoration: none; color: #000; transition: border-color 0.15s ease, color 0.15s ease; }
-.admin-quicklink:hover { border-color: #ff7f00; color: #ff7f00; }
+/* Neumorphism pilula (isti jezik kao .neu-nav > a/.owner-quicklink) — RANIJE
+   bijela pločica s tankim rubom, sad ispupčena preko --neu-* tokena koje
+   .admin-shell/.owner-page-bg već definiraju, pa se automatski uklapa u
+   koji god kontekst (superadmin/vlasnik) se nađe. */
+.admin-quicklink {
+  font-size: 13px;
+  font-weight: 600;
+  border-radius: 999px;
+  padding: 8px 16px;
+  background: var(--neu-base);
+  text-decoration: none;
+  color: var(--neu-ink);
+  box-shadow: 4px 4px 8px var(--neu-shadow), -4px -4px 8px var(--neu-highlight);
+  transition: box-shadow 0.15s ease, color 0.15s ease, transform 0.15s ease;
+}
+.admin-quicklink:hover {
+  color: var(--neu-accent);
+  box-shadow: 2px 2px 5px var(--neu-shadow), -2px -2px 5px var(--neu-highlight);
+  transform: translateY(-1px);
+}
+.admin-quicklink:active {
+  transform: translateY(0) scale(0.97);
+  box-shadow: inset 3px 3px 6px var(--neu-shadow), inset -3px -3px 6px var(--neu-highlight);
+}
 .admin-shell {
   min-height: 100vh;
   background: #f7f7f5;
@@ -1273,17 +1295,24 @@ html.novo-lock-scroll body {
   --neu-ink-faint: rgba(20, 20, 43, 0.5);
   --neu-accent: #ff7f00;
 }
+/* Utisnuta neumorphism površina (isti jezik kao .neu-input) — RANIJE
+   obična bijela pločica s tankim rubom. */
 .admin-input {
-  border: 1px solid rgba(0, 0, 0, 0.15);
+  border: none;
   border-radius: 10px;
   padding: 9px 12px;
   font-size: 14px;
   font-family: inherit;
   outline: none;
   width: 100%;
-  background: #fff;
+  background: var(--neu-base);
+  color: var(--neu-ink);
+  box-shadow: inset 2px 2px 5px var(--neu-shadow), inset -2px -2px 5px var(--neu-highlight);
+  transition: box-shadow 0.15s ease;
 }
-.admin-input:focus { border-color: #0000c3; }
+.admin-input:focus {
+  box-shadow: inset 2px 2px 5px var(--neu-shadow), inset -2px -2px 5px var(--neu-highlight), 0 0 0 2px #0000c3;
+}
 .admin-repeat-row { display: flex; flex-direction: column; gap: 8px; border: 1px solid rgba(0,0,0,0.1); border-radius: 10px; padding: 12px; background: #fff; }
 .admin-repeat-add { align-self: flex-start; font-size: 13px; font-weight: 600; border: 1px dashed rgba(0,0,0,0.25); border-radius: 999px; padding: 8px 16px; background: transparent; cursor: pointer; transition: border-color 0.15s ease, color 0.15s ease; }
 .admin-repeat-add:hover { border-color: #ff7f00; color: #ff7f00; }
@@ -1306,15 +1335,17 @@ html.novo-lock-scroll body {
 @keyframes admin-dot-pop { from { opacity: 0; transform: scale(0); } to { opacity: 1; transform: scale(1); } }
 .admin-chart-dot { opacity: 0; transform-origin: center; transform-box: fill-box; animation: admin-dot-pop 0.35s ease-out forwards; }
 
-@keyframes admin-fade-up { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
-.admin-animate-grid > * { opacity: 0; animation: admin-fade-up 0.5s ease-out forwards; }
+/* Sitna postupna pojava, nikad "flashy" (Sign 05: "nothing moves, it just
+   appears" — 150-300ms po elementu, fade + blagi slide, jedan za drugim). */
+@keyframes admin-fade-up { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+.admin-animate-grid > * { opacity: 0; animation: admin-fade-up 0.28s ease-out forwards; }
 .admin-animate-grid > *:nth-child(1) { animation-delay: 0.02s; }
-.admin-animate-grid > *:nth-child(2) { animation-delay: 0.07s; }
-.admin-animate-grid > *:nth-child(3) { animation-delay: 0.12s; }
-.admin-animate-grid > *:nth-child(4) { animation-delay: 0.17s; }
-.admin-animate-grid > *:nth-child(5) { animation-delay: 0.22s; }
-.admin-animate-grid > *:nth-child(6) { animation-delay: 0.27s; }
-.admin-animate-grid > *:nth-child(n+7) { animation-delay: 0.32s; }
+.admin-animate-grid > *:nth-child(2) { animation-delay: 0.05s; }
+.admin-animate-grid > *:nth-child(3) { animation-delay: 0.08s; }
+.admin-animate-grid > *:nth-child(4) { animation-delay: 0.11s; }
+.admin-animate-grid > *:nth-child(5) { animation-delay: 0.14s; }
+.admin-animate-grid > *:nth-child(6) { animation-delay: 0.17s; }
+.admin-animate-grid > *:nth-child(n+7) { animation-delay: 0.2s; }
 
 @keyframes admin-bar-grow { from { transform: scaleX(0); } to { transform: scaleX(1); } }
 .admin-bar-grow { transform-origin: left; animation: admin-bar-grow 0.6s cubic-bezier(0.22, 1, 0.36, 1) forwards; }
@@ -1380,33 +1411,29 @@ html.novo-lock-scroll body {
   --neu-ink-faint: var(--oh-ink-faint);
   --neu-accent: #ff7f00;
 }
-/* DESETI krug feedbacka ("odmah iznad Juraj Filipović, i lijevo i desno,
-   kao da je sve u okviru", samo u tamnom modu) — .owner-dash (vidi
-   pozadinu niže, "background: radial-gradient(...var(--od-glow-navy-wash)")
-   ima suptilan plavi ambient sjaj pri vrhu SVOJE kutije, ali ta kutija
-   živi unutar <main className="max-w-4xl mx-auto px-6 py-10"> — px-6/py-10
-   padding je proziran pa kroz njega proviruje .owner-page-bg pozadina ISPOD
-   (ravna, bez sjaja). Rezultat: uska ravna traka bez sjaja uz gornji, lijevi
-   i desni rub .owner-dash kutije, dok je sama kutija (odmah unutra) svjetlija
-   zbog sjaja — upravo taj kontrast ravno/sjajno izgleda kao tanak "okvir"
-   oko sadržaja. Rješenje: isti ambient sjaj (identične brojke kao
-   --od-glow-navy-wash u tamnoj temi niže) i na .owner-page-bg — proviri li
-   sad kroz padding ili ne, boja se svugdje nastavlja pa nema ruba. Dodatna
-   korist: izbornik (.neu-header, vidi niže — bio je .owner-header
-   glass/backdrop-filter u ranijoj verziji) i dalje ima stvarnu boju ispod
-   sebe umjesto ravne navy podloge, sad kao osnova za neumorphism sjene
-   umjesto za "liquid glass" prozirnost. */
+/* NEUMORPHISM redizajn sadržaja (na izričit zahtjev: "napravi cijeli
+   dashboard u tom stilu... makni sve gradijente jer izgledaju cheap i AI")
+   — raniji plavi ambient "sjaj" (radial-gradient wash, vidi git povijest)
+   koji je ovdje nekoć rješavao vizualni šav oko .owner-dash kutije je u
+   potpunosti uklonjen zajedno sa svim ostalim gradijentima u vlasničkom
+   dashboardu. Pozadina je sad posve ravna (#0a0a24 tamna / #f2f3f9
+   svijetla) i na .owner-page-bg i na .owner-dash, pa šava nema ni bez
+   sjaja — obje pozadine su već identična ravna boja. */
 .owner-page-bg[data-theme="dark"] {
-  background: radial-gradient(140% 70% at 50% -4%, rgba(70, 70, 255, 0.32), transparent 62%),
-    #0a0a24;
+  /* Ravna tamno-navy podloga — RANIJE je ovdje bio radial-gradient plavi
+     "sjaj" pri vrhu (liquid glass ambient wash). Na izričit zahtjev
+     ("makni sve gradijente, izgledaju jeftino i AI") maknut je posve: sama
+     boja (#0a0a24) je već dio NOVO navy palete, pa tamna tema i dalje
+     jasno pripada brendu bez ijednog gradijenta na stranici. */
+  background: #0a0a24;
   --oh-ink: #f3f3fb;
   --oh-ink-faint: rgba(243, 243, 251, 0.66);
   --oh-glass: rgba(20, 20, 36, 0.72);
   --oh-glass-chip: rgba(255, 255, 255, 0.1);
   --oh-hairline: rgba(255, 255, 255, 0.14);
-  /* Vlasnička (dark) neumorphism paleta — --neu-base blizu solidne baze
-     gornjeg gradijenta (#0a0a24) tako da izbornik u mirovanju vizualno
-     nastavlja pozadinu ispod sebe umjesto da izgleda kao odvojena pločica;
+  /* Vlasnička (dark) neumorphism paleta — --neu-base blizu solidne
+     pozadine (#0a0a24) tako da izbornik u mirovanju vizualno nastavlja
+     pozadinu ispod sebe umjesto da izgleda kao odvojena pločica;
      --neu-highlight svjetlija navy nijansa (ne bijela — bijeli highlight na
      tamnoj bazi bi izgledao kao žarulja, ne kao mekana ispupčenost). */
   --neu-base: #0d0d29;
@@ -1418,8 +1445,7 @@ html.novo-lock-scroll body {
 }
 @media (prefers-color-scheme: dark) {
   .owner-page-bg:not([data-theme="light"]):not([data-theme="dark"]) {
-    background: radial-gradient(140% 70% at 50% -4%, rgba(70, 70, 255, 0.32), transparent 62%),
-      #0a0a24;
+    background: #0a0a24;
     --oh-ink: #f3f3fb;
     --oh-ink-faint: rgba(243, 243, 251, 0.66);
     --oh-glass: rgba(20, 20, 36, 0.72);
@@ -1573,6 +1599,26 @@ html:has(.owner-page-bg)::-webkit-scrollbar {
   color: var(--neu-ink-faint);
 }
 
+/* Trajno "utisnuto" stanje za nav stavku TRENUTNE stranice (ne samo dok se
+   klika) — AdminNavLink.tsx postavlja aria-current="page" preko usePathname()
+   kad je link trenutna ruta (ili njen roditelj, npr. "Vikendice" ostaje
+   aktivan i na /admin/vikendice/123). Ista inset-sjena kao :active gore, ali
+   TRAJNA dok se ne ode na drugu stranicu, umjesto da nestane čim se pusti
+   miš/prst — bez ovoga nav nije imao nikakav vizualni znak "ovdje si sada". */
+.neu-nav > a[aria-current="page"] {
+  color: var(--neu-accent);
+  font-weight: 700;
+  box-shadow: inset 3px 3px 6px var(--neu-shadow), inset -3px -3px 6px var(--neu-highlight);
+}
+
+.neu-btn,
+.neu-toggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .neu-nav > a,
   .neu-btn,
@@ -1586,252 +1632,180 @@ html:has(.owner-page-bg)::-webkit-scrollbar {
   }
 }
 
+/* =====================================================================
+   ADMIN SADRŽAJ — dijeljeni neumorphism gradivni blokovi (na izričit
+   zahtjev: "napravi cijeli dashboard u tom stilu"). Za razliku od
+   .owner-* sustava niže (koji živi ISKLJUČIVO iza .owner-dash), ove klase
+   rade posvuda unutar .admin-shell — i za superadmina (čita --neu-* koje
+   .admin-shell sam definira, uvijek light) i za vlasnika (čita --neu-*
+   koje .owner-page-bg prepisuje, light/dark/sustav) — jer čitaju SAMO
+   --neu-* varijable, nikad fiksne boje, pa se automatski uklapaju u koji
+   god kontekst se nađu. Zamjenjuje raniju ponovljenu "border border-black/10
+   rounded-xl px-4 py-3 bg-white" Tailwind mrlju koja se ručno kopirala u
+   svaku admin stranicu (i nije imala nikakvu temu ni dubinu). */
+.neu-card {
+  background: var(--neu-base);
+  color: var(--neu-ink);
+  border-radius: 16px;
+  box-shadow: 5px 5px 12px var(--neu-shadow), -5px -5px 12px var(--neu-highlight);
+  transition: box-shadow 0.18s cubic-bezier(0.22, 1, 0.36, 1), transform 0.18s cubic-bezier(0.22, 1, 0.36, 1);
+}
+.neu-card-interactive:hover {
+  box-shadow: 3px 3px 8px var(--neu-shadow), -3px -3px 8px var(--neu-highlight);
+  transform: translateY(-1px);
+}
+.neu-card-interactive:active {
+  box-shadow: inset 3px 3px 6px var(--neu-shadow), inset -3px -3px 6px var(--neu-highlight);
+  transform: translateY(0) scale(0.99);
+}
+
+/* Standardni tekstualni/date/select input izvan .owner-dash (superadmin
+   forme) — isti "utisnuti" (inset sjena) jezik kao .owner-input niže, samo
+   preko --neu-* umjesto --od-*, da forme na oba sučelja izgledaju kao dio
+   iste obitelji komponenti. */
+.neu-input {
+  border: none;
+  background: var(--neu-base);
+  color: var(--neu-ink);
+  border-radius: 10px;
+  padding: 9px 12px;
+  font-size: 14px;
+  font-family: inherit;
+  width: 100%;
+  outline: none;
+  box-shadow: inset 2px 2px 5px var(--neu-shadow), inset -2px -2px 5px var(--neu-highlight);
+  transition: box-shadow 0.15s ease;
+}
+.neu-input::placeholder { color: var(--neu-ink-faint); }
+.neu-input:focus {
+  box-shadow: inset 2px 2px 5px var(--neu-shadow), inset -2px -2px 5px var(--neu-highlight), 0 0 0 2px var(--neu-accent);
+}
+
+/* Prazno stanje (Sign 04 — "no loading or empty screens"): utisnuta
+   pločica s ikonom umjesto gole rečenice "još nema X" da prazan popis ne
+   izgleda kao slomljena stranica. */
+.neu-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  text-align: center;
+  padding: 36px 20px;
+  border-radius: 16px;
+  background: var(--neu-base);
+  color: var(--neu-ink-faint);
+  box-shadow: inset 3px 3px 8px var(--neu-shadow), inset -3px -3px 8px var(--neu-highlight);
+}
+.neu-empty svg { opacity: 0.55; }
+.neu-empty-text { font-size: 13px; max-width: 34ch; }
+
+/* Skeleton učitavanja (Sign 04) — blaga pulsirajuća neprozirnost umjesto
+   gradient "sjaja" koji bi se sudarao sa "makni sve gradijente" zahtjevom;
+   isti vizualni jezik (ravna --neu-shadow ploha) kao utisnuti elementi. */
+@keyframes neu-pulse {
+  0%, 100% { opacity: 0.35; }
+  50% { opacity: 0.75; }
+}
+.neu-skeleton {
+  border-radius: 10px;
+  background: var(--neu-shadow);
+  animation: neu-pulse 1.6s ease-in-out infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .neu-skeleton { animation: none; opacity: 0.5; }
+  .neu-card-interactive:hover,
+  .neu-card-interactive:active { transform: none; }
+}
+
 .owner-dash {
   --od-navy: #0000c3;
   --od-orange: #ff7f00;
   --od-purple: #6a21b0;
 
-  --od-bg: #f2f3f9;
   --od-ink: #0b0b1f;
   --od-ink-soft: rgba(11, 11, 31, 0.62);
   --od-ink-faint: rgba(11, 11, 31, 0.42);
-  --od-glass-bg: rgba(243, 244, 255, 0.55);
-  --od-glass-bg-strong: rgba(248, 248, 255, 0.78);
-  --od-glass-border: rgba(255, 255, 255, 0.65);
-  --od-glass-highlight: rgba(255, 255, 255, 0.85);
-  --od-glass-shadow: 0 2px 2px rgba(20, 20, 60, 0.04), 0 16px 40px -16px rgba(20, 20, 60, 0.28),
-    inset 0 1px 0 rgba(255, 255, 255, 0.6);
+  /* NEUMORPHISM: "staklo" (--od-glass-bg*) više ne znači prozirnost/blur —
+     znači "ista boja kao podloga", jer u soft-UI dubina dolazi isključivo iz
+     --neu-shadow/--neu-highlight dvostruke sjene (vidi .owner-glass niže),
+     ne iz prozirnosti. --neu-* ovdje čita .owner-page-bg predak (vidi taj
+     razred), pa se light/dark/sustav grananje ne mora ponavljati ovdje. */
+  --od-glass-bg: var(--neu-base);
+  --od-glass-bg-strong: var(--neu-base);
   --od-hairline: rgba(11, 11, 31, 0.09);
-  --od-blob-navy: rgba(0, 0, 195, 0.5);
-  --od-blob-orange: rgba(255, 127, 0, 0.42);
-  --od-blob-purple: rgba(106, 33, 176, 0.4);
-  /* TREĆI KRUG feedbacka ("pokvario si i svijetlu pozadinu"): ambient wash
-     + zrcalna ::after mrlja pri dnu su NAMJERNO isključeni u svijetloj temi
-     (opacity/alpha na 0 ovdje) — svijetla tema je već bila dobra prije ova
-     dva dodatka i nije trebala dirati; oba efekta postoje SAMO da riješe
-     "gradijent kao hero, ne ravno crno" u TAMNOJ temi, pa se uključuju
-     isključivo unutar [data-theme="dark"] / prefers-color-scheme:dark
-     blokova niže. --od-after-opacity kontrolira .owner-dash::after. */
-  --od-glow-navy-wash: rgba(0, 0, 195, 0);
-  --od-after-opacity: 0;
   /* Za .owner-input niže (color-scheme: var(--od-color-scheme)) — bez ovoga
      nativna ikona kalendara na <input type="date"> ostaje crna/tamna i u
-     tamnoj temi (browser ne zna da je podloga tamna), pa "nestane" na tamnom
-     staklu — dio istog "ništa se ne vidi" feedbacka. */
+     tamnoj temi (browser ne zna da je podloga tamna), pa "nestane". */
   --od-color-scheme: light;
 
-  /* JEDANAESTI krug feedbacka ("odmah iznad Juraj Filipović, lijevo i
-     desno, kao da je sve u okviru" — DEVETI/DESETI krug su pokušali
-     riješiti dodavanjem ISTOG sjaja na .owner-page-bg, ali problem je
-     ostao: owner-dash je i dalje imao SVOJU vlastitu "background:" (ispod)
-     koja je NEPROZIRNA — sjedi PREKO .owner-page-bg-a kao vlastiti sloj s
-     TVRDIM rubom točno na granici owner-dash kutije (max-w-4xl mx-auto
-     px-6 py-10 u <main> znači owner-dash je uži od cijele stranice), pa
-     ma koliko dobro par gradijenata međusobno nalikovao, i dalje su dva
-     odvojena sloja s vidljivim šavom na spoju. Prije je ovaj background
-     ovdje bio jedini izvor boje (owner-page-bg tada još nije ni postojao —
-     vidi DRUGI/PETI/ŠESTI krug povijest), ali otkad .owner-page-bg (isti
-     --od-bg brojevi + isti ambient sjaj, vidi taj razred) sjedi ISPOD kao
-     zajednički predak SVAKE vlasničke stranice, owner-dash više ne treba
-     vlastitu neprozirnu podlogu — samo joj smeta. Rješenje: owner-dash
-     ostaje PROZIRAN (nema "background" uopće), pa .owner-page-bg-ova boja/
-     sjaj proviruje JEDNAKO kroz cijelu stranicu, unutar i izvan owner-dash
-     kutije — nema više dva sloja, pa nema ni šava. min-height ostaje (drži
-     kutiju punom visinom ekrana i kad je sadržaj kraći), samo bez
-     background svojstva. */
+  /* .owner-dash nema vlastitu pozadinu (prozirna je) — .owner-page-bg predak
+     (vidi taj razred) je jedini izvor boje, pa nema šava između njih. */
   min-height: 100vh;
   transition: background-color 0.25s ease;
   position: relative;
-  isolation: isolate;
   color: var(--od-ink);
 }
 
-/* Tamna tema — POJAČAN kontrast nakon feedbacka "nema dovoljno kontrasta i
-   nije citljiva". Stari tokeni (glass-bg na 0.58 neprozirnosti, ink-faint
-   na samo 0.48) davali su mutnu sivo-ljubičastu površinu bez jasne granice
-   prema pozadini i slabo čitljiv sitan tekst (osi grafova, labeli). Sad:
-   staklo je tamnije I neprozirnije (jasna razlika kartica/pozadina umjesto
-   providnog "izmaglica" efekta), rub/highlight vidljiviji, a ink-soft/
-   ink-faint podignuti — tamne pozadine trebaju VIŠI opacitet teksta za isti
-   kontrast nego svijetle. */
 .owner-dash[data-theme="dark"] {
-  /* NAMJERNO tamna NAVY (#0a0a24), ne gotovo čista crna (staro #08080f) —
-     druga runda feedbacka ("sad je jos gore") tražila je da pozadina
-     izgleda kao produžetak hero gradijenta, ne ravna crna ploha. Ravno
-     crno + prozirni obojeni sjajevi preko njega daju "mutan/prljav" dojam
-     (radial-gradient prema "transparent" otkriva crnu, ne boju), dok
-     navy podloga s istom hue obitelji kao --od-navy čini da se ambient
-     sjaj (vidi --od-glow-navy-wash) i ::before/::after mrlje prirodno
-     stapaju s pozadinom umjesto da sjede na njoj kao mrlja. */
-  --od-bg: #0a0a24;
   --od-ink: #f3f3fb;
   --od-ink-soft: rgba(243, 243, 251, 0.84);
   --od-ink-faint: rgba(243, 243, 251, 0.66);
-  --od-glass-bg: rgba(36, 36, 58, 0.8);
-  --od-glass-bg-strong: rgba(42, 42, 66, 0.92);
-  --od-glass-border: rgba(255, 255, 255, 0.18);
-  --od-glass-highlight: rgba(255, 255, 255, 0.28);
-  --od-glass-shadow: 0 2px 2px rgba(0, 0, 0, 0.22), 0 16px 40px -16px rgba(0, 0, 0, 0.6),
-    inset 0 1px 0 rgba(255, 255, 255, 0.12);
   --od-hairline: rgba(255, 255, 255, 0.16);
-  --od-blob-navy: rgba(74, 74, 255, 0.55);
-  --od-blob-orange: rgba(255, 142, 24, 0.4);
-  --od-blob-purple: rgba(150, 90, 230, 0.42);
-  --od-glow-navy-wash: rgba(70, 70, 255, 0.32);
-  --od-after-opacity: 0.55;
   --od-color-scheme: dark;
-}
-
-@media (max-width: 640px) {
-  .owner-dash[data-theme="dark"] {
-    --od-after-opacity: 0.45;
-  }
 }
 
 @media (prefers-color-scheme: dark) {
   .owner-dash:not([data-theme="light"]):not([data-theme="dark"]) {
-    /* Isti navy (ne crna) razlog kao .owner-dash[data-theme="dark"] gore —
-       ova grana pokriva "sustav" temu kad korisnik nije ništa eksplicitno
-       izabrao, pa mora ostati usklađena s eksplicitnim tamnim blokom. */
-    --od-bg: #0a0a24;
     --od-ink: #f3f3fb;
     --od-ink-soft: rgba(243, 243, 251, 0.84);
     --od-ink-faint: rgba(243, 243, 251, 0.66);
-    --od-glass-bg: rgba(36, 36, 58, 0.8);
-    --od-glass-bg-strong: rgba(42, 42, 66, 0.92);
-    --od-glass-border: rgba(255, 255, 255, 0.18);
-    --od-glass-highlight: rgba(255, 255, 255, 0.28);
-    --od-glass-shadow: 0 2px 2px rgba(0, 0, 0, 0.22), 0 16px 40px -16px rgba(0, 0, 0, 0.6),
-      inset 0 1px 0 rgba(255, 255, 255, 0.12);
     --od-hairline: rgba(255, 255, 255, 0.16);
-    --od-blob-navy: rgba(74, 74, 255, 0.55);
-    --od-blob-orange: rgba(255, 142, 24, 0.4);
-    --od-blob-purple: rgba(150, 90, 230, 0.42);
-    --od-glow-navy-wash: rgba(70, 70, 255, 0.32);
-    --od-after-opacity: 0.55;
     --od-color-scheme: dark;
   }
 }
 
-@media (max-width: 640px) and (prefers-color-scheme: dark) {
-  .owner-dash:not([data-theme="light"]):not([data-theme="dark"]) {
-    --od-after-opacity: 0.45;
-  }
-}
-
-/* Zamućene mrlje NOVO boje iza gornjeg dijela dashboarda — izvor boje koju
-   staklene površine (hero, kartice) stvarno "vide" kroz backdrop-filter.
-   Fiksne visine (ne cijeli scroll) jer je gornja zona (hero + statistika +
-   prvi grafovi) gdje je efekt najvidljiviji i najvažniji; niže niz stranicu
-   staklo i dalje radi preko obične pozadine, što je uredu — pravi Apple
-   liquid glass isto ne boji baš svaki pixel podloge. */
-.owner-dash::before {
-  content: "";
-  position: absolute;
-  top: -60px;
-  left: -5%;
-  right: -5%;
-  height: 1180px;
-  z-index: -1;
-  pointer-events: none;
-  background: radial-gradient(560px 420px at 10% 0%, var(--od-blob-navy), transparent 62%),
-    radial-gradient(480px 400px at 92% 6%, var(--od-blob-orange), transparent 60%),
-    radial-gradient(620px 460px at 48% 42%, var(--od-blob-purple), transparent 65%),
-    radial-gradient(520px 480px at 20% 78%, var(--od-blob-purple), transparent 68%),
-    radial-gradient(560px 420px at 88% 92%, var(--od-blob-navy), transparent 66%);
-  filter: blur(70px) saturate(150%);
-  opacity: 0.65;
-}
-
-@media (max-width: 640px) {
-  .owner-dash::before {
-    height: 980px;
-    opacity: 0.55;
-  }
-}
-
-/* Zrcalna mrlja pri DNU spremnika (::after, ne fiksirano za viewport —
-   sjedi na dnu STVARNOG sadržaja, pa se pomiče s duljinom stranice). Bez
-   ovoga stranice duže od ~1180px (hero + bedgevi + kartice + grafovi +
-   kalendar) padaju natrag na golu pozadinu čim se iscrpi ::before mrlja
-   pri vrhu — u tamnoj temi to izgleda kao nagli prijelaz natrag u ravnu
-   crnu plohu usred stranice (feedback: "gradijent kao hero, ne ravno
-   crno" treba vrijediti cijelom dužinom stranice, ne samo prvom ekranu). */
-.owner-dash::after {
-  content: "";
-  position: absolute;
-  bottom: -60px;
-  left: -5%;
-  right: -5%;
-  height: 760px;
-  z-index: -1;
-  pointer-events: none;
-  background: radial-gradient(520px 420px at 88% 100%, var(--od-blob-navy), transparent 64%),
-    radial-gradient(480px 400px at 6% 92%, var(--od-blob-orange), transparent 62%),
-    radial-gradient(560px 460px at 50% 60%, var(--od-blob-purple), transparent 68%);
-  filter: blur(80px) saturate(150%);
-  /* NAMJERNO preko --od-after-opacity varijable (0 u svijetloj temi, ~0.5 u
-     tamnoj — vidi definicije te varijable uz --od-bg gore) umjesto fiksnog
-     broja: ova mrlja postoji ISKLJUČIVO za tamnu temu, svijetla je već bila
-     dobra i nije je trebalo dirati (feedback: "pokvario si i svijetlu
-     pozadinu"). */
-  opacity: var(--od-after-opacity, 0);
-}
-
-@media (max-width: 640px) {
-  .owner-dash::after {
-    height: 620px;
-  }
-}
-
-/* Suptilna zrnatost preko staklenih površina — bez ovoga svaki glassmorphism
-   izgleda "generički AI": prava optika ima šum, ne savršeno gladak blur. */
-.owner-glass-grain {
-  position: relative;
-}
-.owner-glass-grain::after {
-  content: "";
-  position: absolute;
-  inset: 0;
-  border-radius: inherit;
-  pointer-events: none;
-  opacity: 0.05;
-  mix-blend-mode: overlay;
-  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='120' height='120'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/></filter><rect width='100%25' height='100%25' filter='url(%23n)'/></svg>");
-}
-
-/* Osnovna staklena površina — koristi se izravno (className="owner-glass")
-   ili kao baza preko koje admin-quicklink-stil komponente dodaju svoje. */
+/* Osnovna neumorphism površina (className="owner-glass") — RANIJE prozirno
+   "liquid glass" staklo s blurom/rubom/gradient mrljama iza sebe; na izričit
+   zahtjev ("makni sve gradijente, izgledaju cheap i AI") zamijenjeno
+   ravnom pločicom iste boje kao podloga, gdje dubinu daje isključivo meka
+   dvostruka sjena (svijetla + tamna) — identičan jezik kao .neu-card/
+   .neu-nav > a u izborniku iznad, samo preko --od-* imena koje ostatak
+   vlasničkih komponenti već očekuje. */
 .owner-glass {
   background: var(--od-glass-bg);
-  border: 1px solid var(--od-glass-border);
   border-radius: 20px;
-  box-shadow: var(--od-glass-shadow);
-  backdrop-filter: blur(20px) saturate(160%);
-  -webkit-backdrop-filter: blur(20px) saturate(160%);
-  transition: transform 0.2s cubic-bezier(0.22, 1, 0.36, 1), box-shadow 0.2s ease, border-color 0.2s ease;
+  box-shadow: 6px 6px 14px var(--neu-shadow), -6px -6px 14px var(--neu-highlight);
+  transition: box-shadow 0.2s cubic-bezier(0.22, 1, 0.36, 1), transform 0.2s cubic-bezier(0.22, 1, 0.36, 1);
 }
 .owner-glass-strong {
   background: var(--od-glass-bg-strong);
-  border: 1px solid var(--od-glass-border);
   border-radius: 18px;
-  box-shadow: var(--od-glass-shadow);
-  backdrop-filter: blur(24px) saturate(150%);
-  -webkit-backdrop-filter: blur(24px) saturate(150%);
+  box-shadow: 4px 4px 10px var(--neu-shadow), -4px -4px 10px var(--neu-highlight);
 }
 a.owner-glass:hover,
 .owner-glass-interactive:hover {
   transform: translateY(-1px);
-  border-color: var(--od-glass-highlight);
+  box-shadow: 3px 3px 8px var(--neu-shadow), -3px -3px 8px var(--neu-highlight);
 }
 a.owner-glass:active,
 .owner-glass-interactive:active {
   transform: translateY(0px) scale(0.99);
+  box-shadow: inset 3px 3px 6px var(--neu-shadow), inset -3px -3px 6px var(--neu-highlight);
+}
+
+/* .owner-glass-grain (sitna zrnata tekstura preko stakla) je NAMJERNO
+   maknuta — imala je smisla samo za optičku nesavršenost glassmorphism
+   bluras, neumorphism nema blur pa nema ni zrno. Klasa ostaje definirana
+   (bez efekta) da postojeći className="owner-glass-grain" u komponentama
+   ne mora nigdje mijenjati. */
+.owner-glass-grain {
+  position: relative;
 }
 
 /* Vlasnički pandan .admin-quicklink — NAMJERNO odvojena klasa (ne dijeli
    se s superadmin AdminDashboard, koji i dalje koristi .admin-quicklink
-   nepromijenjeno) da glass redizajn ostane izoliran na role="owner". */
+   nepromijenjeno) da redizajn ostane izoliran na role="owner". */
 .owner-quicklink {
   font-size: 13px;
   font-weight: 600;
@@ -1840,22 +1814,27 @@ a.owner-glass:active,
   text-decoration: none;
   color: var(--od-ink);
   background: var(--od-glass-bg);
-  border: 1px solid var(--od-glass-border);
-  backdrop-filter: blur(16px) saturate(150%);
-  -webkit-backdrop-filter: blur(16px) saturate(150%);
-  transition: border-color 0.15s ease, color 0.15s ease, transform 0.15s ease;
+  box-shadow: 4px 4px 8px var(--neu-shadow), -4px -4px 8px var(--neu-highlight);
+  transition: box-shadow 0.15s ease, color 0.15s ease, transform 0.15s ease;
 }
-.owner-quicklink:hover { border-color: var(--od-orange); color: var(--od-orange); transform: translateY(-1px); }
+.owner-quicklink:hover {
+  color: var(--od-orange);
+  box-shadow: 2px 2px 5px var(--neu-shadow), -2px -2px 5px var(--neu-highlight);
+  transform: translateY(-1px);
+}
+.owner-quicklink:active {
+  transform: translateY(0) scale(0.97);
+  box-shadow: inset 3px 3px 6px var(--neu-shadow), inset -3px -3px 6px var(--neu-highlight);
+}
 
 /* ---- Hero kartica ------------------------------------------------- */
-/* Na izričit zahtjev: pozadina je jednobojna, tamno neutralna (skoro crna)
-   umjesto prijašnjeg navy/narančasto/ljubičastog radial-gradient "staklenog"
-   izgleda (vidi git povijest za stari kod ako ga ikad zatreba natrag). NOVO
-   brand boje (navy/narančasta/ljubičasta) i dalje žive u akcentima unutar
-   kartice — streak bedž, prsten napretka, brojke — ne u samoj podlozi.
-   Mobilno: label+broj se prisilno slažu okomito ispod ~380px
-   (owner-hero-top), a streak bedž pada u vlastiti red umjesto neugodnog
-   omatanja pored broja. */
+/* Namjerno JEDNOBOJNA, tamno neutralna (skoro crna) podloga — jedina
+   površina u vlasničkom dashboardu koja NIJE iste boje kao stranica ispod
+   (namjerna iznimka od neumorphism "ista boja, dubina iz sjene" pravila,
+   da najvažnija brojka na stranici ima vizualnu težinu "kartice koja se
+   ističe", ne još jedne utisnute pločice). NOVO brand boje (navy/narančasta)
+   i dalje žive u akcentima unutar kartice — streak bedž, prsten napretka,
+   brojke — ne u samoj podlozi, i nigdje kao gradient. */
 .owner-hero {
   position: relative;
   overflow: hidden;
@@ -1909,21 +1888,17 @@ a.owner-glass:active,
   font-weight: 700;
   padding: 7px 13px;
   border-radius: 999px;
-  background: rgba(255, 255, 255, 0.16);
-  border: 1px solid rgba(255, 255, 255, 0.3);
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
+  background: rgba(255, 255, 255, 0.14);
   white-space: nowrap;
   align-self: flex-start;
 }
 .owner-streak-badge.owner-streak-badge-new {
   animation: owner-streak-pulse 2.4s ease-in-out infinite;
-  background: linear-gradient(135deg, rgba(255, 244, 232, 0.95), rgba(255, 228, 204, 0.95));
+  background: #ffe4cc;
   color: #a3480a;
-  border-color: rgba(255, 255, 255, 0.6);
 }
 
-/* ---- Prsten napretka + cilj-traka ---------------------------------- */
+/* ---- Prsten napretka + cilj-traka ----------------------------------- */
 @keyframes owner-ring-draw { from { stroke-dashoffset: 1; } to { stroke-dashoffset: var(--owner-ring-offset, 0); } }
 .owner-ring-progress { stroke-dasharray: 1; stroke-dashoffset: 1; animation: owner-ring-draw 1s cubic-bezier(0.22, 1, 0.36, 1) 0.15s forwards; }
 
@@ -1999,12 +1974,12 @@ a.owner-glass:active,
   flex-shrink: 0;
 }
 .owner-badge-unlocked {
-  background: linear-gradient(135deg, rgba(255, 127, 0, 0.16), rgba(0, 0, 195, 0.12));
+  background: rgba(255, 127, 0, 0.12);
   border: 1px solid rgba(255, 127, 0, 0.35);
   color: var(--od-ink);
 }
 .owner-badge-unlocked .owner-badge-icon {
-  background: linear-gradient(135deg, var(--od-orange), var(--od-navy));
+  background: var(--od-orange);
   color: #fff;
 }
 .owner-badge-locked {
@@ -2024,9 +1999,10 @@ a.owner-glass:active,
 
 /* ---- Statistički mini-kartice (OwnerStatCard) ------------------------- */
 /* Bez obojenog ruba sve tri kartice izgledaju kao identična ponovljena
-   siva pločica (feedback: "malo ruzno" — monotono). Tanka gradient traka
-   na vrhu svake kartice, po jedna boja iz NOVO palete, dovoljna je da
-   svaka kartica dobije vlastiti identitet bez da se doda još stakla/šuma. */
+   pločica (feedback: "malo ruzno" — monotono). Tanka PUNA traka boje na
+   vrhu svake kartice, po jedna boja iz NOVO palete, dovoljna je da svaka
+   kartica dobije vlastiti identitet — RANIJE je traka bila gradijent
+   (boja → prozirno), sad puna boja (na izričit zahtjev: bez gradijenata). */
 .owner-stat-card {
   position: relative;
   overflow: hidden;
@@ -2040,9 +2016,9 @@ a.owner-glass:active,
   height: 3px;
   opacity: 0.85;
 }
-.owner-stat-card-orange::before { background: linear-gradient(90deg, var(--od-orange), transparent 85%); }
-.owner-stat-card-navy::before { background: linear-gradient(90deg, var(--od-navy), transparent 85%); }
-.owner-stat-card-purple::before { background: linear-gradient(90deg, var(--od-purple), transparent 85%); }
+.owner-stat-card-orange::before { background: var(--od-orange); }
+.owner-stat-card-navy::before { background: var(--od-navy); }
+.owner-stat-card-purple::before { background: var(--od-purple); }
 
 /* ---- Tema/gumb prekidača --------------------------------------------- */
 .owner-theme-switch {
@@ -2064,8 +2040,8 @@ a.owner-glass:active,
 }
 .owner-theme-switch button.owner-theme-switch-active {
   background: var(--od-glass-bg-strong);
-  color: var(--od-ink);
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08);
+  color: var(--neu-accent);
+  box-shadow: inset 2px 2px 4px var(--neu-shadow), inset -2px -2px 4px var(--neu-highlight);
 }
 
 /* ---- Konfeti ---------------------------------------------------------- */
@@ -2085,7 +2061,7 @@ a.owner-glass:active,
 
 /* ---- Sitni kalendar (OwnerMiniCalendar) -------------------------------- */
 .owner-cal-cell-blocked {
-  background: linear-gradient(135deg, #ff6b4a, #ff3b30);
+  background: #ff3b30;
   color: #fff;
   box-shadow: 0 2px 6px -2px rgba(255, 59, 48, 0.6);
 }
@@ -2126,7 +2102,7 @@ a.owner-glass:active,
   color: var(--od-ink);
 }
 .owner-cal-cell-reservation {
-  background: linear-gradient(135deg, var(--od-navy), #3f3ff0);
+  background: var(--od-navy);
   color: #fff;
   box-shadow: 0 2px 6px -2px rgba(0, 0, 195, 0.55);
 }
@@ -2142,25 +2118,29 @@ a.owner-glass:active,
   transform: none;
 }
 
-/* Standardni tekstualni/date/select input unutar .owner-dash — glass
-   površina umjesto Tailwind-ovog .admin-input (border-black/15, obična
-   bijela pozadina) koji u tamnoj temi ostaje bijel/nečitljiv. color-scheme
-   je NAMJERNO po varijabli (vidi --od-color-scheme uz --od-bg gore) da
-   nativna ikona <input type="date"> kalendara bude vidljiva u tamnoj temi. */
+/* Standardni tekstualni/date/select input unutar .owner-dash — "utisnuta"
+   neumorphism površina (inset sjena, isti jezik kao .neu-input izvan
+   .owner-dash) umjesto ranijeg prozirnog stakla/bluras, i umjesto
+   Tailwind-ovog .admin-input (border-black/15, obična bijela pozadina)
+   koji u tamnoj temi ostaje bijel/nečitljiv. color-scheme je NAMJERNO po
+   varijabli (vidi --od-color-scheme gore) da nativna ikona <input
+   type="date"> kalendara bude vidljiva u tamnoj temi. */
 .owner-input {
-  border: 1px solid var(--od-glass-border);
+  border: none;
   background: var(--od-glass-bg);
   color: var(--od-ink);
   border-radius: 10px;
   padding: 9px 12px;
   font-size: 14px;
-  backdrop-filter: blur(12px) saturate(150%);
-  -webkit-backdrop-filter: blur(12px) saturate(150%);
-  transition: border-color 0.15s ease;
+  box-shadow: inset 2px 2px 5px var(--neu-shadow), inset -2px -2px 5px var(--neu-highlight);
+  transition: box-shadow 0.15s ease;
   color-scheme: var(--od-color-scheme, light);
 }
 .owner-input::placeholder { color: var(--od-ink-faint); }
-.owner-input:focus { outline: none; border-color: var(--od-navy); }
+.owner-input:focus {
+  outline: none;
+  box-shadow: inset 2px 2px 5px var(--neu-shadow), inset -2px -2px 5px var(--neu-highlight), 0 0 0 2px var(--od-navy);
+}
 
 /* Puni (solidni) primarni gumb — za glavne submit akcije (blokiraj raspon,
    spremi postavke...). Namjerno solidna navy boja (ne staklo) da se jasno
@@ -2182,11 +2162,11 @@ a.owner-glass:active,
 .owner-btn-primary:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
 
 /* Destruktivna/upozoravajuća akcija (npr. obriši upit, otkaži rezervaciju) —
-   isti crveni gradient kao .owner-cal-cell-blocked, radi Apple-ovski
-   dosljedno "crveno = destruktivno" kroz cijeli vlasnički admin. */
+   ista puna crvena kao .owner-cal-cell-blocked, radi Apple-ovski dosljedno
+   "crveno = destruktivno" kroz cijeli vlasnički admin. */
 .owner-btn-danger {
   border-radius: 999px;
-  background: linear-gradient(135deg, #ff6b4a, #ff3b30);
+  background: #ff3b30;
   color: #fff;
   font-weight: 600;
   font-size: 13px;

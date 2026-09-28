@@ -56,7 +56,7 @@ export default async function AdminsPage() {
         {admins.map((a) => (
           <div
             key={a.id}
-            className="flex items-center justify-between border border-black/10 rounded-xl px-4 py-3 bg-white"
+            className="flex items-center justify-between neu-card px-4 py-3"
           >
             <div>
               <div className="font-semibold text-sm flex items-center gap-2">
