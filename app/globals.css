@@ -1718,6 +1718,148 @@ html:has(.owner-page-bg)::-webkit-scrollbar {
   .neu-card-interactive:active { transform: none; }
 }
 
+/* =====================================================================
+   "URED" — pikselizirani tlocrt tima (Faza 2, app/admin/poruke), na
+   izričit zahtjev: "probaj napraviti da u tom novom 'slack' djelu bude
+   kao 2d pikselizirani tlocrt zaposlenika koji su trenutno online i koji
+   nisu... nek bude kao nekakav ured i nek bude zanimljivo". NAMJERNO oštri
+   (ne zaobljeni) rubovi i image-rendering:pixelated ovdje — jedini svjesno
+   "8-bit" kutak dashboarda, u kontrastu s mekim neumorphism okolo, jer
+   igrivost je bit zahtjeva. I dalje BEZ gradijenata (svaka "pločica poda"
+   je puna boja, ne CSS gradient) i i dalje samo --neu-accent kao brend
+   akcent — status boje (radi/jede/spava) su NAMJERNO odvojen semantički
+   set (isti obrazac kao postojeće crveno=greška/jantar=upozorenje), ne
+   dodatni akcenti. Nema vanjskih slika/sprite-ova, sve je CSS (isti "sam
+   sve nacrtao" pristup kao Icons.tsx).
+   ===================================================================== */
+.office-scene {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 14px;
+}
+.office-zone {
+  border-radius: 14px;
+  overflow: hidden;
+  background: var(--neu-base);
+  box-shadow: inset 2px 2px 6px var(--neu-shadow), inset -2px -2px 6px var(--neu-highlight);
+}
+.office-zone-label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  padding: 8px 10px 6px;
+  color: var(--neu-ink-faint);
+}
+.office-zone-dot { width: 7px; height: 7px; border-radius: 2px; flex-shrink: 0; }
+.office-zone-working .office-zone-dot { background: #16a34a; }
+.office-zone-away .office-zone-dot { background: #d97706; }
+.office-zone-sleeping .office-zone-dot { background: #64748b; }
+
+/* Pod — stvarna mreža sitnih "pločica" (nth-child naizmjenično), ne
+   gradient-trik: svaka pločica je puna boja. */
+.office-floor {
+  display: grid;
+  grid-template-columns: repeat(8, 1fr);
+  gap: 1px;
+  padding: 8px;
+  min-height: 64px;
+  align-content: start;
+}
+.office-tile {
+  aspect-ratio: 1;
+  border-radius: 1px;
+  background: var(--neu-shadow);
+  opacity: 0.35;
+}
+.office-tile:nth-child(odd) { opacity: 0.22; }
+
+.office-avatars {
+  grid-column: 1 / -1;
+  margin-top: -46px;
+  padding: 0 8px 10px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+.office-avatar {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  width: 44px;
+}
+.office-avatar-body {
+  position: relative;
+  width: 30px;
+  height: 30px;
+  border-radius: 6px;
+  image-rendering: pixelated;
+  box-shadow: 0 2px 0 rgba(0,0,0,0.15);
+}
+.office-avatar-eyes {
+  position: absolute;
+  top: 11px;
+  left: 6px;
+  width: 18px;
+  display: flex;
+  justify-content: space-between;
+}
+.office-avatar-eyes span {
+  width: 4px;
+  height: 4px;
+  background: #fff;
+  border-radius: 1px;
+  display: block;
+}
+.office-avatar-badge {
+  position: absolute;
+  bottom: -3px;
+  right: -3px;
+  width: 16px;
+  height: 16px;
+  border-radius: 5px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--neu-base);
+  box-shadow: 1px 1px 3px var(--neu-shadow), -1px -1px 3px var(--neu-highlight);
+}
+.office-avatar-badge svg { width: 10px; height: 10px; }
+.office-avatar-label {
+  font-size: 9px;
+  font-weight: 600;
+  color: var(--neu-ink-faint);
+  max-width: 44px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+@keyframes office-bob { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-2px); } }
+@keyframes office-sway { 0%, 100% { transform: rotate(-4deg); } 50% { transform: rotate(4deg); } }
+@keyframes office-breathe { 0%, 100% { opacity: 0.55; } 50% { opacity: 0.85; } }
+.office-avatar-body.is-working { animation: office-bob 1.1s ease-in-out infinite; }
+.office-avatar-body.is-away { animation: office-sway 1.6s ease-in-out infinite; }
+.office-avatar-body.is-sleeping { animation: office-breathe 2.4s ease-in-out infinite; }
+
+.office-empty {
+  grid-column: 1 / -1;
+  margin-top: -46px;
+  padding: 0 10px 12px;
+  font-size: 11px;
+  color: var(--neu-ink-faint);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .office-avatar-body.is-working,
+  .office-avatar-body.is-away,
+  .office-avatar-body.is-sleeping { animation: none; }
+}
+
 .owner-dash {
   --od-navy: #0000c3;
   --od-orange: #ff7f00;
@@ -1825,6 +1967,69 @@ a.owner-glass:active,
 .owner-quicklink:active {
   transform: translateY(0) scale(0.97);
   box-shadow: inset 3px 3px 6px var(--neu-shadow), inset -3px -3px 6px var(--neu-highlight);
+}
+
+/* ---------------------------------------------------------------------
+   "neu-disclosure" — sažeta padajuća sekcija (native <details>/<summary>,
+   BEZ klijentske komponente/JS-a, isti obrazac kao #admin-nav-toggle
+   checkbox hack gore). Na izričit zahtjev ("vlasnik menu izgleda jako
+   nepregledno") zamjenjuje raniji stupac od 5 owner-quicklink/
+   admin-quicklink pilula (Izvezi CSV/Godišnji izvještaj/Backup/Knjigovođa
+   CSV/PDF) koje su se na mobitelu slagale jedna preko druge s teškim
+   dvostrukim neumorphism sjenama — izgledalo je muddled/nepregledno.
+   Dijeli --neu-* tokene kao i sve ostalo u adminu, pa se automatski
+   uklapa u vlasnički (light/dark/system) i superadmin kontekst. Radi i
+   za owner-quicklink i za admin-quicklink djecu unutar .neu-disclosure-body
+   — te klase ostaju nepromijenjene, samo im je roditelj sad skriven dok se
+   ne otvori. */
+.neu-disclosure {
+  border-radius: 16px;
+  background: var(--neu-base);
+  box-shadow: 4px 4px 8px var(--neu-shadow), -4px -4px 8px var(--neu-highlight);
+}
+.neu-disclosure > summary {
+  list-style: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 11px 16px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--neu-ink);
+  user-select: none;
+  border-radius: 16px;
+  transition: box-shadow 0.15s ease;
+}
+.neu-disclosure > summary::-webkit-details-marker,
+.neu-disclosure > summary::marker {
+  display: none;
+  content: "";
+}
+.neu-disclosure-count {
+  font-weight: 400;
+  color: var(--neu-ink-faint);
+}
+.neu-disclosure-chevron {
+  margin-left: auto;
+  color: var(--neu-ink-faint);
+  transition: transform 0.2s ease;
+}
+.neu-disclosure[open] > summary {
+  box-shadow: inset 3px 3px 6px var(--neu-shadow), inset -3px -3px 6px var(--neu-highlight);
+  border-radius: 16px 16px 0 0;
+}
+.neu-disclosure[open] > summary .neu-disclosure-chevron {
+  transform: rotate(180deg);
+}
+.neu-disclosure-body {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 2px 16px 16px;
+}
+@media (prefers-reduced-motion: reduce) {
+  .neu-disclosure-chevron { transition: none; }
 }
 
 /* ---- Hero kartica ------------------------------------------------- */
