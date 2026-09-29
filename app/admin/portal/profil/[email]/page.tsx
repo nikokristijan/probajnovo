@@ -53,6 +53,7 @@ export default async function AdminProfilePage({ params }: { params: Promise<{ e
           initialDisplayName={target.displayName ?? ""}
           initialJobTitle={target.jobTitle ?? ""}
           initialBio={target.bio ?? ""}
+          initialBirthday={target.birthday ?? ""}
         />
       ) : (
         <div className="neu-card p-5 max-w-md">
