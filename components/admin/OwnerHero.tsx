@@ -1,46 +1,27 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
-import { refreshOwnerLoginStreakAction } from "@/lib/actions";
+import { useEffect, useState } from "react";
 import OwnerGoalEditor from "@/components/admin/OwnerGoalEditor";
 
 /**
  * "Naslovna" kartica vlasničkog dashboarda (app/admin/page.tsx OwnerDashboard)
- * — inspirirano Netflixovom velikom "hero" karticom (jedna dramatična brojka
- * na vrhu), Duolingovim streakom i ciljem dana (loss aversion + napredak),
- * i Instagram/TikTok "story ring" prstenom oko ključne brojke. "Liquid
- * glass" izgled preko NOVO gradient podloge (navy → ljubičasta → orange,
- * vidi globals.css .owner-hero) — staklo je SLOJ preko postojećeg branda,
- * ne zamjena za njega.
+ * — jedna dramatična brojka (neto zarada) + prsten napretka prema cilju
+ * dana zauzeća. NOVO/Revolut redizajn (na izričit zahtjev, "achievementi
+ * nisu potrebni, sve beskorisne stvari izbaci"): raniji Duolingo-stil
+ * streak bedž + konfeti su UKLONJENI (loginStreakCount se više nigdje ne
+ * čita/prikazuje ovdje) — ostaju samo stvarno korisni brojevi: zarada,
+ * promjena vs prošli mjesec/prošla godina, i cilj dana. "Najbolji mjesec"
+ * i dalje dobiva tih flat .na-chip umjesto proslavne trake — činjenica,
+ * ne "unlock".
  *
- * Mobilno: label+broj i streak bedž se prisilno slažu okomito ispod ~420px
- * (.owner-hero-top u globals.css) umjesto neugodnog omatanja jedno pored
- * drugog na uskim ekranima.
- *
- * Animacije (count-up, konfeti, crtanje prstena) su čisti CSS/JS bez
- * biblioteka — zato "use client" (treba useEffect za requestAnimationFrame
- * count-up).
- *
- * Streak "bump" NAMJERNO nije dio server-rendera (vidi app/admin/page.tsx
- * OwnerDashboard) — poziva se ovdje, u useEffectu nakon mounta, preko
- * refreshOwnerLoginStreakAction (lib/actions.ts). Server Komponente se u
- * Next.js-u znaju izvršiti više puta po zahtjevu (RSC payload + prefetch),
- * pa PISANJE u bazu usred renderiranja može proizvesti dva različita HTML-a
- * za isti zahtjev → React hydration greška (#418) koju smo vidjeli na /admin
- * za vlasnika. `initialStreak` je čisto ČITANJE (admin.loginStreakCount,
- * bez pisanja) pa je server-render uvijek deterministički; stvarni bump se
- * potvrđuje tek ovdje, na klijentu, kad je stranica već hidrirana — ako se
- * broj promijeni, badge/prsten se vidljivo "diže" (dodatni addictive efekt,
- * slično Duolingovoj animaciji streaka). Isti princip vrijedi za cilj dana:
- * `autoGoalDays`/`initialCustomGoalDays` su čisto čitanje, a stvarna
- * promjena ide preko OwnerGoalEditor → server akcija, nikad ovdje u render
- * putu. */
+ * Count-up animacija broja i crtanje prstena ostaju (mirni, informativni
+ * efekti, ne gamifikacija) — zato i dalje "use client".
+ */
 export default function OwnerHero({
   monthLabel,
   netEur,
   deltaPct,
   isRecord,
-  initialStreak,
   autoGoalDays,
   initialCustomGoalDays,
   currentDays,
@@ -50,10 +31,8 @@ export default function OwnerHero({
   netEur: number;
   /** % promjena neto zarade vs prethodni mjesec, null ako nema podataka za usporedbu. */
   deltaPct: number | null;
-  /** Je li ovo najbolji mjesec ikad (po neto zaradi) — pokreće konfeti + banner. */
+  /** Je li ovo najbolji mjesec ikad (po neto zaradi) — prikazuje tihu oznaku, bez proslave. */
   isRecord: boolean;
-  /** Streak PRIJE današnjeg bumpa (admin.loginStreakCount) — samo čitanje, vidi gore. */
-  initialStreak: number;
   /** Auto-izračunati cilj (70% dana u mjesecu) — koristi se kad vlasnik nema ručni cilj. */
   autoGoalDays: number;
   /** Vlasnikov ručni cilj (admin.customGoalDays), null = koristi autoGoalDays. */
@@ -64,8 +43,6 @@ export default function OwnerHero({
 }) {
   const [displayNet, setDisplayNet] = useState(0);
   const [displayDays, setDisplayDays] = useState(0);
-  const [streak, setStreak] = useState(initialStreak);
-  const [streakIsNew, setStreakIsNew] = useState(false);
   const [goalDays, setGoalDays] = useState(initialCustomGoalDays ?? autoGoalDays);
 
   useEffect(() => {
@@ -84,34 +61,6 @@ export default function OwnerHero({
     return () => cancelAnimationFrame(raf);
   }, [netEur, currentDays]);
 
-  useEffect(() => {
-    let cancelled = false;
-    refreshOwnerLoginStreakAction()
-      .then((result) => {
-        if (cancelled) return;
-        setStreak(result.streak);
-        setStreakIsNew(result.isNewToday);
-      })
-      .catch(() => {
-        // Best-effort — ako akcija ne uspije, ostaje prikazan initialStreak
-        // (jučerašnje stanje), dashboard i dalje normalno radi.
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, []);
-
-  const showConfetti = isRecord || (streakIsNew && streak > 0 && streak % 5 === 0);
-  const confettiPieces = useMemo(() => {
-    if (!showConfetti) return [];
-    const colors = ["#ff7f00", "#ffd479", "#ffffff", "#c7d2fe"];
-    return Array.from({ length: 18 }, (_, i) => ({
-      left: `${(i * 53) % 100}%`,
-      delay: `${(i % 6) * 0.09}s`,
-      color: colors[i % colors.length],
-    }));
-  }, [showConfetti]);
-
   const ringProgress = goalDays > 0 ? Math.min(1, currentDays / goalDays) : 0;
   const ringOffset = 1 - ringProgress;
 
@@ -120,15 +69,6 @@ export default function OwnerHero({
       className="owner-hero owner-glass-grain"
       style={{ ["--owner-ring-offset" as string]: ringOffset }}
     >
-      {showConfetti &&
-        confettiPieces.map((p, i) => (
-          <span
-            key={i}
-            className="owner-confetti-piece"
-            style={{ left: p.left, animationDelay: p.delay, background: p.color }}
-          />
-        ))}
-
       <div className="owner-hero-top">
         <div>
           <span className="text-xs font-semibold uppercase tracking-wide text-white/70">
@@ -151,18 +91,12 @@ export default function OwnerHero({
           )}
         </div>
 
-        {streak > 0 && (
-          <span className={"owner-streak-badge" + (streakIsNew ? " owner-streak-badge-new" : "")}>
-            🔥 {streak} {streak === 1 ? "dan zaredom" : "dana zaredom"}
+        {isRecord && (
+          <span className="na-chip" style={{ borderColor: "rgba(255,255,255,0.3)", color: "#fff" }}>
+            Najbolji mjesec dosad
           </span>
         )}
       </div>
-
-      {isRecord && (
-        <p className="mt-3 text-sm font-semibold bg-white/15 backdrop-blur-sm rounded-lg px-3 py-2 inline-block">
-          🎉 Najbolji mjesec dosad!
-        </p>
-      )}
 
       <div className="mt-5 flex items-center gap-4">
         <svg width="56" height="56" viewBox="0 0 56 56" className="shrink-0" role="img" aria-label="Napredak cilja dana">

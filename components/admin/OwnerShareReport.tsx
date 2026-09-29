@@ -9,7 +9,6 @@ type ShareStats = {
   currentDays: number;
   goalDays: number;
   deltaPct: number | null;
-  streak: number;
   isRecord: boolean;
 };
 
@@ -158,9 +157,8 @@ async function drawReportCanvas(stats: ShareStats): Promise<HTMLCanvasElement> {
   ctx.font = "500 21px system-ui, -apple-system, sans-serif";
   ctx.fillText(stats.subtitle ? stats.subtitle : "probajnovo.com", logoX, logoY + logoH + 28);
 
-  // Proslavna pločica gore desno — isti vizualni jezik kao streak-bedž na
-  // stvarnom hero-u ("🔥 X dana zaredom" pločica gore desno), samo ovdje
-  // javlja KOJE postignuće je razlog konfeta (rekord ima prednost pred
+  // Tiha pločica gore desno kad je mjesec stvarno izniman (rekord ili
+  // ostvaren cilj) — činjenica, ne "unlock" (rekord ima prednost pred
   // ostvarenim ciljem ako su oba točna, da poruka ostane jedna i jasna).
   if (isCelebration) {
     const label = stats.isRecord ? "🎉 Rekordni mjesec" : "🎯 Cilj ostvaren";
@@ -216,46 +214,47 @@ async function drawReportCanvas(stats: ShareStats): Promise<HTMLCanvasElement> {
   // sjenom i obojenom trakom na vrhu (isti duh kao .owner-stat-card u
   // globals.css: svaka kartica dobiva vlastiti identitet umjesto da su
   // dvije identične prozirne pločice).
+  // Jedna puna-širine kartica "dana zauzeto" — ranije je stajala uz drugu
+  // karticu sa streakom (uklonjen, NOVO/Revolut redizajn: "achievementi
+  // nisu potrebni"); umjesto da ostane prazna polovica, kartica sad
+  // zauzima cijelu širinu.
   const cardY = 620;
   const cardH = 210;
-  const gap = 24;
-  const cardW = (1080 - 72 * 2 - gap) / 2;
-  const accentColors = ["#ff9428", "#ffffff"];
+  const cardX = 72;
+  const cardW = 1080 - 72 * 2;
 
-  [72, 72 + cardW + gap].forEach((cardX, i) => {
-    ctx.save();
-    ctx.shadowColor = "rgba(0,0,0,0.28)";
-    ctx.shadowBlur = 34;
-    ctx.shadowOffsetY = 14;
-    ctx.fillStyle = "rgba(255,255,255,0.13)";
-    roundedRect(ctx, cardX, cardY, cardW, cardH, 28);
-    ctx.fill();
-    ctx.restore();
+  ctx.save();
+  ctx.shadowColor = "rgba(0,0,0,0.28)";
+  ctx.shadowBlur = 34;
+  ctx.shadowOffsetY = 14;
+  ctx.fillStyle = "rgba(255,255,255,0.13)";
+  roundedRect(ctx, cardX, cardY, cardW, cardH, 28);
+  ctx.fill();
+  ctx.restore();
 
-    ctx.strokeStyle = "rgba(255,255,255,0.22)";
-    ctx.lineWidth = 1.5;
-    roundedRect(ctx, cardX, cardY, cardW, cardH, 28);
-    ctx.stroke();
+  ctx.strokeStyle = "rgba(255,255,255,0.22)";
+  ctx.lineWidth = 1.5;
+  roundedRect(ctx, cardX, cardY, cardW, cardH, 28);
+  ctx.stroke();
 
-    // Obojena traka na vrhu kartice.
-    ctx.save();
-    roundedRect(ctx, cardX, cardY, cardW, cardH, 28);
-    ctx.clip();
-    ctx.fillStyle = accentColors[i];
-    ctx.globalAlpha = 0.85;
-    ctx.fillRect(cardX, cardY, cardW, 4);
-    ctx.restore();
-  });
+  // Obojena traka na vrhu kartice.
+  ctx.save();
+  roundedRect(ctx, cardX, cardY, cardW, cardH, 28);
+  ctx.clip();
+  ctx.fillStyle = "#ff9428";
+  ctx.globalAlpha = 0.85;
+  ctx.fillRect(cardX, cardY, cardW, 4);
+  ctx.restore();
 
   ctx.fillStyle = "rgba(255,255,255,0.75)";
   ctx.font = "600 22px system-ui, -apple-system, sans-serif";
-  ctx.fillText("DANA ZAUZETO", 72 + 32, cardY + 56);
+  ctx.fillText("DANA ZAUZETO", cardX + 32, cardY + 56);
   ctx.fillStyle = "#ffffff";
   ctx.font = "700 54px system-ui, -apple-system, sans-serif";
-  ctx.fillText(`${stats.currentDays}/${stats.goalDays}`, 72 + 32, cardY + 122);
+  ctx.fillText(`${stats.currentDays}/${stats.goalDays}`, cardX + 32, cardY + 122);
   // Mini traka napretka prema cilju — isti vizualni jezik kao owner-goal-track.
   const goalPct = stats.goalDays > 0 ? Math.min(1, stats.currentDays / stats.goalDays) : 0;
-  const trackX = 72 + 32;
+  const trackX = cardX + 32;
   const trackY = cardY + 150;
   const trackW = cardW - 64;
   ctx.fillStyle = "rgba(255,255,255,0.22)";
@@ -264,30 +263,6 @@ async function drawReportCanvas(stats: ShareStats): Promise<HTMLCanvasElement> {
   ctx.fillStyle = "rgba(255,255,255,0.92)";
   roundedRect(ctx, trackX, trackY, Math.max(10, trackW * goalPct), 10, 5);
   ctx.fill();
-
-  const streakCardX = 72 + cardW + gap;
-  // Mala kružna "chip" ikona za plamen — isti duh kao owner-badge-icon.
-  ctx.fillStyle = "rgba(255,148,40,0.9)";
-  ctx.beginPath();
-  ctx.arc(streakCardX + 32 + 18, cardY + 42, 18, 0, Math.PI * 2);
-  ctx.fill();
-  ctx.font = "22px system-ui, -apple-system, sans-serif";
-  ctx.textAlign = "center";
-  ctx.textBaseline = "middle";
-  ctx.fillText("🔥", streakCardX + 32 + 18, cardY + 43);
-  ctx.textAlign = "left";
-  ctx.textBaseline = "alphabetic";
-
-  ctx.fillStyle = "rgba(255,255,255,0.75)";
-  ctx.font = "600 22px system-ui, -apple-system, sans-serif";
-  ctx.fillText("NIZ DANA", streakCardX + 32 + 46, cardY + 49);
-  ctx.fillStyle = "#ffffff";
-  ctx.font = "700 54px system-ui, -apple-system, sans-serif";
-  ctx.fillText(
-    `${stats.streak} ${stats.streak === 1 ? "dan" : "dana"}`,
-    streakCardX + 32,
-    cardY + 122
-  );
 
   // Suptilna razdjelnica + footer wordmark.
   ctx.strokeStyle = "rgba(255,255,255,0.15)";
@@ -304,7 +279,7 @@ async function drawReportCanvas(stats: ShareStats): Promise<HTMLCanvasElement> {
 }
 
 /**
- * Gumb za dijeljenje mjesečnog izvještaja kao slike — iscrtava brendirani
+ * Gumb za dijeljenje mjesecnog izvještaja kao slike — iscrtava brendirani
  * PNG na <canvas>-u u memoriji (drawReportCanvas gore) i nudi ga preko Web
  * Share API-ja (mobitel — izravno u poruke/društvene mreže), s padom na
  * obično preuzimanje datoteke ako Web Share nije podržan (desktop). Bez
@@ -318,7 +293,7 @@ export default function OwnerShareReport({ stats }: { stats: ShareStats }) {
       const canvas = await drawReportCanvas(stats);
       const blob: Blob | null = await new Promise((resolve) => canvas.toBlob(resolve, "image/png"));
       if (!blob) return;
-      const fileName = `novo-izvjestaj-${stats.monthLabel.replace(/\s+/g, "-").toLowerCase()}.png`;
+      const fileName = `novo-izvjetaj-${stats.monthLabel.replace(/\s+/g, "-").toLowerCase()}.png`;
       const file = new File([blob], fileName, { type: "image/png" });
 
       const nav = navigator as Navigator & { canShare?: (data: { files: File[] }) => boolean };
@@ -327,7 +302,7 @@ export default function OwnerShareReport({ stats }: { stats: ShareStats }) {
           await nav.share({ files: [file], title: "NOVO — mjesečni izvještaj", text: stats.monthLabel });
           return;
         } catch {
-          // Korisnik je otkazao dijeljenje ili je share odbio — padamo na
+          // Korisnik je otkaz dijeljenja ili je share odbio — padamo na
           // preuzimanje niže umjesto tihog neuspjeha.
         }
       }
@@ -353,7 +328,7 @@ export default function OwnerShareReport({ stats }: { stats: ShareStats }) {
       className="owner-glass owner-glass-interactive rounded-full px-4 py-2 text-xs font-semibold flex items-center gap-2 disabled:opacity-60"
       style={{ color: "var(--od-ink)" }}
     >
-      {busy ? "Priprema…" : "↗ Podijeli izvještaj"}
+      {busy ? "Priprema…" : "→ Podijeli izvještaj"}
     </button>
   );
 }

@@ -40,7 +40,7 @@ function TeamActivityChart({ counts }: { counts: { dateKey: string; count: numbe
   const total = counts.reduce((a, b) => a + b.count, 0);
 
   return (
-    <div className="neu-card p-5">
+    <div className="na-card p-5">
       <div className="flex items-center justify-between mb-4">
         <span className="text-xs font-semibold uppercase tracking-wide" style={{ color: "var(--neu-ink-faint)" }}>
           Poruke u timu — zadnjih {counts.length} dana
@@ -91,7 +91,7 @@ function TaskStatusDonut({ statusCounts }: { statusCounts: { status: string; cou
   let cumulative = 0;
 
   return (
-    <div className="neu-card p-5">
+    <div className="na-card p-5">
       <span className="text-xs font-semibold uppercase tracking-wide" style={{ color: "var(--neu-ink-faint)" }}>
         Zadaci po statusu
       </span>
@@ -150,7 +150,7 @@ function CompletionByAdmin({
 }) {
   const max = Math.max(1, ...completion.map((c) => c.count));
   return (
-    <div className="neu-card p-5">
+    <div className="na-card p-5">
       <span className="text-xs font-semibold uppercase tracking-wide" style={{ color: "var(--neu-ink-faint)" }}>
         Dovršeni zadaci po osobi
       </span>
