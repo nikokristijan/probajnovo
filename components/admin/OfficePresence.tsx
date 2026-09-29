@@ -39,12 +39,111 @@ function labelFor(m: Member): string {
   return dn && dn.length > 0 ? dn : m.email.split("@")[0];
 }
 
+/** Prvo ime/nadimak za name tag iznad lika u sceni — kraće od punog
+    labelFor (koji može biti cijeli email prefiks), da tag ne prekrije pola
+    ureda kad je više kolega blizu jedno drugom. */
+function shortLabelFor(m: Member): string {
+  return labelFor(m).split(/\s+/)[0].slice(0, 10);
+}
+
 /* --- Tlocrt: fiksne koordinate namještaja (SVG viewBox 320×208, tile=16px) - */
 
-const SKIN = "#e8b98a";
 const PANTS = "#2c2c34";
+const SHOES = "#1c1712";
+const EYE = "#1a1210";
 const CUP = "#f4f1ea";
 const STEAM = "#c9c2b0";
+
+/** Nekoliko tonova kože i boja kose — birano deterministički po emailu
+    (odvojen "salt" od boje majice) da likovi u Uredu izgledaju kao stvaran
+    šareni tim (Pokémon/Stardew Valley stil "trenera"), a ne 8 klonova iste
+    boje kože i kose s različitom majicom. */
+const SKIN_TONES = ["#f2c9a0", "#e8b98a", "#c9905f", "#a86f45", "#7a4f30"];
+const HAIR_COLORS = ["#2b1c14", "#4a2e1a", "#1a1a1a", "#7a3c1e", "#5c4433", "#c9a24a", "#8a3324"];
+
+function skinFor(email: string): string {
+  return SKIN_TONES[hashStr(`${email}#skin`) % SKIN_TONES.length];
+}
+function hairFor(email: string): string {
+  return HAIR_COLORS[hashStr(`${email}#hair`) % HAIR_COLORS.length];
+}
+
+/**
+ * Piksel-art likovi (v3) — na izričit zahtjev "napravi puno detaljnijim (u
+ * pikselima isto), nešto poput Super Maria i Pokemona": svaki lik je sad
+ * pravi 9×16 piksel-grid (glava/kosa/oči/majica/hlače/cipele) umjesto 3-4
+ * gola pravokutnika kao u v2. Sprite je definiran kao niz stringova (jedan
+ * red = jedan red piksela, jedan znak = jedan piksel), isti "ASCII pixel
+ * art" obrazac kao tilemape u retro igrama — čitljivo za uređivati, lako
+ * za dodati novu pozu. "." = providno (bez rect-a).
+ *   H = kosa, S = koža, E = oko, B = majica (boja iz colorFor, personalizirano),
+ *   P = hlače, F = cipele.
+ * STAND (16 redaka) je lik koji stoji/hoda; SIT je gornjih 13 redaka STANDA
+ * (glava+torzo+bedra, bez potkoljenica/stopala — one su svejedno skrivene
+ * iza stola). SLEEP ponovno koristi STAND rotiran 90° (isti trik kao v2),
+ * sad samo s puno detaljnijim likom koji se rotira.
+ */
+const STAND_SPRITE = [
+  ".HHHHHHH.",
+  "HHHHHHHHH",
+  "HHSSSSSHH",
+  "HSSESESSH",
+  "HSSSSSSSH",
+  ".SSSSSSS.",
+  "..SSSSS..",
+  ".BBBBBBB.",
+  "BBBBBBBBB",
+  "SBBBBBBBS",
+  ".BBBBBBB.",
+  "..PPPPP..",
+  "..PPPPP..",
+  "..PP.PP..",
+  "..PP.PP..",
+  ".FF...FF.",
+] as const;
+const SIT_SPRITE = STAND_SPRITE.slice(0, 13);
+
+type Palette = Record<string, string>;
+
+function paletteFor(email: string, shirtColor: string): Palette {
+  return { H: hairFor(email), S: skinFor(email), E: EYE, B: shirtColor, P: PANTS, F: SHOES };
+}
+
+/** Crta jedan piksel-grid sprite kao niz <rect>-ova, centriran vodoravno
+    (stupac 4 od 0-8 = x:0) i "prizemljen" (zadnji red = y:0, uzlazno u
+    minus za glavu) — isti ishodišni ugovor kao stari AvatarStand/AvatarSit,
+    pa sve postojeće translate(seat.x, seat.y) pozicije u sceni ostaju
+    točne bez ikakve promjene. */
+function PixelSprite({ sprite, palette }: { sprite: readonly string[]; palette: Palette }) {
+  const rows = sprite.length;
+  return (
+    <>
+      {sprite.map((row, y) =>
+        row.split("").map((ch, x) => {
+          const fill = palette[ch];
+          if (!fill) return null;
+          return <rect key={`${y}-${x}`} x={x - 4} y={y - (rows - 1)} width={1} height={1} fill={fill} />;
+        })
+      )}
+    </>
+  );
+}
+
+/** Name tag iznad lika ("neka pišu name tagovi... da se zna tko što radi")
+    — mala pikselizirana pločica s imenom, uvijek USPRAVNA i čitljiva čak i
+    kad je lik ispod nje rotiran (spavanje) ili ljulja se (hod/idle), zato
+    se crta IZVAN grupe koja nosi tu animaciju/rotaciju. */
+function NameTag({ label, x = 0, y }: { label: string; x?: number; y: number }) {
+  const width = Math.max(14, label.length * 3.4 + 3);
+  return (
+    <g className="office-name-tag">
+      <rect x={x - width / 2} y={y} width={width} height={6} fill="rgba(24,18,14,0.78)" />
+      <text x={x} y={y + 4.5} textAnchor="middle" fontSize={4.6} fontFamily="monospace" fontWeight={700} fill="#fff">
+        {label}
+      </text>
+    </g>
+  );
+}
 
 type Pt = { x: number; y: number };
 
@@ -65,43 +164,25 @@ const COUCH_SEATS: Pt[] = [
   { x: 276, y: 158 },
 ];
 
-function AvatarStand({ color }: { color: string }) {
-  return (
-    <>
-      <rect x={-3} y={-16} width={6} height={6} fill={SKIN} />
-      <rect x={-4} y={-10} width={8} height={7} fill={color} />
-      <rect x={-4} y={-3} width={3} height={5} fill={PANTS} />
-      <rect x={1} y={-3} width={3} height={5} fill={PANTS} />
-    </>
-  );
-}
-
-function AvatarSit({ color }: { color: string }) {
-  return (
-    <>
-      <rect x={-3} y={-14} width={6} height={6} fill={SKIN} />
-      <rect x={-4} y={-8} width={8} height={8} fill={color} />
-      <rect x={-4} y={0} width={8} height={3} fill={PANTS} />
-    </>
-  );
-}
-
 /**
- * "Ured" — pravi pikselizirani tlocrt tima (Faza 3, v2), na izričit zahtjev
- * nakon prve verzije ("uopće nije kao što sam zamislio"): stvaran plan kata
- * (dva reda stolova licem u lice, sastanačka soba s tepihom i stolom,
- * kutak za odmor s kaučem, biljke, ormar), umjesto tri odvojene "zone".
- * Online kolege HODAJU uredom (zajednička CSS putanja, vidi
- * .office-char-pos.is-walking / @keyframes office-walk-loop u
- * globals.css, svaki avatar dobiva drukčiji animation-delay/-duration iz
- * hasha emaila pa svi hodaju istom stazom ali u različitim točkama).
- * "Away" više NIJE animacija jedenja na liku — lik SJEDI za svojim stolom,
- * a kava/keks je nacrtan NA STOLU pored njega (na izričitu korisnikovu
- * ispravku). Offline lik leži na kauču u kutku za odmor, sa "Zzz".
- * Sve je SVG (rect-only, shape-rendering:crispEdges) — bez gradijenata,
- * jedini brend akcent je mala narančasta (--neu-accent) lampica na
- * svakom monitoru. Nadahnuto RPG-tilemap referencama koje je korisnik
- * priložio, ali namjerno originalan raspored/paleta — ne kopija.
+ * "Ured" — pravi pikselizirani tlocrt tima (Faza 3, v3 — "puno detaljnijim
+ * (u pikselima isto), nešto poput Super Maria i Pokemona" + "name tagovi da
+ * se zna tko što radi"): stvaran plan kata (dva reda stolova licem u lice,
+ * sastanačka soba s tepihom i stolom, kutak za odmor s kaučem, biljke,
+ * ormar). Likovi su sad pravi 9×16 piksel-grid sprite-ovi (kosa/oči/majica/
+ * hlače/cipele, vidi STAND_SPRITE/SIT_SPRITE/PixelSprite) s bojom kose i
+ * kože nasumičnom po osobi (isti hash-trik kao boja majice) umjesto v2-ove
+ * 3-4 gola pravokutnika — i svatko nosi čitljiv name tag u samoj sceni
+ * (NameTag), ne samo hover title + listu ispod. Online kolege HODAJU
+ * uredom (zajednička CSS putanja, vidi .office-char-pos.is-walking /
+ * @keyframes office-walk-loop u globals.css, svaki avatar dobiva drukčiji
+ * animation-delay/-duration iz hasha emaila pa svi hodaju istom stazom ali
+ * u različitim točkama). "Away" lik SJEDI za svojim stolom, kava/keks je
+ * nacrtan NA STOLU pored njega. Offline lik leži na kauču u kutku za
+ * odmor, sa "Zzz". Sve je SVG (rect-only, shape-rendering:crispEdges) —
+ * bez gradijenata, jedini brend akcent je mala narančasta (--neu-accent)
+ * lampica na svakom monitoru. Nadahnuto RPG-tilemap referencama koje je
+ * korisnik priložio, ali namjerno originalan raspored/paleta — ne kopija.
  */
 export default function OfficePresence({ initialMembers }: { initialMembers: Member[] }) {
   const [members, setMembers] = useState(initialMembers);
@@ -200,11 +281,16 @@ export default function OfficePresence({ initialMembers }: { initialMembers: Mem
           const dur = 16 + (h % 7);
           const delay = -((h % dur) + i);
           const style = { "--walk-dur": `${dur}s`, "--walk-delay": `${delay}s` } as unknown as CSSProperties;
+          const palette = paletteFor(m.email, colorFor(m.email));
           return (
             <g key={m.email} className="office-char-pos is-walking" style={style}>
               <title>{`${labelFor(m)} · radi`}</title>
+              {/* Name tag je IZVAN is-walk-bob grupe — putuje sa likom niz
+                  stazu, ali se ne njiše/rotira s bob animacijom, ostaje
+                  čitljiv. */}
+              <NameTag label={shortLabelFor(m)} y={-23} />
               <g className="office-char-sprite is-walk-bob">
-                <AvatarStand color={colorFor(m.email)} />
+                <PixelSprite sprite={STAND_SPRITE} palette={palette} />
               </g>
             </g>
           );
@@ -213,11 +299,13 @@ export default function OfficePresence({ initialMembers }: { initialMembers: Mem
         {/* --- Avatari: away = sjedi za stolom, kava/keks na stolu --- */}
         {byStatus.away.map((m, i) => {
           const seat = DESKS[i % DESKS.length];
+          const palette = paletteFor(m.email, colorFor(m.email));
           return (
             <g key={m.email} className="office-char-pos" transform={`translate(${seat.x}, ${seat.y})`}>
               <title>{`${labelFor(m)} · pauza`}</title>
+              <NameTag label={shortLabelFor(m)} y={-20} />
               <g className="office-char-sprite is-idle-sway">
-                <AvatarSit color={colorFor(m.email)} />
+                <PixelSprite sprite={SIT_SPRITE} palette={palette} />
               </g>
               <g className="office-snack-steam" transform="translate(9,-12)">
                 <rect x={0} y={0} width={5} height={4} fill={CUP} />
@@ -231,11 +319,16 @@ export default function OfficePresence({ initialMembers }: { initialMembers: Mem
         {/* --- Avatari: sleeping/offline = leži na kauču, Zzz --- */}
         {byStatus.sleeping.map((m, i) => {
           const seat = COUCH_SEATS[i % COUCH_SEATS.length];
+          const palette = paletteFor(m.email, colorFor(m.email));
           return (
             <g key={m.email} className="office-char-pos" transform={`translate(${seat.x}, ${seat.y})`}>
               <title>{`${labelFor(m)} · offline`}</title>
+              {/* Lik je rotiran 90° (leži) — tag ostaje neroti­ran, centriran
+                  iznad "ležećeg" tijela (koje se nakon rotacije proteže u
+                  +x smjeru, vidi komentar uz STAND_SPRITE). */}
+              <NameTag label={shortLabelFor(m)} x={7} y={-12} />
               <g className="office-char-sprite is-sleep-breathe" transform="rotate(90)">
-                <AvatarStand color={colorFor(m.email)} />
+                <PixelSprite sprite={STAND_SPRITE} palette={palette} />
               </g>
               <g className="office-zzz" transform="translate(9,-18)">
                 <text x={0} y={0} fontSize={7} fontFamily="monospace" fill={STEAM}>
