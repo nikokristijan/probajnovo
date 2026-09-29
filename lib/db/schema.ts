@@ -720,10 +720,41 @@ export const teamMessages = pgTable("team_messages", {
   body: text("body").notNull(),
   taskId: integer("task_id"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
+  /** Prikvačene poruke (Portal Faza 5, "pinning") — SAMO u općem tim kanalu
+      (taskId null), vidi TeamChannelThread.tsx "📌 Prikvačeno" panel iznad
+      niti. Null = nije prikvačena. pinnedByEmail kao TEXT (isti obrazac
+      denormalizacije kao adminEmail gore) — tko je zadnji prikvačio/otkvačio
+      ostaje čitljivo i ako se taj admin kasnije obriše. Stupci dodani preko
+      ALTER TABLE ADD COLUMN IF NOT EXISTS (ensureTeamMessagesTable), isti
+      self-healing obrazac kao ostatak baze. */
+  pinnedAt: timestamp("pinned_at"),
+  pinnedByEmail: text("pinned_by_email"),
 });
 
 export type TeamMessage = typeof teamMessages.$inferSelect;
 export type NewTeamMessage = typeof teamMessages.$inferInsert;
+
+/**
+ * Emoji reakcije na poruke u tim kanalu (Portal Faza 5, "emoji reactions") —
+ * Slack/Teams-stil, jedan red po (poruka, admin, emoji) paru, UNIQUE
+ * constraint sprječava duplu reakciju istog admina istim emojijem (drugi
+ * klik na isti emoji = toggle/ukloni, vidi toggleTeamMessageReaction u
+ * lib/db/queries.ts). messageId NAMJERNO bez FK-a (isti obrazac kao ostatak
+ * datoteke — jednostavnije, tablice se same kreiraju preko ensureXTableOnce
+ * bez pristupa terminalu za migracije) — ako se poruka obriše (trenutačno
+ * se poruke uopće ne brišu, vidi deleteTeamTask komentar), reakcije ostaju
+ * "viseće" i jednostavno se više nigdje ne prikazuju.
+ */
+export const teamMessageReactions = pgTable("team_message_reactions", {
+  id: serial("id").primaryKey(),
+  messageId: integer("message_id").notNull(),
+  adminEmail: text("admin_email").notNull(),
+  emoji: text("emoji").notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export type TeamMessageReaction = typeof teamMessageReactions.$inferSelect;
+export type NewTeamMessageReaction = typeof teamMessageReactions.$inferInsert;
 
 /**
  * Direktne (1:1) poruke između dvoje admina — Portal (app/admin/portal),
