@@ -7,9 +7,10 @@ type Status = "working" | "away" | "sleeping";
 
 const POLL_MS = 20_000;
 /** Pragovi statusa po proteklom vremenu od zadnjeg otkucaja (PresenceHeartbeat
-    šalje otkucaj svake minute) — < 2 min "radi" (šeta uredom, aktivan),
-    2-15 min "pauza" (sjedi za stolom, kava/keks na stolu), inače/nikad
-    "offline" (leži na kauču u kutku za odmor). */
+    šalje otkucaj svake minute) — < 2 min "radi" (SJEDI za svojim računalom i
+    tipka, vidi v5 niže), 2-15 min "pauza" (ustao je, ŠETA uredom — do kuhinje
+    na kavu i natrag), inače/nikad "offline" (leži na kauču u kutku za
+    odmor). */
 const WORKING_MS = 2 * 60_000;
 const AWAY_MS = 15 * 60_000;
 
@@ -68,6 +69,12 @@ const MOUTH = "#7a3b32";
 const COLLAR = "#e8e2d3";
 const CUP = "#f4f1ea";
 const STEAM = "#c9c2b0";
+const WOOD = "#8a6a45";
+const WOOD_DARK = "#6f5335";
+const METAL = "#8b95a3";
+const METAL_DARK = "#5b6673";
+const CORK = "#c9a26a";
+const CORK_DARK = "#a5824f";
 
 /** Nekoliko tonova kože i boja kose — birano deterministički po emailu
     (odvojen "salt" od boje majice) da likovi u Uredu izgledaju kao stvaran
@@ -228,7 +235,7 @@ type Pt = { x: number; y: number };
 /** 4 stola u gornjem redu (leđa okrenuta prozoru) + 4 u donjem redu (leđa
     okrenuta zidu s ormarom) — dvije "face-to-face" grupe uz zajednički
     prolaz, kako radni prostori u uredu doista izgledaju. Sjedišta su točke
-    gdje "away" lik sjedi (i gdje se crta kava/keks na stolu do njega). */
+    gdje "radi" lik sjedi za SVOJIM računalom (v5 — vidi ComputerDesk). */
 const DESK_X = [24, 64, 104, 144];
 const DESKS: (Pt & { deskY: number; chairY: number })[] = [
   ...DESK_X.map((x) => ({ x: x + 14, y: 47, deskY: 28, chairY: 42 })),
@@ -243,27 +250,268 @@ const COUCH_SEATS: Pt[] = [
 ];
 
 /**
- * "Ured" — pravi pikselizirani tlocrt tima (Faza 3, v4 — nakon v3 "puno
- * detaljnijim (u pikselima isto), nešto poput Super Maria i Pokemona" +
- * "name tagovi da se zna tko što radi", pa ponovljenog "Ured takoder mora
- * biti puno detaljniji" je sam LIK podignut na 16×28 piksela s licem,
- * dvotonskom sjenom i vidljivim rukama/cipelama — vidi JSDoc uz
- * STAND_SPRITE): stvaran plan kata (dva reda stolova licem u lice,
- * sastanačka soba s tepihom i stolom, kutak za odmor s kaučem, biljke,
- * ormar). Likovi su detaljni piksel-grid sprite-ovi (kosa/lice/majica/
- * hlače/cipele, vidi STAND_SPRITE/SIT_SPRITE/PixelSprite) s bojom kose i
- * kože nasumičnom po osobi (isti hash-trik kao boja majice) umjesto v2-ove
- * 3-4 gola pravokutnika — i svatko nosi čitljiv name tag u samoj sceni
- * (NameTag), ne samo hover title + listu ispod. Online kolege HODAJU
- * uredom (zajednička CSS putanja, vidi .office-char-pos.is-walking /
- * @keyframes office-walk-loop u globals.css, svaki avatar dobiva drukčiji
- * animation-delay/-duration iz hasha emaila pa svi hodaju istom stazom ali
- * u različitim točkama). "Away" lik SJEDI za svojim stolom, kava/keks je
- * nacrtan NA STOLU pored njega. Offline lik leži na kauču u kutku za
- * odmor, sa "Zzz". Sve je SVG (rect-only, shape-rendering:crispEdges) —
- * bez gradijenata, jedini brend akcent je mala narančasta (--neu-accent)
- * lampica na svakom monitoru. Nadahnuto RPG-tilemap referencama koje je
- * korisnik priložio, ali namjerno originalan raspored/paleta — ne kopija.
+ * Jedan radni stol S RAČUNALOM (v5, na izričit zahtjev "nek svaki lik moze
+ * sjesti za kompjuter i raditi") — prije je "stol" bio samo tamni
+ * pravokutnik s jednom narančastom točkicom kao "monitor". Sad je pravo
+ * računalo: monitor s kućištem i postoljem, EKRAN koji svijetli (plavkasto
+ * "upaljen" izgled) kad netko na tom mjestu stvarno radi (`lit`), s dva
+ * piksela "sadržaja" na ekranu i treptavim animiranim sjajem
+ * (.office-screen-glow), tipkovnica i miš na stolu, te stolica. Kad mjesto
+ * nije zauzeto, ekran je ugašen (tamno siv) — mala, ali bitna razlika koja
+ * čitatelju odmah govori koji su stolovi trenutno u upotrebi.
+ */
+function ComputerDesk({ x, deskY, chairY, lit }: { x: number; deskY: number; chairY: number; lit: boolean }) {
+  const screenFill = lit ? "#2f6fb0" : "#20242f";
+  return (
+    <g>
+      <rect x={x - 14} y={deskY} width={28} height={12} fill={WOOD} />
+      <rect x={x - 14} y={deskY} width={28} height={3} fill={WOOD_DARK} />
+      {/* monitor kućište + postolje */}
+      <rect x={x - 6.5} y={deskY - 8} width={13} height={9} fill="#15171f" />
+      <rect x={x - 1.2} y={deskY - 0.5} width={2.4} height={1.5} fill="#4b5563" />
+      {/* ekran */}
+      <rect x={x - 5.3} y={deskY - 6.8} width={10.6} height={6.6} fill={screenFill} />
+      {lit && (
+        <g className="office-screen-glow">
+          <rect x={x - 4.3} y={deskY - 5.6} width={6.5} height={0.9} fill="#bcd9f2" />
+          <rect x={x - 4.3} y={deskY - 4} width={4.2} height={0.9} fill="#8fbde3" />
+          <rect x={x - 4.3} y={deskY - 2.4} width={5.4} height={0.9} fill="#bcd9f2" />
+        </g>
+      )}
+      {/* tipkovnica + miš */}
+      <rect x={x - 6} y={deskY + 3} width={9} height={2.6} fill="#2c2c34" />
+      <rect x={x - 5.5} y={deskY + 3.4} width={8} height={0.5} fill="#454554" />
+      <rect x={x + 5} y={deskY + 3.2} width={2} height={2} fill="#2c2c34" />
+      {/* napajanje / status lampica */}
+      <rect x={x - 0.8} y={deskY + 6.2} width={1.2} height={1.2} fill={lit ? "var(--neu-accent)" : "#5c5343"} />
+      {/* stolna lampa u kutu stola — kao na referentnim slikama, uvijek
+          "upaljena" (ambijentalno svjetlo stola, neovisno o računalu) */}
+      <rect x={x + 9.5} y={deskY - 5} width={1.4} height={5} fill="#4b5563" />
+      <rect x={x + 7.6} y={deskY - 7.4} width={5.2} height={2.6} fill="#c9a24a" />
+      <rect x={x + 8.6} y={deskY - 6.6} width={3.2} height={1.2} fill="#f2d98a" />
+      {/* stolica */}
+      <rect x={x - 5} y={chairY} width={10} height={10} fill="#4c4038" />
+      <rect x={x - 5} y={chairY} width={10} height={2} fill="#3a2f29" />
+    </g>
+  );
+}
+
+/** Detaljnija biljka (v5) — prije jedan gol krug, sad tri preklopljena
+    lisnata čupa + zemlja u tegli, čitljivije kao "biljka" na sitnoj
+    razmjeri i bliže referentnim RPG-tilemap slikama koje je korisnik
+    priložio. */
+function Plant({ x, y }: { x: number; y: number }) {
+  return (
+    <g>
+      <rect x={x - 5} y={y} width={10} height={9} fill="#7a5236" />
+      <rect x={x - 5} y={y} width={10} height={2} fill="#8a6a45" />
+      <rect x={x - 3.5} y={y + 1.5} width={7} height={2} fill="#4c3826" />
+      <circle cx={x} cy={y - 8} r={6.5} fill="#356b3f" />
+      <circle cx={x - 5} cy={y - 3} r={4.5} fill="#3f7d4a" />
+      <circle cx={x + 5} cy={y - 4} r={4.5} fill="#3f7d4a" />
+      <circle cx={x} cy={y - 2} r={4} fill="#4a8a55" />
+    </g>
+  );
+}
+
+/** Zidni sat (v5 dekor) — jednostavan, ali odmah čitljiv "ured" detalj. */
+function WallClock({ x, y }: { x: number; y: number }) {
+  return (
+    <g>
+      <circle cx={x} cy={y} r={4.5} fill="#e8e2d3" stroke="#3d2c1f" strokeWidth={1} />
+      <rect x={x - 0.5} y={y - 3} width={1} height={3} fill="#1a1210" />
+      <rect x={x} y={y - 0.6} width={2.2} height={1} fill="#1a1210" />
+    </g>
+  );
+}
+
+/** Uokvirena slika na zidu (v5 dekor) — dvije razlike boje daju varijaciju
+    bez da se doda nova paleta samo za ovo. */
+function FramedPicture({ x, y, color }: { x: number; y: number; color: string }) {
+  return (
+    <g>
+      <rect x={x - 6.5} y={y - 4.5} width={13} height={10} fill={WOOD_DARK} />
+      <rect x={x - 5.5} y={y - 3.5} width={11} height={8} fill={color} />
+    </g>
+  );
+}
+
+/** Bijela ploča ("whiteboard") uz sastanačku sobu (v5 dekor) — s dvije
+    "flomaster" crte i jednim krugom, kao stvaran radni doodle. */
+function Whiteboard({ x, y }: { x: number; y: number }) {
+  return (
+    <g>
+      <rect x={x} y={y} width={40} height={11} fill="#c9c2b0" />
+      <rect x={x} y={y} width={40} height={1.5} fill="#a89f8a" />
+      <rect x={x + 4} y={y + 4} width={16} height={1.1} fill="#3b5a8a" />
+      <rect x={x + 4} y={y + 7} width={10} height={1.1} fill="#b0483a" />
+      <circle cx={x + 32} cy={y + 6} r={3} fill="none" stroke="#3f7d4a" strokeWidth={1} />
+    </g>
+  );
+}
+
+/** Polica s knjigama uz kutak za odmor (v5 dekor) — dva reda raznobojnih
+    "hrbata" knjiga, umetnuta u tamniji ormarić. */
+function Bookshelf({ x, y }: { x: number; y: number }) {
+  const spineColors = ["#b0483a", "#3f7d4a", "#5b6b8a", "#c9a24a", "#8a3324", "#6b7280"];
+  const rowWidth = 24;
+  const spineW = rowWidth / spineColors.length;
+  return (
+    <g>
+      <rect x={x} y={y} width={rowWidth + 2} height={30} fill={WOOD_DARK} />
+      <rect x={x + 1} y={y + 1} width={rowWidth} height={12.5} fill="#3a2c1f" />
+      <rect x={x + 1} y={y + 16.5} width={rowWidth} height={12.5} fill="#3a2c1f" />
+      {spineColors.map((c, i) => (
+        <rect key={`top-${i}`} x={x + 1.5 + i * spineW} y={y + 2} width={spineW - 0.6} height={10.5} fill={c} />
+      ))}
+      {spineColors
+        .slice()
+        .reverse()
+        .map((c, i) => (
+          <rect key={`bot-${i}`} x={x + 1.5 + i * spineW} y={y + 17.5} width={spineW - 0.6} height={10.5} fill={c} />
+        ))}
+    </g>
+  );
+}
+
+/**
+ * Kuhinja / kutak za kavu (v5, POTPUNO NOV prostor — na izričit zahtjev
+ * "sam PROSTOR treba biti puno detaljniji... kao oni na slikama za
+ * primjer"): zidni ormarići, radna ploča sa sudoperom, aparat za kavu s
+ * malom narančastom lampicom, samostojeći hladnjak i okrugli stolić s dvije
+ * stolice za pauzu — sve u istoj drveno/metalnoj paleti kao ostatak ureda
+ * (WOOD/METAL), bez gradijenata, isključivo pravokutnici i krugovi pune
+ * boje (isti "8-bit" pristup kao cijela scena).
+ */
+function Kitchen({ x, y }: { x: number; y: number }) {
+  const counterW = 92;
+  return (
+    <g>
+      {/* zidni ormarići iznad radne ploče */}
+      <rect x={x} y={y - 11} width={counterW} height={9} fill={METAL} />
+      {[...Array(5)].map((_, i) => (
+        <rect
+          key={i}
+          x={x + 2 + i * (counterW / 5)}
+          y={y - 10}
+          width={counterW / 5 - 2}
+          height={7}
+          fill="#9aa3af"
+        />
+      ))}
+      {/* radna ploča */}
+      <rect x={x} y={y} width={counterW} height={13} fill={WOOD} />
+      <rect x={x} y={y} width={counterW} height={3} fill={WOOD_DARK} />
+      {/* sudoper */}
+      <rect x={x + 6} y={y + 3} width={15} height={7} fill={METAL} />
+      <rect x={x + 8} y={y + 4.5} width={11} height={4.5} fill={METAL_DARK} />
+      {/* aparat za kavu */}
+      <rect x={x + 34} y={y - 9} width={10} height={12} fill="#2c2c34" />
+      <rect x={x + 35.5} y={y - 2.5} width={7} height={3.5} fill={WOOD} />
+      <rect x={x + 37.5} y={y - 7} width={2.2} height={2.2} fill="var(--neu-accent)" />
+      {/* aparat za tost + posuda za voće, radi životnosti radne ploče */}
+      <rect x={x + 50} y={y - 4} width={9} height={4} fill="#7c8695" />
+      <circle cx={x + 70} cy={y + 5} r={5} fill="#b0483a" />
+      <circle cx={x + 68} cy={y + 3.5} r={2.2} fill="#c9a24a" />
+      {/* samostojeći hladnjak, lijevo od radne ploče */}
+      <rect x={x - 17} y={y - 19} width={15} height={34} fill={METAL} />
+      <rect x={x - 17} y={y - 19} width={15} height={2} fill="#7c8695" />
+      <rect x={x - 5} y={y - 10} width={1.6} height={6} fill={METAL_DARK} />
+      <rect x={x - 5} y={y + 2} width={1.6} height={6} fill={METAL_DARK} />
+    </g>
+  );
+}
+
+/** Okrugli stolić s dvije stolice za pauzu (v5 dekor) — kraj kuhinje, gdje
+    "pauza" (away) kolege mogu stati dok šeću uredom. */
+function BreakTable({ x, y }: { x: number; y: number }) {
+  return (
+    <g>
+      <circle cx={x} cy={y} r={9} fill={WOOD_DARK} />
+      <circle cx={x} cy={y} r={7.3} fill={WOOD} />
+      <rect x={x - 13} y={y + 6} width={7} height={7} fill="#4c4038" />
+      <rect x={x + 6} y={y + 6} width={7} height={7} fill="#4c4038" />
+    </g>
+  );
+}
+
+/** Aparat za vodu (v5 dekor, uz referentne slike) — bočni ormarić uz zid,
+    prepoznatljiv po plavičastom "vrču" na vrhu. */
+function WaterCooler({ x, y }: { x: number; y: number }) {
+  return (
+    <g>
+      <rect x={x - 4} y={y} width={8} height={14} fill="#e8e2d3" />
+      <rect x={x - 4} y={y + 10} width={8} height={1} fill="#c9c2b0" />
+      <rect x={x - 1} y={y + 4} width={2} height={2} fill="#3b5a8a" />
+      <rect x={x - 3.2} y={y - 8} width={6.4} height={8.5} fill="#bfe0ee" opacity={0.85} />
+      <rect x={x - 3.2} y={y - 8} width={6.4} height={2} fill="#89b7c9" />
+    </g>
+  );
+}
+
+/** Mali stolić s pisačem/kopirkom (v5 dekor) — printer s ladicom za papir i
+    treptavom lampicom, čest detalj na referentnim uredskim tilemapama. */
+function Printer({ x, y }: { x: number; y: number }) {
+  return (
+    <g>
+      <rect x={x - 10} y={y + 6} width={20} height={7} fill={WOOD_DARK} />
+      <rect x={x - 8} y={y - 3} width={16} height={9} fill="#c9c2b0" />
+      <rect x={x - 8} y={y - 3} width={16} height={2} fill="#a89f8a" />
+      <rect x={x - 6} y={y + 2.2} width={12} height={1.6} fill="#8a8272" />
+      <rect x={x + 4.5} y={y - 1.5} width={1.4} height={1.4} fill="var(--neu-accent)" />
+    </g>
+  );
+}
+
+/** Plutena ploča za obavijesti ("corkboard") uz bijelu ploču (v5 dekor) —
+    nekoliko obojanih "papirića" i pribadača, kako je i na priloženim
+    referentnim slikama pokraj whiteboarda. */
+function Corkboard({ x, y }: { x: number; y: number }) {
+  const notes = [
+    { dx: 3, dy: 2, w: 8, h: 6, fill: "#e8c86a" },
+    { dx: 13, dy: 3.5, w: 7, h: 5.5, fill: "#bfe0ee" },
+    { dx: 5, dy: 9, w: 7.5, h: 5.5, fill: "#e69a8a" },
+  ];
+  return (
+    <g>
+      <rect x={x} y={y} width={24} height={17} fill={CORK_DARK} />
+      <rect x={x + 1} y={y + 1} width={22} height={15} fill={CORK} />
+      {notes.map((n, i) => (
+        <g key={i}>
+          <rect x={x + n.dx} y={y + n.dy} width={n.w} height={n.h} fill={n.fill} />
+          <circle cx={x + n.dx + 1} cy={y + n.dy + 1} r={0.6} fill="#9c3f2b" />
+        </g>
+      ))}
+    </g>
+  );
+}
+
+/**
+ * "Ured" — pravi pikselizirani tlocrt tima (Faza 3, v5 — nakon v4 "sam LIK
+ * puno detaljniji", na novi izričit zahtjev "sam PROSTOR treba biti puno
+ * detaljniji... nek svaki lik moze sjesti za kompjuter i raditi... napravi
+ * zanimljivije i najbitnije, puno puno ljepse"): SVAKI stol sad ima pravo
+ * računalo (ComputerDesk — monitor s upaljenim/ugašenim ekranom, tipkovnica,
+ * miš), dodan je potpuno nov kutak za kavu/kuhinju (Kitchen + BreakTable),
+ * polica s knjigama i tepih uz kauč, bijela ploča i uokvirene slike uz
+ * sastanačku sobu, zidni sat, tepih-staza kroz sredinu ureda, pod s
+ * dvotonskim pločicama umjesto ravne boje, te sitni detalji s referentnih
+ * slika koje je korisnik priložio — stolna lampa na svakom stolu, aparat za
+ * vodu i pisač uz ormar, i plutena ploča s "papirićima" uz whiteboard.
+ * STATUSI likova su ZAMIJENJENI
+ * mjestima da imaju smisla s "radi = za računalom": "radi" (working) sad
+ * SJEDI za SVOJIM stolom i tipka (ComputerDesk toj osobi pali ekran —
+ * `occupiedDesks`), "pauza" (away) sad HODA uredom (prijašnja animacija za
+ * "radi", zajednička CSS putanja office-walk-loop) noseći šalicu kave sa
+ * sobom, "offline" i dalje leži na kauču sa "Zzz" (nepromijenjeno). Likovi
+ * su detaljni piksel-grid sprite-ovi (kosa/lice/majica/hlače/cipele, vidi
+ * STAND_SPRITE/SIT_SPRITE/PixelSprite) s bojom kose i kože nasumičnom po
+ * osobi, i svatko nosi čitljiv name tag u samoj sceni (NameTag). Sve je SVG
+ * (rect/circle, shape-rendering:crispEdges) — bez gradijenata (sjene su
+ * dvotonske plohe, ne CSS gradient), jedini brend akcent je mala
+ * narančasta (--neu-accent) lampica na svakom UKLJUČENOM računalu i na
+ * aparatu za kavu. Nadahnuto RPG-tilemap referencama koje je korisnik
+ * priložio, ali namjerno originalan raspored/paleta — ne kopija.
  */
 export default function OfficePresence({ initialMembers }: { initialMembers: Member[] }) {
   const [members, setMembers] = useState(initialMembers);
@@ -294,14 +542,23 @@ export default function OfficePresence({ initialMembers }: { initialMembers: Mem
   const byStatus: Record<Status, Member[]> = { working: [], away: [], sleeping: [] };
   for (const m of members) byStatus[statusOf(m.lastSeenAt, now)].push(m);
 
+  /** Koji su stolovi trenutno zauzeti nekim "radi" kolegom — koristi se za
+      paljenje ekrana na ComputerDesk (isti i%DESKS.length raspored kao kad
+      se avatar crta niže, da se poklapa 1:1). */
+  const occupiedDesks = new Set(byStatus.working.map((_, i) => i % DESKS.length));
+
   return (
     <div className="office-wrap">
       <svg className="office-frame" viewBox="0 0 320 208" role="img" aria-label="Prisutnost tima u uredu">
         <defs>
-          <pattern id="office-floor-tiles" width={16} height={16} patternUnits="userSpaceOnUse">
-            <rect width={16} height={16} fill="#e7d3a6" />
-            <rect width={16} height={1} y={15} fill="#ddc492" opacity={0.6} />
-            <rect width={1} height={16} x={15} fill="#ddc492" opacity={0.4} />
+          <pattern id="office-floor-tiles" width={32} height={32} patternUnits="userSpaceOnUse">
+            <rect width={32} height={32} fill="#e7d3a6" />
+            <rect width={16} height={16} fill="#e2cc9c" />
+            <rect x={16} y={16} width={16} height={16} fill="#e2cc9c" />
+            <rect width={32} height={1} y={15} fill="#ddc492" opacity={0.6} />
+            <rect width={32} height={1} y={31} fill="#ddc492" opacity={0.6} />
+            <rect width={1} height={32} x={15} fill="#ddc492" opacity={0.4} />
+            <rect width={1} height={32} x={31} fill="#ddc492" opacity={0.4} />
           </pattern>
         </defs>
 
@@ -309,55 +566,101 @@ export default function OfficePresence({ initialMembers }: { initialMembers: Mem
         <rect x={0} y={0} width={320} height={208} fill="#3d2c1f" />
         <rect x={8} y={8} width={304} height={192} fill="url(#office-floor-tiles)" />
 
-        {/* Prozori na gornjem zidu */}
+        {/* Tepih-staza kroz sredinu ureda (v5 dekor) — dugačka staza kroz
+            prolaz između dva reda stolova, sa "obrubom". */}
+        <rect x={20} y={84} width={170} height={16} fill="#8a4636" />
+        <rect x={22} y={86} width={166} height={12} fill="#b0583f" />
+        <rect x={22} y={90} width={166} height={4} fill="#c1543a" opacity={0.6} />
+
+        {/* Prozori na gornjem zidu, s klupčicom i podjelom na dva okna */}
         <rect x={38} y={0} width={36} height={8} fill="#89b7c9" />
-        <rect x={40} y={1} width={32} height={6} fill="#bfe0ee" />
+        <rect x={40} y={1} width={15} height={6} fill="#bfe0ee" />
+        <rect x={57} y={1} width={15} height={6} fill="#bfe0ee" />
+        <rect x={38} y={8} width={36} height={2} fill="#6f5335" />
         <rect x={118} y={0} width={36} height={8} fill="#89b7c9" />
-        <rect x={120} y={1} width={32} height={6} fill="#bfe0ee" />
+        <rect x={120} y={1} width={15} height={6} fill="#bfe0ee" />
+        <rect x={137} y={1} width={15} height={6} fill="#bfe0ee" />
+        <rect x={118} y={8} width={36} height={2} fill="#6f5335" />
+
+        {/* Zidni sat između prozora + uokvirena slika desno od drugog prozora */}
+        <WallClock x={96} y={13} />
+        <FramedPicture x={180} y={13} color="#5b6b8a" />
 
         {/* Vrata na donjem zidu */}
         <rect x={140} y={200} width={32} height={8} fill="#7a5236" />
 
         {/* Biljke u kutovima */}
-        <circle cx={21} cy={164} r={9} fill="#3f7d4a" />
-        <rect x={16} y={170} width={10} height={10} fill="#7a5236" />
-        <circle cx={305} cy={164} r={9} fill="#3f7d4a" />
-        <rect x={300} y={170} width={10} height={10} fill="#7a5236" />
+        <Plant x={21} y={162} />
+        <Plant x={305} y={162} />
 
-        {/* Ormar uz desni zid */}
+        {/* Ormar za dokumente uz desni zid — 3 ladice s ručkama, i aparat za
+            vodu odmah pokraj njega (v5, uz referentne slike) */}
         <rect x={296} y={100} width={12} height={28} fill="#6b7280" />
-        <rect x={296} y={110} width={12} height={1} fill="#4b5563" />
-        <rect x={296} y={120} width={12} height={1} fill="#4b5563" />
+        <rect x={296} y={100} width={12} height={9} fill="#5b6673" />
+        <rect x={296} y={110} width={12} height={9} fill="#5b6673" opacity={0.55} />
+        <rect x={296} y={119} width={12} height={9} fill="#5b6673" />
+        <rect x={300.5} y={104} width={3} height={1} fill="#2c2c34" />
+        <rect x={300.5} y={123} width={3} height={1} fill="#2c2c34" />
+        <WaterCooler x={306} y={70} />
+        <Printer x={189} y={35} />
 
-        {/* Stolovi (2 reda, licem u lice) */}
+        {/* Stolovi s pravim računalima (2 reda, licem u lice) — ekran
+            svijetli samo kad je netko "radi" stvarno tu (occupiedDesks). */}
         {DESKS.map((d, i) => (
-          <g key={`desk-${i}`}>
-            <rect x={d.x - 14} y={d.deskY} width={28} height={12} fill="#8a6a45" />
-            <rect x={d.x - 14} y={d.deskY} width={28} height={3} fill="#6f5335" />
-            <rect x={d.x - 5} y={d.deskY + 2} width={10} height={7} fill="#20242f" />
-            <rect x={d.x - 1} y={d.deskY + 4} width={1.6} height={1.6} fill="var(--neu-accent)" />
-            <rect x={d.x - 5} y={d.chairY} width={10} height={10} fill="#4c4038" />
+          <ComputerDesk key={`desk-${i}`} x={d.x} deskY={d.deskY} chairY={d.chairY} lit={occupiedDesks.has(i)} />
+        ))}
+
+        {/* Sastanačka soba: bijela ploča iznad, tepih + stol + 4 stolice s
+            naslonima i bocama vode */}
+        <Whiteboard x={210} y={9} />
+        <Corkboard x={253} y={5} />
+        <rect x={206} y={22} width={90} height={58} fill="#9c3f2b" />
+        <rect x={210} y={26} width={82} height={50} fill="#c1543a" />
+        <rect x={233} y={41} width={36} height={22} fill={WOOD_DARK} />
+        <rect x={233} y={41} width={36} height={3} fill={WOOD} />
+        <rect x={240} y={48} width={2} height={5} fill="#bfe0ee" />
+        <rect x={258} y={48} width={2} height={5} fill="#bfe0ee" />
+        {[
+          { x: 238, y: 33 },
+          { x: 261, y: 33 },
+          { x: 238, y: 66 },
+          { x: 261, y: 66 },
+        ].map((c, i) => (
+          <g key={`meeting-chair-${i}`}>
+            <rect x={c.x} y={c.y} width={9} height={9} fill="#4c4038" />
+            <rect x={c.x} y={c.y < 50 ? c.y : c.y + 7} width={9} height={2} fill="#3a2f29" />
           </g>
         ))}
 
-        {/* Sastanačka soba: tepih + stol + 4 stolice */}
-        <rect x={206} y={22} width={90} height={58} fill="#9c3f2b" />
-        <rect x={210} y={26} width={82} height={50} fill="#c1543a" />
-        <rect x={233} y={41} width={36} height={22} fill="#6f5335" />
-        <rect x={233} y={41} width={36} height={3} fill="#8a6a45" />
-        <rect x={238} y={33} width={9} height={9} fill="#4c4038" />
-        <rect x={261} y={33} width={9} height={9} fill="#4c4038" />
-        <rect x={238} y={66} width={9} height={9} fill="#4c4038" />
-        <rect x={261} y={66} width={9} height={9} fill="#4c4038" />
+        {/* Kuhinja / kutak za kavu (v5, nov prostor) + stolić za pauzu */}
+        <Kitchen x={38} y={178} />
+        <BreakTable x={178} y={180} />
 
-        {/* Kauč u kutku za odmor */}
+        {/* Tepih + polica s knjigama uz kauč u kutku za odmor */}
+        <rect x={192} y={146} width={98} height={28} fill="#3a5570" opacity={0.55} />
+        <Bookshelf x={188} y={144} />
         <rect x={216} y={148} width={72} height={22} fill="#38536b" />
         <rect x={218} y={150} width={68} height={16} fill="#4c6f8f" />
         <rect x={240} y={150} width={1.5} height={16} fill="#38536b" opacity={0.7} />
         <rect x={264} y={150} width={1.5} height={16} fill="#38536b" opacity={0.7} />
 
-        {/* --- Avatari: working = hoda dijeljenom putanjom --- */}
+        {/* --- Avatari: radi (working) = SJEDI za svojim računalom i tipka --- */}
         {byStatus.working.map((m, i) => {
+          const seat = DESKS[i % DESKS.length];
+          const palette = paletteFor(m.email);
+          return (
+            <g key={m.email} className="office-char-pos" transform={`translate(${seat.x}, ${seat.y})`}>
+              <title>{`${labelFor(m)} · radi`}</title>
+              <NameTag label={shortLabelFor(m)} y={-20} />
+              <g className="office-char-sprite is-typing">
+                <PixelSprite sprite={SIT_SPRITE} palette={palette} cell={SPRITE_CELL} />
+              </g>
+            </g>
+          );
+        })}
+
+        {/* --- Avatari: pauza (away) = HODA uredom (do kuhinje i natrag), sa šalicom kave --- */}
+        {byStatus.away.map((m, i) => {
           const h = hashStr(m.email);
           const dur = 16 + (h % 7);
           const delay = -((h % dur) + i);
@@ -365,33 +668,17 @@ export default function OfficePresence({ initialMembers }: { initialMembers: Mem
           const palette = paletteFor(m.email);
           return (
             <g key={m.email} className="office-char-pos is-walking" style={style}>
-              <title>{`${labelFor(m)} · radi`}</title>
+              <title>{`${labelFor(m)} · pauza`}</title>
               {/* Name tag je IZVAN is-walk-bob grupe — putuje sa likom niz
                   stazu, ali se ne njiše/rotira s bob animacijom, ostaje
                   čitljiv. */}
               <NameTag label={shortLabelFor(m)} y={-23} />
               <g className="office-char-sprite is-walk-bob">
                 <PixelSprite sprite={STAND_SPRITE} palette={palette} cell={SPRITE_CELL} />
-              </g>
-            </g>
-          );
-        })}
-
-        {/* --- Avatari: away = sjedi za stolom, kava/keks na stolu --- */}
-        {byStatus.away.map((m, i) => {
-          const seat = DESKS[i % DESKS.length];
-          const palette = paletteFor(m.email);
-          return (
-            <g key={m.email} className="office-char-pos" transform={`translate(${seat.x}, ${seat.y})`}>
-              <title>{`${labelFor(m)} · pauza`}</title>
-              <NameTag label={shortLabelFor(m)} y={-20} />
-              <g className="office-char-sprite is-idle-sway">
-                <PixelSprite sprite={SIT_SPRITE} palette={palette} cell={SPRITE_CELL} />
-              </g>
-              <g className="office-snack-steam" transform="translate(9,-12)">
-                <rect x={0} y={0} width={5} height={4} fill={CUP} />
-                <rect x={0.5} y={-3} width={1} height={3} fill={STEAM} />
-                <rect x={2.5} y={-4} width={1} height={4} fill={STEAM} />
+                <g className="office-snack-steam" transform="translate(4.5,-9)">
+                  <rect x={0} y={0} width={3} height={2.4} fill={CUP} />
+                  <rect x={0.3} y={-1.8} width={0.7} height={1.8} fill={STEAM} />
+                </g>
               </g>
             </g>
           );
