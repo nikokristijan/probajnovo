@@ -84,6 +84,8 @@ import {
   assignTeamTask,
   deleteTeamTask,
   createTeamMessage,
+  toggleTeamMessageReaction,
+  toggleTeamMessagePin,
   updateAdminLastSeen,
   createDirectMessage,
   markDirectMessagesRead,
@@ -2389,6 +2391,25 @@ export async function createTeamChannelMessageInlineAction(
   await createTeamMessage({ adminEmail: admin.email, body: parsed.data.body, taskId: null });
   revalidatePath("/admin/portal");
   return { success: true };
+}
+
+/** Emoji reakcija na poruku u tim kanalu (Portal Faza 5) — direktan poziv iz
+ * klijentske komponente (TeamChannelThread.tsx handleToggleReaction preko
+ * startTransition), isti obrazac kao updateOwnerThemeAction, NE
+ * useActionState/<form action> (previše reakcijskih gumba po poruci da bi
+ * svaki imao svoju formu). Bez revalidatePath — TeamChannelThread se i onako
+ * odmah ponovno pollira (refetchMessages) čim se ovo vrati, isto kao slanje
+ * poruke. */
+export async function toggleTeamMessageReactionAction(messageId: number, emoji: string): Promise<void> {
+  const admin = await requireAdmin();
+  await toggleTeamMessageReaction(messageId, admin.email, emoji);
+}
+
+/** Prikvači/otkvači poruku u općem tim kanalu (Portal Faza 5) — isti obrazac
+ * direktnog poziva kao toggleTeamMessageReactionAction iznad. */
+export async function toggleTeamMessagePinAction(messageId: number): Promise<void> {
+  const admin = await requireAdmin();
+  await toggleTeamMessagePin(messageId, admin.email);
 }
 
 /** "Otkucaj" prisutnosti za "Ured" prikaz (components/admin/
