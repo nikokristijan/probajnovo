@@ -1,6 +1,6 @@
 import { Suspense } from "react";
 import { requireFullAdmin } from "@/lib/auth";
-import { listTeamMembers, listDmConversations } from "@/lib/db/queries";
+import { listTeamMembers, listDmConversations, getWeeklyLeaderboard } from "@/lib/db/queries";
 import OfficePresence from "@/components/admin/OfficePresence";
 import PortalSidebar from "@/components/admin/PortalSidebar";
 import { PortalIcon } from "@/components/admin/Icons";
@@ -19,9 +19,10 @@ import { PortalIcon } from "@/components/admin/Icons";
 export default async function PortalLayout({ children }: { children: React.ReactNode }) {
   const admin = await requireFullAdmin();
 
-  const [teamMembers, conversations] = await Promise.all([
+  const [teamMembers, conversations, leaderboard] = await Promise.all([
     listTeamMembers(),
     listDmConversations(admin.email),
+    getWeeklyLeaderboard(),
   ]);
 
   const roster = teamMembers.map((m) => ({ email: m.email, displayName: m.displayName ?? null }));
@@ -30,6 +31,8 @@ export default async function PortalLayout({ children }: { children: React.React
     isSuperAdmin: m.isSuperAdmin,
     lastSeenAt: m.lastSeenAt ? m.lastSeenAt.toISOString() : null,
     displayName: m.displayName,
+    statusText: m.statusText,
+    statusEmoji: m.statusEmoji,
   }));
 
   return (
@@ -45,7 +48,7 @@ export default async function PortalLayout({ children }: { children: React.React
           </p>
         </div>
 
-        <OfficePresence initialMembers={officeMembers} />
+        <OfficePresence initialMembers={officeMembers} currentEmail={admin.email} leaderboard={leaderboard} />
 
         <div className="portal-shell">
           {/* useSearchParams() unutar PortalSidebar (za isticanje aktivnog
