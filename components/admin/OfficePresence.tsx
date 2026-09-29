@@ -1,8 +1,16 @@
 "use client";
 
 import { useEffect, useState, type CSSProperties } from "react";
+import OfficeStatusForm from "@/components/admin/OfficeStatusForm";
 
-type Member = { email: string; isSuperAdmin: boolean; lastSeenAt: string | null; displayName?: string | null };
+type Member = {
+  email: string;
+  isSuperAdmin: boolean;
+  lastSeenAt: string | null;
+  displayName?: string | null;
+  statusText?: string | null;
+  statusEmoji?: string | null;
+};
 type Status = "working" | "away" | "sleeping";
 
 const POLL_MS = 20_000;
@@ -46,6 +54,15 @@ function shirtShadeFor(email: string): string {
 function labelFor(m: Member): string {
   const dn = m.displayName?.trim();
   return dn && dn.length > 0 ? dn : m.email.split("@")[0];
+}
+
+/** Isto što i labelFor, ali za samo-email popise (npr. tjedna ljestvica) gdje
+    nemamo cijeli Member objekt — traži u trenutnom `members` popisu za
+    displayName, isti fallback na email prefiks ako član u međuvremenu nije
+    (više) u timu. */
+function labelForEntry(email: string, members: Member[]): string {
+  const m = members.find((x) => x.email === email);
+  return m ? labelFor(m) : email.split("@")[0];
 }
 
 /** Prvo ime/nadimak za name tag iznad lika u sceni — kraće od punog
@@ -218,6 +235,23 @@ function NameTag({ label, x = 0, y }: { label: string; x?: number; y: number }) 
   );
 }
 
+/** Status oblačić ("što trenutačno radim", v8) iznad lika — isti "uvijek
+    uspravan, izvan animirane grupe" princip kao NameTag (vidi komentar
+    ondje), crta se IZNAD name taga (manji y). Prikazuje se samo kad admin
+    ima postavljen statusText i/ili statusEmoji (OfficeStatusForm). */
+function StatusBubble({ text, emoji, x = 0, y }: { text: string; emoji: string; x?: number; y: number }) {
+  const label = emoji && text ? `${emoji} ${text}` : emoji || text;
+  const width = Math.max(16, label.length * 3.1 + 6);
+  return (
+    <g className="office-status-bubble">
+      <rect x={x - width / 2} y={y} width={width} height={7} rx={2} fill="rgba(255,127,0,0.92)" />
+      <text x={x} y={y + 5} textAnchor="middle" fontSize={4.4} fontFamily="monospace" fontWeight={700} fill="#fff">
+        {label}
+      </text>
+    </g>
+  );
+}
+
 type Pt = { x: number; y: number };
 
 /**
@@ -262,6 +296,45 @@ const COUCH_SEATS: Pt[] = [
   { x: 225, y: 115 },
 ];
 
+type SeasonalDecor = { emoji: string; x: number; y: number; size: number; drift?: boolean };
+
+/** Sezonski ukrasi (v8, na izričit zahtjev "sezonske dekoracije npr.
+    kape za Božić u prosincu") — sitni emoji postavljeni na fiksna mjesta uz
+    rub scene (ne preklapaju stolove/kauč), po TEKUĆEM mjesecu preglednika.
+    Namjerno malen popis mjeseci (ne svih 12) — samo prigode gdje je
+    dekoracija prepoznatljiva bez da zatrpa scenu; ostatak godine = bez
+    ukrasa, isti čist izgled kao dosad. `drift` uključuje blagu CSS
+    lebdeću animaciju (office-seasonal-drift) — snijeg/listovi, ne statični
+    ukrasi poput bundeve. */
+function seasonalDecorItems(): SeasonalDecor[] {
+  const month = new Date().getMonth(); // 0 = siječanj
+  switch (month) {
+    case 11: // prosinac — božićni ukrasi + snijeg
+      return [
+        { emoji: "🎄", x: 14, y: 30, size: 13 },
+        { emoji: "❄️", x: 60, y: 12, size: 6, drift: true },
+        { emoji: "❄️", x: 140, y: 8, size: 5, drift: true },
+        { emoji: "❄️", x: 200, y: 16, size: 6, drift: true },
+        { emoji: "🎅", x: 246, y: 32, size: 11 },
+      ];
+    case 9: // listopad — Noć vještica
+      return [
+        { emoji: "🎃", x: 16, y: 212, size: 10 },
+        { emoji: "🕸️", x: 244, y: 10, size: 10 },
+      ];
+    case 1: // veljača — Valentinovo
+      return [
+        { emoji: "❤️", x: 128, y: 10, size: 7, drift: true },
+        { emoji: "❤️", x: 150, y: 18, size: 5, drift: true },
+      ];
+    case 6:
+    case 7: // srpanj/kolovoz — ljeto
+      return [{ emoji: "☀️", x: 232, y: 12, size: 12 }];
+    default:
+      return [];
+  }
+}
+
 /**
  * "Ured" (Faza 3, v7) — jedna PRAVA CC0 pixel-art pozadinska slika
  * (office-scene.png, vidi opširan komentar iznad DESKS) umjesto ručno
@@ -276,9 +349,23 @@ const COUCH_SEATS: Pt[] = [
  * hlače/cipele) s bojom kose i kože nasumičnom po osobi, i svatko nosi
  * čitljiv name tag u samoj sceni.
  */
-export default function OfficePresence({ initialMembers }: { initialMembers: Member[] }) {
+export default function OfficePresence({
+  initialMembers,
+  currentEmail,
+  leaderboard = [],
+}: {
+  initialMembers: Member[];
+  /** Kad je postavljen, prikazuje se uredljiv "Tvoj status" formular za taj
+      red u rosteru (vidi OfficeStatusForm) — izostavljeno = samo za
+      pregled (npr. buduća javna/read-only upotreba). */
+  currentEmail?: string;
+  /** "Tjedna ljestvica" (getWeeklyLeaderboard) — prazno = sekcija se ne
+      prikazuje (npr. prvi tjedan bez ijedne akcije). */
+  leaderboard?: { email: string; score: number }[];
+}) {
   const [members, setMembers] = useState(initialMembers);
   const [now, setNow] = useState(() => Date.now());
+  const seasonalDecor = useState(seasonalDecorItems)[0];
 
   useEffect(() => {
     let cancelled = false;
@@ -329,6 +416,9 @@ export default function OfficePresence({ initialMembers }: { initialMembers: Mem
           return (
             <g key={m.email} className="office-char-pos" transform={`translate(${seat.x}, ${seat.y})`}>
               <title>{`${labelFor(m)} · radi`}</title>
+              {(m.statusText || m.statusEmoji) && (
+                <StatusBubble text={m.statusText ?? ""} emoji={m.statusEmoji ?? ""} y={-28} />
+              )}
               <NameTag label={shortLabelFor(m)} y={-20} />
               <g className="office-char-sprite is-typing">
                 <PixelSprite sprite={SIT_SPRITE} palette={palette} cell={SPRITE_CELL} />
@@ -347,9 +437,12 @@ export default function OfficePresence({ initialMembers }: { initialMembers: Mem
           return (
             <g key={m.email} className="office-char-pos is-walking" style={style}>
               <title>{`${labelFor(m)} · pauza`}</title>
-              {/* Name tag je IZVAN is-walk-bob grupe — putuje sa likom niz
-                  stazu, ali se ne njiše/rotira s bob animacijom, ostaje
-                  čitljiv. */}
+              {/* Name tag (i status oblačić) su IZVAN is-walk-bob grupe —
+                  putuju sa likom niz stazu, ali se ne njišu/rotiraju s bob
+                  animacijom, ostaju čitljivi. */}
+              {(m.statusText || m.statusEmoji) && (
+                <StatusBubble text={m.statusText ?? ""} emoji={m.statusEmoji ?? ""} y={-31} />
+              )}
               <NameTag label={shortLabelFor(m)} y={-23} />
               <g className="office-char-sprite is-walk-bob">
                 <PixelSprite sprite={STAND_SPRITE} palette={palette} cell={SPRITE_CELL} />
@@ -369,9 +462,13 @@ export default function OfficePresence({ initialMembers }: { initialMembers: Mem
           return (
             <g key={m.email} className="office-char-pos" transform={`translate(${seat.x}, ${seat.y})`}>
               <title>{`${labelFor(m)} · offline`}</title>
-              {/* Lik je rotiran 90° (leži) — tag ostaje neroti­ran, centriran
-                  iznad "ležećeg" tijela (koje se nakon rotacije proteže u
-                  +x smjeru, vidi komentar uz STAND_SPRITE). */}
+              {/* Lik je rotiran 90° (leži) — tag (i status oblačić) ostaju
+                  nerotirani, centrirani iznad "ležećeg" tijela (koje se
+                  nakon rotacije proteže u +x smjeru, vidi komentar uz
+                  STAND_SPRITE). */}
+              {(m.statusText || m.statusEmoji) && (
+                <StatusBubble text={m.statusText ?? ""} emoji={m.statusEmoji ?? ""} x={7} y={-20} />
+              )}
               <NameTag label={shortLabelFor(m)} x={7} y={-12} />
               <g className="office-char-sprite is-sleep-breathe" transform="rotate(90)">
                 <PixelSprite sprite={STAND_SPRITE} palette={palette} cell={SPRITE_CELL} />
@@ -384,6 +481,22 @@ export default function OfficePresence({ initialMembers }: { initialMembers: Mem
             </g>
           );
         })}
+
+        {/* --- Sezonski ukrasi (v8) — fiksni, uz rub scene, ne smetaju
+            likovima/stolovima --- */}
+        {seasonalDecor.map((d, i) => (
+          <text
+            key={i}
+            x={d.x}
+            y={d.y}
+            fontSize={d.size}
+            textAnchor="middle"
+            className={d.drift ? "office-seasonal-decor is-drifting" : "office-seasonal-decor"}
+            style={d.drift ? ({ "--drift-delay": `${(i * 0.6) % 3}s` } as unknown as CSSProperties) : undefined}
+          >
+            {d.emoji}
+          </text>
+        ))}
       </svg>
 
       {/* Čitljiv popis ispod scene — pikselizirani likovi u maloj razmjeri
@@ -401,12 +514,39 @@ export default function OfficePresence({ initialMembers }: { initialMembers: Mem
               <span key={m.email} className="office-roster-item" title={m.email}>
                 <span className="office-roster-swatch" style={{ background: colorFor(m.email) }} />
                 {labelFor(m)}
+                {(m.statusText || m.statusEmoji) && (
+                  <span className="office-roster-custom-status">
+                    {m.statusEmoji} {m.statusText}
+                  </span>
+                )}
                 <span className={`office-roster-status ${statusClass}`} title={statusLabel} />
               </span>
             );
           })
         )}
       </div>
+
+      {leaderboard.length > 0 && (
+        <div className="office-leaderboard">
+          <span className="office-leaderboard-title">🏆 Tjedna ljestvica</span>
+          <div className="office-leaderboard-list">
+            {leaderboard.map((row, i) => (
+              <span key={row.email} className="office-leaderboard-item">
+                <span className="office-leaderboard-rank">{["🥇", "🥈", "🥉"][i] ?? `${i + 1}.`}</span>
+                <span className="office-roster-swatch" style={{ background: colorFor(row.email) }} />
+                {labelForEntry(row.email, members)}
+              </span>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {currentEmail && (
+        <OfficeStatusForm
+          currentText={members.find((m) => m.email === currentEmail)?.statusText ?? null}
+          currentEmoji={members.find((m) => m.email === currentEmail)?.statusEmoji ?? null}
+        />
+      )}
     </div>
   );
 }

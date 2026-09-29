@@ -1870,6 +1870,68 @@ html:has(.owner-page-bg)::-webkit-scrollbar {
 .office-roster-status.is-working { background: #16a34a; }
 .office-roster-status.is-away { background: #d97706; }
 .office-roster-status.is-offline { background: #94a3b8; }
+.office-roster-custom-status {
+  font-weight: 500;
+  color: var(--neu-ink-faint);
+  white-space: nowrap;
+}
+
+/* --- Sezonski ukrasi u sceni (v8) — vidi seasonalDecorItems u
+   OfficePresence.tsx. --- */
+.office-seasonal-decor { pointer-events: none; }
+.office-seasonal-decor.is-drifting {
+  animation: office-seasonal-drift 3.2s ease-in-out infinite;
+  animation-delay: var(--drift-delay, 0s);
+}
+@keyframes office-seasonal-drift {
+  0%, 100% { transform: translateY(0); opacity: 0.75; }
+  50% { transform: translateY(4px); opacity: 1; }
+}
+
+/* --- "Tvoj status" formular (v8, OfficeStatusForm.tsx) --- */
+.office-status-form { margin-top: 12px; display: flex; flex-direction: column; gap: 6px; }
+.office-status-row { display: flex; gap: 6px; align-items: center; }
+.office-status-emoji-input { width: 46px; text-align: center; flex-shrink: 0; }
+.office-status-quick { display: flex; flex-wrap: wrap; gap: 6px; }
+.office-status-chip {
+  font-size: 11px;
+  font-weight: 600;
+  padding: 3px 9px;
+  border-radius: 999px;
+  background: var(--neu-base);
+  box-shadow: 2px 2px 5px var(--neu-shadow), -2px -2px 5px var(--neu-highlight);
+  color: var(--neu-ink-faint);
+  cursor: pointer;
+  border: none;
+}
+.office-status-chip:hover { color: var(--neu-ink); }
+
+/* --- Tjedna ljestvica (v8, getWeeklyLeaderboard) --- */
+.office-leaderboard { margin-top: 12px; display: flex; flex-direction: column; gap: 6px; }
+.office-leaderboard-title {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+  color: var(--neu-ink-faint);
+}
+.office-leaderboard-list { display: flex; flex-wrap: wrap; gap: 6px; }
+.office-leaderboard-item {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 11px;
+  font-weight: 600;
+  background: var(--neu-base);
+  border-radius: 999px;
+  padding: 4px 10px 4px 6px;
+  box-shadow: 2px 2px 5px var(--neu-shadow), -2px -2px 5px var(--neu-highlight);
+}
+.office-leaderboard-rank { font-size: 12px; }
+
+@media (prefers-reduced-motion: reduce) {
+  .office-seasonal-decor.is-drifting { animation: none; }
+}
 
 /* =====================================================================
    Full-bleed "breakout" — vlasnički meni i Portal (Faza 3) trebaju se

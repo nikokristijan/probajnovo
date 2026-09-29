@@ -351,6 +351,12 @@ export const adminUsers = pgTable("admin_users", {
       fiksnog popisa (agencijski tim od par ljudi ne treba strogu taksonomiju). */
   jobTitle: text("job_title"),
   bio: text("bio"),
+  /** Slack-stil "što trenutačno radim" status (Portal "Ured", Faza 4) —
+      admin ga sam postavlja/briše (vidi updateAdminStatusAction), prikazuje
+      se kao oblačić iznad lika u OfficePresence.tsx i uz ime u rosteru.
+      Oboje null/prazno = nema statusa, ništa se ne prikazuje (kao dosad). */
+  statusText: text("status_text"),
+  statusEmoji: text("status_emoji"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
