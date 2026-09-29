@@ -235,30 +235,72 @@ function NameTag({ label, x = 0, y }: { label: string; x?: number; y: number }) 
   );
 }
 
-/** Status oblačić ("što trenutačno radim", v9) iznad lika — isti "uvijek
-    uspravan, izvan animirane grupe" princip kao NameTag (vidi komentar
-    ondje), crta se IZNAD name taga (manji y). Prikazuje se samo kad admin
-    ima postavljen statusText i/ili statusEmoji (OfficeStatusForm).
+/** Procijenjena "vizualna" širina jedne grapheme-jedinice u oblačiću —
+    emoji (i slični ne-ASCII znakovi) renderiraju se kao kvadratasti glyph,
+    širi od uskog monospace teksta, pa dobivaju vlastitu (širu) procjenu. */
+function graphemeWidth(g: string): number {
+  const cp = g.codePointAt(0) ?? 0;
+  return cp > 0x2000 ? 4.6 : 2.6;
+}
+
+/** Zbroji procijenjenu širinu labele preko PRAVIH grapheme klastera
+    (Intl.Segmenter) umjesto sirovog label.length — .length broji emoji kao
+    2-3 "slova" (surrogate par + varijacijski selektor, npr. "�}️" ima
+    .length === 3 iako je vizualno JEDAN znak), pa je stara formula davala
+    preveliku, neuredno centriranu kutiju čim je status imao emoji (skoro
+    svaki, vidi QUICK_STATUSES u OfficeStatusForm.tsx) — otud korisnikova
+    primjedba "nije sve centrirano i lijepo". Fallback na .length samo ako
+    Intl.Segmenter nije dostupan (vrlo stari preglednici). */
+function measureLabel(label: string): number {
+  if (typeof Intl !== "undefined" && "Segmenter" in Intl) {
+    let total = 0;
+    for (const { segment } of new Intl.Segmenter(undefined, { granularity: "grapheme" }).segment(label)) {
+      total += graphemeWidth(segment);
+    }
+    return total;
+  }
+  return label.length * 3.1;
+}
+
+/** Status oblačić ("što trenutačno radim", v9/v10) iznad lika — isti
+    "uvijek uspravan, izvan animirane grupe" princip kao NameTag (vidi
+    komentar ondje), crta se IZNAD name taga (manji y). Prikazuje se samo
+    kad admin ima postavljen statusText i/ili statusEmoji (OfficeStatusForm).
     "Pixel Office Asset Pack" (2dPig) nema gotov oblačić za govor/status
     (provjereno — samo namještaj, likovi, dekor) pa je ovo ručno nacrtan
     RETRO "dialog box" u istom stilu kao ostatak scene: kutijasti obrub
     umjesto zaobljenog ruba (rx), i stepenasti "rep" od kvadratića umjesto
     glatkog trokuta (glatke dijagonale ne postoje u pixel-art stilu). Boje
     su POSUĐENE iz postojeće palete lika (CUP/EYE, vidi definicije gore) da
-    se oblačić osjeća kao dio istog seta, a ne kao nalijepljen UI element. */
+    se oblačić osjeća kao dio istog seta, a ne kao nalijepljen UI element.
+    v10 popravak poravnanja: širina kutije sad koristi measureLabel (gore)
+    umjesto label.length, a tekst se vertikalno centrira preko
+    dominantBaseline="central" (pravi geometrijski centar kutije) umjesto
+    ručnog "y + height/2 + 2" nagađanja koje je tekst ostavljalo malo iznad
+    sredine. */
 function StatusBubble({ text, emoji, x = 0, y }: { text: string; emoji: string; x?: number; y: number }) {
   const label = emoji && text ? `${emoji} ${text}` : emoji || text;
-  const width = Math.max(18, label.length * 3.1 + 8);
+  const width = Math.max(18, measureLabel(label) + 8);
   const height = 8;
   return (
     <g className="office-status-bubble">
       <rect x={x - width / 2} y={y} width={width} height={height} fill={EYE} />
       <rect x={x - width / 2 + 1} y={y + 1} width={width - 2} height={height - 2} fill={CUP} />
       {/* Stepenasti rep — dvije sve uže "stube" koje kutijasti oblačić
-          spajaju s glavom lika ispod, umjesto jednog glatkog trokuta. */}
+          spajaju s glavom lika ispod, umjesto jednog glatkog trokuta.
+          Uvijek centriran na x, neovisno o širini kutije. */}
       <rect x={x - 2} y={y + height} width={4} height={1} fill={EYE} />
       <rect x={x - 1} y={y + height + 1} width={2} height={1} fill={EYE} />
-      <text x={x} y={y + height / 2 + 2} textAnchor="middle" fontSize={4.2} fontFamily="monospace" fontWeight={700} fill={EYE}>
+      <text
+        x={x}
+        y={y + height / 2}
+        textAnchor="middle"
+        dominantBaseline="central"
+        fontSize={4.2}
+        fontFamily="monospace"
+        fontWeight={700}
+        fill={EYE}
+      >
         {label}
       </text>
     </g>
