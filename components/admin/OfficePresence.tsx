@@ -235,17 +235,30 @@ function NameTag({ label, x = 0, y }: { label: string; x?: number; y: number }) 
   );
 }
 
-/** Status oblačić ("što trenutačno radim", v8) iznad lika — isti "uvijek
+/** Status oblačić ("što trenutačno radim", v9) iznad lika — isti "uvijek
     uspravan, izvan animirane grupe" princip kao NameTag (vidi komentar
     ondje), crta se IZNAD name taga (manji y). Prikazuje se samo kad admin
-    ima postavljen statusText i/ili statusEmoji (OfficeStatusForm). */
+    ima postavljen statusText i/ili statusEmoji (OfficeStatusForm).
+    "Pixel Office Asset Pack" (2dPig) nema gotov oblačić za govor/status
+    (provjereno — samo namještaj, likovi, dekor) pa je ovo ručno nacrtan
+    RETRO "dialog box" u istom stilu kao ostatak scene: kutijasti obrub
+    umjesto zaobljenog ruba (rx), i stepenasti "rep" od kvadratića umjesto
+    glatkog trokuta (glatke dijagonale ne postoje u pixel-art stilu). Boje
+    su POSUĐENE iz postojeće palete lika (CUP/EYE, vidi definicije gore) da
+    se oblačić osjeća kao dio istog seta, a ne kao nalijepljen UI element. */
 function StatusBubble({ text, emoji, x = 0, y }: { text: string; emoji: string; x?: number; y: number }) {
   const label = emoji && text ? `${emoji} ${text}` : emoji || text;
-  const width = Math.max(16, label.length * 3.1 + 6);
+  const width = Math.max(18, label.length * 3.1 + 8);
+  const height = 8;
   return (
     <g className="office-status-bubble">
-      <rect x={x - width / 2} y={y} width={width} height={7} rx={2} fill="rgba(255,127,0,0.92)" />
-      <text x={x} y={y + 5} textAnchor="middle" fontSize={4.4} fontFamily="monospace" fontWeight={700} fill="#fff">
+      <rect x={x - width / 2} y={y} width={width} height={height} fill={EYE} />
+      <rect x={x - width / 2 + 1} y={y + 1} width={width - 2} height={height - 2} fill={CUP} />
+      {/* Stepenasti rep — dvije sve uže "stube" koje kutijasti oblačić
+          spajaju s glavom lika ispod, umjesto jednog glatkog trokuta. */}
+      <rect x={x - 2} y={y + height} width={4} height={1} fill={EYE} />
+      <rect x={x - 1} y={y + height + 1} width={2} height={1} fill={EYE} />
+      <text x={x} y={y + height / 2 + 2} textAnchor="middle" fontSize={4.2} fontFamily="monospace" fontWeight={700} fill={EYE}>
         {label}
       </text>
     </g>
@@ -417,7 +430,7 @@ export default function OfficePresence({
             <g key={m.email} className="office-char-pos" transform={`translate(${seat.x}, ${seat.y})`}>
               <title>{`${labelFor(m)} · radi`}</title>
               {(m.statusText || m.statusEmoji) && (
-                <StatusBubble text={m.statusText ?? ""} emoji={m.statusEmoji ?? ""} y={-28} />
+                <StatusBubble text={m.statusText ?? ""} emoji={m.statusEmoji ?? ""} y={-31} />
               )}
               <NameTag label={shortLabelFor(m)} y={-20} />
               <g className="office-char-sprite is-typing">
@@ -441,7 +454,7 @@ export default function OfficePresence({
                   putuju sa likom niz stazu, ali se ne njišu/rotiraju s bob
                   animacijom, ostaju čitljivi. */}
               {(m.statusText || m.statusEmoji) && (
-                <StatusBubble text={m.statusText ?? ""} emoji={m.statusEmoji ?? ""} y={-31} />
+                <StatusBubble text={m.statusText ?? ""} emoji={m.statusEmoji ?? ""} y={-34} />
               )}
               <NameTag label={shortLabelFor(m)} y={-23} />
               <g className="office-char-sprite is-walk-bob">
@@ -467,7 +480,7 @@ export default function OfficePresence({
                   nakon rotacije proteže u +x smjeru, vidi komentar uz
                   STAND_SPRITE). */}
               {(m.statusText || m.statusEmoji) && (
-                <StatusBubble text={m.statusText ?? ""} emoji={m.statusEmoji ?? ""} x={7} y={-20} />
+                <StatusBubble text={m.statusText ?? ""} emoji={m.statusEmoji ?? ""} x={7} y={-23} />
               )}
               <NameTag label={shortLabelFor(m)} x={7} y={-12} />
               <g className="office-char-sprite is-sleep-breathe" transform="rotate(90)">
