@@ -83,6 +83,8 @@ import {
   updateTeamTaskStatus,
   assignTeamTask,
   deleteTeamTask,
+  createTaskTemplate,
+  deleteTaskTemplate,
   createTeamMessage,
   toggleTeamMessageReaction,
   toggleTeamMessagePin,
@@ -2281,6 +2283,10 @@ const TeamTaskSchema = z.object({
       (umjesto dva neovisna polja koja bi mogla oba biti popunjena). */
   client: z.string().optional().or(z.literal("")),
   dueDate: z.string().regex(DATE_RE, "Datum nije ispravan.").optional().or(z.literal("")),
+  /** Checkbox "Spremi kao predložak" (TeamTaskForm) — checkbox šalje "on"
+      kad je označen, izostaje iz FormData kad nije (standardno HTML
+      ponašanje), otud optional string umjesto booleana. */
+  saveAsTemplate: z.string().optional(),
 });
 
 export async function createTeamTaskAction(
@@ -2296,6 +2302,7 @@ export async function createTeamTaskAction(
     assignedToEmail: formData.get("assignedToEmail") || "",
     client: formData.get("client") || "",
     dueDate: formData.get("dueDate") || "",
+    saveAsTemplate: formData.get("saveAsTemplate") || "",
   });
   if (!parsed.success) {
     return { error: parsed.error.issues[0]?.message ?? "Provjeri unesene podatke." };
@@ -2315,11 +2322,32 @@ export async function createTeamTaskAction(
     companyId: companyId && !Number.isNaN(companyId) ? companyId : null,
     dueDate: parsed.data.dueDate || null,
   });
+
+  // "Spremi kao predložak" (task templates) — namjerno BEZ dueDate/klijenta/
+  // dodjele, predložak nosi samo ono što se ponavlja iz zadatka u zadatak,
+  // vidi opsežan komentar uz taskTemplates u lib/db/schema.ts.
+  if (parsed.data.saveAsTemplate === "on") {
+    await createTaskTemplate({
+      title: parsed.data.title,
+      description: parsed.data.description || null,
+      priority: parsed.data.priority,
+      createdByEmail: admin.email,
+    });
+  }
+
   revalidatePath("/admin/portal");
   // ?tab=zadaci (ne goli "/admin/portal") — bez ovoga redirect nakon dodavanja
   // zadatka tiho prebaci korisnika natrag na "Tim" tab (PortalMain default),
   // što djeluje kao da je stranica "poludjela"/izgubila mjesto.
   redirect("/admin/portal?tab=zadaci");
+}
+
+/** Brisanje predloška zadatka (Portal, "Zadaci" tab) — bound-action gumb uz
+ * svaki chip u TeamTaskForm, isti obrazac kao deleteTeamTaskAction. */
+export async function deleteTaskTemplateAction(id: number) {
+  await requireAdmin();
+  await deleteTaskTemplate(id);
+  revalidatePath("/admin/portal");
 }
 
 /** status: "todo" | "in_progress" | "done" — jednostavan bound-action gumb

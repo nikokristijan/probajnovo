@@ -25,6 +25,7 @@ import {
   subscriptions,
   nfcTags,
   teamTasks,
+  taskTemplates,
   teamMessages,
   teamMessageReactions,
   directMessages,
@@ -37,6 +38,7 @@ import {
   type NewSubscription,
   type NewNfcTag,
   type NewTeamTask,
+  type NewTaskTemplate,
   type TeamMessage,
   type NewTeamMessage,
   type NewDirectMessage,
@@ -1926,6 +1928,51 @@ export async function deleteTeamTask(id: number) {
   // Komentari vezani uz obrisan zadatak ostaju u glavnom feedu kao opće
   // poruke (taskId veza jednostavno postane "viseća") — namjerno se ne
   // brišu, poruka je i dalje čitljiva ("dogovorili smo se da...").
+}
+
+/** Predlošci zadataka (Portal, "task templates") — vidi opsežan komentar uz
+    taskTemplates u lib/db/schema.ts. Isti self-creating obrazac kao ostale
+    Faza 2+ tablice, nema pristupa terminalu za ručnu migraciju. */
+export async function ensureTaskTemplatesTable(): Promise<void> {
+  await db.execute(sql`
+    CREATE TABLE IF NOT EXISTS task_templates (
+      id SERIAL PRIMARY KEY,
+      title TEXT NOT NULL,
+      description TEXT,
+      priority TEXT NOT NULL DEFAULT 'normal',
+      created_by_email TEXT NOT NULL,
+      created_at TIMESTAMP NOT NULL DEFAULT now()
+    )
+  `);
+}
+
+let taskTemplatesTablePromise: Promise<void> | null = null;
+function ensureTaskTemplatesTableOnce(): Promise<void> {
+  if (!taskTemplatesTablePromise) {
+    taskTemplatesTablePromise = ensureTaskTemplatesTable().catch((err) => {
+      taskTemplatesTablePromise = null;
+      throw err;
+    });
+  }
+  return taskTemplatesTablePromise;
+}
+
+/** Najnoviji prvi — prikazano kao brzi gumbi iznad TeamTaskForm (vidi
+    TeamTaskForm.tsx), isti poredak kao listTeamTasks. */
+export async function listTaskTemplates() {
+  await ensureTaskTemplatesTableOnce();
+  return db.select().from(taskTemplates).orderBy(desc(taskTemplates.createdAt));
+}
+
+export async function createTaskTemplate(data: NewTaskTemplate) {
+  await ensureTaskTemplatesTableOnce();
+  const [row] = await db.insert(taskTemplates).values(data).returning();
+  return row;
+}
+
+export async function deleteTaskTemplate(id: number) {
+  await ensureTaskTemplatesTableOnce();
+  await db.delete(taskTemplates).where(eq(taskTemplates.id, id));
 }
 
 /** Opći feed (app/admin/poruke) — samo poruke BEZ taskId, kronološki

@@ -4,18 +4,14 @@ import TeamTaskForm from "@/components/admin/TeamTaskForm";
 import TeamTaskAssignSelect from "@/components/admin/TeamTaskAssignSelect";
 import DeleteTeamTaskButton from "@/components/admin/DeleteTeamTaskButton";
 import EmptyState from "@/components/admin/EmptyState";
-import { todayDateStringZagreb } from "@/lib/date";
-import type { TeamTask } from "@/lib/db/schema";
+import { describeDueDateZagreb } from "@/lib/date";
+import type { TeamTask, TaskTemplate } from "@/lib/db/schema";
 
 const COLUMNS: { status: TeamTask["status"]; label: string; nextStatus: TeamTask["status"] | null; nextLabel: string }[] = [
   { status: "todo", label: "Za napraviti", nextStatus: "in_progress", nextLabel: "Počni →" },
   { status: "in_progress", label: "U tijeku", nextStatus: "done", nextLabel: "Završi →" },
   { status: "done", label: "Gotovo", nextStatus: null, nextLabel: "" },
 ];
-
-function formatDate(dateStr: string): string {
-  return new Date(`${dateStr}T00:00:00Z`).toLocaleDateString("hr-HR", { timeZone: "UTC", day: "numeric", month: "short" });
-}
 
 /**
  * Kanban zadataka — isti sadržaj kao bivši app/admin/zadaci/page.tsx,
@@ -29,15 +25,16 @@ export default function TasksBoard({
   teamMembers,
   properties,
   companies,
+  templates,
 }: {
   tasks: TeamTask[];
   teamMembers: { email: string }[];
   properties: { id: number; name: string }[];
   companies: { id: number; name: string }[];
+  templates: TaskTemplate[];
 }) {
   const propertyNameById = new Map(properties.map((p) => [p.id, p.name]));
   const companyNameById = new Map(companies.map((c) => [c.id, c.name]));
-  const today = todayDateStringZagreb();
 
   const grouped = COLUMNS.map((col) => ({
     ...col,
@@ -75,7 +72,7 @@ export default function TasksBoard({
                       : task.companyId != null
                         ? `/admin/companies/${task.companyId}`
                         : null;
-                  const isOverdue = task.dueDate != null && task.dueDate < today && task.status !== "done";
+                  const dueInfo = task.dueDate ? describeDueDateZagreb(task.dueDate, task.status === "done") : null;
 
                   return (
                     <div key={task.id} className="neu-card p-4 flex flex-col gap-2.5">
@@ -102,10 +99,21 @@ export default function TasksBoard({
 
                       <div className="flex items-center justify-between gap-2 flex-wrap">
                         <TeamTaskAssignSelect taskId={task.id} currentEmail={task.assignedToEmail} teamMembers={teamMembers} />
-                        {task.dueDate && (
-                          <span className={"text-[11px] font-medium " + (isOverdue ? "text-red-600" : "")} style={isOverdue ? undefined : { color: "var(--neu-ink-faint)" }}>
-                            {isOverdue ? "Kasni · " : "Rok "}
-                            {formatDate(task.dueDate)}
+                        {dueInfo && (
+                          <span
+                            className={
+                              "text-[11px] font-semibold " +
+                              (dueInfo.tier === "overdue"
+                                ? "px-2 py-0.5 rounded-full bg-red-50 text-red-600"
+                                : dueInfo.tier === "today"
+                                  ? "px-2 py-0.5 rounded-full bg-amber-50 text-amber-700"
+                                  : dueInfo.tier === "soon"
+                                    ? "text-amber-600"
+                                    : "")
+                            }
+                            style={dueInfo.tier === "normal" ? { color: "var(--neu-ink-faint)" } : undefined}
+                          >
+                            {dueInfo.label}
                           </span>
                         )}
                       </div>
@@ -137,6 +145,7 @@ export default function TasksBoard({
         teamMembers={teamMembers.map((m) => ({ email: m.email }))}
         properties={properties.map((p) => ({ id: p.id, name: p.name }))}
         companies={companies.map((c) => ({ id: c.id, name: c.name }))}
+        templates={templates.map((t) => ({ id: t.id, title: t.title, description: t.description, priority: t.priority }))}
       />
     </div>
   );
