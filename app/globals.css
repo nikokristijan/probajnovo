@@ -1788,6 +1788,19 @@ html:has(.owner-page-bg)::-webkit-scrollbar {
 .office-char-sprite.is-walk-bob { animation: office-char-bob 0.55s ease-in-out infinite; }
 .office-char-sprite.is-idle-sway { animation: office-char-idle 2.6s ease-in-out infinite; }
 .office-char-sprite.is-sleep-breathe { animation: office-char-breathe 2.8s ease-in-out infinite; }
+/* "radi" lik za računalom (v5) — sitan, brz trzaj kao da ruke tipkaju po
+   tipkovnici; namjerno mnogo brži i suptilniji od hodajućeg bob-a. */
+.office-char-sprite.is-typing { animation: office-char-type 0.3s steps(2, jump-none) infinite; }
+@keyframes office-char-type {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-0.4px); }
+}
+/* Treptavi "sadržaj" na upaljenom ekranu računala (v5, ComputerDesk). */
+.office-screen-glow { animation: office-screen-glow 1.6s ease-in-out infinite; }
+@keyframes office-screen-glow {
+  0%, 100% { opacity: 0.55; }
+  50% { opacity: 1; }
+}
 @keyframes office-char-bob {
   0%, 100% { transform: translateY(0) rotate(0deg); }
   50% { transform: translateY(-1.5px) rotate(3deg); }
@@ -1818,6 +1831,8 @@ html:has(.owner-page-bg)::-webkit-scrollbar {
   .office-char-sprite.is-walk-bob,
   .office-char-sprite.is-idle-sway,
   .office-char-sprite.is-sleep-breathe,
+  .office-char-sprite.is-typing,
+  .office-screen-glow,
   .office-snack-steam,
   .office-zzz { animation: none; }
 }
