@@ -88,6 +88,7 @@ import {
   createDirectMessage,
   markDirectMessagesRead,
   updateAdminProfile,
+  updateAdminStatus,
 } from "@/lib/db/queries";
 import { sendInquiryNotification, sendGuestConfirmation, sendReservationConfirmation, sendInquiryReply } from "@/lib/email";
 import { resolveCoordinates, geoMissWarning } from "@/lib/geocode";
@@ -2474,5 +2475,39 @@ export async function updateAdminProfileAction(
     bio: parsed.data.bio || null,
   });
   revalidatePath(`/admin/portal/profil/${encodeURIComponent(admin.email)}`);
+  return { success: true };
+}
+
+const StatusSchema = z.object({
+  statusText: z.string().max(60).optional().or(z.literal("")),
+  statusEmoji: z.string().max(4).optional().or(z.literal("")),
+});
+
+/** Slack-stil "što trenutačno radim" status iznad lika u Uredu (v8, Portal
+ * Faza 4, components/admin/OfficeStatusForm.tsx) — admin uređuje SAMO svoj
+ * vlastiti status (isti princip kao updateAdminProfileAction). Prazna oba
+ * polja = briše status (vraća se na "bez statusa", ne prikazuje se oblačić).
+ * Osim revalidacije layouta (za sljedeći SSR render), ostali klijenti u
+ * uredu podignu promjenu preko postojećeg 20s pollinga na /api/admin/presence
+ * — namjerno bez dodatne "push" infrastrukture za tako sitnu promjenu. */
+export async function updateAdminStatusAction(
+  _prevState: ActionState,
+  formData: FormData
+): Promise<ActionState> {
+  const admin = await requireAdmin();
+
+  const parsed = StatusSchema.safeParse({
+    statusText: formData.get("statusText") || "",
+    statusEmoji: formData.get("statusEmoji") || "",
+  });
+  if (!parsed.success) {
+    return { error: parsed.error.issues[0]?.message ?? "Provjeri unos." };
+  }
+
+  await updateAdminStatus(admin.adminId, {
+    statusText: parsed.data.statusText?.trim() || null,
+    statusEmoji: parsed.data.statusEmoji?.trim() || null,
+  });
+  revalidatePath("/admin/portal", "layout");
   return { success: true };
 }
