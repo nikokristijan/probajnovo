@@ -1754,8 +1754,8 @@ html:has(.owner-page-bg)::-webkit-scrollbar {
   width: 100%;
   height: auto;
   /* KLJUČNO za pikselizirani izgled — bez ovoga preglednik zaglađuje
-     rubove pravokutnika i cijela scena izgleda mutno na necjelobrojnim
-     CSS širinama (responzivno skaliranje). */
+     rubove pravokutnika (i samu pozadinsku sliku) i cijela scena izgleda
+     mutno na necjelobrojnim CSS širinama (responzivno skaliranje). */
   shape-rendering: crispEdges;
 }
 
@@ -1772,17 +1772,18 @@ html:has(.owner-page-bg)::-webkit-scrollbar {
   animation-duration: var(--walk-dur, 19s);
   animation-delay: var(--walk-delay, 0s);
 }
-/* Putanja je JEDNA dijeljena petlja kroz hodnike tlocrta (vidi OFFICE_LOOP
-   u OfficePresence.tsx) — svaki online avatar dobiva različit negativni
-   animation-delay pa svi hodaju ISTOM stazom ali u različitim točkama,
-   umjesto da se svi kreću u koraku. */
+/* Putanja je JEDNA dijeljena petlja kroz otvoreni prolaz nove CC0 pozadinske
+   scene (v7, office-scene.png 256×224 — gornji prolaz ispred vending/vrata,
+   pa dolje kroz razmak između stolova do kutka s kavom, i natrag) — svaki
+   online avatar dobiva različit negativni animation-delay pa svi hodaju
+   ISTOM stazom ali u različitim točkama, umjesto da se svi kreću u koraku. */
 @keyframes office-walk-loop {
-  0%   { transform: translate(56px, 56px); }
-  20%  { transform: translate(152px, 56px); }
-  40%  { transform: translate(248px, 136px); }
-  60%  { transform: translate(152px, 168px); }
-  80%  { transform: translate(72px, 120px); }
-  100% { transform: translate(56px, 56px); }
+  0%   { transform: translate(18px, 124px); }
+  20%  { transform: translate(235px, 124px); }
+  40%  { transform: translate(215px, 180px); }
+  60%  { transform: translate(117px, 183px); }
+  80%  { transform: translate(45px, 150px); }
+  100% { transform: translate(18px, 124px); }
 }
 
 .office-char-sprite.is-walk-bob { animation: office-char-bob 0.55s ease-in-out infinite; }
