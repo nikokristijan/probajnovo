@@ -151,22 +151,16 @@ export default async function AdminLayout({ children }: { children: React.ReactN
             {/* Sekundarni red — vanjski link/email/odjava NISU nav "odredišta",
                 vidi opsežan komentar uz .owner-menu-secondary u globals.css. */}
             <div className="owner-menu-secondary">
-              <Link href={ownerPageHref ?? "/"} target="_blank" className="inline-flex items-center gap-1">
+              <Link href={ownerPageHref ?? "/"} target="_blank" className="inline-flex items-center gap-1 hover:text-[color:var(--na-accent)]">
                 Pogledaj stranicu <ExternalLinkIcon />
               </Link>
-              <span className="owner-header-faint flex items-center gap-1.5">
+              <span className="flex items-center gap-1.5">
                 {admin.email}
-                {admin.isSuperAdmin && (
-                  <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-[#ff7f00]/10 text-[#ff7f00]">
-                    glavni
-                  </span>
-                )}
-                <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full owner-header-chip">
-                  vlasnik{ownerLabel ? ` · ${ownerLabel}` : ""}
-                </span>
+                {admin.isSuperAdmin && <span className="na-chip">glavni</span>}
+                <span className="na-chip">vlasnik{ownerLabel ? ` · ${ownerLabel}` : ""}</span>
               </span>
               <form action={logoutAction} className="ml-auto">
-                <button type="submit" className="neu-btn px-3 py-1.5">
+                <button type="submit" className="na-btn-ghost px-3 py-1.5">
                   <LogOutIcon /> Odjava
                 </button>
               </form>
