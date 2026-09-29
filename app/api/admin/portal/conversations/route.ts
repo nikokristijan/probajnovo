@@ -4,7 +4,7 @@ import { listDmConversations } from "@/lib/db/queries";
 
 /**
  * Portal sidebar — popis DM razgovora (zadnja poruka + broj nepročitanih po
- * sugovorniku), pollano sporije (~8s, vidi PortalSidebar.tsx) od same
+ * sugovorniku), pollano sporije (~8s, vidi PortalTopBar.tsx) od same
  * otvorene niti — sidebar samo treba znati "ima nešto novo", ne prikazuje
  * svaku poruku uživo kao otvorena nit.
  */
