@@ -2313,7 +2313,10 @@ export async function createTeamTaskAction(
     dueDate: parsed.data.dueDate || null,
   });
   revalidatePath("/admin/portal");
-  redirect("/admin/portal");
+  // ?tab=zadaci (ne goli "/admin/portal") — bez ovoga redirect nakon dodavanja
+  // zadatka tiho prebaci korisnika natrag na "Tim" tab (PortalMain default),
+  // što djeluje kao da je stranica "poludjela"/izgubila mjesto.
+  redirect("/admin/portal?tab=zadaci");
 }
 
 /** status: "todo" | "in_progress" | "done" — jednostavan bound-action gumb
