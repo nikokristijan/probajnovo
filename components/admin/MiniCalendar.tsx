@@ -45,17 +45,21 @@ export default function MiniCalendar({
   return (
     <section>
       <div className="flex items-center justify-between mb-3">
-        <h2 className="text-xs font-semibold uppercase tracking-wide text-black/40">
+        <h2 className="text-xs font-semibold uppercase tracking-wide" style={{ color: "var(--neu-ink-faint)" }}>
           {MINI_MONTH_NAMES[month]} — {propertyName}
         </h2>
-        <Link href={`/admin/kalendar?property=${propertyId}`} className="text-xs font-semibold text-[#ff7f00]">
+        <Link
+          href={`/admin/kalendar?property=${propertyId}`}
+          className="text-xs font-semibold"
+          style={{ color: "var(--neu-accent)" }}
+        >
           Puni kalendar →
         </Link>
       </div>
-      <div className="border border-black/10 rounded-xl p-4 bg-white max-w-xs">
+      <div className="neu-card p-4 max-w-xs">
         <div className="grid grid-cols-7 gap-1 text-center">
           {MINI_WEEKDAY_LABELS.map((w) => (
-            <div key={w} className="text-[10px] font-semibold text-black/40 py-0.5">
+            <div key={w} className="text-[10px] font-semibold py-0.5" style={{ color: "var(--neu-ink-faint)" }}>
               {w}
             </div>
           ))}
@@ -68,8 +72,9 @@ export default function MiniCalendar({
                 key={dateStr}
                 className={
                   "aspect-square rounded-md text-[10px] font-semibold flex items-center justify-center " +
-                  (isBlocked ? "bg-red-500 text-white" : "bg-black/5")
+                  (isBlocked ? "bg-red-500 text-white" : "")
                 }
+                style={isBlocked ? undefined : { background: "color-mix(in srgb, var(--neu-shadow) 45%, transparent)" }}
               >
                 {day}
               </div>
