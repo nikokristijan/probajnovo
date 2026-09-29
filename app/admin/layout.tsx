@@ -6,7 +6,16 @@ import { listPropertiesForAdmin, listCompaniesForAdmin, countUnreadDirectMessage
 import PwaRegister from "@/components/admin/PwaRegister";
 import PresenceHeartbeat from "@/components/admin/PresenceHeartbeat";
 import AdminNavLink from "@/components/admin/AdminNavLink";
-import { MenuIcon, LogOutIcon, ExternalLinkIcon } from "@/components/admin/Icons";
+import {
+  MenuIcon,
+  LogOutIcon,
+  ExternalLinkIcon,
+  HomeIcon,
+  InboxIcon,
+  BedIcon,
+  CalendarIcon,
+  SettingsIcon,
+} from "@/components/admin/Icons";
 
 /* OSMI krug feedbacka ("vrh je oštra kocka, bijelo gore i dole", potvrđeno
    da je admin dodan na početni zaslon kao PWA) — statusBarStyle "default"
@@ -106,14 +115,73 @@ export default async function AdminLayout({ children }: { children: React.ReactN
         <span className="font-bold tracking-tight">
           NOVO <span className="text-[#ff7f00]">admin</span>
         </span>
-        {admin && (
+        {admin && admin.role === "owner" && (
+          // Task #14 ("full-width grid, mobile+desktop") — vlasnik ima samo 5
+          // odredišta pa ne treba hamburger-skriveni .neu-nav punog admina
+          // ispod: mreža je uvijek vidljiva, na vlastitom retku ispod loga
+          // (w-full ovdje forsira prijelom u redu jer je <header> flex-wrap),
+          // i sama se rasteže preko cijele širine na svakoj veličini zaslona
+          // umjesto da se lijevo poravnato lomi kao ranija pilula-traka.
+          <div className="w-full flex flex-col gap-3">
+            <nav className="owner-menu-grid" aria-label="Glavni izbornik">
+              {/* Vlasnik ima samo ograničen pregled — ne smije uređivati stranicu.
+                  /admin sad prikazuje njegov vlastiti dashboard (vidi
+                  app/admin/page.tsx), ne puni pregled kao za role="admin". */}
+              <AdminNavLink href="/admin" exact className="owner-menu-tile">
+                <span className="owner-menu-tile-icon"><HomeIcon /></span>
+                <span>Početna</span>
+              </AdminNavLink>
+              <AdminNavLink href="/admin/inquiries" className="owner-menu-tile">
+                <span className="owner-menu-tile-icon"><InboxIcon size={20} /></span>
+                <span>Upiti</span>
+              </AdminNavLink>
+              <AdminNavLink href="/admin/rezervacije" className="owner-menu-tile">
+                <span className="owner-menu-tile-icon"><BedIcon /></span>
+                <span>Rezervacije</span>
+              </AdminNavLink>
+              <AdminNavLink href="/admin/kalendar" className="owner-menu-tile">
+                <span className="owner-menu-tile-icon"><CalendarIcon /></span>
+                <span>Kalendar</span>
+              </AdminNavLink>
+              <AdminNavLink href="/admin/settings" className="owner-menu-tile">
+                <span className="owner-menu-tile-icon"><SettingsIcon /></span>
+                <span>Postavke</span>
+              </AdminNavLink>
+            </nav>
+            {/* Sekundarni red — vanjski link/email/odjava NISU nav "odredišta",
+                vidi opsežan komentar uz .owner-menu-secondary u globals.css. */}
+            <div className="owner-menu-secondary">
+              <Link href={ownerPageHref ?? "/"} target="_blank" className="inline-flex items-center gap-1">
+                Pogledaj stranicu <ExternalLinkIcon />
+              </Link>
+              <span className="owner-header-faint flex items-center gap-1.5">
+                {admin.email}
+                {admin.isSuperAdmin && (
+                  <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-[#ff7f00]/10 text-[#ff7f00]">
+                    glavni
+                  </span>
+                )}
+                <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full owner-header-chip">
+                  vlasnik{ownerLabel ? ` · ${ownerLabel}` : ""}
+                </span>
+              </span>
+              <form action={logoutAction} className="ml-auto">
+                <button type="submit" className="neu-btn px-3 py-1.5">
+                  <LogOutIcon /> Odjava
+                </button>
+              </form>
+            </div>
+          </div>
+        )}
+        {admin && admin.role !== "owner" && (
           <>
             {/* Čisto CSS "hamburger" (checkbox hack, bez klijentske komponente/JS-a) —
                 s puno stavki u navu (do 9+ linkova za punog admina) na mobitelu se
                 dosad samo ružno lomilo u više redaka preko flex-wrap; sad je iznad
                 sm praga sakriveno iza gumba. Relevantno i jer admin panel već ima
                 PWA "dodaj na početni zaslon" podršku (vidi PwaRegister gore), znači
-                stvarno se koristi na mobitelu. */}
+                stvarno se koristi na mobitelu. Vlasnik (role="owner") više ne prolazi
+                ovim putem — vidi granu iznad, Task #14. */}
             <input type="checkbox" id="admin-nav-toggle" className="peer hidden" />
             <label
               htmlFor="admin-nav-toggle"
@@ -123,101 +191,74 @@ export default async function AdminLayout({ children }: { children: React.ReactN
               <MenuIcon />
             </label>
             <nav className="hidden peer-checked:flex sm:flex items-start sm:items-center gap-3 sm:gap-5 text-sm flex-col sm:flex-row w-full sm:w-auto flex-wrap neu-nav">
-            {admin.role === "owner" ? (
-              // Vlasnik ima samo ograničen pregled — ne smije uređivati stranicu.
-              // /admin sad prikazuje njegov vlastiti dashboard (vidi app/admin/page.tsx),
-              // ne puni pregled kao za role="admin".
-              <>
-                <AdminNavLink href="/admin" exact>
-                  Početna
-                </AdminNavLink>
-                <AdminNavLink href="/admin/inquiries">
-                  Upiti
-                </AdminNavLink>
-                <AdminNavLink href="/admin/rezervacije">
-                  Rezervacije
-                </AdminNavLink>
-                <AdminNavLink href="/admin/kalendar">
-                  Kalendar
-                </AdminNavLink>
-              </>
-            ) : (
-              <>
-                <AdminNavLink href="/admin" exact>
-                  Pregled
-                </AdminNavLink>
-                <AdminNavLink href="/admin/agency">
-                  Sadržaj agencije
-                </AdminNavLink>
-                <AdminNavLink href="/admin#firme">
-                  Firme
-                </AdminNavLink>
-                {/* Kalendar/Rezervacije/Upiti su grupirani pod jedan hub (bira se
-                    vikendica pa se tek onda vidi njen kalendar/rezervacije/upiti)
-                    umjesto tri zasebna taba koja su miješala sve vikendice odjednom
-                    i postajala krcata — vidi app/admin/vikendice. */}
-                <AdminNavLink href="/admin/vikendice">
-                  Vikendice
-                </AdminNavLink>
-                {/* Prodaja je spojena u Financije (na izričit zahtjev korisnika:
-                    "spoji tab financije i prodaja u jedan") — jedan link, jedna
-                    stranica, vidi app/admin/financije AgencyLedgerTable. */}
-                {admin.isSuperAdmin && (
-                  <AdminNavLink href="/admin/financije">
-                    Financije
-                  </AdminNavLink>
-                )}
-                <AdminNavLink href="/admin/aktivnost">
-                  Aktivnost
-                </AdminNavLink>
-                {/* Portal (Faza 3) — spojeni Zadaci+Poruke+DM+statistika tab
-                    ("Zadaci i poruke nek budu u jednom tabu, 'Portal'"),
-                    dostupno SVIM punim adminima i superadminima, ne samo
-                    glavnom (na izričit zahtjev iz Faze 2, i dalje vrijedi),
-                    za razliku od Financije/Admini ispod koji ostaju samo za
-                    superadmina. */}
-                <AdminNavLink href="/admin/portal" className="inline-flex items-center gap-1.5">
-                  Portal
-                  {unreadDmCount > 0 && (
-                    <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-[#ff7f00] text-white leading-none">
-                      {unreadDmCount}
-                    </span>
-                  )}
-                </AdminNavLink>
-                {admin.isSuperAdmin && (
-                  <AdminNavLink href="/admin/admins">
-                    Admini
-                  </AdminNavLink>
-                )}
-              </>
-            )}
-            <AdminNavLink href="/admin/settings">
-              Postavke
-            </AdminNavLink>
-            {/* "Pogledaj stranicu" namjerno OSTAJE obični Link, ne AdminNavLink
-                — vodi na javnu stranicu (druga domena/ruta), nije "sekcija"
-                admina u kojoj se može "biti", pa aktivno stanje nema smisla. */}
-            <Link href={ownerPageHref ?? "/"} target="_blank" className="inline-flex items-center gap-1">
-              Pogledaj stranicu <ExternalLinkIcon />
-            </Link>
-            <span className="owner-header-faint flex items-center gap-1.5">
-              {admin.email}
+              <AdminNavLink href="/admin" exact>
+                Pregled
+              </AdminNavLink>
+              <AdminNavLink href="/admin/agency">
+                Sadržaj agencije
+              </AdminNavLink>
+              <AdminNavLink href="/admin#firme">
+                Firme
+              </AdminNavLink>
+              {/* Kalendar/Rezervacije/Upiti su grupirani pod jedan hub (bira se
+                  vikendica pa se tek onda vidi njen kalendar/rezervacije/upiti)
+                  umjesto tri zasebna taba koja su miješala sve vikendice odjednom
+                  i postajala krcata — vidi app/admin/vikendice. */}
+              <AdminNavLink href="/admin/vikendice">
+                Vikendice
+              </AdminNavLink>
+              {/* Prodaja je spojena u Financije (na izričit zahtjev korisnika:
+                  "spoji tab financije i prodaja u jedan") — jedan link, jedna
+                  stranica, vidi app/admin/financije AgencyLedgerTable. */}
               {admin.isSuperAdmin && (
-                <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-[#ff7f00]/10 text-[#ff7f00]">
-                  glavni
-                </span>
+                <AdminNavLink href="/admin/financije">
+                  Financije
+                </AdminNavLink>
               )}
-              {admin.role === "owner" && (
-                <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full owner-header-chip">
-                  vlasnik{ownerLabel ? ` · ${ownerLabel}` : ""}
-                </span>
+              <AdminNavLink href="/admin/aktivnost">
+                Aktivnost
+              </AdminNavLink>
+              {/* Portal (Faza 3) — spojeni Zadaci+Poruke+DM+statistika tab
+                  ("Zadaci i poruke nek budu u jednom tabu, 'Portal'"),
+                  dostupno SVIM punim adminima i superadminima, ne samo
+                  glavnom (na izričit zahtjev iz Faze 2, i dalje vrijedi),
+                  za razliku od Financije/Admini ispod koji ostaju samo za
+                  superadmina. */}
+              <AdminNavLink href="/admin/portal" className="inline-flex items-center gap-1.5">
+                Portal
+                {unreadDmCount > 0 && (
+                  <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-[#ff7f00] text-white leading-none">
+                    {unreadDmCount}
+                  </span>
+                )}
+              </AdminNavLink>
+              {admin.isSuperAdmin && (
+                <AdminNavLink href="/admin/admins">
+                  Admini
+                </AdminNavLink>
               )}
-            </span>
-            <form action={logoutAction}>
-              <button type="submit" className="neu-btn px-3 py-1.5">
-                <LogOutIcon /> Odjava
-              </button>
-            </form>
+              <AdminNavLink href="/admin/settings">
+                Postavke
+              </AdminNavLink>
+              {/* "Pogledaj stranicu" namjerno OSTAJE obični Link, ne AdminNavLink
+                  — vodi na javnu stranicu (druga domena/ruta), nije "sekcija"
+                  admina u kojoj se može "biti", pa aktivno stanje nema smisla. */}
+              <Link href={ownerPageHref ?? "/"} target="_blank" className="inline-flex items-center gap-1">
+                Pogledaj stranicu <ExternalLinkIcon />
+              </Link>
+              <span className="owner-header-faint flex items-center gap-1.5">
+                {admin.email}
+                {admin.isSuperAdmin && (
+                  <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-[#ff7f00]/10 text-[#ff7f00]">
+                    glavni
+                  </span>
+                )}
+              </span>
+              <form action={logoutAction}>
+                <button type="submit" className="neu-btn px-3 py-1.5">
+                  <LogOutIcon /> Odjava
+                </button>
+              </form>
             </nav>
           </>
         )}

@@ -1645,6 +1645,90 @@ html:has(.owner-page-bg)::-webkit-scrollbar {
   }
 }
 
+/* Redizajn vlasničkog izbornika (Task #14, "full-width grid,
+   mobile+desktop") — dosadašnji .neu-nav pilule za role="owner" bile su
+   obični fleksbox red (flex-wrap) koji se na mobitelu skrivao iza
+   hamburger gumba (vlasnik ima samo 5 odredišta, ionako premalo da
+   opravda skrivanje) i na širem zaslonu se lijevo poravnato lomio bez
+   ikakve stupčane strukture, pa nikad nije stvarno "ispunio" traku —
+   otud dojam "nije sve centrirano/lijepo" koji se ponavljao i za druge
+   dijelove admina. .owner-menu-grid zamjenjuje to pravom CSS mrežom:
+   auto-fit/minmax umjesto ručnih breakpointova znači da se broj stupaca
+   SAM prilagođava širini (2 na uskom mobitelu, do 5 na desktopu) i mreža
+   UVIJEK ispunjava punu širinu headera, bez praznog ruba sa strane, na
+   svim veličinama zaslona. Vrijedi ISKLJUČIVO za vlasnika (superadmin/puni
+   admin zadržava izvorni .neu-nav gore netaknut — 9+ linkova treba
+   hamburger, drugačiji problem). */
+.owner-menu-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(108px, 1fr));
+  gap: 8px;
+  width: 100%;
+}
+.owner-menu-tile {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  padding: 11px 8px 10px;
+  border-radius: 14px;
+  background: var(--neu-base);
+  color: inherit;
+  font-size: 12.5px;
+  font-weight: 600;
+  text-align: center;
+  line-height: 1.15;
+  box-shadow: 4px 4px 8px var(--neu-shadow), -4px -4px 8px var(--neu-highlight);
+  transition: box-shadow 0.18s cubic-bezier(0.22, 1, 0.36, 1), transform 0.18s cubic-bezier(0.22, 1, 0.36, 1),
+    color 0.18s ease;
+}
+/* Ikona je UVIJEK naglašena bojom (var(--neu-accent)) čak i dok pločica
+   miruje — daje mreži boju/identitet umjesto da sve ostane jednolično
+   sivo dok se ne hoverira, kao kod .neu-nav > a gore. Label ispod ikone
+   ostaje --neu-ink (naslijeđen preko .owner-menu-tile color:inherit) dok
+   se pločica ne hoverira/aktivira, kad obje boje prijeđu u accent. */
+.owner-menu-tile-icon {
+  display: flex;
+  color: var(--neu-accent);
+}
+.owner-menu-tile:hover {
+  color: var(--neu-accent);
+  box-shadow: 2px 2px 5px var(--neu-shadow), -2px -2px 5px var(--neu-highlight);
+}
+.owner-menu-tile:active {
+  transform: scale(0.96);
+  box-shadow: inset 3px 3px 6px var(--neu-shadow), inset -3px -3px 6px var(--neu-highlight);
+}
+.owner-menu-tile[aria-current="page"] {
+  color: var(--neu-accent);
+  font-weight: 700;
+  box-shadow: inset 3px 3px 6px var(--neu-shadow), inset -3px -3px 6px var(--neu-highlight);
+}
+
+/* Sekundarni red ISPOD mreže — vanjski link na javnu stranicu, email/uloga
+   značka i odjava NISU "odredišta" izbornika (nema ih smisla prikazati kao
+   ravnopravnu pločicu uz Početna/Kalendar/...), pa namjerno ostaju izvan
+   .owner-menu-grid, u tanjem statusnom retku ispod. margin-left:auto na
+   gumbu Odjava (postavljen izravno u JSX-u) gura ga na desni kraj retka. */
+.owner-menu-secondary {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  width: 100%;
+  font-size: 13px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .owner-menu-tile {
+    transition: color 0.18s ease;
+  }
+  .owner-menu-tile:active {
+    transform: none;
+  }
+}
+
 /* =====================================================================
    ADMIN SADRŽAJ — dijeljeni neumorphism gradivni blokovi (na izričit
    zahtjev: "napravi cijeli dashboard u tom stilu"). Za razliku od
