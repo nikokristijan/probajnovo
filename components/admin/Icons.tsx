@@ -208,3 +208,26 @@ export function HashIcon({ className, size = 15 }: IconProps) {
     </svg>
   );
 }
+
+/** Prikvači/otkvači poruku (Portal Faza 5, TeamChannelThread.tsx) — obrnuta
+    pribadača, isti Slack/Teams jezik kao HashIcon iznad. */
+export function PinIcon({ className, size = 14 }: IconProps) {
+  return (
+    <svg {...base} width={size} height={size} className={className} aria-hidden="true">
+      <path d="M8 3.5h4l.6 5 2.4 2v1.5H5v-1.5l2.4-2 .6-5Z" />
+      <path d="M10 12v4.5" />
+    </svg>
+  );
+}
+
+/** "Dodaj reakciju" gumb ispod poruke (Portal Faza 5) — smajlić s malim
+    plusom, isti jezik kao ostale ikone (stroke, ne fill). */
+export function SmilePlusIcon({ className, size = 15 }: IconProps) {
+  return (
+    <svg {...base} width={size} height={size} className={className} aria-hidden="true">
+      <circle cx="8.2" cy="10.5" r="6" />
+      <path d="M6 9.5h.01M10.4 9.5h.01M5.8 12c.6 1 1.5 1.6 2.4 1.6s1.8-.6 2.4-1.6" />
+      <path d="M15.5 3v4.5M13.25 5.25h4.5" />
+    </svg>
+  );
+}

@@ -2132,6 +2132,179 @@ html:has(.owner-page-bg)::-webkit-scrollbar {
 }
 .portal-thread-textarea { flex: 1; resize: none; }
 
+/* --- Faza 5: @spominjanja, emoji reakcije, prikvačivanje --- */
+
+/* Spominjanje unutar teksta poruke (portal-msg-text) — narančasti čip,
+   pojačan kad spominje TRENUTNOG admina (mentions-me na roditelju retke
+   dodatno boji cijeli redak, vidi niže). */
+.portal-mention {
+  display: inline-block;
+  padding: 0 4px;
+  border-radius: 5px;
+  font-weight: 700;
+  color: var(--neu-accent);
+  background: rgba(255, 127, 0, 0.12);
+}
+.portal-mention.is-me { color: #fff; background: var(--neu-accent); }
+
+/* Jedan red = jedna poruka (NIJE cijela grupa — grupa dijeli avatar/ime, ali
+   svaka pojedina poruka unutar nje ima svoje reakcije/pin). mentions-me daje
+   suptilan lijevi rub kao "ovo je za tebe" signal, isti akcent kao
+   is-own pozadina grupe iznad. */
+.portal-msg-row { position: relative; padding-left: 8px; border-left: 2px solid transparent; }
+.portal-msg-row.mentions-me { border-left-color: var(--neu-accent); }
+.portal-msg-row + .portal-msg-row { margin-top: 2px; }
+
+.portal-msg-actions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-wrap: wrap;
+  margin-top: 3px;
+  min-height: 20px;
+}
+.portal-msg-action-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  border-radius: 6px;
+  color: var(--neu-ink-faint);
+  opacity: 0.55;
+  transition: opacity 0.15s, color 0.15s, background 0.15s;
+}
+.portal-msg-action-btn:hover { opacity: 1; background: var(--neu-shadow); }
+.portal-msg-action-btn.is-pinned { opacity: 1; color: var(--neu-accent); }
+
+.portal-reaction-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 1px 6px;
+  border-radius: 999px;
+  font-size: 11.5px;
+  background: var(--neu-shadow);
+  color: var(--neu-ink-faint);
+}
+.portal-reaction-pill.is-mine {
+  background: rgba(255, 127, 0, 0.16);
+  color: var(--neu-accent);
+  font-weight: 700;
+}
+.portal-reaction-count { font-variant-numeric: tabular-nums; }
+
+.portal-reaction-add-wrap { position: relative; }
+.portal-reaction-picker {
+  position: absolute;
+  bottom: 100%;
+  left: 0;
+  margin-bottom: 4px;
+  display: flex;
+  gap: 2px;
+  padding: 5px;
+  border-radius: 10px;
+  background: var(--neu-base);
+  box-shadow: 3px 3px 8px var(--neu-shadow), -3px -3px 8px var(--neu-highlight);
+  z-index: 20;
+}
+.portal-reaction-picker button {
+  width: 26px;
+  height: 26px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 15px;
+  border-radius: 6px;
+}
+.portal-reaction-picker button:hover { background: var(--neu-shadow); }
+
+/* Prikvačene poruke — panel iznad niti, sažmljiv. */
+.portal-pinned-panel {
+  border-bottom: 1px solid var(--neu-shadow);
+  background: rgba(255, 127, 0, 0.05);
+}
+.portal-pinned-toggle {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  padding: 8px 14px;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--neu-accent);
+}
+.portal-pinned-chevron { margin-left: auto; font-size: 9px; color: var(--neu-ink-faint); }
+.portal-pinned-list { display: flex; flex-direction: column; gap: 2px; padding: 0 12px 8px; max-height: 160px; overflow-y: auto; }
+.portal-pinned-item {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  padding: 5px 8px;
+  border-radius: 8px;
+  font-size: 12.5px;
+}
+.portal-pinned-item:hover { background: var(--neu-shadow); }
+.portal-pinned-author { font-weight: 700; flex-shrink: 0; }
+.portal-pinned-text {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--neu-ink-faint);
+}
+.portal-pinned-unpin { flex-shrink: 0; color: var(--neu-ink-faint); opacity: 0.6; }
+.portal-pinned-unpin:hover { opacity: 1; color: var(--neu-accent); }
+
+/* @spominjanje padajući izbornik — iznad textarea (thread-form je pri dnu
+   niti, izbornik mora rasti prema gore, ne prema dolje izvan vidljivog
+   okvira). */
+.portal-thread-input-wrap { position: relative; flex: 1; }
+.portal-thread-input-wrap .portal-thread-textarea { width: 100%; }
+.portal-mention-dropdown {
+  position: absolute;
+  bottom: 100%;
+  left: 0;
+  right: 0;
+  margin-bottom: 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  padding: 4px;
+  border-radius: 10px;
+  background: var(--neu-base);
+  box-shadow: 3px 3px 8px var(--neu-shadow), -3px -3px 8px var(--neu-highlight);
+  max-height: 220px;
+  overflow-y: auto;
+  z-index: 20;
+}
+.portal-mention-option {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 8px;
+  border-radius: 7px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--neu-ink);
+  text-align: left;
+}
+.portal-mention-option.is-active,
+.portal-mention-option:hover { background: var(--neu-shadow); }
+.portal-mention-avatar {
+  width: 22px;
+  height: 22px;
+  border-radius: 6px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 9.5px;
+  font-weight: 700;
+  color: #fff;
+}
+
 /* --- Statistika kartice (grafovi) --- */
 .portal-stat-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 16px; }
 .portal-donut-legend { display: flex; flex-direction: column; gap: 6px; margin-top: 10px; }

@@ -26,6 +26,7 @@ import {
   nfcTags,
   teamTasks,
   teamMessages,
+  teamMessageReactions,
   directMessages,
   type NewProperty,
   type NewCompany,
@@ -36,6 +37,7 @@ import {
   type NewSubscription,
   type NewNfcTag,
   type NewTeamTask,
+  type TeamMessage,
   type NewTeamMessage,
   type NewDirectMessage,
 } from "./schema";
@@ -1811,6 +1813,11 @@ export async function ensureTeamMessagesTable(): Promise<void> {
       created_at TIMESTAMP NOT NULL DEFAULT now()
     )
   `);
+  // Prikvačivanje poruka (Portal Faza 5) — isti ALTER TABLE ... ADD COLUMN
+  // IF NOT EXISTS obrazac kao ensureAdminStreakColumns, vidi komentar uz
+  // teamMessages.pinnedAt u schema.ts.
+  await db.execute(sql`ALTER TABLE team_messages ADD COLUMN IF NOT EXISTS pinned_at TIMESTAMP`);
+  await db.execute(sql`ALTER TABLE team_messages ADD COLUMN IF NOT EXISTS pinned_by_email TEXT`);
 }
 
 let teamMessagesTablePromise: Promise<void> | null = null;
@@ -1822,6 +1829,35 @@ function ensureTeamMessagesTableOnce(): Promise<void> {
     });
   }
   return teamMessagesTablePromise;
+}
+
+/** Emoji reakcije (Portal Faza 5) — vidi opsežan komentar uz
+    teamMessageReactions u lib/db/schema.ts. UNIQUE sprječava duplu reakciju
+    istog admina istim emojijem na istu poruku (toggleTeamMessageReaction
+    ionako provjerava postojanje prije umetanja, UNIQUE je samo dodatna
+    mreža za slučaj dvostrukog klika/utrke zahtjeva). */
+export async function ensureTeamMessageReactionsTable(): Promise<void> {
+  await db.execute(sql`
+    CREATE TABLE IF NOT EXISTS team_message_reactions (
+      id SERIAL PRIMARY KEY,
+      message_id INTEGER NOT NULL,
+      admin_email TEXT NOT NULL,
+      emoji TEXT NOT NULL,
+      created_at TIMESTAMP NOT NULL DEFAULT now(),
+      UNIQUE (message_id, admin_email, emoji)
+    )
+  `);
+}
+
+let teamMessageReactionsTablePromise: Promise<void> | null = null;
+function ensureTeamMessageReactionsTableOnce(): Promise<void> {
+  if (!teamMessageReactionsTablePromise) {
+    teamMessageReactionsTablePromise = ensureTeamMessageReactionsTable().catch((err) => {
+      teamMessageReactionsTablePromise = null;
+      throw err;
+    });
+  }
+  return teamMessageReactionsTablePromise;
 }
 
 /** Cijeli tim (puni admini + superadmini) za dodjelu zadataka/prikaz autora
@@ -1920,6 +1956,99 @@ export async function createTeamMessage(data: NewTeamMessage) {
   await ensureTeamMessagesTableOnce();
   const [row] = await db.insert(teamMessages).values(data).returning();
   return row;
+}
+
+/* ---------------------------------------------------------------- */
+/* Portal Faza 5 — @spominjanja, emoji reakcije, prikvačivanje u tim  */
+/* kanalu (TeamChannelThread.tsx). Spominjanja NEMAJU poseban stupac  */
+/* — otkrivaju se pri renderiranju iz body teksta prema roster popisu */
+/* (isti minimalistički pristup kao ostatak Faze 2/3, bez dodatne     */
+/* tablice/notifikacijskog sustava za jednostavan tim od par ljudi).  */
+/* ---------------------------------------------------------------- */
+
+export type ChannelMessageReaction = { emoji: string; count: number; mine: boolean };
+export type ChannelMessageView = TeamMessage & { reactions: ChannelMessageReaction[] };
+
+/** Sirovi retci reakcija za zadan popis poruka — grupiranje po (poruka,
+    emoji) radi se u pozivatelju (listTeamMessagesWithReactions), da upit
+    ovdje ostane jednostavan jedan SELECT ... WHERE message_id IN (...). */
+export async function listReactionsForMessages(messageIds: number[]) {
+  await ensureTeamMessageReactionsTableOnce();
+  if (messageIds.length === 0) return [];
+  return db.select().from(teamMessageReactions).where(inArray(teamMessageReactions.messageId, messageIds));
+}
+
+/** Opći tim kanal + grupirane reakcije po poruci, spremno za JSON odgovor
+    (GET /api/admin/portal/messages) i početni server-render (app/admin/
+    portal/page.tsx) — ista oblik podataka na oba mjesta da TeamChannelThread
+    ne mora razlikovati "prvi render" od "poslije pollinga". currentEmail
+    postavlja "mine" zastavicu (moja reakcija = narančasto popunjena, klik
+    je toggle/ukloni umjesto dodaj). */
+export async function listTeamMessagesWithReactions(currentEmail: string, limit = 200): Promise<ChannelMessageView[]> {
+  const messages = await listTeamMessages(limit);
+  if (messages.length === 0) return [];
+  const reactionRows = await listReactionsForMessages(messages.map((m) => m.id));
+  const byMessage = new Map<number, Map<string, ChannelMessageReaction>>();
+  for (const r of reactionRows) {
+    let byEmoji = byMessage.get(r.messageId);
+    if (!byEmoji) {
+      byEmoji = new Map();
+      byMessage.set(r.messageId, byEmoji);
+    }
+    const cur = byEmoji.get(r.emoji) ?? { emoji: r.emoji, count: 0, mine: false };
+    cur.count += 1;
+    if (r.adminEmail === currentEmail) cur.mine = true;
+    byEmoji.set(r.emoji, cur);
+  }
+  return messages.map((m) => ({
+    ...m,
+    reactions: Array.from(byMessage.get(m.id)?.values() ?? []),
+  }));
+}
+
+/** Klik na emoji = toggle (drugi klik istog admina istim emojijem uklanja
+    reakciju umjesto da dodaje drugu) — isto ponašanje kao Slack/Teams. */
+export async function toggleTeamMessageReaction(
+  messageId: number,
+  adminEmail: string,
+  emoji: string
+): Promise<"added" | "removed"> {
+  await ensureTeamMessageReactionsTableOnce();
+  const existing = await db
+    .select()
+    .from(teamMessageReactions)
+    .where(
+      and(
+        eq(teamMessageReactions.messageId, messageId),
+        eq(teamMessageReactions.adminEmail, adminEmail),
+        eq(teamMessageReactions.emoji, emoji)
+      )
+    )
+    .limit(1);
+  if (existing.length > 0) {
+    await db.delete(teamMessageReactions).where(eq(teamMessageReactions.id, existing[0].id));
+    return "removed";
+  }
+  await db.insert(teamMessageReactions).values({ messageId, adminEmail, emoji });
+  return "added";
+}
+
+/** Prikvači/otkvači poruku u općem kanalu (task komentari se ne prikvačuju
+    — pinnedAt/pinnedByEmail postoje na svim porukama, ali UI za njih postoji
+    samo u TeamChannelThread.tsx). Baca ako poruka ne postoji (obrisana
+    ranije/pogrešan id iz zastarjelog pollanog odgovora — pozivatelj hvata
+    grešku i samo osvježi popis, vidi TeamChannelThread.tsx handleTogglePin). */
+export async function toggleTeamMessagePin(messageId: number, adminEmail: string): Promise<"pinned" | "unpinned"> {
+  await ensureTeamMessagesTableOnce();
+  const rows = await db.select().from(teamMessages).where(eq(teamMessages.id, messageId)).limit(1);
+  const msg = rows[0];
+  if (!msg) throw new Error("Poruka ne postoji (možda je već obrisana).");
+  if (msg.pinnedAt) {
+    await db.update(teamMessages).set({ pinnedAt: null, pinnedByEmail: null }).where(eq(teamMessages.id, messageId));
+    return "unpinned";
+  }
+  await db.update(teamMessages).set({ pinnedAt: new Date(), pinnedByEmail: adminEmail }).where(eq(teamMessages.id, messageId));
+  return "pinned";
 }
 
 /* ---------------------------------------------------------------- */

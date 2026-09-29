@@ -1,7 +1,7 @@
 import { Suspense } from "react";
 import { requireFullAdmin } from "@/lib/auth";
 import {
-  listTeamMessages,
+  listTeamMessagesWithReactions,
   listTeamTasks,
   listTeamMembers,
   listProperties,
@@ -27,7 +27,7 @@ export default async function PortalPage() {
 
   const [messages, tasks, teamMembers, properties, companies, messageCounts, statusCounts, completionByAdmin] =
     await Promise.all([
-      listTeamMessages(200),
+      listTeamMessagesWithReactions(admin.email, 200),
       listTeamTasks(),
       listTeamMembers(),
       listProperties(),
@@ -53,6 +53,9 @@ export default async function PortalPage() {
             adminEmail: m.adminEmail,
             body: m.body,
             createdAt: m.createdAt.toISOString(),
+            pinnedAt: m.pinnedAt ? m.pinnedAt.toISOString() : null,
+            pinnedByEmail: m.pinnedByEmail,
+            reactions: m.reactions,
           }))}
         />
       }
