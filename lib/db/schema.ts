@@ -708,6 +708,30 @@ export type TeamTask = typeof teamTasks.$inferSelect;
 export type NewTeamTask = typeof teamTasks.$inferInsert;
 
 /**
+ * Predlošci zadataka (Portal, "Zadaci" tab) — na zahtjev "task templates",
+ * nastavak Faze 5/6. Isti obrazac brzih gumbi kao QUICK_STATUSES u
+ * OfficeStatusForm.tsx (klik samo popuni formu, ne šalje je) — ovdje je
+ * lista spremljena u bazi umjesto hardkodirana, jer je "predložak" nešto
+ * što tim sam definira (npr. "Objavi na Instagramu", "Pošalji fakturu")
+ * i mora se moći obrisati kad zastari. Namjerno BEZ dueDate/assignedToEmail/
+ * klijenta — predložak nosi samo ono što se ponavlja iz zadatka u zadatak
+ * (naslov/opis/prioritet), rok i dodjela su uvijek specifični za konkretnu
+ * priliku. createdByEmail isti obrazac denormalizacije kao teamTasks gore.
+ */
+export const taskTemplates = pgTable("task_templates", {
+  id: serial("id").primaryKey(),
+  title: text("title").notNull(),
+  description: text("description"),
+  /** "low" | "normal" | "high" */
+  priority: text("priority").notNull().default("normal"),
+  createdByEmail: text("created_by_email").notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export type TaskTemplate = typeof taskTemplates.$inferSelect;
+export type NewTaskTemplate = typeof taskTemplates.$inferInsert;
+
+/**
  * Interni feed/chat tima — kronološki, jednostavan (bez pravog real-time
  * chata, osvježava se kao i ostatak admina preko revalidatePath). taskId
  * null = opća poruka u glavnom feedu (app/admin/poruke); postavljen = poruka
