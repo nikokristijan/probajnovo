@@ -2,6 +2,7 @@ import Link from "next/link";
 import { requireFullAdmin } from "@/lib/auth";
 import { listProperties, listInquiries, getMonthlyEarnings, listBlockedDates } from "@/lib/db/queries";
 import { currentYearMonthZagreb } from "@/lib/date";
+import { EmptyState } from "@/components/admin/EmptyState";
 
 /**
  * Hub "Vikendice" za pune admine — zamjena za tri zasebna top-level taba
@@ -35,25 +36,25 @@ export default async function AdminVikendicePage() {
     <div className="flex flex-col gap-6">
       <div>
         <h1 className="text-xl font-bold">Vikendice</h1>
-        <p className="text-xs text-black/50 mt-0.5">
+        <p className="text-xs mt-0.5" style={{ color: "var(--neu-ink-faint)" }}>
           Odaberi vikendicu za kalendar, rezervacije i upite baš za nju.
         </p>
       </div>
 
       {cards.length === 0 ? (
-        <p className="text-sm text-black/60">Još nema dodanih vikendica.</p>
+        <EmptyState title="Još nema dodanih vikendica" hint="Nove vikendice dodaje superadmin u CMS-u." />
       ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        <div className="admin-animate-grid grid grid-cols-1 sm:grid-cols-2 gap-3">
           {cards.map(({ property: p, earnings, pendingCount, daysBooked }) => (
             <Link
               key={p.id}
               href={`/admin/vikendice/${p.id}`}
-              className="border border-black/10 rounded-xl px-5 py-4 bg-white hover:border-[#ff7f00]/50 flex flex-col gap-3"
+              className="neu-card neu-card-interactive px-5 py-4 flex flex-col gap-3"
             >
               <div className="flex items-start justify-between gap-2">
                 <div>
                   <div className="font-semibold text-sm">{p.name}</div>
-                  <div className="text-xs text-black/50 mt-0.5">{p.location}</div>
+                  <div className="text-xs mt-0.5" style={{ color: "var(--neu-ink-faint)" }}>{p.location}</div>
                 </div>
                 {pendingCount > 0 && (
                   <span className="text-[11px] font-semibold px-2 py-0.5 rounded-full bg-[#ff7f00]/10 text-[#ff7f00] shrink-0">
@@ -61,7 +62,7 @@ export default async function AdminVikendicePage() {
                   </span>
                 )}
               </div>
-              <div className="flex items-center gap-4 text-xs text-black/60">
+              <div className="flex items-center gap-4 text-xs" style={{ color: "var(--neu-ink-faint)" }}>
                 <span>
                   <span className="font-semibold tabular-nums">{daysBooked}</span> dana zauzeto
                 </span>
