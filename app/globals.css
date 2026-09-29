@@ -1319,6 +1319,19 @@ html.novo-lock-scroll body {
 .admin-repeat-remove { align-self: flex-start; font-size: 12px; font-weight: 600; color: #b3261e; background: transparent; border: none; cursor: pointer; padding: 2px 0; text-decoration: underline; }
 .admin-repeat-remove:hover { color: #7a1a15; }
 
+/* Generička "nepročitano" točkica — na zahtjev "vikendice u istom neu
+   stilu" zamjenjuje raniju razliku bojom ruba kartice (border-black/10 vs
+   border-[#ff7f00]/50), koja se gubi na .neu-card (nema ruba, samo sjena).
+   Koristi se npr. za upite u app/admin/vikendice/[id]/page.tsx. */
+.admin-unread-dot {
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--neu-accent);
+  flex-shrink: 0;
+}
+
 /* ---------------------------------------------------------------------
    Admin "polish" animacije — graf zarade (linija + ispuna), fade-up ulaz
    za statistike, i grow-in za proporcionalne trake (lijevkasti/kategorije).
