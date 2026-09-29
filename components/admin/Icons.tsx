@@ -231,3 +231,56 @@ export function SmilePlusIcon({ className, size = 15 }: IconProps) {
     </svg>
   );
 }
+
+/* --- Redizajn vlasničkog izbornika (Task #14, "full-width grid,
+   mobile+desktop") — app/admin/layout.tsx zamjenjuje raniji tekstualni red
+   pilula za role="owner" mrežom od 5 pločica (Početna/Upiti/Rezervacije/
+   Kalendar/Postavke), svaka s vlastitom ikonom iznad labele umjesto samog
+   teksta, vidi .owner-menu-tile u globals.css. Upiti dijeli InboxIcon iznad
+   (semantički isti pojam — upit = poruka u "sandučiću"). */
+
+/** Početna (owner dashboard). */
+export function HomeIcon({ className, size = 20 }: IconProps) {
+  return (
+    <svg {...base} width={size} height={size} className={className} aria-hidden="true">
+      <path d="M3.3 9.6 10 4.2l6.7 5.4" />
+      <path d="M5.3 8.3V15.5a1.2 1.2 0 0 0 1.2 1.2h7a1.2 1.2 0 0 0 1.2-1.2V8.3" />
+      <path d="M8.1 16.7v-4.4h3.8v4.4" />
+    </svg>
+  );
+}
+
+/** Rezervacije (vikendica/soba) — krevet, umjesto generičke kvačice. */
+export function BedIcon({ className, size = 20 }: IconProps) {
+  return (
+    <svg {...base} width={size} height={size} className={className} aria-hidden="true">
+      <path d="M3 16.5V6.5" />
+      <path d="M3 13h14v3.5" />
+      <rect x="3.6" y="9.3" width="4.6" height="3.7" rx="1" />
+      <path d="M8.2 13v-2a1.6 1.6 0 0 1 1.6-1.6h4.6A1.6 1.6 0 0 1 16 11v2" />
+    </svg>
+  );
+}
+
+/** Kalendar (owner nav) — mjesečni prikaz s par označenih dana. */
+export function CalendarIcon({ className, size = 20 }: IconProps) {
+  return (
+    <svg {...base} width={size} height={size} className={className} aria-hidden="true">
+      <rect x="3.3" y="4.5" width="13.4" height="12" rx="2" />
+      <path d="M3.3 8.3h13.4" />
+      <path d="M7 3v3M13 3v3" />
+      <path d="M6.6 11.5h.01M10 11.5h.01M13.4 11.5h.01M6.6 14.3h.01M10 14.3h.01" />
+    </svg>
+  );
+}
+
+/** Postavke (owner nav) — zupčanik, dosljedno tanka linija kao ostatak seta. */
+export function SettingsIcon({ className, size = 20 }: IconProps) {
+  return (
+    <svg {...base} width={size} height={size} className={className} aria-hidden="true">
+      <circle cx="10" cy="10" r="2.6" />
+      <path d="M10 3.5v2.1M10 14.4v2.1M16.5 10h-2.1M5.6 10H3.5" />
+      <path d="M14.6 5.4 13.1 6.9M6.9 13.1l-1.5 1.5M14.6 14.6l-1.5-1.5M6.9 6.9 5.4 5.4" />
+    </svg>
+  );
+}
