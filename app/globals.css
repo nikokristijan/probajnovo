@@ -1396,7 +1396,10 @@ html.novo-lock-scroll body {
    dira .admin-shell izgled za pravog (super)admina jer klasa/atribut
    nikad nisu prisutni na tom putu. */
 .owner-page-bg {
-  background: #f2f3f9;
+  /* NOVO/Revolut redizajn: neutralniji, manje "lavande" ton nego prijašnji
+     #f2f3f9 — vidi --na-bg u NOVO/REVOLUT REDIZAJN sekciji gore (prati
+     temu preko istog .owner-page-bg[data-theme]/media obrasca). */
+  background: var(--na-bg);
   /* ŠESTI krug feedbacka: "gornji navbar ostaje bijel u tamnom modu, sve u
      vlasnik adminu (kalendar, rezervacije...) treba istu temu kao početna".
      Ovi --oh-* tokeni žive OVDJE (na .owner-page-bg = .admin-shell omotač,
@@ -1645,88 +1648,239 @@ html:has(.owner-page-bg)::-webkit-scrollbar {
   }
 }
 
-/* Redizajn vlasničkog izbornika (Task #14, "full-width grid,
-   mobile+desktop") — dosadašnji .neu-nav pilule za role="owner" bile su
-   obični fleksbox red (flex-wrap) koji se na mobitelu skrivao iza
-   hamburger gumba (vlasnik ima samo 5 odredišta, ionako premalo da
-   opravda skrivanje) i na širem zaslonu se lijevo poravnato lomio bez
-   ikakve stupčane strukture, pa nikad nije stvarno "ispunio" traku —
-   otud dojam "nije sve centrirano/lijepo" koji se ponavljao i za druge
-   dijelove admina. .owner-menu-grid zamjenjuje to pravom CSS mrežom:
-   auto-fit/minmax umjesto ručnih breakpointova znači da se broj stupaca
-   SAM prilagođava širini (2 na uskom mobitelu, do 5 na desktopu) i mreža
-   UVIJEK ispunjava punu širinu headera, bez praznog ruba sa strane, na
-   svim veličinama zaslona. Vrijedi ISKLJUČIVO za vlasnika (superadmin/puni
-   admin zadržava izvorni .neu-nav gore netaknut — 9+ linkova treba
-   hamburger, drugačiji problem). */
+/* Redizajn vlasničkog izbornika (Task #14 → NOVO/Revolut redizajn, "izgleda
+   jako nepregledno i tesko za koristiti... stil Revolut aplikacije, clean
+   minimalno jednostavno"). Prvotna verzija (neumorphism, 5 zasebnih
+   "izbočenih" pločica sa sjenama) i dalje je djelovala nagurano — otud
+   drugi prolaz: JEDNA ravna traka (.na-card) s tankim rubom, bez sjena,
+   gdje je aktivna stavka jednostavno TAMNA ispunjena pločica (isti
+   "segmented control" obrazac kao Revolut donja navigacija), a ostale su
+   gole ikona+label bez ruba/sjene dok se ne hoveriraju. auto-fit/minmax i
+   dalje osigurava da mreža uvijek ispunjava punu širinu (2 stupca na
+   uskom mobitelu, do 5 na desktopu). Vrijedi ISKLJUČIVO za vlasnika
+   (superadmin/puni admin zadržava izvorni .neu-nav — različit problem,
+   9+ linkova treba hamburger). */
 .owner-menu-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(108px, 1fr));
-  gap: 8px;
+  grid-template-columns: repeat(auto-fit, minmax(90px, 1fr));
+  gap: 4px;
   width: 100%;
+  background: var(--na-surface);
+  border: 1px solid var(--na-border);
+  border-radius: var(--na-radius);
+  padding: 5px;
 }
 .owner-menu-tile {
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 5px;
-  padding: 11px 8px 10px;
-  border-radius: 14px;
-  background: var(--neu-base);
-  color: inherit;
-  font-size: 12.5px;
+  gap: 4px;
+  padding: 10px 6px;
+  border-radius: calc(var(--na-radius) - 5px);
+  background: transparent;
+  color: var(--na-ink-faint);
+  font-family: var(--font-space-grotesk), sans-serif;
+  font-size: 12px;
   font-weight: 600;
   text-align: center;
   line-height: 1.15;
-  box-shadow: 4px 4px 8px var(--neu-shadow), -4px -4px 8px var(--neu-highlight);
-  transition: box-shadow 0.18s cubic-bezier(0.22, 1, 0.36, 1), transform 0.18s cubic-bezier(0.22, 1, 0.36, 1),
-    color 0.18s ease;
+  transition: background 0.15s ease, color 0.15s ease, transform 0.15s ease;
 }
-/* Ikona je UVIJEK naglašena bojom (var(--neu-accent)) čak i dok pločica
-   miruje — daje mreži boju/identitet umjesto da sve ostane jednolično
-   sivo dok se ne hoverira, kao kod .neu-nav > a gore. Label ispod ikone
-   ostaje --neu-ink (naslijeđen preko .owner-menu-tile color:inherit) dok
-   se pločica ne hoverira/aktivira, kad obje boje prijeđu u accent. */
 .owner-menu-tile-icon {
   display: flex;
-  color: var(--neu-accent);
+  color: inherit;
 }
 .owner-menu-tile:hover {
-  color: var(--neu-accent);
-  box-shadow: 2px 2px 5px var(--neu-shadow), -2px -2px 5px var(--neu-highlight);
+  color: var(--na-ink);
+  background: var(--na-bg);
 }
 .owner-menu-tile:active {
   transform: scale(0.96);
-  box-shadow: inset 3px 3px 6px var(--neu-shadow), inset -3px -3px 6px var(--neu-highlight);
 }
 .owner-menu-tile[aria-current="page"] {
-  color: var(--neu-accent);
-  font-weight: 700;
-  box-shadow: inset 3px 3px 6px var(--neu-shadow), inset -3px -3px 6px var(--neu-highlight);
+  color: var(--na-surface);
+  background: var(--na-ink);
 }
 
 /* Sekundarni red ISPOD mreže — vanjski link na javnu stranicu, email/uloga
-   značka i odjava NISU "odredišta" izbornika (nema ih smisla prikazati kao
-   ravnopravnu pločicu uz Početna/Kalendar/...), pa namjerno ostaju izvan
-   .owner-menu-grid, u tanjem statusnom retku ispod. margin-left:auto na
-   gumbu Odjava (postavljen izravno u JSX-u) gura ga na desni kraj retka. */
+   značka i odjava NISU "odredišta" izbornika, pa namjerno ostaju izvan
+   .owner-menu-grid, u tanjem statusnom retku ispod, sada u --na-ink-faint
+   monu radi manje vizualne buke. margin-left:auto na gumbu Odjava
+   (postavljen izravno u JSX-u) gura ga na desni kraj retka. */
 .owner-menu-secondary {
   display: flex;
   align-items: center;
   gap: 10px;
   flex-wrap: wrap;
   width: 100%;
-  font-size: 13px;
+  font-size: 12.5px;
+  color: var(--na-ink-faint);
 }
 
 @media (prefers-reduced-motion: reduce) {
   .owner-menu-tile {
-    transition: color 0.18s ease;
+    transition: color 0.15s ease, background 0.15s ease;
   }
   .owner-menu-tile:active {
     transform: none;
   }
+}
+
+/* =====================================================================
+   NOVO/REVOLUT REDIZAJN (Task #24, nastavak) — na izričit zahtjev: "zelim
+   da sve ima stil glavne NOVO stranice... clean minimalno jednostavno za
+   koristenje... stil Revolut aplikacije". Paralelan sustav uz .neu-*/
+   .owner-* ispod (NE zamjenjuje ih posvuda odjednom — prevelik rizik da se
+   svih ~30 admin stranica prepravi u jednom potezu; .na-* se uvodi prvo na
+   vlasnički izbornik, vlasnički dashboard i Portal, širi se dalje kasnije).
+   Preuzima stvarne NOVO brend tokene (--novo-blue/--novo-orange gore u
+   ovoj datoteci, .novo-os-* sekcija) i fontove već učitane u app/layout.tsx
+   (--font-space-grotesk za naslove/UI, --font-jetbrains-mono za mono
+   "kicker" labele — isti dvojac kao na javnoj NOVO stranici), ali BEZ
+   njenog desktop-OS/prozor layouta (to je specifično za marketing hero,
+   ne za app UI) — umjesto toga ravne (flat) kartice s mekim rubom i
+   velikodušnim razmakom, bliže Revolutovom app stilu nego neumorphism
+   dvostrukoj sjeni. */
+:root {
+  --na-bg: #fafafa;
+  --na-surface: #ffffff;
+  --na-border: rgba(0, 0, 0, 0.08);
+  --na-border-strong: rgba(0, 0, 0, 0.14);
+  --na-ink: #0a0a0a;
+  --na-ink-faint: rgba(0, 0, 0, 0.5);
+  --na-ink-faintest: rgba(0, 0, 0, 0.32);
+  --na-blue: #0000c3;
+  --na-accent: #ff7f00;
+  --na-radius-lg: 22px;
+  --na-radius: 16px;
+  --na-radius-sm: 11px;
+}
+.owner-page-bg[data-theme="dark"] {
+  --na-bg: #0c0c0e;
+  --na-surface: #17171a;
+  --na-border: rgba(255, 255, 255, 0.1);
+  --na-border-strong: rgba(255, 255, 255, 0.18);
+  --na-ink: #f5f5f5;
+  --na-ink-faint: rgba(255, 255, 255, 0.58);
+  --na-ink-faintest: rgba(255, 255, 255, 0.36);
+}
+@media (prefers-color-scheme: dark) {
+  .owner-page-bg:not([data-theme="light"]):not([data-theme="dark"]) {
+    --na-bg: #0c0c0e;
+    --na-surface: #17171a;
+    --na-border: rgba(255, 255, 255, 0.1);
+    --na-border-strong: rgba(255, 255, 255, 0.18);
+    --na-ink: #f5f5f5;
+    --na-ink-faint: rgba(255, 255, 255, 0.58);
+    --na-ink-faintest: rgba(255, 255, 255, 0.36);
+  }
+}
+
+.na-kicker {
+  font-family: var(--font-jetbrains-mono), monospace;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--na-ink-faint);
+}
+.na-heading {
+  font-family: var(--font-space-grotesk), sans-serif;
+  color: var(--na-ink);
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+.na-card {
+  background: var(--na-surface);
+  border: 1px solid var(--na-border);
+  border-radius: var(--na-radius-lg);
+  color: var(--na-ink);
+}
+.na-card-interactive {
+  transition: border-color 0.15s ease, transform 0.15s ease, box-shadow 0.15s ease;
+}
+.na-card-interactive:hover {
+  border-color: var(--na-border-strong);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.06);
+}
+.na-card-interactive:active {
+  transform: scale(0.99);
+}
+/* Namjerno BEZ vlastitog padding-a (isti obrazac kao .neu-btn gore) — svako
+   mjesto korištenja dodaje px-*/py-* Tailwind klase, pa se veličina gumba
+   prilagođava kontekstu bez sukoba dviju "padding" deklaracija. */
+.na-btn {
+  font-family: var(--font-space-grotesk), sans-serif;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: var(--na-ink);
+  color: var(--na-surface);
+  border-radius: var(--na-radius-sm);
+  font-weight: 600;
+  font-size: 13.5px;
+  transition: background 0.15s ease, transform 0.15s ease;
+}
+.na-btn:hover {
+  background: var(--na-accent);
+}
+.na-btn:active {
+  transform: scale(0.97);
+}
+.na-btn-ghost {
+  font-family: var(--font-space-grotesk), sans-serif;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: transparent;
+  color: var(--na-ink);
+  border: 1px solid var(--na-border-strong);
+  border-radius: var(--na-radius-sm);
+  font-weight: 600;
+  font-size: 13.5px;
+  transition: border-color 0.15s ease, background 0.15s ease;
+}
+.na-btn-ghost:hover {
+  border-color: var(--na-accent);
+  color: var(--na-accent);
+}
+.na-input {
+  font-family: inherit;
+  background: var(--na-bg);
+  border: 1px solid var(--na-border);
+  border-radius: var(--na-radius-sm);
+  padding: 10px 14px;
+  color: var(--na-ink);
+  font-size: 14px;
+  width: 100%;
+  transition: border-color 0.15s ease;
+}
+.na-input:focus {
+  outline: none;
+  border-color: var(--na-blue);
+}
+.na-chip {
+  font-family: var(--font-jetbrains-mono), monospace;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  font-weight: 500;
+  border-radius: 999px;
+  padding: 4px 10px;
+  border: 1px solid var(--na-border-strong);
+  color: var(--na-ink-faint);
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+.na-stat-value {
+  font-family: var(--font-space-grotesk), sans-serif;
+  font-weight: 700;
+  font-size: 26px;
+  letter-spacing: -0.01em;
+  color: var(--na-ink);
+  font-variant-numeric: tabular-nums;
 }
 
 /* =====================================================================
@@ -2104,81 +2258,54 @@ html:has(.owner-page-bg)::-webkit-scrollbar {
 }
 
 /* =====================================================================
-   PORTAL (Faza 3) — spojeni Zadaci+Poruke tab ("Zadaci i poruke nek budu
-   u jednom tabu, 'Portal'"), app-shell raspored kao Slack/Teams: fiksni
-   bočni izbornik (kanal, DM razgovori, brzi linkovi) + glavni sadržaj koji
-   se prebacuje između Poruka/Zadataka/Statistike bez ponovnog učitavanja
-   stranice. Isti --neu-* tokeni kao ostatak .admin-shell (Portal NIJE
-   .owner-dash — dostupan je punim adminima, nikad vlasniku), i dalje BEZ
-   gradijenata (samo box-shadow neumorphism udubljenja/ispupčenja). */
+   PORTAL — NOVO/Revolut redizajn ("PORTAL nema sa strane tim zadaci
+   statistika nego da to sve bude na jednoj stranici jedan veliki
+   pregled"). Raniji Slack/Teams app-shell (fiksni bočni izbornik +
+   sadržaj iza ?tab=, .portal-shell/.portal-sidebar/.portal-main/
+   .portal-tabs) je UKLONJEN — sve (Tim, Zadaci, Statistika, Nadolazeće,
+   Rođendani, Aktivnost, Pretraga) je sad JEDNA scrollajuća stranica, vidi
+   components/admin/PortalOverview.tsx. Ono što ostaje: tanka vodoravna
+   PortalTopBar (zamjena za bočni izbornik SAMO za DM prebacivanje, vidi
+   .portal-topbar-contact niže) i sitni avatar/bedž stilovi koje ona
+   dijeli s DM nitima. Portal NIJE .owner-dash (dostupan je punim
+   adminima, nikad vlasniku) i i dalje čita --neu-*/--na-* tokene, nikad
+   fiksne boje. */
 
-.portal-shell {
-  display: grid;
-  grid-template-columns: 264px minmax(0, 1fr);
-  gap: 22px;
-  align-items: start;
-}
-@media (max-width: 860px) {
-  .portal-shell { grid-template-columns: 1fr; gap: 16px; }
-}
-
-.portal-sidebar {
-  display: flex;
-  flex-direction: column;
-  gap: 18px;
-  position: sticky;
-  top: 18px;
-}
-@media (max-width: 860px) {
-  .portal-sidebar { position: static; }
-}
-
-.portal-nav-label {
-  font-size: 11px;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  color: var(--neu-ink-faint);
-  padding: 0 10px;
-  margin-bottom: 4px;
-}
-.portal-nav-group { display: flex; flex-direction: column; gap: 2px; }
-.portal-nav-item {
+.portal-topbar-contact {
   display: flex;
   align-items: center;
-  gap: 9px;
-  padding: 7px 10px;
-  border-radius: 10px;
-  font-size: 13.5px;
-  font-weight: 600;
-  color: var(--neu-ink);
+  gap: 7px;
+  padding: 5px 10px 5px 5px;
+  border-radius: 999px;
+  color: var(--na-ink);
   text-decoration: none;
-  min-width: 0;
+  white-space: nowrap;
+  flex-shrink: 0;
+  transition: background 0.15s ease;
 }
-.portal-nav-item:hover { background: var(--neu-shadow); }
-.portal-nav-item.is-active {
-  background: var(--neu-base);
-  box-shadow: inset 2px 2px 5px var(--neu-shadow), inset -2px -2px 5px var(--neu-highlight);
-  color: var(--neu-accent);
+.portal-topbar-contact:hover { background: var(--na-bg); }
+.portal-topbar-contact[data-active] {
+  background: var(--na-ink);
+  color: var(--na-surface);
 }
-.portal-nav-item-label { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1; min-width: 0; }
+.portal-topbar-contact[data-active] span { color: inherit !important; }
+
 .portal-nav-avatar {
-  width: 20px;
-  height: 20px;
-  border-radius: 6px;
+  width: 24px;
+  height: 24px;
+  border-radius: 999px;
   flex-shrink: 0;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 9px;
+  font-size: 10px;
   font-weight: 700;
   color: #fff;
 }
 .portal-nav-badge {
-  margin-left: auto;
   font-size: 10px;
   font-weight: 700;
-  background: var(--neu-accent);
+  background: var(--na-accent);
   color: #fff;
   border-radius: 999px;
   padding: 1px 6px;
@@ -2186,22 +2313,6 @@ html:has(.owner-page-bg)::-webkit-scrollbar {
   text-align: center;
   flex-shrink: 0;
 }
-
-.portal-main { min-width: 0; display: flex; flex-direction: column; gap: 16px; }
-
-.portal-tabs { display: flex; gap: 6px; flex-wrap: wrap; }
-.portal-tab {
-  padding: 7px 14px;
-  border-radius: 999px;
-  font-size: 12.5px;
-  font-weight: 700;
-  background: var(--neu-base);
-  box-shadow: 2px 2px 5px var(--neu-shadow), -2px -2px 5px var(--neu-highlight);
-  color: var(--neu-ink-faint);
-  border: none;
-  cursor: pointer;
-}
-.portal-tab.is-active { color: #fff; background: var(--neu-accent); box-shadow: none; }
 
 /* --- Chat nit (Teams-stil) — dijeli se između tim kanala i DM-a --- */
 .portal-thread {
@@ -2689,28 +2800,6 @@ a.owner-glass:active,
   letter-spacing: -0.02em;
 }
 
-@keyframes owner-streak-pulse {
-  0%, 100% { box-shadow: 0 0 0 0 rgba(255, 200, 140, 0.5); }
-  50% { box-shadow: 0 0 0 7px rgba(255, 200, 140, 0); }
-}
-.owner-streak-badge {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  font-size: 13px;
-  font-weight: 700;
-  padding: 7px 13px;
-  border-radius: 999px;
-  background: rgba(255, 255, 255, 0.14);
-  white-space: nowrap;
-  align-self: flex-start;
-}
-.owner-streak-badge.owner-streak-badge-new {
-  animation: owner-streak-pulse 2.4s ease-in-out infinite;
-  background: #ffe4cc;
-  color: #a3480a;
-}
-
 /* ---- Prsten napretka + cilj-traka ----------------------------------- */
 @keyframes owner-ring-draw { from { stroke-dashoffset: 1; } to { stroke-dashoffset: var(--owner-ring-offset, 0); } }
 .owner-ring-progress { stroke-dasharray: 1; stroke-dashoffset: 1; animation: owner-ring-draw 1s cubic-bezier(0.22, 1, 0.36, 1) 0.15s forwards; }
@@ -2753,62 +2842,6 @@ a.owner-glass:active,
   mask-image: linear-gradient(to right, #000 calc(100% - 32px), transparent 100%);
 }
 .owner-carousel > * { scroll-snap-align: start; flex: 0 0 auto; }
-
-/* ---- Bedževi/postignuća ---------------------------------------------- */
-.owner-badges-row {
-  display: flex;
-  gap: 10px;
-  overflow-x: auto;
-  padding: 2px 2px 8px;
-  -webkit-overflow-scrolling: touch;
-  scrollbar-width: thin;
-  -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 28px), transparent 100%);
-  mask-image: linear-gradient(to right, #000 calc(100% - 28px), transparent 100%);
-}
-.owner-badge {
-  flex: 0 0 auto;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 8px 14px 8px 10px;
-  border-radius: 999px;
-  font-size: 12.5px;
-  font-weight: 600;
-  white-space: nowrap;
-}
-.owner-badge-icon {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 26px;
-  height: 26px;
-  border-radius: 999px;
-  font-size: 14px;
-  flex-shrink: 0;
-}
-.owner-badge-unlocked {
-  background: rgba(255, 127, 0, 0.12);
-  border: 1px solid rgba(255, 127, 0, 0.35);
-  color: var(--od-ink);
-}
-.owner-badge-unlocked .owner-badge-icon {
-  background: var(--od-orange);
-  color: #fff;
-}
-.owner-badge-locked {
-  background: var(--od-glass-bg);
-  border: 1px dashed var(--od-hairline);
-  color: var(--od-ink-faint);
-}
-.owner-badge-locked .owner-badge-icon {
-  background: rgba(120, 120, 140, 0.14);
-  color: var(--od-ink-faint);
-}
-@keyframes owner-badge-pop {
-  from { opacity: 0; transform: scale(0.85); }
-  to { opacity: 1; transform: scale(1); }
-}
-.owner-badge-new { animation: owner-badge-pop 0.4s cubic-bezier(0.22, 1, 0.36, 1) forwards; }
 
 /* ---- Statistički mini-kartice (OwnerStatCard) ------------------------- */
 /* Bez obojenog ruba sve tri kartice izgledaju kao identična ponovljena
@@ -2855,21 +2888,6 @@ a.owner-glass:active,
   background: var(--od-glass-bg-strong);
   color: var(--neu-accent);
   box-shadow: inset 2px 2px 4px var(--neu-shadow), inset -2px -2px 4px var(--neu-highlight);
-}
-
-/* ---- Konfeti ---------------------------------------------------------- */
-@keyframes owner-confetti-fall {
-  0% { transform: translateY(-10px) rotate(0deg); opacity: 1; }
-  100% { transform: translateY(160px) rotate(540deg); opacity: 0; }
-}
-.owner-confetti-piece {
-  position: absolute;
-  top: 0;
-  width: 7px;
-  height: 12px;
-  border-radius: 2px;
-  animation: owner-confetti-fall 1.4s ease-in forwards;
-  z-index: 2;
 }
 
 /* ---- Sitni kalendar (OwnerMiniCalendar) -------------------------------- */
@@ -3045,10 +3063,7 @@ a.owner-glass:active,
   .admin-animate-grid > * { animation: none; opacity: 1; }
   .admin-bar-grow { animation: none; transform: scaleX(1); }
   .owner-hero-value { animation: none; opacity: 1; transform: none; }
-  .owner-streak-badge.owner-streak-badge-new { animation: none; }
   .owner-ring-progress { animation: none; stroke-dashoffset: var(--owner-ring-offset, 0); }
-  .owner-confetti-piece { animation: none; opacity: 0; }
-  .owner-badge-new { animation: none; opacity: 1; transform: none; }
   .owner-glass, .owner-glass-interactive, a.owner-glass { transition: none; }
 }
 
