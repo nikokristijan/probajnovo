@@ -490,6 +490,10 @@ async function ensureAdminStreakColumns(): Promise<void> {
   await db.execute(sql`ALTER TABLE admin_users ADD COLUMN IF NOT EXISTS display_name TEXT`);
   await db.execute(sql`ALTER TABLE admin_users ADD COLUMN IF NOT EXISTS job_title TEXT`);
   await db.execute(sql`ALTER TABLE admin_users ADD COLUMN IF NOT EXISTS bio TEXT`);
+  // Slack-stil status (Portal "Ured" oblačić, Faza 4) — vidi komentar uz
+  // adminUsers.statusText u schema.ts.
+  await db.execute(sql`ALTER TABLE admin_users ADD COLUMN IF NOT EXISTS status_text TEXT`);
+  await db.execute(sql`ALTER TABLE admin_users ADD COLUMN IF NOT EXISTS status_emoji TEXT`);
 }
 
 let adminStreakColumnsPromise: Promise<void> | null = null;
@@ -2061,6 +2065,16 @@ export async function updateAdminProfile(
   await db.update(adminUsers).set(data).where(eq(adminUsers.id, adminId));
 }
 
+/** Sprema/briše Slack-stil status (Portal "Ured", Faza 4) — vidi
+    updateAdminStatusAction i komentar uz adminUsers.statusText u schema.ts. */
+export async function updateAdminStatus(
+  adminId: number,
+  data: { statusText: string | null; statusEmoji: string | null }
+): Promise<void> {
+  await ensureAdminStreakColumnsOnce();
+  await db.update(adminUsers).set(data).where(eq(adminUsers.id, adminId));
+}
+
 /** Broj poruka (opći feed, taskId null) po danu (Europe/Zagreb) za zadnjih
     `days` dana — za aktivnost graf u Portalu (vidi TeamActivityChart).
     Uvijek vraća `days` točaka, popunjeno nulama gdje nema poruka, kronološki
@@ -2107,4 +2121,40 @@ export async function getTeamTaskCompletionByAdmin(): Promise<{ email: string; c
     ORDER BY count DESC
   `);
   return result.map((r) => ({ email: r.assigned_to_email, count: Number(r.count) }));
+}
+
+/** "Tjedna ljestvica" za Ured (v8, na izričit zahtjev "tjedna liga tko je
+    najviše radio") — jednostavan zbrojeni "bodovni" prikaz zadnjih 7 dana:
+    dovršen zadatak vrijedi 3 boda (teži rad), poslana poruka (tim kanal ili
+    DM) 1 bod. Namjerno NIJE mjerenje stvarno provedenog vremena (last_seen_at
+    čuva samo ZADNJI otkucaj, ne povijest) — ovo je "koliko se tko vidjelo da
+    doprinosi timu ovaj tjedan", isti duh kao GitHub contribution graf, ne
+    precizan sat/minuta obračun. Prazno/bez ijedne akcije = admin se ne
+    pojavljuje u ljestvici (nema smisla prikazati 0 među aktivnima). */
+export async function getWeeklyLeaderboard(): Promise<{ email: string; score: number }[]> {
+  await Promise.all([ensureTeamTasksTableOnce(), ensureTeamMessagesTableOnce(), ensureDirectMessagesTableOnce()]);
+  const result = await db.execute<{ email: string; score: string }>(sql`
+    WITH scores AS (
+      SELECT assigned_to_email AS email, COUNT(*) * 3 AS pts
+      FROM team_tasks
+      WHERE status = 'done' AND completed_at >= now() - interval '7 days' AND assigned_to_email IS NOT NULL
+      GROUP BY assigned_to_email
+      UNION ALL
+      SELECT admin_email AS email, COUNT(*) AS pts
+      FROM team_messages
+      WHERE created_at >= now() - interval '7 days'
+      GROUP BY admin_email
+      UNION ALL
+      SELECT from_email AS email, COUNT(*) AS pts
+      FROM direct_messages
+      WHERE created_at >= now() - interval '7 days'
+      GROUP BY from_email
+    )
+    SELECT email, SUM(pts)::int AS score
+    FROM scores
+    GROUP BY email
+    ORDER BY score DESC
+    LIMIT 5
+  `);
+  return result.map((r) => ({ email: r.email, score: Number(r.score) }));
 }
