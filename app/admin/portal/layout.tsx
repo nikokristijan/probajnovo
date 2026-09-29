@@ -8,7 +8,7 @@ import { PortalIcon } from "@/components/admin/Icons";
 /**
  * Portal (Faza 3) — dijeljena "app-shell" ljuska za /admin/portal (glavni
  * hub), /admin/portal/dm/[email] i /admin/portal/profil/[email]: "Ured"
- * prisutnost na vrhu (puna širina, vidi OfficePresence.tsx v2) + bočni
+ * prisutnost na vrhu (puna širina, vidi OfficePresence.tsx v3) + bočni
  * izbornik (kanali/DM/profil) koji ostaje isti dok se glavni sadržaj
  * mijenja — isti "persistent left rail" obrazac kao Slack/Teams. Cijeli
  * omotač koristi .admin-breakout da se rasporedi preko cijelog ekrana
