@@ -27,11 +27,20 @@ function hashStr(s: string): number {
   return hash;
 }
 
+function hueFor(email: string): number {
+  return hashStr(email) % 360;
+}
+
 /** Deterministična boja majice avatara iz emaila — isti kolega uvijek ista
     boja, bez potrebe da itko bira/uploada avatar. */
 function colorFor(email: string): string {
-  const hue = hashStr(email) % 360;
-  return `hsl(${hue}, 55%, 48%)`;
+  return `hsl(${hueFor(email)}, 55%, 48%)`;
+}
+
+/** Tamnija nijansa iste majice (bočna sjena/rukav u pikselizranom liku,
+    vidi paletteFor) — ista boja tona, samo niža svjetlina. */
+function shirtShadeFor(email: string): string {
+  return `hsl(${hueFor(email)}, 55%, 32%)`;
 }
 
 function labelFor(m: Member): string {
@@ -49,80 +58,149 @@ function shortLabelFor(m: Member): string {
 /* --- Tlocrt: fiksne koordinate namještaja (SVG viewBox 320×208, tile=16px) - */
 
 const PANTS = "#2c2c34";
+const PANTS_SHADOW = "#1c1c22";
 const SHOES = "#1c1712";
+const SHOE_SOLE = "#0d0a08";
+const BELT = "#3d2b1d";
 const EYE = "#1a1210";
+const EYE_WHITE = "#f5f0e6";
+const MOUTH = "#7a3b32";
+const COLLAR = "#e8e2d3";
 const CUP = "#f4f1ea";
 const STEAM = "#c9c2b0";
 
 /** Nekoliko tonova kože i boja kose — birano deterministički po emailu
     (odvojen "salt" od boje majice) da likovi u Uredu izgledaju kao stvaran
     šareni tim (Pokémon/Stardew Valley stil "trenera"), a ne 8 klonova iste
-    boje kože i kose s različitom majicom. */
+    boje kože i kose s različitom majicom. Svaki niz ima "par" tamnije
+    nijanse na ISTOM indeksu (SKIN_SHADOWS/HAIR_SHADOWS) za sjenčanje lica i
+    kose u v4 sprite-u (vidi paletteFor) — ne izvodi se runtime iz baze boje
+    da nijanse ostanu ručno birane i čitljive na sitnoj razmjeri. */
 const SKIN_TONES = ["#f2c9a0", "#e8b98a", "#c9905f", "#a86f45", "#7a4f30"];
+const SKIN_SHADOWS = ["#d9a878", "#cf9d6c", "#a8714a", "#87532f", "#5c3620"];
 const HAIR_COLORS = ["#2b1c14", "#4a2e1a", "#1a1a1a", "#7a3c1e", "#5c4433", "#c9a24a", "#8a3324"];
+const HAIR_SHADOWS = ["#1a100b", "#331f11", "#0d0d0d", "#552910", "#3d2e21", "#a17f34", "#5f2116"];
 
-function skinFor(email: string): string {
-  return SKIN_TONES[hashStr(`${email}#skin`) % SKIN_TONES.length];
+function skinIdx(email: string): number {
+  return hashStr(`${email}#skin`) % SKIN_TONES.length;
 }
-function hairFor(email: string): string {
-  return HAIR_COLORS[hashStr(`${email}#hair`) % HAIR_COLORS.length];
+function hairIdx(email: string): number {
+  return hashStr(`${email}#hair`) % HAIR_COLORS.length;
 }
 
 /**
- * Piksel-art likovi (v3) — na izričit zahtjev "napravi puno detaljnijim (u
- * pikselima isto), nešto poput Super Maria i Pokemona": svaki lik je sad
- * pravi 9×16 piksel-grid (glava/kosa/oči/majica/hlače/cipele) umjesto 3-4
- * gola pravokutnika kao u v2. Sprite je definiran kao niz stringova (jedan
- * red = jedan red piksela, jedan znak = jedan piksel), isti "ASCII pixel
- * art" obrazac kao tilemape u retro igrama — čitljivo za uređivati, lako
- * za dodati novu pozu. "." = providno (bez rect-a).
- *   H = kosa, S = koža, E = oko, B = majica (boja iz colorFor, personalizirano),
- *   P = hlače, F = cipele.
- * STAND (16 redaka) je lik koji stoji/hoda; SIT je gornjih 13 redaka STANDA
- * (glava+torzo+bedra, bez potkoljenica/stopala — one su svejedno skrivene
- * iza stola). SLEEP ponovno koristi STAND rotiran 90° (isti trik kao v2),
- * sad samo s puno detaljnijim likom koji se rotira.
+ * Piksel-art likovi (v4) — na izričit ponovljeni zahtjev "Ured takoder mora
+ * biti puno detaljniji" (nakon v3 koji je već zamijenio gole pravokutnike
+ * 9×16 gridom): sprite je sad 16×28 piksela — skoro 4× više piksela od v3
+ * — s pravim licem (obrve, oči s bjeloočnicom+zjenicom, usta, sjena
+ * čeljusti), dvotonskom sjenom na kosi/koži/majici/hlačama (kao pravi
+ * "trainer" sprite iz Pokémona/Stardew Valleyja, ne ravna boja), ovratnikom
+ * na majici, VIDLJIVIM rukama sa strane i cipelama s odvojenim đonom.
+ * I dalje isti "ASCII pixel art" obrazac — niz stringova, jedan red = jedan
+ * red piksela, jedan znak = jedan piksel, "." = providno:
+ *   H/h = kosa (baza/sjena), S/s = koža (baza/sjena), W = bjeloočnica,
+ *   E = zjenica, B = obrva (boja kose), N = usta, L = rub ovratnika,
+ *   C/c = majica (baza/sjena, personalizirano bojom iz colorFor),
+ *   P/p = hlače (baza/sjena), K = remen, F/f = cipela (baza/đon).
+ * Sprite se crta preko SPRITE_CELL veličine piksela (< 1 SVG jedinica) tako
+ * da FIZIČKA veličina lika u sceni ostane ista kao u v3 (~9×16 jedinica) —
+ * dakle sve postojeće translate(seat.x, seat.y), NameTag y-offseti i
+ * pozicije šalice/pare/Zzz i dalje pašu bez promjene, samo je sad
+ * rezolucija samog lika puno finija.
+ * STAND je lik koji stoji/hoda; SIT je gornjih 21 redak STANDA (glava do
+ * remena, bez nogu — one su svejedno skrivene iza stola). SLEEP ponovno
+ * koristi STAND rotiran 90° (isti trik kao v2/v3).
  */
 const STAND_SPRITE = [
-  ".HHHHHHH.",
-  "HHHHHHHHH",
-  "HHSSSSSHH",
-  "HSSESESSH",
-  "HSSSSSSSH",
-  ".SSSSSSS.",
-  "..SSSSS..",
-  ".BBBBBBB.",
-  "BBBBBBBBB",
-  "SBBBBBBBS",
-  ".BBBBBBB.",
-  "..PPPPP..",
-  "..PPPPP..",
-  "..PP.PP..",
-  "..PP.PP..",
-  ".FF...FF.",
+  "......HHHH......",
+  "....HHHHHHHH....",
+  "...HHHHHHHhhh...",
+  "..HHSSSSSSSHhh..",
+  ".HHSSSSSSSSSHhh.",
+  ".HHSSBBSSBBSSHh.",
+  ".HHSSWESSEWSSHh.",
+  ".ssSSSSSSSSSSss.",
+  ".sSSSSSSSSSSSSs.",
+  ".sSSSSSNNSSSSSs.",
+  "..sSSSSSSSSSSs..",
+  "......sSSs......",
+  "...LLCCCCCCLL...",
+  ".ccCCCCCCCCCCcc.",
+  ".ccCCCCCCCCCCcc.",
+  ".ccCCCCCCCCCCcc.",
+  ".ccCCCCCCCCCCcc.",
+  ".ccCCCCCCCCCCcc.",
+  ".ccCCCCCCCCCCcc.",
+  "SScCCCCCCCCCCcSS",
+  ".KKKKKKKKKKKKKK.",
+  "..pPPPp..pPPPp..",
+  "..pPPPp..pPPPp..",
+  "..pPPPp..pPPPp..",
+  "..pPPPp..pPPPp..",
+  "..pPPPp..pPPPp..",
+  "..FFFFF..FFFFF..",
+  "..fffff..fffff..",
 ] as const;
-const SIT_SPRITE = STAND_SPRITE.slice(0, 13);
+const SIT_SPRITE = STAND_SPRITE.slice(0, 21);
+
+/** Fiksna ukupna visina lika u SVG jedinicama scene (isto kao fizička
+    visina v3 sprite-a) — veličina jednog piksela se izvodi iz broja
+    redaka tako da lik uvijek "stane" u istu visinu bez obzira mijenja li
+    se rezolucija grida u budućnosti. */
+const SPRITE_HEIGHT_UNITS = 16;
+const SPRITE_CELL = SPRITE_HEIGHT_UNITS / STAND_SPRITE.length;
 
 type Palette = Record<string, string>;
 
-function paletteFor(email: string, shirtColor: string): Palette {
-  return { H: hairFor(email), S: skinFor(email), E: EYE, B: shirtColor, P: PANTS, F: SHOES };
+function paletteFor(email: string): Palette {
+  const si = skinIdx(email);
+  const hi = hairIdx(email);
+  return {
+    H: HAIR_COLORS[hi],
+    h: HAIR_SHADOWS[hi],
+    S: SKIN_TONES[si],
+    s: SKIN_SHADOWS[si],
+    W: EYE_WHITE,
+    E: EYE,
+    B: HAIR_COLORS[hi],
+    N: MOUTH,
+    L: COLLAR,
+    C: colorFor(email),
+    c: shirtShadeFor(email),
+    P: PANTS,
+    p: PANTS_SHADOW,
+    K: BELT,
+    F: SHOES,
+    f: SHOE_SOLE,
+  };
 }
 
 /** Crta jedan piksel-grid sprite kao niz <rect>-ova, centriran vodoravno
-    (stupac 4 od 0-8 = x:0) i "prizemljen" (zadnji red = y:0, uzlazno u
-    minus za glavu) — isti ishodišni ugovor kao stari AvatarStand/AvatarSit,
-    pa sve postojeće translate(seat.x, seat.y) pozicije u sceni ostaju
-    točne bez ikakve promjene. */
-function PixelSprite({ sprite, palette }: { sprite: readonly string[]; palette: Palette }) {
+    oko sredine retka i "prizemljen" (zadnji red = y:0, uzlazno u minus za
+    glavu) — isti ishodišni ugovor kao v3, pa sve postojeće
+    translate(seat.x, seat.y) pozicije u sceni ostaju točne bez promjene.
+    `cell` (< 1 za v4-ovu finiju rezoluciju) drži fizičku veličinu lika
+    nepromijenjenom bez obzira na broj piksela u gridu. */
+function PixelSprite({ sprite, palette, cell = 1 }: { sprite: readonly string[]; palette: Palette; cell?: number }) {
   const rows = sprite.length;
+  const cols = sprite[0]?.length ?? 0;
+  const centerCol = (cols - 1) / 2;
   return (
     <>
       {sprite.map((row, y) =>
         row.split("").map((ch, x) => {
           const fill = palette[ch];
           if (!fill) return null;
-          return <rect key={`${y}-${x}`} x={x - 4} y={y - (rows - 1)} width={1} height={1} fill={fill} />;
+          return (
+            <rect
+              key={`${y}-${x}`}
+              x={(x - centerCol) * cell}
+              y={(y - (rows - 1)) * cell}
+              width={cell}
+              height={cell}
+              fill={fill}
+            />
+          );
         })
       )}
     </>
@@ -165,11 +243,14 @@ const COUCH_SEATS: Pt[] = [
 ];
 
 /**
- * "Ured" — pravi pikselizirani tlocrt tima (Faza 3, v3 — "puno detaljnijim
- * (u pikselima isto), nešto poput Super Maria i Pokemona" + "name tagovi da
- * se zna tko što radi"): stvaran plan kata (dva reda stolova licem u lice,
+ * "Ured" — pravi pikselizirani tlocrt tima (Faza 3, v4 — nakon v3 "puno
+ * detaljnijim (u pikselima isto), nešto poput Super Maria i Pokemona" +
+ * "name tagovi da se zna tko što radi", pa ponovljenog "Ured takoder mora
+ * biti puno detaljniji" je sam LIK podignut na 16×28 piksela s licem,
+ * dvotonskom sjenom i vidljivim rukama/cipelama — vidi JSDoc uz
+ * STAND_SPRITE): stvaran plan kata (dva reda stolova licem u lice,
  * sastanačka soba s tepihom i stolom, kutak za odmor s kaučem, biljke,
- * ormar). Likovi su sad pravi 9×16 piksel-grid sprite-ovi (kosa/oči/majica/
+ * ormar). Likovi su detaljni piksel-grid sprite-ovi (kosa/lice/majica/
  * hlače/cipele, vidi STAND_SPRITE/SIT_SPRITE/PixelSprite) s bojom kose i
  * kože nasumičnom po osobi (isti hash-trik kao boja majice) umjesto v2-ove
  * 3-4 gola pravokutnika — i svatko nosi čitljiv name tag u samoj sceni
@@ -281,7 +362,7 @@ export default function OfficePresence({ initialMembers }: { initialMembers: Mem
           const dur = 16 + (h % 7);
           const delay = -((h % dur) + i);
           const style = { "--walk-dur": `${dur}s`, "--walk-delay": `${delay}s` } as unknown as CSSProperties;
-          const palette = paletteFor(m.email, colorFor(m.email));
+          const palette = paletteFor(m.email);
           return (
             <g key={m.email} className="office-char-pos is-walking" style={style}>
               <title>{`${labelFor(m)} · radi`}</title>
@@ -290,7 +371,7 @@ export default function OfficePresence({ initialMembers }: { initialMembers: Mem
                   čitljiv. */}
               <NameTag label={shortLabelFor(m)} y={-23} />
               <g className="office-char-sprite is-walk-bob">
-                <PixelSprite sprite={STAND_SPRITE} palette={palette} />
+                <PixelSprite sprite={STAND_SPRITE} palette={palette} cell={SPRITE_CELL} />
               </g>
             </g>
           );
@@ -299,13 +380,13 @@ export default function OfficePresence({ initialMembers }: { initialMembers: Mem
         {/* --- Avatari: away = sjedi za stolom, kava/keks na stolu --- */}
         {byStatus.away.map((m, i) => {
           const seat = DESKS[i % DESKS.length];
-          const palette = paletteFor(m.email, colorFor(m.email));
+          const palette = paletteFor(m.email);
           return (
             <g key={m.email} className="office-char-pos" transform={`translate(${seat.x}, ${seat.y})`}>
               <title>{`${labelFor(m)} · pauza`}</title>
               <NameTag label={shortLabelFor(m)} y={-20} />
               <g className="office-char-sprite is-idle-sway">
-                <PixelSprite sprite={SIT_SPRITE} palette={palette} />
+                <PixelSprite sprite={SIT_SPRITE} palette={palette} cell={SPRITE_CELL} />
               </g>
               <g className="office-snack-steam" transform="translate(9,-12)">
                 <rect x={0} y={0} width={5} height={4} fill={CUP} />
@@ -319,7 +400,7 @@ export default function OfficePresence({ initialMembers }: { initialMembers: Mem
         {/* --- Avatari: sleeping/offline = leži na kauču, Zzz --- */}
         {byStatus.sleeping.map((m, i) => {
           const seat = COUCH_SEATS[i % COUCH_SEATS.length];
-          const palette = paletteFor(m.email, colorFor(m.email));
+          const palette = paletteFor(m.email);
           return (
             <g key={m.email} className="office-char-pos" transform={`translate(${seat.x}, ${seat.y})`}>
               <title>{`${labelFor(m)} · offline`}</title>
@@ -328,7 +409,7 @@ export default function OfficePresence({ initialMembers }: { initialMembers: Mem
                   +x smjeru, vidi komentar uz STAND_SPRITE). */}
               <NameTag label={shortLabelFor(m)} x={7} y={-12} />
               <g className="office-char-sprite is-sleep-breathe" transform="rotate(90)">
-                <PixelSprite sprite={STAND_SPRITE} palette={palette} />
+                <PixelSprite sprite={STAND_SPRITE} palette={palette} cell={SPRITE_CELL} />
               </g>
               <g className="office-zzz" transform="translate(9,-18)">
                 <text x={0} y={0} fontSize={7} fontFamily="monospace" fill={STEAM}>
