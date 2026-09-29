@@ -1,4 +1,4 @@
-import { eq, ne, desc, asc, and, or, gt, inArray, isNull, sql } from "drizzle-orm";
+import { eq, ne, desc, asc, and, or, gt, gte, inArray, isNull, sql } from "drizzle-orm";
 import { db } from "./index";
 import {
   todayDateStringZagreb,
@@ -498,6 +498,9 @@ async function ensureAdminStreakColumns(): Promise<void> {
   // adminUsers.statusText u schema.ts.
   await db.execute(sql`ALTER TABLE admin_users ADD COLUMN IF NOT EXISTS status_text TEXT`);
   await db.execute(sql`ALTER TABLE admin_users ADD COLUMN IF NOT EXISTS status_emoji TEXT`);
+  // Rođendan bez godine (Portal početna, Task #24) — vidi komentar uz
+  // adminUsers.birthday u schema.ts.
+  await db.execute(sql`ALTER TABLE admin_users ADD COLUMN IF NOT EXISTS birthday TEXT`);
 }
 
 let adminStreakColumnsPromise: Promise<void> | null = null;
@@ -949,6 +952,29 @@ export async function listReservationsForProperty(propertyId: number) {
     .from(reservations)
     .where(eq(reservations.propertyId, propertyId))
     .orderBy(asc(reservations.checkIn));
+}
+
+/** Nadolazeće rezervacije PREKO SVIH vikendica, sortirano po dolasku —
+    listReservationsForProperty gore vraća samo jednu vikendicu, a widgetu
+    "Nadolazeće" na Portal početnoj (Task #24) treba pregled cijele
+    agencije na jednom mjestu, s imenom vikendice uz svaku stavku. */
+export async function listUpcomingReservations(limit = 8) {
+  const today = todayDateStringZagreb();
+  return db
+    .select({
+      id: reservations.id,
+      propertyId: reservations.propertyId,
+      propertyName: properties.name,
+      guestName: reservations.guestName,
+      checkIn: reservations.checkIn,
+      checkOut: reservations.checkOut,
+      guestCount: reservations.guestCount,
+    })
+    .from(reservations)
+    .innerJoin(properties, eq(reservations.propertyId, properties.id))
+    .where(gte(reservations.checkIn, today))
+    .orderBy(asc(reservations.checkIn))
+    .limit(limit);
 }
 
 export async function createReservation(data: {
@@ -2231,11 +2257,11 @@ export async function countUnreadDirectMessages(viewerEmail: string): Promise<nu
   return rows.length;
 }
 
-/** Sprema Portal profil (ime/titula/bio) — vidi
+/** Sprema Portal profil (ime/titula/bio/rođendan) — vidi
     app/admin/portal/profil/[email]/page.tsx i updateAdminProfileAction. */
 export async function updateAdminProfile(
   adminId: number,
-  data: { displayName: string | null; jobTitle: string | null; bio: string | null }
+  data: { displayName: string | null; jobTitle: string | null; bio: string | null; birthday: string | null }
 ): Promise<void> {
   await ensureAdminStreakColumnsOnce();
   await db.update(adminUsers).set(data).where(eq(adminUsers.id, adminId));
