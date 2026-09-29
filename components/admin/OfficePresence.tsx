@@ -219,22 +219,6 @@ function PixelSprite({ sprite, palette, cell = 1 }: { sprite: readonly string[];
   );
 }
 
-/** Name tag iznad lika ("neka pišu name tagovi... da se zna tko što radi")
-    — mala pikselizirana pločica s imenom, uvijek USPRAVNA i čitljiva čak i
-    kad je lik ispod nje rotiran (spavanje) ili se ljulja (hod), zato se
-    crta IZVAN grupe koja nosi tu animaciju/rotaciju. */
-function NameTag({ label, x = 0, y }: { label: string; x?: number; y: number }) {
-  const width = Math.max(14, label.length * 3.4 + 3);
-  return (
-    <g className="office-name-tag">
-      <rect x={x - width / 2} y={y} width={width} height={6} fill="rgba(24,18,14,0.78)" />
-      <text x={x} y={y + 4.5} textAnchor="middle" fontSize={4.6} fontFamily="monospace" fontWeight={700} fill="#fff">
-        {label}
-      </text>
-    </g>
-  );
-}
-
 /** Procijenjena "vizualna" širina jedne grapheme-jedinice u oblačiću —
     emoji (i slični ne-ASCII znakovi) renderiraju se kao kvadratasti glyph,
     širi od uskog monospace teksta, pa dobivaju vlastitu (širu) procjenu. */
@@ -245,12 +229,14 @@ function graphemeWidth(g: string): number {
 
 /** Zbroji procijenjenu širinu labele preko PRAVIH grapheme klastera
     (Intl.Segmenter) umjesto sirovog label.length — .length broji emoji kao
-    2-3 "slova" (surrogate par + varijacijski selektor, npr. "�}️" ima
-    .length === 3 iako je vizualno JEDAN znak), pa je stara formula davala
+    2-3 "slova" (surrogate par + varijacijski selektor, npr. "❄️" ima
+    .length === 2 iako je vizualno JEDAN znak), pa je stara formula davala
     preveliku, neuredno centriranu kutiju čim je status imao emoji (skoro
     svaki, vidi QUICK_STATUSES u OfficeStatusForm.tsx) — otud korisnikova
     primjedba "nije sve centrirano i lijepo". Fallback na .length samo ako
-    Intl.Segmenter nije dostupan (vrlo stari preglednici). */
+    Intl.Segmenter nije dostupan (vrlo stari preglednici). Koristi ju i
+    NameTag (v11) da obje pločice iznad lika dijele istu, dosljednu logiku
+    širine. */
 function measureLabel(label: string): number {
   if (typeof Intl !== "undefined" && "Segmenter" in Intl) {
     let total = 0;
@@ -262,7 +248,50 @@ function measureLabel(label: string): number {
   return label.length * 3.1;
 }
 
-/** Status oblačić ("što trenutačno radim", v9/v10) iznad lika — isti
+/** v11 popravak (na ponovljenu primjedbu "nije sve centrirano i lijepo"
+    nakon v10): i status oblačić i name tag su INTERNO ispravno centrirani
+    (v10), ali kod krajnjih sjedišta (npr. DESKS x=240 ili x=42, vidi niže)
+    dulji custom status tekst gurao je kutiju DJELOMIČNO IZVAN vidljivog
+    kadra scene (.office-frame ima overflow:hidden) — kutija se vizualno
+    "odsijecala" s jedne strane pa je djelovala necentrirano, iako je njena
+    vlastita geometrija bila u redu. Ova funkcija drži centar kutije unutar
+    scene (uz malu marginu) tako da se cijela kutija uvijek vidi; rep
+    oblačića i dalje pokazuje na stvarnu poziciju lika (StatusBubble ga crta
+    na izvornom x, ne na clampanom), pa se centar kutije od repa razmakne
+    tek u rijetkom slučaju vrlo dugog statusa uz sam rub scene. */
+function clampToScene(x: number, half: number): number {
+  const margin = 3;
+  const min = margin + half;
+  const max = OFFICE_IMAGE_W - margin - half;
+  if (min > max) return OFFICE_IMAGE_W / 2; // kutija šira od cijele scene (ekstreman rub slučaj)
+  return Math.min(Math.max(x, min), max);
+}
+
+/** Name tag iznad lika ("neka pišu name tagovi... da se zna tko što radi")
+    — mala pikselizirana pločica s imenom, uvijek USPRAVNA i čitljiva čak i
+    kad je lik ispod nje rotiran (spavanje) ili se ljulja (hod), zato se
+    crta IZVAN grupe koja nosi tu animaciju/rotaciju.
+    v11: širina sad koristi isti measureLabel (grapheme-svjestan) kao
+    StatusBubble umjesto raw label.length — dosad je ovaj tag imao
+    DRUGAČIJU (nepreciznu) formulu od oblačića iznad njega, pa su se dva
+    elementa koja bi trebala izgledati kao usklađen par ponašala
+    nedosljedno čim ime sadrži ne-ASCII znak. Centar (x) se zatim clampa
+    (clampToScene, vidi gore) da pločica ne izlazi izvan vidljivog kadra
+    scene kod krajnjih sjedišta. */
+function NameTag({ label, x = 0, y }: { label: string; x?: number; y: number }) {
+  const width = Math.max(14, measureLabel(label) + 6);
+  const cx = clampToScene(x, width / 2);
+  return (
+    <g className="office-name-tag">
+      <rect x={cx - width / 2} y={y} width={width} height={6} fill="rgba(24,18,14,0.78)" />
+      <text x={cx} y={y + 4.5} textAnchor="middle" fontSize={4.6} fontFamily="monospace" fontWeight={700} fill="#fff">
+        {label}
+      </text>
+    </g>
+  );
+}
+
+/** Status oblačić ("što trenutačno radim", v9/v10/v11) iznad lika — isti
     "uvijek uspravan, izvan animirane grupe" princip kao NameTag (vidi
     komentar ondje), crta se IZNAD name taga (manji y). Prikazuje se samo
     kad admin ima postavljen statusText i/ili statusEmoji (OfficeStatusForm).
@@ -277,22 +306,27 @@ function measureLabel(label: string): number {
     umjesto label.length, a tekst se vertikalno centrira preko
     dominantBaseline="central" (pravi geometrijski centar kutije) umjesto
     ručnog "y + height/2 + 2" nagađanja koje je tekst ostavljalo malo iznad
-    sredine. */
+    sredine. v11 popravak: kutija (i tekst u njoj) se vodoravno clampa unutar
+    vidljive scene (clampToScene) da se ne siječe s rubom kadra kod krajnjih
+    sjedišta — rep i dalje pokazuje na stvarni x lika ispod, samo kutija po
+    potrebi "klizne" da ostane cijela vidljiva. */
 function StatusBubble({ text, emoji, x = 0, y }: { text: string; emoji: string; x?: number; y: number }) {
   const label = emoji && text ? `${emoji} ${text}` : emoji || text;
   const width = Math.max(18, measureLabel(label) + 8);
   const height = 8;
+  const boxX = clampToScene(x, width / 2);
   return (
     <g className="office-status-bubble">
-      <rect x={x - width / 2} y={y} width={width} height={height} fill={EYE} />
-      <rect x={x - width / 2 + 1} y={y + 1} width={width - 2} height={height - 2} fill={CUP} />
+      <rect x={boxX - width / 2} y={y} width={width} height={height} fill={EYE} />
+      <rect x={boxX - width / 2 + 1} y={y + 1} width={width - 2} height={height - 2} fill={CUP} />
       {/* Stepenasti rep — dvije sve uže "stube" koje kutijasti oblačić
           spajaju s glavom lika ispod, umjesto jednog glatkog trokuta.
-          Uvijek centriran na x, neovisno o širini kutije. */}
+          Uvijek centriran na STVARNI x lika (ne na boxX) da uvijek pokazuje
+          na pravo mjesto, čak i kad je kutija clampana. */}
       <rect x={x - 2} y={y + height} width={4} height={1} fill={EYE} />
       <rect x={x - 1} y={y + height + 1} width={2} height={1} fill={EYE} />
       <text
-        x={x}
+        x={boxX}
         y={y + height / 2}
         textAnchor="middle"
         dominantBaseline="central"
