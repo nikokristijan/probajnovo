@@ -3,6 +3,7 @@ import { requireFullAdmin } from "@/lib/auth";
 import {
   listTeamMessagesWithReactions,
   listTeamTasks,
+  listTaskTemplates,
   listTeamMembers,
   listProperties,
   listCompanies,
@@ -25,10 +26,11 @@ import TeamStats from "@/components/admin/TeamStats";
 export default async function PortalPage() {
   const admin = await requireFullAdmin();
 
-  const [messages, tasks, teamMembers, properties, companies, messageCounts, statusCounts, completionByAdmin] =
+  const [messages, tasks, taskTemplates, teamMembers, properties, companies, messageCounts, statusCounts, completionByAdmin] =
     await Promise.all([
       listTeamMessagesWithReactions(admin.email, 200),
       listTeamTasks(),
+      listTaskTemplates(),
       listTeamMembers(),
       listProperties(),
       listCompanies(),
@@ -59,7 +61,9 @@ export default async function PortalPage() {
           }))}
         />
       }
-      tasksSlot={<TasksBoard tasks={tasks} teamMembers={teamMembers.map((m) => ({ email: m.email }))} properties={properties} companies={companies} />}
+      tasksSlot={
+        <TasksBoard tasks={tasks} teamMembers={teamMembers.map((m) => ({ email: m.email }))} properties={properties} companies={companies} templates={taskTemplates} />
+      }
       statsSlot={<TeamStats messageCounts={messageCounts} statusCounts={statusCounts} completionByAdmin={completionByAdmin} roster={roster} />}
     />
     </Suspense>
