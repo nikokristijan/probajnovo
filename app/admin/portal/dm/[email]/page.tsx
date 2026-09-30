@@ -35,6 +35,7 @@ export default async function DirectMessagePage({ params }: { params: Promise<{ 
         toEmail: m.toEmail,
         body: m.body,
         createdAt: m.createdAt.toISOString(),
+        readAt: m.readAt ? m.readAt.toISOString() : null,
       }))}
     />
   );
