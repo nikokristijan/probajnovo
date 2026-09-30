@@ -76,7 +76,10 @@ export default function PortalTopBar({
           <ChevronDownIcon size={12} className="rotate-90" /> Pregled
         </Link>
       )}
-      <div className="flex items-center gap-2 overflow-x-auto" style={{ scrollbarWidth: "thin" }}>
+      {/* flex-1 min-w-0 — niz kontakata se skrola UNUTAR svog prostora, umjesto
+          da ga "Moj profil" gumb na mobitelu prekrije (ime zadnjeg kontakta je
+          bilo odrezano napola). */}
+      <div className="flex items-center gap-2 overflow-x-auto flex-1 min-w-0" style={{ scrollbarWidth: "thin" }}>
         {dmList.map(({ member, conv }) => {
           const label = labelForEmail(member.email, roster);
           const active = pathname === `/admin/portal/dm/${encodeURIComponent(member.email)}`;
@@ -107,10 +110,11 @@ export default function PortalTopBar({
       <Link
         href={`/admin/portal/profil/${encodeURIComponent(currentEmail)}`}
         className="na-btn-ghost px-3 py-1.5 shrink-0 ml-auto"
+        aria-label="Moj profil"
         data-active={isProfile || undefined}
         style={{ fontSize: 12.5 }}
       >
-        <UserIcon size={14} /> Moj profil
+        <UserIcon size={14} /> <span className="hidden sm:inline">Moj profil</span>
       </Link>
     </div>
   );
