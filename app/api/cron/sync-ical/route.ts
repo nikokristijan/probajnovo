@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { authorizeCron, runCron } from "@/lib/cron";
 import { getPropertiesWithIcalUrl, replaceIcalBlockedDates } from "@/lib/db/queries";
 import { fetchIcalBlockedDates } from "@/lib/ical";
 
@@ -17,26 +18,23 @@ export const maxDuration = 60;
  * kvotu ili prebrisati ručne unose neplanirano).
  */
 export async function GET(req: Request) {
-  const expected = process.env.CRON_SECRET;
-  if (expected) {
-    const auth = req.headers.get("authorization");
-    if (auth !== `Bearer ${expected}`) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const denied = authorizeCron(req);
+  if (denied) return denied;
+
+  return runCron("sync-ical", async () => {
+    const properties = await getPropertiesWithIcalUrl();
+    const results: { propertyId: number; ok: boolean; count?: number }[] = [];
+
+    for (const property of properties) {
+      const dates = await fetchIcalBlockedDates(property.icalUrl);
+      if (dates === null) {
+        results.push({ propertyId: property.id, ok: false });
+        continue;
+      }
+      await replaceIcalBlockedDates(property.id, dates);
+      results.push({ propertyId: property.id, ok: true, count: dates.length });
     }
-  }
 
-  const properties = await getPropertiesWithIcalUrl();
-  const results: { propertyId: number; ok: boolean; count?: number }[] = [];
-
-  for (const property of properties) {
-    const dates = await fetchIcalBlockedDates(property.icalUrl);
-    if (dates === null) {
-      results.push({ propertyId: property.id, ok: false });
-      continue;
-    }
-    await replaceIcalBlockedDates(property.id, dates);
-    results.push({ propertyId: property.id, ok: true, count: dates.length });
-  }
-
-  return NextResponse.json({ synced: results.length, results });
+    return NextResponse.json({ synced: results.length, results });
+  });
 }
