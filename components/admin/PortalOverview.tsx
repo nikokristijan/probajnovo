@@ -52,7 +52,7 @@ function birthdayLabel(daysUntil: number): string {
  * za raniji PortalMain.tsx (koji je SAMO prebacivao vidljivost triju
  * gotovih slotova preko ?tab=). Ovdje se svi slotovi prikazuju ISTOVREMENO
  * na jednoj stranici ("jedan veliki pregled"), uz nove widgete koji nisu
- * postojali prije: pretraga (preko tima/vikendice/nadolazećih rezervacija,
+ * postojali prije: pretraga (preko tima/vikendica/nadolazećih rezervacija,
  * čisto klijentsko filtriranje već dohvaćenih podataka — nema posebne
  * pretraživačke rute), brze poveznice na ostale admin sekcije, nadolazeće
  * rezervacije preko svih vikendica, rođendani tima i sažeta aktivnost.
