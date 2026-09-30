@@ -1,6 +1,10 @@
 import { handleUpload, type HandleUploadBody } from "@vercel/blob/client";
 import { NextResponse } from "next/server";
 import { getCurrentAdmin } from "@/lib/auth";
+import { getAdminById } from "@/lib/db/queries";
+
+const IMAGE_TYPES = ["image/jpeg", "image/png", "image/webp", "image/gif", "image/avif"];
+const VIDEO_TYPES = ["video/mp4", "video/webm", "video/quicktime", "video/x-m4v"];
 
 /**
  * Prima zahtjev iz admin panela (klijent -> Vercel Blob, direktan upload
@@ -21,18 +25,21 @@ export async function POST(request: Request): Promise<NextResponse> {
         if (!admin) {
           throw new Error("Nisi prijavljen kao admin.");
         }
+        const row = await getAdminById(admin.adminId);
+        if (!row) {
+          throw new Error("Nisi prijavljen kao admin.");
+        }
+        // Plan #7: vlasnik (role="owner") smije samo slike do 10MB — video
+        // i velike datoteke troše Blob kvotu agencije, a vlasniku ne trebaju.
+        if (row.role === "owner") {
+          return {
+            allowedContentTypes: IMAGE_TYPES,
+            addRandomSuffix: true,
+            maximumSizeInBytes: 10 * 1024 * 1024,
+          };
+        }
         return {
-          allowedContentTypes: [
-            "image/jpeg",
-            "image/png",
-            "image/webp",
-            "image/gif",
-            "image/avif",
-            "video/mp4",
-            "video/webm",
-            "video/quicktime",
-            "video/x-m4v",
-          ],
+          allowedContentTypes: [...IMAGE_TYPES, ...VIDEO_TYPES],
           addRandomSuffix: true,
           // 15MB je bilo dovoljno dok je ovo prihvaćalo samo slike; sad kroz
           // isti endpoint ide i upload proizvodnog videa, pa je limit podignut
