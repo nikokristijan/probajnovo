@@ -107,9 +107,9 @@ export default function DirectMessageThread({
           rows={1}
           maxLength={4000}
           placeholder={`Poruka za ${otherLabel}…`}
-          className="neu-input portal-thread-textarea"
+          className="na-input portal-thread-textarea"
         />
-        <button type="submit" disabled={pending} className="neu-btn px-4 py-2 text-sm font-semibold shrink-0 disabled:opacity-50">
+        <button type="submit" disabled={pending} className="na-btn px-4 py-2 text-sm font-semibold shrink-0 disabled:opacity-50">
           <SendIcon />
         </button>
       </form>

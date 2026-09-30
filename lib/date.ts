@@ -76,3 +76,42 @@ export function describeDueDateZagreb(dateStr: string, isDone: boolean): { label
   if (diff === 2) return { label: "Rok za 2 dana", tier: "soon" };
   return { label: `Rok za ${diff} dana`, tier: "normal" };
 }
+
+/** Broj dana od danas (Europe/Zagreb) do SLJEDEĆEG nastupanja rođendana u
+    "MM-DD" formatu (adminUsers.birthday, Task #24 "Rođendani" widget na
+    Portal početnoj) — 0 = danas, uvijek nenegativno (ako je datum ove
+    godine već prošao, računa se do iste "MM-DD" SLJEDEĆE godine). Godina
+    rođenja se namjerno nigdje ne pamti/koristi (vidi komentar uz
+    adminUsers.birthday u schema.ts), pa se ovdje uvijek radi s trenutnom
+    (ili sljedećom) kalendarskom godinom. */
+export function daysUntilNextBirthdayZagreb(mmdd: string): number | null {
+  const match = /^(\d{2})-(\d{2})$/.exec(mmdd);
+  if (!match) return null;
+  const month = Number(match[1]);
+  const day = Number(match[2]);
+  if (month < 1 || month > 12 || day < 1 || day > 31) return null;
+
+  const todayStr = todayDateStringZagreb();
+  const [todayYear] = todayStr.split("-").map(Number);
+  const pad2 = (n: number) => String(n).padStart(2, "0");
+
+  const thisYearStr = `${todayYear}-${pad2(month)}-${pad2(day)}`;
+  const candidateStr = thisYearStr >= todayStr ? thisYearStr : `${todayYear + 1}-${pad2(month)}-${pad2(day)}`;
+
+  const todayMs = new Date(`${todayStr}T12:00:00Z`).getTime();
+  const candidateMs = new Date(`${candidateStr}T12:00:00Z`).getTime();
+  return Math.round((candidateMs - todayMs) / 86_400_000);
+}
+
+/** "17. ožujka" stil (dan + mjesec u genitivu, BEZ godine) za "MM-DD" —
+    isti par korišten uz daysUntilNextBirthdayZagreb za widget "Rođendani". */
+export function formatBirthdayZagreb(mmdd: string): string {
+  const match = /^(\d{2})-(\d{2})$/.exec(mmdd);
+  if (!match) return mmdd;
+  const month = Number(match[1]);
+  const day = Number(match[2]);
+  // Proizvoljna (neparna) godina samo da Date/Intl imaju s čim raditi —
+  // godina se ne prikazuje (format ispod nema "year").
+  const d = new Date(Date.UTC(2001, month - 1, day));
+  return d.toLocaleDateString("hr-HR", { timeZone: "UTC", day: "numeric", month: "long" });
+}

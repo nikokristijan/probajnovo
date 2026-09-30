@@ -284,3 +284,36 @@ export function SettingsIcon({ className, size = 20 }: IconProps) {
     </svg>
   );
 }
+
+/** Pretraga (Portal početna, Task #24) — obična lupa. */
+export function SearchIcon({ className, size = 18 }: IconProps) {
+  return (
+    <svg {...base} width={size} height={size} className={className} aria-hidden="true">
+      <circle cx="8.7" cy="8.7" r="5.2" />
+      <path d="m16.3 16.3-3.5-3.5" />
+    </svg>
+  );
+}
+
+/** Aktivnost (Portal početna, Task #24) — puls-linija, dosljedno tanka
+    linija kao ostatak seta umjesto generičkog zvona/sata. */
+export function ActivityIcon({ className, size = 20 }: IconProps) {
+  return (
+    <svg {...base} width={size} height={size} className={className} aria-hidden="true">
+      <path d="M2.5 10h3.2l1.8-5.5 3 11 2-7.5 1.4 2h3.6" />
+    </svg>
+  );
+}
+
+/** Rođendani (Portal početna, Task #24) — torta sa svjećicama. */
+export function GiftIcon({ className, size = 20 }: IconProps) {
+  return (
+    <svg {...base} width={size} height={size} className={className} aria-hidden="true">
+      <rect x="3" y="10.5" width="14" height="6" rx="1.2" />
+      <path d="M3 13.3h14" />
+      <path d="M6.2 10.5V8.3a1.5 1.5 0 0 1 1.5-1.5h4.6a1.5 1.5 0 0 1 1.5 1.5v2.2" />
+      <path d="M10 6.8V3.8" />
+      <path d="M7.8 4.7c0-.9.9-1.4.9-2.2M12.2 4.7c0-.9-.9-1.4-.9-2.2" />
+    </svg>
+  );
+}

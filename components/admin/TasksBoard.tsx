@@ -17,7 +17,7 @@ const COLUMNS: { status: TeamTask["status"]; label: string; nextStatus: TeamTask
  * Kanban zadataka — isti sadržaj kao bivši app/admin/zadaci/page.tsx,
  * izvučen u samostalnu (server) komponentu da ga Portal (Faza 3, tab
  * "Zadaci") može prikazati bez posebne rute, vidi app/admin/portal/page.tsx
- * PortalMain tasksSlot. Reference: Plane (makleplane/plane) Kanban obrazac,
+ * PortalOverview tasksSlot. Reference: Plane (makleplane/plane) Kanban obrazac,
  * namjerno pojednostavljeno (bez sprintova/epics/labela).
  */
 export default function TasksBoard({
@@ -75,7 +75,7 @@ export default function TasksBoard({
                   const dueInfo = task.dueDate ? describeDueDateZagreb(task.dueDate, task.status === "done") : null;
 
                   return (
-                    <div key={task.id} className="neu-card p-4 flex flex-col gap-2.5">
+                    <div key={task.id} className="na-card p-4 flex flex-col gap-2.5">
                       <div className="flex items-start justify-between gap-2">
                         <span className="text-sm font-semibold leading-snug">{task.title}</span>
                         {task.priority === "high" && (

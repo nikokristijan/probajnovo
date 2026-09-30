@@ -25,7 +25,6 @@ import OwnerHero from "@/components/admin/OwnerHero";
 import OwnerTrendChart from "@/components/admin/OwnerTrendChart";
 import OwnerPropertyCarousel from "@/components/admin/OwnerPropertyCarousel";
 import OwnerMiniCalendar from "@/components/admin/OwnerMiniCalendar";
-import OwnerBadges from "@/components/admin/OwnerBadges";
 import OwnerThemeToggle from "@/components/admin/OwnerThemeToggle";
 import OwnerShareReport from "@/components/admin/OwnerShareReport";
 
@@ -436,13 +435,16 @@ export default async function AdminDashboard() {
 }
 
 /* ---------------------------------------------------------------- */
-/* Vlasnički (role="owner") dashboard — "addictive" redizajn: velika  */
-/* Netflix-stil hero kartica (neto zarada, Duolingo streak, cilj dana */
-/* zauzeća s prstenom, konfeti na rekordu), dva animirana trend grafa */
-/* (zarada i zauzetost zadnjih 6 mjeseci) i, ako vlasnik ima više od  */
-/* jrdne vikendice, vodoravni red kartica po vikendici (Netflix row). */
-/* Vlasnik i dalje ne smije ništa uređivati ovdje — samo grafovi i    */
-/* linkovi na /admin/kalendar, /admin/rezervacije i /admin/inquiries, */
+/* Vlasnički (role="owner") dashboard — NOVO/Revolut redizajn: velika */
+/* hero kartica (neto zarada, cilj dana zauzeća s prstenom), dva      */
+/* animirana trend grafa (zarada i zauzetost zadnjih 6 mjeseci) i,    */
+/* ako vlasnik ima više od jedne vikendice, vodoravni red kartica po  */
+/* vikendici. Gamifikacija (Duolingo-stil streak, bedževi/postignuća) */
+/* je UKLONJENA na izričit zahtjev ("achievementi nisu potrebni, sve  */
+/* beskorisne stvari izbaci") — vidi OwnerHero.tsx i obrisan          */
+/* components/admin/OwnerBadges.tsx. Vlasnik i dalje ne smije ništa   */
+/* uređivati ovdje — samo grafovi i linkovi na /admin/kalendar,       */
+/* /admin/rezervacije i /admin/inquiries,                             */
 /* gdje se sva stvarna radnja događa. Superadmin dashboard iznad ovoga */
 /* (AdminDashboard) namjerno NIJE dirat — redizajn je isključivo za   */
 /* role "owner", po izričitom zahtjevu.                               */
@@ -562,7 +564,6 @@ async function OwnerDashboard({ admin }: { admin: AdminUser }) {
                   currentDays: daysBookedThisMonth,
                   goalDays: effectiveGoalDays,
                   deltaPct,
-                  streak: admin.loginStreakCount,
                   isRecord,
                 }}
               />
@@ -578,23 +579,12 @@ async function OwnerDashboard({ admin }: { admin: AdminUser }) {
               netEur={netEurThisMonth}
               deltaPct={deltaPct}
               isRecord={isRecord}
-              initialStreak={admin.loginStreakCount}
               autoGoalDays={autoGoalDays}
               initialCustomGoalDays={admin.customGoalDays}
               currentDays={daysBookedThisMonth}
               yoyDeltaDays={yoyDeltaDays}
             />
             <div className="flex flex-col gap-5">
-              <OwnerBadges
-                stats={{
-                  streak: admin.loginStreakCount,
-                  isRecord,
-                  currentDays: daysBookedThisMonth,
-                  goalDays: effectiveGoalDays,
-                  deltaPct,
-                  yoyDeltaDays,
-                }}
-              />
               {firstProperty && (
                 <OwnerMiniCalendar
                   propertyId={firstProperty.id}

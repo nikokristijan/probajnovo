@@ -2336,10 +2336,7 @@ export async function createTeamTaskAction(
   }
 
   revalidatePath("/admin/portal");
-  // ?tab=zadaci (ne goli "/admin/portal") — bez ovoga redirect nakon dodavanja
-  // zadatka tiho prebaci korisnika natrag na "Tim" tab (PortalMain default),
-  // što djeluje kao da je stranica "poludjela"/izgubila mjesto.
-  redirect("/admin/portal?tab=zadaci");
+  redirect("/admin/portal");
 }
 
 /** Brisanje predloška zadatka (Portal, "Zadaci" tab) — bound-action gumb uz
@@ -2498,6 +2495,12 @@ const ProfileSchema = z.object({
   displayName: z.string().max(80).optional().or(z.literal("")),
   jobTitle: z.string().max(80).optional().or(z.literal("")),
   bio: z.string().max(500).optional().or(z.literal("")),
+  // Dolaze kao dva odvojena <select> polja (dan/mjesec, AdminProfileForm) —
+  // spajaju se u "MM-DD" ispod. Vidi komentar uz adminUsers.birthday u
+  // schema.ts (namjerno bez godine). Prazno = ne prikazuje se u widgetu
+  // "Rođendani" (Task #24).
+  birthdayDay: z.string().optional().or(z.literal("")),
+  birthdayMonth: z.string().optional().or(z.literal("")),
 });
 
 /** Portal profil (app/admin/portal/profil/[email]/page.tsx) — admin smije
@@ -2513,15 +2516,26 @@ export async function updateAdminProfileAction(
     displayName: formData.get("displayName") || "",
     jobTitle: formData.get("jobTitle") || "",
     bio: formData.get("bio") || "",
+    birthdayDay: formData.get("birthdayDay") || "",
+    birthdayMonth: formData.get("birthdayMonth") || "",
   });
   if (!parsed.success) {
     return { error: parsed.error.issues[0]?.message ?? "Provjeri unesene podatke." };
   }
 
+  // Oba polja moraju biti postavljena da rođendan uopće ima smisla — ako je
+  // samo jedno odabrano (npr. korisnik očistio dan, a ostavio mjesec),
+  // tretiraj kao "nema rođendana" umjesto da spremimo polovičan datum.
+  const day = Number(parsed.data.birthdayDay);
+  const month = Number(parsed.data.birthdayMonth);
+  const hasBoth = parsed.data.birthdayDay && parsed.data.birthdayMonth && Number.isInteger(day) && Number.isInteger(month);
+  const birthday = hasBoth ? `${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}` : null;
+
   await updateAdminProfile(admin.adminId, {
     displayName: parsed.data.displayName || null,
     jobTitle: parsed.data.jobTitle || null,
     bio: parsed.data.bio || null,
+    birthday,
   });
   revalidatePath(`/admin/portal/profil/${encodeURIComponent(admin.email)}`);
   return { success: true };

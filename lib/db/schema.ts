@@ -357,6 +357,12 @@ export const adminUsers = pgTable("admin_users", {
       Oboje null/prazno = nema statusa, ništa se ne prikazuje (kao dosad). */
   statusText: text("status_text"),
   statusEmoji: text("status_emoji"),
+  /** Rođendan BEZ godine — "MM-DD" (npr. "03-17"), za widget "Rođendani" na
+      Portal početnoj (Task #24, "calendar + activity feed integration,
+      quick links, birthdays, search"). Namjerno bez godine: kolege vide S
+      KIME slave, ne dob. Admin ga sam upisuje na svom profilu
+      (AdminProfileForm), null = izostavlja se posvuda (nema prisile). */
+  birthday: text("birthday"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
