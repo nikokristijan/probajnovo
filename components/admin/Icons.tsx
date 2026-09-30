@@ -45,22 +45,31 @@ export function ExternalLinkIcon({ className, size = 14 }: IconProps) {
   );
 }
 
-/** Prazno stanje popisa (vikendice/firme/proizvodi/upiti...) — vidi .neu-empty. */
+/** Prazno stanje popisa (vikendice/firme/proizvodi/upiti...) — vidi .neu-empty.
+    NAPOMENA (korisnički feedback: ikonica se "overlappa u jednoj točki"): prva
+    verzija je gornje kutove trapeza (dijagonala → vodoravna linija) ručno
+    zaokruživala eliptičnim "A" lukom s nagađanim koordinatama krajnjih točaka.
+    Kod dijagonalnog ruba to gotovo nikad nije točno tangencijalno na luk, pa
+    je nastajao vidljiv "zarez"/preklop baš na tom spoju. Ispravno rješenje:
+    NE računati luk ručno — ostaviti oštar kut, a globalni strokeLinejoin:
+    "round" (vidi `base` gore) ga sam, matematički točno, zaobli. */
 export function InboxIcon({ className, size = 26 }: IconProps) {
   return (
     <svg {...base} width={size} height={size} className={className} aria-hidden="true">
-      <path d="M3 11l2.4-6.2A1.5 1.5 0 0 1 6.8 4h6.4a1.5 1.5 0 0 1 1.4.8L17 11" />
+      <path d="M3 11 6.8 4h6.4L17 11" />
       <path d="M3 11v4.25A1.75 1.75 0 0 0 4.75 17h10.5A1.75 1.75 0 0 0 17 15.25V11" />
       <path d="M3 11h4.2c.3 0 .55.18.65.46.34.94 1.24 1.54 2.15 1.54s1.81-.6 2.15-1.54c.1-.28.35-.46.65-.46H17" />
     </svg>
   );
 }
 
-/** Greška (npr. neuspjeli fetch) — dosljedno crveno = upozorenje/greška. */
+/** Greška (npr. neuspjeli fetch) — dosljedno crveno = upozorenje/greška.
+    Isti popravak kao InboxIcon: bez ručnih lukova na dijagonalnim vrhovima
+    trokuta — oštri kutovi + strokeLinejoin: "round" ih ispravno zaobli. */
 export function AlertIcon({ className, size = 22 }: IconProps) {
   return (
     <svg {...base} width={size} height={size} className={className} aria-hidden="true">
-      <path d="M10 3.2 17.3 15.5a1 1 0 0 1-.86 1.5H3.56a1 1 0 0 1-.86-1.5L10 3.2Z" />
+      <path d="M10 3.2 17.3 15.5H3.56Z" />
       <path d="M10 8.3v3.3" />
       <path d="M10 14.2h.01" />
     </svg>
@@ -87,11 +96,14 @@ export function ChecklistIcon({ className, size = 18 }: IconProps) {
   );
 }
 
-/** Poruke/tim feed (app/admin/poruke). */
+/** Poruke/tim feed (app/admin/poruke). Isti popravak kao InboxIcon: vrh
+    "repića" mjehurića je imao ručni luk (dijagonala → okomita linija) koji
+    se nije točno spajao — sad je oštar kut, strokeLinejoin: "round" ga
+    ispravno zaobli bez preklopa. */
 export function ChatIcon({ className, size = 18 }: IconProps) {
   return (
     <svg {...base} width={size} height={size} className={className} aria-hidden="true">
-      <path d="M3.5 5.75A1.75 1.75 0 0 1 5.25 4h9.5A1.75 1.75 0 0 1 16.5 5.75v6a1.75 1.75 0 0 1-1.75 1.75H9l-3.6 2.9a.5.5 0 0 1-.81-.39v-2.51H5.25A1.75 1.75 0 0 1 3.5 11.75v-6Z" />
+      <path d="M3.5 5.75A1.75 1.75 0 0 1 5.25 4h9.5A1.75 1.75 0 0 1 16.5 5.75v6a1.75 1.75 0 0 1-1.75 1.75H9l-3.6 2.9v-2.9H5.25A1.75 1.75 0 0 1 3.5 11.75v-6Z" />
     </svg>
   );
 }
