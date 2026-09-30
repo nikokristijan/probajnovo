@@ -1,13 +1,22 @@
 "use client";
 
-import { useActionState, useEffect, useRef, useState, useTransition, type ReactNode } from "react";
+import { Fragment, useActionState, useEffect, useRef, useState, useTransition, type ReactNode } from "react";
+import { useVisiblePolling } from "@/components/admin/useVisiblePolling";
 import {
   createTeamChannelMessageInlineAction,
   toggleTeamMessageReactionAction,
   toggleTeamMessagePinAction,
   type ActionState,
 } from "@/lib/actions";
-import { colorFor, initialsFor, labelForEmail, formatMsgTime, type PortalMember } from "@/components/admin/portalUtils";
+import {
+  colorFor,
+  initialsFor,
+  labelForEmail,
+  formatMsgClock,
+  formatMsgDayLabel,
+  groupMessagesByDay,
+  type PortalMember,
+} from "@/components/admin/portalUtils";
 import { SendIcon, PinIcon, SmilePlusIcon, ChevronDownIcon } from "@/components/admin/Icons";
 
 type ChannelMessageReaction = { emoji: string; count: number; mine: boolean };
@@ -100,7 +109,9 @@ export default function TeamChannelThread({
   const formRef = useRef<HTMLFormElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
-  const lastCountRef = useRef(initialMessages.length);
+  // Plan #62: prati se id zadnje poruke, ne broj — nit je ograničena na
+  // 200 poruka pa se broj nakon toga više ne mijenja.
+  const lastIdRef = useRef(initialMessages[initialMessages.length - 1]?.id ?? 0);
 
   // @spominjanje padajući izbornik — mentionStart = indeks "@" znaka u
   // vrijednosti textarea, mentionQuery = tekst upisan poslije njega (null =
@@ -123,24 +134,18 @@ export default function TeamChannelThread({
       const res = await fetch("/api/admin/portal/messages", { cache: "no-store" });
       if (!res.ok) return;
       const data = await res.json();
-      if (Array.isArray(data.messages)) setMessages(data.messages);
+      if (Array.isArray(data.messages)) {
+        // Bez novog rendera kad se ništa nije promijenilo.
+        const next = JSON.stringify(data.messages);
+        setMessages((cur) => (JSON.stringify(cur) === next ? cur : data.messages));
+      }
     } catch {
       // Tiho ignoriraj — jedan neuspjeli pokušaj ne treba prekinuti nit.
     }
   }
 
-  useEffect(() => {
-    let cancelled = false;
-    const poll = async () => {
-      if (cancelled) return;
-      await refetchMessages();
-    };
-    const id = setInterval(poll, POLL_MS);
-    return () => {
-      cancelled = true;
-      clearInterval(id);
-    };
-  }, []);
+  // Plan #60: polling staje dok kartica nije vidljiva.
+  useVisiblePolling(refetchMessages, POLL_MS);
 
   // Nakon uspješnog slanja odmah očisti formu i pokreni jedan izvanredni poll
   // (ne čekaj do 4s) da pošiljatelj smjesta vidi vlastitu poruku u niti).
@@ -170,8 +175,9 @@ export default function TeamChannelThread({
   }, []);
 
   useEffect(() => {
-    if (messages.length !== lastCountRef.current) {
-      lastCountRef.current = messages.length;
+    const lastId = messages[messages.length - 1]?.id ?? 0;
+    if (lastId !== lastIdRef.current) {
+      lastIdRef.current = lastId;
       scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
     }
   }, [messages]);
@@ -286,12 +292,9 @@ export default function TeamChannelThread({
     });
   }
 
-  const grouped: { email: string; items: ChannelMessage[] }[] = [];
-  for (const m of messages) {
-    const last = grouped[grouped.length - 1];
-    if (last && last.email === m.adminEmail) last.items.push(m);
-    else grouped.push({ email: m.adminEmail, items: [m] });
-  }
+  // Plan #61: grupe po pošiljatelju UNUTAR istog dana (i 10 min), s
+  // razdjelnikom "Danas" / "Jučer" / "28. 9." između dana.
+  const grouped = groupMessagesByDay(messages, (m) => m.adminEmail).map((g) => ({ ...g, email: g.sender }));
 
   const pinnedMessages = messages
     .filter((m) => m.pinnedAt)
@@ -337,19 +340,30 @@ export default function TeamChannelThread({
           grouped.map((g, gi) => {
             const label = labelForEmail(g.email, roster);
             return (
-              <div key={gi} className={`portal-msg-group ${g.email === currentEmail ? "is-own" : ""}`}>
+              <Fragment key={gi}>
+              {g.showDay && (
+                <div className="portal-day-sep" role="separator">
+                  <span>{formatMsgDayLabel(g.items[0].createdAt)}</span>
+                </div>
+              )}
+              <div className={`portal-msg-group ${g.email === currentEmail ? "is-own" : ""}`}>
                 <div className="portal-msg-avatar" style={{ background: colorFor(g.email) }}>
                   {initialsFor(label)}
                 </div>
                 <div className="portal-msg-body">
                   <div className="portal-msg-head">
                     <span className="portal-msg-name">{label}</span>
-                    <span className="portal-msg-time">{formatMsgTime(g.items[0].createdAt)}</span>
+                    <time className="portal-msg-time" dateTime={g.items[0].createdAt}>
+                      {formatMsgClock(g.items[0].createdAt)}
+                    </time>
                   </div>
                   {g.items.map((m) => {
                     const { nodes, mentionsMe } = renderMessageBody(m.body, roster, currentEmail);
                     return (
                       <div key={m.id} className={`portal-msg-row${mentionsMe ? " mentions-me" : ""}`}>
+                        <time className="portal-msg-row-time" dateTime={m.createdAt} aria-hidden="true">
+                          {formatMsgClock(m.createdAt)}
+                        </time>
                         <p className="portal-msg-text">{nodes}</p>
                         {/* Reakcije se prikazuju SAMO kad postoje — ranije je svaka
                             poruka imala cijeli dodatni red s ikonama ispod teksta. */}
@@ -408,6 +422,7 @@ export default function TeamChannelThread({
                   })}
                 </div>
               </div>
+              </Fragment>
             );
           })
         )}
