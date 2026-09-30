@@ -183,15 +183,36 @@ export default async function AdminLayout({ children }: { children: React.ReactN
                 PWA "dodaj na početni zaslon" podršku (vidi PwaRegister gore), znači
                 stvarno se koristi na mobitelu. Vlasnik (role="owner") više ne prolazi
                 ovim putem — vidi granu iznad, Task #14. */}
+            {/* PETI KRUG ("nije sve centrirano") — e-mail i Odjava na desktopu
+                sjede u GORNJEM retku desno od loga, a ispod je red samo s
+                linkovima. Ranije je sve (9 linkova + e-mail + Odjava) bilo u
+                jednom flex redu koji se na 1440px lomio pa je "Odjava" ostajala
+                sama u drugom redu. Na mobitelu ostaju unutar hamburger izbornika
+                (vidi sm:hidden kopije dolje). */}
+            <div className="hidden sm:flex items-center gap-3 ml-auto">
+              <span className="owner-header-faint flex items-center gap-1.5 text-sm">
+                {admin.email}
+                {admin.isSuperAdmin && (
+                  <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-[#ff7f00]/10 text-[#ff7f00]">
+                    glavni
+                  </span>
+                )}
+              </span>
+              <form action={logoutAction}>
+                <button type="submit" className="neu-btn px-3 py-1.5 text-sm">
+                  <LogOutIcon /> Odjava
+                </button>
+              </form>
+            </div>
             <input type="checkbox" id="admin-nav-toggle" className="peer hidden" />
             <label
               htmlFor="admin-nav-toggle"
-              className="sm:hidden neu-toggle px-3 py-1.5"
+              className="sm:hidden neu-toggle admin-nav-toggle-btn px-3 py-1.5"
               aria-label="Izbornik"
             >
               <MenuIcon />
             </label>
-            <nav className="hidden peer-checked:flex sm:flex items-start sm:items-center gap-3 sm:gap-5 text-sm flex-col sm:flex-row w-full sm:w-auto flex-wrap neu-nav">
+            <nav className="hidden peer-checked:flex sm:flex items-start sm:items-center gap-3 sm:gap-2.5 text-sm flex-col sm:flex-row w-full flex-wrap neu-nav">
               <AdminNavLink href="/admin" exact>
                 Pregled
               </AdminNavLink>
@@ -225,10 +246,15 @@ export default async function AdminLayout({ children }: { children: React.ReactN
                   glavnom (na izričit zahtjev iz Faze 2, i dalje vrijedi),
                   za razliku od Financije/Admini ispod koji ostaju samo za
                   superadmina. */}
-              <AdminNavLink href="/admin/portal" className="inline-flex items-center gap-1.5">
+              <AdminNavLink href="/admin/portal">
                 Portal
                 {unreadDmCount > 0 && (
-                  <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-[#ff7f00] text-white leading-none">
+                  // Značka (korisnički feedback: "preblizu slovima i nije centrirano")
+                  // — razmak od teksta sad daje .neu-nav > a (inline-flex + gap,
+                  // vidi globals.css; ranije je inline-block poništavao gap), a
+                  // sama značka centrira broj flexom uz fiksnu min-w/h, pa je
+                  // savršen krug za jednu znamenku i lijepo se širi za dvije.
+                  <span className="inline-flex items-center justify-center min-w-[17px] h-[17px] px-1 text-[10px] font-bold rounded-full bg-[#ff7f00] text-white leading-none">
                     {unreadDmCount}
                   </span>
                 )}
@@ -247,7 +273,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
               <Link href={ownerPageHref ?? "/"} target="_blank" className="inline-flex items-center gap-1">
                 Pogledaj stranicu <ExternalLinkIcon />
               </Link>
-              <span className="owner-header-faint flex items-center gap-1.5">
+              <span className="owner-header-faint flex items-center gap-1.5 sm:hidden">
                 {admin.email}
                 {admin.isSuperAdmin && (
                   <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-[#ff7f00]/10 text-[#ff7f00]">
@@ -255,7 +281,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
                   </span>
                 )}
               </span>
-              <form action={logoutAction}>
+              <form action={logoutAction} className="sm:hidden">
                 <button type="submit" className="neu-btn px-3 py-1.5">
                   <LogOutIcon /> Odjava
                 </button>
