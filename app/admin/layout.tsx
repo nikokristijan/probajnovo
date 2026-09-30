@@ -111,7 +111,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
           dijeljenim tretmanom za obje uloge; koja se paleta primijeni (light
           vlasnik / dark vlasnik / superadmin) ovisi samo o tome je li
           .owner-page-bg prisutan na omotaču gore, ne o ovom className-u. */}
-      <header className="flex items-center justify-between px-6 py-4 neu-header flex-wrap gap-3">
+      <header className="flex items-center justify-between px-4 py-3 sm:px-6 sm:py-4 neu-header flex-wrap gap-2 sm:gap-3">
         <span className="font-bold tracking-tight">
           NOVO <span className="text-[#ff7f00]">admin</span>
         </span>
@@ -122,29 +122,36 @@ export default async function AdminLayout({ children }: { children: React.ReactN
           // (w-full ovdje forsira prijelom u redu jer je <header> flex-wrap),
           // i sama se rasteže preko cijele širine na svakoj veličini zaslona
           // umjesto da se lijevo poravnato lomi kao ranija pilula-traka.
-          <div className="w-full flex flex-col gap-3">
+          // DEVETI KRUG ("navbar izgleda katastrofa, zauzima pola ekrana") —
+          // gap/padding stisnuti na mobitelu (gap-2/py-3 umjesto gap-3/py-4),
+          // ikone u mreži spuštene na 18px (bile 20px) da 5 pločica stanu u
+          // jedan red (vidi .owner-menu-grid: repeat(5, 1fr) u globals.css)
+          // bez guranja, a sirovi e-mail u retku ispod je sad hidden na
+          // mobitelu (hidden sm:inline) — značka "vlasnik · ..." dolje već
+          // nosi istu informaciju sažetije.
+          <div className="w-full flex flex-col gap-2 sm:gap-3">
             <nav className="owner-menu-grid" aria-label="Glavni izbornik">
               {/* Vlasnik ima samo ograničen pregled — ne smije uređivati stranicu.
                   /admin sad prikazuje njegov vlastiti dashboard (vidi
                   app/admin/page.tsx), ne puni pregled kao za role="admin". */}
               <AdminNavLink href="/admin" exact className="owner-menu-tile">
-                <span className="owner-menu-tile-icon"><HomeIcon /></span>
+                <span className="owner-menu-tile-icon"><HomeIcon size={18} /></span>
                 <span>Početna</span>
               </AdminNavLink>
               <AdminNavLink href="/admin/inquiries" className="owner-menu-tile">
-                <span className="owner-menu-tile-icon"><InboxIcon size={20} /></span>
+                <span className="owner-menu-tile-icon"><InboxIcon size={18} /></span>
                 <span>Upiti</span>
               </AdminNavLink>
               <AdminNavLink href="/admin/rezervacije" className="owner-menu-tile">
-                <span className="owner-menu-tile-icon"><BedIcon /></span>
+                <span className="owner-menu-tile-icon"><BedIcon size={18} /></span>
                 <span>Rezervacije</span>
               </AdminNavLink>
               <AdminNavLink href="/admin/kalendar" className="owner-menu-tile">
-                <span className="owner-menu-tile-icon"><CalendarIcon /></span>
+                <span className="owner-menu-tile-icon"><CalendarIcon size={18} /></span>
                 <span>Kalendar</span>
               </AdminNavLink>
               <AdminNavLink href="/admin/settings" className="owner-menu-tile">
-                <span className="owner-menu-tile-icon"><SettingsIcon /></span>
+                <span className="owner-menu-tile-icon"><SettingsIcon size={18} /></span>
                 <span>Postavke</span>
               </AdminNavLink>
             </nav>
@@ -155,7 +162,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
                 Pogledaj stranicu <ExternalLinkIcon />
               </Link>
               <span className="flex items-center gap-1.5">
-                {admin.email}
+                <span className="hidden sm:inline">{admin.email}</span>
                 {admin.isSuperAdmin && <span className="na-chip">glavni</span>}
                 <span className="na-chip">vlasnik{ownerLabel ? ` · ${ownerLabel}` : ""}</span>
               </span>
