@@ -8,7 +8,7 @@ import {
   type ActionState,
 } from "@/lib/actions";
 import { colorFor, initialsFor, labelForEmail, formatMsgTime, type PortalMember } from "@/components/admin/portalUtils";
-import { SendIcon, PinIcon, SmilePlusIcon } from "@/components/admin/Icons";
+import { SendIcon, PinIcon, SmilePlusIcon, ChevronDownIcon } from "@/components/admin/Icons";
 
 type ChannelMessageReaction = { emoji: string; count: number; mine: boolean };
 type ChannelMessage = {
@@ -161,6 +161,14 @@ export default function TeamChannelThread({
     }
   }, [state]);
 
+  // Pri prvom prikazu odmah skoči na DNO niti (najnovije poruke) — ranije se
+  // nit otvarala na vrhu, pa su se prvo vidjele najstarije poruke, a
+  // najnovije su bile skrivene ispod ruba okvira.
+  useEffect(() => {
+    const el = scrollRef.current;
+    if (el) el.scrollTop = el.scrollHeight;
+  }, []);
+
   useEffect(() => {
     if (messages.length !== lastCountRef.current) {
       lastCountRef.current = messages.length;
@@ -298,7 +306,7 @@ export default function TeamChannelThread({
             <span>
               Prikvačeno ({pinnedMessages.length}){" "}
             </span>
-            <span className="portal-pinned-chevron">{pinnedOpen ? "▲" : "▼"}</span>
+            <ChevronDownIcon size={14} className={`portal-pinned-chevron${pinnedOpen ? " is-open" : ""}`} />
           </button>
           {pinnedOpen && (
             <div className="portal-pinned-list">
@@ -343,19 +351,28 @@ export default function TeamChannelThread({
                     return (
                       <div key={m.id} className={`portal-msg-row${mentionsMe ? " mentions-me" : ""}`}>
                         <p className="portal-msg-text">{nodes}</p>
-                        <div className="portal-msg-actions">
-                          {m.reactions.map((r) => (
-                            <button
-                              key={r.emoji}
-                              type="button"
-                              className={`portal-reaction-pill${r.mine ? " is-mine" : ""}`}
-                              onClick={() => handleToggleReaction(m.id, r.emoji)}
-                              title={r.mine ? "Ukloni reakciju" : "Dodaj reakciju"}
-                            >
-                              <span>{r.emoji}</span>
-                              <span className="portal-reaction-count">{r.count}</span>
-                            </button>
-                          ))}
+                        {/* Reakcije se prikazuju SAMO kad postoje — ranije je svaka
+                            poruka imala cijeli dodatni red s ikonama ispod teksta. */}
+                        {m.reactions.length > 0 && (
+                          <div className="portal-msg-reactions">
+                            {m.reactions.map((r) => (
+                              <button
+                                key={r.emoji}
+                                type="button"
+                                className={`portal-reaction-pill${r.mine ? " is-mine" : ""}`}
+                                onClick={() => handleToggleReaction(m.id, r.emoji)}
+                                title={r.mine ? "Ukloni reakciju" : "Dodaj reakciju"}
+                              >
+                                <span>{r.emoji}</span>
+                                <span className="portal-reaction-count">{r.count}</span>
+                              </button>
+                            ))}
+                          </div>
+                        )}
+                        {/* Akcije (reakcija/prikvači) — Slack-stil plutajuća traka u
+                            gornjem desnom kutu retka, vidljiva na hover/fokus
+                            (na dodirnim ekranima uvijek, ali prigušeno). */}
+                        <div className={`portal-msg-actions${openPickerFor === m.id ? " is-open" : ""}`}>
                           <div className="portal-reaction-add-wrap" ref={openPickerFor === m.id ? pickerWrapRef : undefined}>
                             <button
                               type="button"
@@ -364,7 +381,7 @@ export default function TeamChannelThread({
                               aria-label="Dodaj reakciju"
                               title="Dodaj reakciju"
                             >
-                              <SmilePlusIcon />
+                              <SmilePlusIcon size={15} />
                             </button>
                             {openPickerFor === m.id && (
                               <div className="portal-reaction-picker">
@@ -383,7 +400,7 @@ export default function TeamChannelThread({
                             aria-label={m.pinnedAt ? "Otkvači poruku" : "Prikvači poruku"}
                             title={m.pinnedAt ? "Otkvači poruku" : "Prikvači poruku"}
                           >
-                            <PinIcon />
+                            <PinIcon size={15} />
                           </button>
                         </div>
                       </div>
@@ -426,14 +443,15 @@ export default function TeamChannelThread({
             required
             rows={1}
             maxLength={4000}
-            placeholder="Napiši poruku timu… (@ za spomenuti, Enter za slanje)"
+            placeholder="Napiši poruku… (@ za spominjanje)"
+            title="Enter šalje, Shift+Enter novi red, @ za spominjanje kolege"
             className="na-input portal-thread-textarea"
             onInput={handleInput}
             onKeyDown={handleKeyDown}
           />
         </div>
-        <button type="submit" disabled={pending} className="na-btn px-4 py-2 text-sm font-semibold shrink-0 disabled:opacity-50">
-          <SendIcon />
+        <button type="submit" disabled={pending} className="na-btn portal-send-btn disabled:opacity-50" aria-label="Pošalji poruku">
+          <SendIcon size={17} />
         </button>
       </form>
       {state?.error && <p className="text-xs text-red-600 px-3 pb-2">{state.error}</p>}
