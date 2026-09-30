@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { authorizeCron, runCron } from "@/lib/cron";
 import {
   listReservationsForReminderOn,
   markReservationReminderSent,
@@ -24,77 +25,74 @@ export const maxDuration = 60;
  * upisan email (admin i dalje treba znati da gost stiže, čak i bez maila).
  */
 export async function GET(req: Request) {
-  const expected = process.env.CRON_SECRET;
-  if (expected) {
-    const auth = req.headers.get("authorization");
-    if (auth !== `Bearer ${expected}`) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const denied = authorizeCron(req);
+  if (denied) return denied;
+
+  return runCron("reservation-reminders", async () => {
+    const tomorrow = dateStringOffsetFromTodayZagreb(1);
+    const due = await listReservationsForReminderOn(tomorrow);
+
+    let sent = 0;
+    for (const r of due) {
+      const property = await getPropertyById(r.propertyId);
+
+      if (r.email && property) {
+        await sendReservationReminder({
+          to: r.email,
+          guestName: r.guestName,
+          propertyName: property.name,
+          checkIn: r.checkIn,
+        });
+        sent++;
+      }
+
+      if (property) {
+        await sendPushToAdmins(
+          { propertyId: r.propertyId },
+          {
+            title: "Gost stiže sutra",
+            body: `${r.guestName} — ${property.name}`,
+            url: "/admin/rezervacije",
+          }
+        );
+      }
+
+      // Označi "obrađeno" u oba slučaja (s mailom ili bez) da cron ne
+      // pokušava svaki dan iznova za istu rezervaciju.
+      await markReservationReminderSent(r.id);
     }
-  }
 
-  const tomorrow = dateStringOffsetFromTodayZagreb(1);
-  const due = await listReservationsForReminderOn(tomorrow);
+    // Financije — NOVO-ove vlastite mjesečne pretplate klijentima. Neovisan
+    // blok od gornjeg gost-podsjetnika: provjerava pretplate kojima
+    // nextRenewalDate pada unutar 7 dana i još nije poslan podsjetnik
+    // (subscriptions.reminderSentAt), šalje mail glavnom adminu (agencijski
+    // contactEmail) i push svim superadminima, pa označi kao poslano da se
+    // ne šalje iznova svaki dan.
+    const dueSubscriptions = await listSubscriptionsDueForReminder(7);
+    if (dueSubscriptions.length > 0) {
+      const agency = await getAgency();
+      if (agency?.contactEmail) {
+        await sendSubscriptionExpiryAlert({
+          to: agency.contactEmail,
+          items: dueSubscriptions.map((s) => ({
+            sourceName: s.sourceName,
+            nextRenewalDate: s.nextRenewalDate,
+            monthlyPriceEur: s.monthlyPriceEur,
+          })),
+        });
+      }
 
-  let sent = 0;
-  for (const r of due) {
-    const property = await getPropertyById(r.propertyId);
-
-    if (r.email && property) {
-      await sendReservationReminder({
-        to: r.email,
-        guestName: r.guestName,
-        propertyName: property.name,
-        checkIn: r.checkIn,
+      await sendPushToSuperAdmins({
+        title: "Pretplate uskoro ističu",
+        body: `${dueSubscriptions.length} ${dueSubscriptions.length === 1 ? "pretplata ističe" : "pretplata ističe"} unutar 7 dana`,
+        url: "/admin/financije",
       });
-      sent++;
+
+      for (const s of dueSubscriptions) {
+        await markSubscriptionReminderSent(s.id);
+      }
     }
 
-    if (property) {
-      await sendPushToAdmins(
-        { propertyId: r.propertyId },
-        {
-          title: "Gost stiže sutra",
-          body: `${r.guestName} — ${property.name}`,
-          url: "/admin/rezervacije",
-        }
-      );
-    }
-
-    // Označi "obrađeno" u oba slučaja (s mailom ili bez) da cron ne
-    // pokušava svaki dan iznova za istu rezervaciju.
-    await markReservationReminderSent(r.id);
-  }
-
-  // Financije — NOVO-ove vlastite mjesečne pretplate klijentima. Neovisan
-  // blok od gornjeg gost-podsjetnika: provjerava pretplate kojima
-  // nextRenewalDate pada unutar 7 dana i još nije poslan podsjetnik
-  // (subscriptions.reminderSentAt), šalje mail glavnom adminu (agencijski
-  // contactEmail) i push svim superadminima, pa označi kao poslano da se
-  // ne šalje iznova svaki dan.
-  const dueSubscriptions = await listSubscriptionsDueForReminder(7);
-  if (dueSubscriptions.length > 0) {
-    const agency = await getAgency();
-    if (agency?.contactEmail) {
-      await sendSubscriptionExpiryAlert({
-        to: agency.contactEmail,
-        items: dueSubscriptions.map((s) => ({
-          sourceName: s.sourceName,
-          nextRenewalDate: s.nextRenewalDate,
-          monthlyPriceEur: s.monthlyPriceEur,
-        })),
-      });
-    }
-
-    await sendPushToSuperAdmins({
-      title: "Pretplate uskoro ističu",
-      body: `${dueSubscriptions.length} ${dueSubscriptions.length === 1 ? "pretplata ističe" : "pretplata ističe"} unutar 7 dana`,
-      url: "/admin/financije",
-    });
-
-    for (const s of dueSubscriptions) {
-      await markSubscriptionReminderSent(s.id);
-    }
-  }
-
-  return NextResponse.json({ checked: due.length, sent, subscriptionsFlagged: dueSubscriptions.length });
+    return NextResponse.json({ checked: due.length, sent, subscriptionsFlagged: dueSubscriptions.length });
+  });
 }
