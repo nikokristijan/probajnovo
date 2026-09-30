@@ -279,7 +279,7 @@ async function drawReportCanvas(stats: ShareStats): Promise<HTMLCanvasElement> {
 }
 
 /**
- * Gumb za dijeljenje mjesecnog izvještaja kao slike — iscrtava brendirani
+ * Gumb za dijeljenje mjesečnog izvještaja kao slike — iscrtava brendirani
  * PNG na <canvas>-u u memoriji (drawReportCanvas gore) i nudi ga preko Web
  * Share API-ja (mobitel — izravno u poruke/društvene mreže), s padom na
  * obično preuzimanje datoteke ako Web Share nije podržan (desktop). Bez
@@ -293,7 +293,7 @@ export default function OwnerShareReport({ stats }: { stats: ShareStats }) {
       const canvas = await drawReportCanvas(stats);
       const blob: Blob | null = await new Promise((resolve) => canvas.toBlob(resolve, "image/png"));
       if (!blob) return;
-      const fileName = `novo-izvjetaj-${stats.monthLabel.replace(/\s+/g, "-").toLowerCase()}.png`;
+      const fileName = `novo-izvjestaj-${stats.monthLabel.replace(/\s+/g, "-").toLowerCase()}.png`;
       const file = new File([blob], fileName, { type: "image/png" });
 
       const nav = navigator as Navigator & { canShare?: (data: { files: File[] }) => boolean };
@@ -302,7 +302,7 @@ export default function OwnerShareReport({ stats }: { stats: ShareStats }) {
           await nav.share({ files: [file], title: "NOVO — mjesečni izvještaj", text: stats.monthLabel });
           return;
         } catch {
-          // Korisnik je otkaz dijeljenja ili je share odbio — padamo na
+          // Korisnik je otkazao dijeljenje ili je share odbio — padamo na
           // preuzimanje niže umjesto tihog neuspjeha.
         }
       }
@@ -328,7 +328,7 @@ export default function OwnerShareReport({ stats }: { stats: ShareStats }) {
       className="owner-glass owner-glass-interactive rounded-full px-4 py-2 text-xs font-semibold flex items-center gap-2 disabled:opacity-60"
       style={{ color: "var(--od-ink)" }}
     >
-      {busy ? "Priprema…" : "→ Podijeli izvještaj"}
+      {busy ? "Priprema…" : "↗ Podijeli izvještaj"}
     </button>
   );
 }

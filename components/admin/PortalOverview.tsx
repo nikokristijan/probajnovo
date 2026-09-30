@@ -52,7 +52,7 @@ function birthdayLabel(daysUntil: number): string {
  * za raniji PortalMain.tsx (koji je SAMO prebacivao vidljivost triju
  * gotovih slotova preko ?tab=). Ovdje se svi slotovi prikazuju ISTOVREMENO
  * na jednoj stranici ("jedan veliki pregled"), uz nove widgete koji nisu
- * postojali prije: pretraga (preko tima/vikendica/nadolazećih rezervacija,
+ * postojali prije: pretraga (preko tima/vikendice/nadolazećih rezervacija,
  * čisto klijentsko filtriranje već dohvaćenih podataka — nema posebne
  * pretraživačke rute), brze poveznice na ostale admin sekcije, nadolazeće
  * rezervacije preko svih vikendica, rođendani tima i sažeta aktivnost.
@@ -107,7 +107,7 @@ export default function PortalOverview({
   return (
     <div className="flex flex-col gap-5">
       {/* Pretraga — čisto klijentsko filtriranje već dohvaćenih podataka
-          (tim/vikendice/nadolazeće rezervacija), vidi komentar gore. */}
+          (tim/vikendice/nadolazeće rezervacije), vidi komentar gore. */}
       <div className="na-card relative px-3 py-2.5 flex items-center gap-2.5">
         <SearchIcon size={17} className="shrink-0 text-[var(--na-ink-faintest)]" />
         <input
