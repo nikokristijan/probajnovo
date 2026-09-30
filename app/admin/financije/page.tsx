@@ -114,7 +114,7 @@ export default async function AdminFinancijePage({
         </h2>
         <div className="admin-animate-grid grid grid-cols-2 sm:grid-cols-3 gap-3">
           <StatCard label="Ukupno ovaj mjesec (MRR + prodaja)" value={combinedTotalThisMonth} suffix=" €" />
-          <StatCard label="MRR — pretplate" value={subStats.mrrEur} suffix=" €" />
+          <StatCard label={subStats.trialMrrEur > 0 ? `MRR — plaćene pretplate (+${subStats.trialMrrEur} € nakon probnih)` : "MRR — plaćene pretplate"} value={subStats.mrrEur} suffix=" €" />
           <StatCard label="Prodaja ovaj mjesec" value={salesThisMonth.totalEur} suffix=" €" />
         </div>
       </section>
