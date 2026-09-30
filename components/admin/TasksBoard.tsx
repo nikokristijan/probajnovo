@@ -3,6 +3,7 @@ import { updateTeamTaskStatusAction } from "@/lib/actions";
 import TeamTaskForm from "@/components/admin/TeamTaskForm";
 import TeamTaskAssignSelect from "@/components/admin/TeamTaskAssignSelect";
 import DeleteTeamTaskButton from "@/components/admin/DeleteTeamTaskButton";
+import TeamMessageForm from "@/components/admin/TeamMessageForm";
 import EmptyState from "@/components/admin/EmptyState";
 import { describeDueDateZagreb } from "@/lib/date";
 import type { TeamTask, TaskTemplate } from "@/lib/db/schema";
@@ -26,7 +27,9 @@ export default function TasksBoard({
   properties,
   companies,
   templates,
+  commentsByTask = {},
 }: {
+  commentsByTask?: Record<number, { id: number; author: string; body: string; createdAt: string }[]>;
   tasks: TeamTask[];
   teamMembers: { email: string }[];
   properties: { id: number; name: string }[];
@@ -92,7 +95,7 @@ export default function TasksBoard({
                       )}
 
                       {clientName && clientHref && (
-                        <Link href={clientHref} className="text-xs font-medium text-[#ff7f00] underline w-fit">
+                        <Link href={clientHref} className="text-xs font-medium text-[#b35600] underline w-fit">
                           {clientName}
                         </Link>
                       )}
@@ -117,6 +120,33 @@ export default function TasksBoard({
                           </span>
                         )}
                       </div>
+
+                      {/* Plan #63: komentari na zadatku. */}
+                      <details className="task-comments">
+                        <summary>
+                          Komentari{(commentsByTask[task.id]?.length ?? 0) > 0 ? ` (${commentsByTask[task.id].length})` : ""}
+                        </summary>
+                        <div className="task-comments-body">
+                          {(commentsByTask[task.id] ?? []).map((c) => (
+                            <div key={c.id} className="task-comment">
+                              <div className="task-comment-head">
+                                <span className="font-semibold">{c.author}</span>
+                                <time dateTime={c.createdAt}>
+                                  {new Date(c.createdAt).toLocaleString("hr-HR", {
+                                    timeZone: "Europe/Zagreb",
+                                    day: "numeric",
+                                    month: "numeric",
+                                    hour: "2-digit",
+                                    minute: "2-digit",
+                                  })}
+                                </time>
+                              </div>
+                              <p className="whitespace-pre-wrap">{c.body}</p>
+                            </div>
+                          ))}
+                          <TeamMessageForm taskId={task.id} redirectTo="/admin/portal" placeholder="Dodaj komentar…" />
+                        </div>
+                      </details>
 
                       <div className="flex items-center justify-between gap-2 pt-1">
                         {col.nextStatus ? (
