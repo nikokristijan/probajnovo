@@ -57,7 +57,7 @@ export default async function AdminVikendicePage() {
                   <div className="text-xs mt-0.5" style={{ color: "var(--neu-ink-faint)" }}>{p.location}</div>
                 </div>
                 {pendingCount > 0 && (
-                  <span className="text-[11px] font-semibold px-2 py-0.5 rounded-full bg-[#ff7f00]/10 text-[#ff7f00] shrink-0">
+                  <span className="text-[11px] font-semibold px-2 py-0.5 rounded-full bg-[#ff7f00]/10 text-[#b35600] shrink-0">
                     {pendingCount} {pendingCount === 1 ? "novi upit" : "novih upita"}
                   </span>
                 )}
