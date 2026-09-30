@@ -2219,6 +2219,13 @@ html:has(.owner-page-bg)::-webkit-scrollbar {
 .office-status-row { display: flex; gap: 6px; align-items: center; }
 .office-status-emoji-input { width: 46px; text-align: center; flex-shrink: 0; }
 .office-status-quick { display: flex; flex-wrap: wrap; gap: 6px; }
+/* ČETVRTI KRUG (korisnički feedback: "na portalu jos uvijek nema okvira") —
+   ova dva chipa (i .office-leaderboard-item ispod) dijele isti "border: none"
+   + sad-providan --neu-shadow/--neu-highlight uzorak kao .neu-btn/.owner-input
+   koje smo već popravili, ali su bili izostavljeni jer žive u istoj datoteci
+   kao Ured pixel-art scena (OfficePresence.tsx) pa smo ih prvi put oprezno
+   preskočili — ovo NIJE sama pixel-art scena, nego obična "Tvoj status"/
+   zadaci-predlošci forma iznad nje, sigurno za popraviti istim uzorkom. */
 .office-status-chip {
   font-size: 11px;
   font-weight: 600;
@@ -2228,7 +2235,7 @@ html:has(.owner-page-bg)::-webkit-scrollbar {
   box-shadow: 2px 2px 5px var(--neu-shadow), -2px -2px 5px var(--neu-highlight);
   color: var(--neu-ink-faint);
   cursor: pointer;
-  border: none;
+  border: 1px solid var(--neu-border);
 }
 .office-status-chip:hover { color: var(--neu-ink); }
 
@@ -2245,7 +2252,7 @@ html:has(.owner-page-bg)::-webkit-scrollbar {
   box-shadow: 2px 2px 5px var(--neu-shadow), -2px -2px 5px var(--neu-highlight);
   color: var(--neu-ink-faint);
   cursor: pointer;
-  border: none;
+  border: 1px solid var(--neu-border);
   max-width: 220px;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -2289,6 +2296,7 @@ html:has(.owner-page-bg)::-webkit-scrollbar {
   font-size: 11px;
   font-weight: 600;
   background: var(--neu-base);
+  border: 1px solid var(--neu-border);
   border-radius: 999px;
   padding: 4px 10px 4px 6px;
   box-shadow: 2px 2px 5px var(--neu-shadow), -2px -2px 5px var(--neu-highlight);
