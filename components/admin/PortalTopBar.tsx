@@ -1,8 +1,9 @@
 "use client";
 
+import { useVisiblePolling } from "@/components/admin/useVisiblePolling";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { colorFor, initialsFor, labelForEmail, formatConversationTime, type PortalMember } from "@/components/admin/portalUtils";
 import { ChevronDownIcon, UserIcon } from "@/components/admin/Icons";
 
@@ -36,24 +37,19 @@ export default function PortalTopBar({
   const isHome = pathname === "/admin/portal";
   const isProfile = pathname === `/admin/portal/profil/${encodeURIComponent(currentEmail)}`;
 
-  useEffect(() => {
-    let cancelled = false;
-    const poll = async () => {
-      try {
-        const res = await fetch("/api/admin/portal/conversations", { cache: "no-store" });
-        if (!res.ok) return;
-        const data = await res.json();
-        if (!cancelled && Array.isArray(data.conversations)) setConversations(data.conversations);
-      } catch {
-        // Tiho ignoriraj.
+  useVisiblePolling(async () => {
+    try {
+      const res = await fetch("/api/admin/portal/conversations", { cache: "no-store" });
+      if (!res.ok) return;
+      const data = await res.json();
+      if (Array.isArray(data.conversations)) {
+        const next = JSON.stringify(data.conversations);
+        setConversations((cur) => (JSON.stringify(cur) === next ? cur : data.conversations));
       }
-    };
-    const id = setInterval(poll, POLL_MS);
-    return () => {
-      cancelled = true;
-      clearInterval(id);
-    };
-  }, []);
+    } catch {
+      // Tiho ignoriraj.
+    }
+  }, POLL_MS);
 
   const convByEmail = new Map(conversations.map((c) => [c.email, c]));
   const others = roster.filter((m) => m.email !== currentEmail);
