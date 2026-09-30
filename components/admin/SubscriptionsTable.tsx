@@ -121,7 +121,7 @@ export default function SubscriptionsTable({
                           isOverdue
                             ? "font-semibold text-red-600"
                             : isExpiringSoon
-                            ? "font-semibold text-[#ff7f00]"
+                            ? "font-semibold text-[#b35600]"
                             : ""
                         }
                       >
