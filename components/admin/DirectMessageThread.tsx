@@ -65,6 +65,12 @@ export default function DirectMessageThread({
     }
   }, [state, otherEmail]);
 
+  // Pri prvom prikazu skoči na dno niti (najnovije poruke), isto kao tim chat.
+  useEffect(() => {
+    const el = scrollRef.current;
+    if (el) el.scrollTop = el.scrollHeight;
+  }, []);
+
   useEffect(() => {
     if (messages.length !== lastCountRef.current) {
       lastCountRef.current = messages.length;
@@ -109,8 +115,8 @@ export default function DirectMessageThread({
           placeholder={`Poruka za ${otherLabel}…`}
           className="na-input portal-thread-textarea"
         />
-        <button type="submit" disabled={pending} className="na-btn px-4 py-2 text-sm font-semibold shrink-0 disabled:opacity-50">
-          <SendIcon />
+        <button type="submit" disabled={pending} className="na-btn portal-send-btn disabled:opacity-50" aria-label="Pošalji poruku">
+          <SendIcon size={17} />
         </button>
       </form>
       {state?.error && <p className="text-xs text-red-600 px-3 pb-2">{state.error}</p>}

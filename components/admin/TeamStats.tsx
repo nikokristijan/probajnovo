@@ -56,14 +56,14 @@ function TeamActivityChart({ counts }: { counts: { dateKey: string; count: numbe
             <stop offset="100%" stopColor="var(--neu-accent)" stopOpacity={0.02} />
           </linearGradient>
         </defs>
-        <line x1={0} y1={baseline} x2={width} y2={baseline} stroke="var(--neu-shadow)" strokeWidth={1} />
+        <line x1={0} y1={baseline} x2={width} y2={baseline} stroke="var(--na-border)" strokeWidth={1} />
         {areaPath && <path d={areaPath} fill="url(#portal-activity-fill)" />}
         {linePath && <path d={linePath} fill="none" stroke="var(--neu-accent)" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round" />}
         {points.map((p, i) => (
           <g key={i}>
             <title>{`${counts[i].dateKey}: ${counts[i].count}`}</title>
             <circle cx={p.x} cy={p.y} r={3} fill="var(--neu-base)" stroke="var(--neu-accent)" strokeWidth={2} />
-            <text x={p.x} y={baseline + 15} textAnchor="middle" fontSize="9.5" fill="var(--neu-ink-faint)">
+            <text x={p.x} y={baseline + 15} textAnchor="middle" fontSize="11" fill="var(--neu-ink-faint)">
               {new Date(`${counts[i].dateKey}T00:00:00Z`).toLocaleDateString("hr-HR", { timeZone: "UTC", weekday: "short" })}
             </text>
           </g>
@@ -98,7 +98,7 @@ function TaskStatusDonut({ statusCounts }: { statusCounts: { status: string; cou
       <div className="flex items-center gap-5 mt-3 flex-wrap">
         <svg viewBox="0 0 120 120" width={120} height={120} role="img" aria-label="Zadaci po statusu">
           {total === 0 ? (
-            <circle cx={60} cy={60} r={radius} fill="none" stroke="var(--neu-shadow)" strokeWidth={strokeWidth} />
+            <circle cx={60} cy={60} r={radius} fill="none" stroke="var(--na-border)" strokeWidth={strokeWidth} />
           ) : (
             data.map((d) => {
               if (d.count === 0) return null;
