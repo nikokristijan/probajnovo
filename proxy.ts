@@ -6,7 +6,11 @@ const COOKIE_NAME = "novo_admin_session";
 
 // Ova ruta unutar /admin ne smije tražiti prijavu (inače nitko ne bi mogao
 // doći do login forme).
-const PUBLIC_ADMIN_PATHS = new Set(["/admin/login"]);
+// "/admin/login/2fa" MORA biti javna: admin s uključenom 2FA dolazi ovamo
+// prije nego što ima sesiju (samo "pending 2FA" kolačić, vidi lib/auth.ts).
+// Bez nje ga je proxy vraćao na prijavu i nikad se nije mogao prijaviti.
+// Sama stranica provjerava pending kolačić i bez njega vraća na /admin/login.
+const PUBLIC_ADMIN_PATHS = new Set(["/admin/login", "/admin/login/2fa"]);
 
 async function hasValidSession(req: NextRequest): Promise<boolean> {
   const token = req.cookies.get(COOKIE_NAME)?.value;
