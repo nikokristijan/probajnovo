@@ -3,6 +3,7 @@
 import { useRef } from "react";
 import { useActionState } from "react";
 import { createTeamTaskAction, deleteTaskTemplateAction, type ActionState } from "@/lib/actions";
+import ConfirmSubmit from "@/components/admin/ConfirmSubmit";
 
 type TaskTemplate = { id: number; title: string; description: string | null; priority: string };
 
@@ -41,16 +42,15 @@ function TemplateChips({
             {t.priority === "high" && <span className="task-template-chip-dot" aria-hidden="true" />}
             {t.title}
           </button>
-          <form
+          <ConfirmSubmit
             action={deleteTaskTemplateAction.bind(null, t.id)}
-            onSubmit={(e) => {
-              if (!confirm(`Obrisati predložak "${t.title}"?`)) e.preventDefault();
-            }}
-          >
-            <button type="submit" className="task-template-chip-del" aria-label={`Obriši predložak ${t.title}`}>
-              ×
-            </button>
-          </form>
+            title={`Obrisati predložak ${t.title}?`}
+            description="Postojeći zadaci ostaju, samo predložak nestaje s popisa."
+            confirmLabel="Obriši predložak"
+            buttonLabel="×"
+            buttonClassName="task-template-chip-del"
+            buttonAriaLabel={`Obriši predložak ${t.title}`}
+          />
         </div>
       ))}
     </div>
