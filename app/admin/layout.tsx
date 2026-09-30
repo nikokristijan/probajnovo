@@ -116,6 +116,29 @@ export default async function AdminLayout({ children }: { children: React.ReactN
           NOVO <span className="text-[#ff7f00]">admin</span>
         </span>
         {admin && admin.role === "owner" && (
+          // Plan #34: kraći vrh na mobitelu — umjesto cijelog retka s čipom
+          // "VLASNIK · …", e-mailom i Odjavom, gore desno je samo ikona za
+          // javnu stranicu. Odjava je u Postavkama; na većem ekranu ostaje i ovdje.
+          <div className="flex items-center gap-2 ml-auto">
+            <span className="hidden sm:inline owner-header-faint text-sm">{admin.email}</span>
+            <Link
+              href={ownerPageHref ?? "/"}
+              target="_blank"
+              className="na-btn-ghost inline-flex items-center gap-1.5 px-2.5 py-1.5"
+              aria-label={ownerLabel ? `Pogledaj stranicu ${ownerLabel}` : "Pogledaj stranicu"}
+              title="Pogledaj stranicu"
+            >
+              <ExternalLinkIcon />
+              <span className="hidden sm:inline">Pogledaj stranicu</span>
+            </Link>
+            <form action={logoutAction} className="hidden sm:block">
+              <button type="submit" className="na-btn-ghost px-3 py-1.5">
+                <LogOutIcon /> Odjava
+              </button>
+            </form>
+          </div>
+        )}
+        {admin && admin.role === "owner" && (
           // Task #14 ("full-width grid, mobile+desktop") — vlasnik ima samo 5
           // odredišta pa ne treba hamburger-skriveni .neu-nav punog admina
           // ispod: mreža je uvijek vidljiva, na vlastitom retku ispod loga
@@ -155,23 +178,6 @@ export default async function AdminLayout({ children }: { children: React.ReactN
                 <span>Postavke</span>
               </AdminNavLink>
             </nav>
-            {/* Sekundarni red — vanjski link/email/odjava NISU nav "odredišta",
-                vidi opsežan komentar uz .owner-menu-secondary u globals.css. */}
-            <div className="owner-menu-secondary">
-              <Link href={ownerPageHref ?? "/"} target="_blank" className="inline-flex items-center gap-1 hover:text-[color:var(--na-accent)]">
-                Pogledaj stranicu <ExternalLinkIcon />
-              </Link>
-              <span className="flex items-center gap-1.5">
-                <span className="hidden sm:inline">{admin.email}</span>
-                {admin.isSuperAdmin && <span className="na-chip">glavni</span>}
-                <span className="na-chip">vlasnik{ownerLabel ? ` · ${ownerLabel}` : ""}</span>
-              </span>
-              <form action={logoutAction} className="ml-auto">
-                <button type="submit" className="na-btn-ghost px-3 py-1.5">
-                  <LogOutIcon /> Odjava
-                </button>
-              </form>
-            </div>
           </div>
         )}
         {admin && admin.role !== "owner" && (
@@ -193,7 +199,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
               <span className="owner-header-faint flex items-center gap-1.5 text-sm">
                 {admin.email}
                 {admin.isSuperAdmin && (
-                  <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-[#ff7f00]/10 text-[#ff7f00]">
+                  <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-[#ff7f00]/10 text-[#b35600]">
                     glavni
                   </span>
                 )}
@@ -276,7 +282,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
               <span className="owner-header-faint flex items-center gap-1.5 sm:hidden">
                 {admin.email}
                 {admin.isSuperAdmin && (
-                  <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-[#ff7f00]/10 text-[#ff7f00]">
+                  <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-[#ff7f00]/10 text-[#b35600]">
                     glavni
                   </span>
                 )}
@@ -290,7 +296,9 @@ export default async function AdminLayout({ children }: { children: React.ReactN
           </>
         )}
       </header>
-      <main className="max-w-4xl mx-auto px-6 py-10">{children}</main>
+      {/* Plan #23: superadmin tablice i Pregled dobivaju širu površinu
+          (ranije ~900 px i na 1440 px ekranu). Vlasnik ostaje na užem. */}
+      <main className={(isOwner ? "max-w-4xl" : "max-w-6xl") + " mx-auto px-4 sm:px-6 py-6 sm:py-10"}>{children}</main>
     </div>
   );
 }
