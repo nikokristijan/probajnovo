@@ -1288,11 +1288,22 @@ html.novo-lock-scroll body {
      prisutan na istom elementu. --neu-base namjerno = --admin-shell
      pozadina (#f7f7f5) da izbornik izgleda "izrezan" iz iste podloge, ne
      kao naljepljena pločica druge boje — to je bit neumorphism efekta. */
-  --neu-base: #f7f7f5;
-  --neu-highlight: #ffffff;
-  --neu-shadow: #d3d3cd;
-  --neu-ink: #14142b;
-  --neu-ink-faint: rgba(20, 20, 43, 0.5);
+  /* NOVO/Revolut redizajn (korisnički feedback: "nista nisi redizajnirao,
+     izgleda kao prije" — cijeli .neu-* sustav je i dalje bio "ispupčena
+     jastučasta" neumorphism estetika, dvostruka sjena iste boje kao
+     podloga, ništa poput stvarne NOVO stranice). --neu-base sad znači
+     STVARNA površina kartice/gumba (bijela), različita od --neu-base
+     podloge stranice ispod, umjesto "iste boje pa sjena glumi rub" —
+     --neu-highlight/--neu-shadow su namjerno prazni (vidi kombinirano
+     pravilo "border: 1px solid var(--neu-border)" niže koje zamjenjuje
+     obje sjene jednom tankom linijom, isti jezik kao --na-border u
+     PORTAL/Vlasnički izbornik sustavu). */
+  --neu-base: #ffffff;
+  --neu-highlight: transparent;
+  --neu-shadow: transparent;
+  --neu-border: rgba(0, 0, 0, 0.1);
+  --neu-ink: #0a0a0a;
+  --neu-ink-faint: rgba(0, 0, 0, 0.5);
   --neu-accent: #ff7f00;
 }
 /* Utisnuta neumorphism površina (isti jezik kao .neu-input) — RANIJE
@@ -1420,9 +1431,10 @@ html.novo-lock-scroll body {
      dva mjesta. --neu-base = ISTA boja kao pozadina ispod (#f2f3f9, vidi
      "background" gore) iz istog razloga: izbornik mora izgledati kao dio
      iste podloge, ne naljepljena pločica. */
-  --neu-base: #f2f3f9;
-  --neu-highlight: #ffffff;
-  --neu-shadow: #c9cbe1;
+  --neu-base: #ffffff;
+  --neu-highlight: transparent;
+  --neu-shadow: transparent;
+  --neu-border: var(--oh-hairline);
   --neu-ink: var(--oh-ink);
   --neu-ink-faint: var(--oh-ink-faint);
   --neu-accent: #ff7f00;
@@ -1436,40 +1448,45 @@ html.novo-lock-scroll body {
    svijetla) i na .owner-page-bg i na .owner-dash, pa šava nema ni bez
    sjaja — obje pozadine su već identična ravna boja. */
 .owner-page-bg[data-theme="dark"] {
-  /* Ravna tamno-navy podloga — RANIJE je ovdje bio radial-gradient plavi
-     "sjaj" pri vrhu (liquid glass ambient wash). Na izričit zahtjev
-     ("makni sve gradijente, izgledaju jeftino i AI") maknut je posve: sama
-     boja (#0a0a24) je već dio NOVO navy palete, pa tamna tema i dalje
-     jasno pripada brendu bez ijednog gradijenta na stranici. */
-  background: #0a0a24;
-  --oh-ink: #f3f3fb;
-  --oh-ink-faint: rgba(243, 243, 251, 0.66);
-  --oh-glass: rgba(20, 20, 36, 0.72);
-  --oh-glass-chip: rgba(255, 255, 255, 0.1);
-  --oh-hairline: rgba(255, 255, 255, 0.14);
-  /* Vlasnička (dark) neumorphism paleta — --neu-base blizu solidne
-     pozadine (#0a0a24) tako da izbornik u mirovanju vizualno nastavlja
-     pozadinu ispod sebe umjesto da izgleda kao odvojena pločica;
-     --neu-highlight svjetlija navy nijansa (ne bijela — bijeli highlight na
-     tamnoj bazi bi izgledao kao žarulja, ne kao mekana ispupčenost). */
-  --neu-base: #0d0d29;
-  --neu-highlight: #1a1a4a;
-  --neu-shadow: #020208;
+  /* NOVO/Revolut redizajn (korisnički feedback, izravno iz screenshota:
+     "ovo je mutna tamnoplava pozadina, ne izgleda ni izbliza kao NOVO
+     stranica") — #0a0a24/#0d0d29/#1a1a4a su NAVY-tintane boje (vidljivo
+     plavkasto, ne neutralno crno), i cijeli izbornik/kartice su se
+     oslanjale na neumorphism dvostruku sjenu (--neu-shadow/--neu-highlight)
+     koja na tamnoj podlozi ispadne kao zamućen, prljav rub umjesto čistog
+     minimalizma. Zamijenjeno ISTOM neutralnom tamnom paletom kao :root
+     [data-theme="dark"] (NOVO/REVOLUT REDIZAJN token sustav gore) —
+     --na-bg/--na-surface — da vlasnički dio admina konačno izgleda kao
+     ISTI proizvod kao Portal, ne kao stariji, nedovršeni dizajn ispod njega. */
+  background: #0c0c0e;
+  --oh-ink: #f5f5f5;
+  --oh-ink-faint: rgba(255, 255, 255, 0.58);
+  --oh-glass: rgba(23, 23, 26, 0.92);
+  --oh-glass-chip: rgba(255, 255, 255, 0.08);
+  --oh-hairline: rgba(255, 255, 255, 0.12);
+  /* --neu-base je sad STVARNA površina kartice (tamnosiva, različita od
+     #0c0c0e podloge), ne "ista boja + sjena" — vidi opsežan komentar uz
+     --neu-base u .admin-shell gore. */
+  --neu-base: #17171a;
+  --neu-highlight: transparent;
+  --neu-shadow: transparent;
+  --neu-border: var(--oh-hairline);
   --neu-ink: var(--oh-ink);
   --neu-ink-faint: var(--oh-ink-faint);
   --neu-accent: #ff7f00;
 }
 @media (prefers-color-scheme: dark) {
   .owner-page-bg:not([data-theme="light"]):not([data-theme="dark"]) {
-    background: #0a0a24;
-    --oh-ink: #f3f3fb;
-    --oh-ink-faint: rgba(243, 243, 251, 0.66);
-    --oh-glass: rgba(20, 20, 36, 0.72);
-    --oh-glass-chip: rgba(255, 255, 255, 0.1);
-    --oh-hairline: rgba(255, 255, 255, 0.14);
-    --neu-base: #0d0d29;
-    --neu-highlight: #1a1a4a;
-    --neu-shadow: #020208;
+    background: #0c0c0e;
+    --oh-ink: #f5f5f5;
+    --oh-ink-faint: rgba(255, 255, 255, 0.58);
+    --oh-glass: rgba(23, 23, 26, 0.92);
+    --oh-glass-chip: rgba(255, 255, 255, 0.08);
+    --oh-hairline: rgba(255, 255, 255, 0.12);
+    --neu-base: #17171a;
+    --neu-highlight: transparent;
+    --neu-shadow: transparent;
+    --neu-border: var(--oh-hairline);
     --neu-ink: var(--oh-ink);
     --neu-ink-faint: var(--oh-ink-faint);
     --neu-accent: #ff7f00;
@@ -1489,14 +1506,14 @@ html.novo-lock-scroll body {
    obavijesti u ovom projektu već traže (vidi OwnerPushNotificationToggle:
    "Na iPhoneu treba iOS 16.4+"), pa ovo ne uvodi novi prag kompatibilnosti. */
 body:has(.owner-page-bg) {
-  background: #f2f3f9;
+  background: #fafafa;
 }
 body:has(.owner-page-bg[data-theme="dark"]) {
-  background: #0a0a24;
+  background: #0c0c0e;
 }
 @media (prefers-color-scheme: dark) {
   body:has(.owner-page-bg:not([data-theme="light"]):not([data-theme="dark"])) {
-    background: #0a0a24;
+    background: #0c0c0e;
   }
 }
 
@@ -1540,16 +1557,38 @@ html:has(.owner-page-bg)::-webkit-scrollbar {
    (svijetla + tamna), ne iz ruba ili prozirnosti — to je razlika prema
    ranijem "liquid glass" pristupu (staklo/blur) koji ostaje netaknut na
    .owner-dash (kalendar/rezervacije/postavke) ispod izbornika. */
+/* NOVO/Revolut redizajn — ovaj kombinirani selektor zamjenjuje SVAKU
+   pojedinačnu neumorphism dvostruku sjenu (--neu-shadow/--neu-highlight su
+   sad prazni, vidi .admin-shell/.owner-page-bg gore) jednom tankom linijom,
+   isti minimalni jezik kao --na-border u Portalu/vlasničkom izborniku —
+   umjesto da se svaki od ovih razreda zasebno prepravlja, svi dijele
+   identičan tanki rub preko --neu-border (koji već grana light/dark/owner/
+   superadmin isto kao i ostatak --neu-* sustava). */
+.admin-quicklink,
+.admin-input,
+.neu-nav > a,
+.neu-btn,
+.neu-toggle,
+.owner-header-chip,
+.neu-card,
+.neu-input,
+.owner-quicklink,
+.owner-glass,
+.owner-glass-strong,
+.neu-disclosure {
+  border: 1px solid var(--neu-border);
+}
+
 .neu-header {
   position: sticky;
   top: 0;
   z-index: 40;
   background: var(--neu-base);
   color: var(--neu-ink);
-  /* Rub zamijenjen mekom sjenom ispod trake (umjesto border-b) + tankom
-     svijetlom linijom pri vrhu (inset) koja glumi gornji "highlight" ruba
-     ispupčene površine. */
-  box-shadow: 0 1px 0 var(--neu-highlight) inset, 0 1px 2px var(--neu-shadow), 0 12px 24px -20px var(--neu-shadow);
+  /* Rub zamijenjen jednom tankom linijom ispod trake umjesto mekane
+     dvostruke sjene — vidi komentar uz kombinirano pravilo gore. */
+  border-bottom: 1px solid var(--neu-border);
+  box-shadow: none;
   transition: background-color 0.25s ease, color 0.25s ease, box-shadow 0.25s ease;
 }
 
@@ -2759,15 +2798,24 @@ a.owner-glass:active,
    ističe", ne još jedne utisnute pločice). NOVO brand boje (navy/narančasta)
    i dalje žive u akcentima unutar kartice — streak bedž, prsten napretka,
    brojke — ne u samoj podlozi, i nigdje kao gradient. */
+/* NOVO/Revolut redizajn — RANIJE #121214 (skoro crna, fiksno u OBJE teme)
+   uz dramatičnu 60px drop-sjenu: na tamnoj (navy) podlozi to je davalo
+   "sve je jedna mutna mrlja" dojam (kartica se jedva razlikovala od
+   podloge), a i inače je ta teška sjena bila upravo onaj "cheap/AI"
+   gradient-adjacent izgled na koji je stigao feedback. Jedina kartica u
+   vlasničkom dashboardu koja NIJE neutralna (--na-surface) — namjerno
+   puna NOVO brand plava (--na-blue, ista boja kao naglasna traka na
+   probajnovo.com) da najvažnija brojka ima vizualnu težinu na OBA fona
+   (svijetlom i tamnom), bez ijedne sjene/gradijenta. */
 .owner-hero {
   position: relative;
   overflow: hidden;
   border-radius: clamp(20px, 5vw, 28px);
   padding: clamp(20px, 4vw, 30px) clamp(18px, 4.5vw, 30px);
   color: #fff;
-  background: #121214;
-  box-shadow: 0 24px 60px -20px rgba(0, 0, 0, 0.55), inset 0 1px 0 rgba(255, 255, 255, 0.08);
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: var(--na-blue);
+  box-shadow: none;
+  border: 1px solid rgba(255, 255, 255, 0.14);
   isolation: isolate;
 }
 .owner-hero > * { position: relative; z-index: 1; }
