@@ -153,27 +153,32 @@ export default function PortalOverview({
       </div>
 
       {/* Brze poveznice na ostale admin sekcije. */}
-      <div className="flex flex-wrap gap-2">
-        <Link href="/admin/inquiries" className="na-btn-ghost px-3 py-1.5"><InboxIcon size={15} /> Upiti</Link>
-        <Link href="/admin/rezervacije" className="na-btn-ghost px-3 py-1.5"><BedIcon size={15} /> Rezervacije</Link>
-        <Link href="/admin/kalendar" className="na-btn-ghost px-3 py-1.5"><CalendarIcon size={15} /> Kalendar</Link>
-        <Link href="/admin/aktivnost" className="na-btn-ghost px-3 py-1.5"><ActivityIcon size={15} /> Aktivnost</Link>
+      {/* Na mobitelu 4 jednaka stupca (ikona iznad natpisa) umjesto reda
+          pilula koji se lomio pa je "Aktivnost" ostajala sama u drugom redu. */}
+      <div className="portal-quicklinks">
+        <Link href="/admin/inquiries" className="portal-quicklink"><InboxIcon size={16} /> <span>Upiti</span></Link>
+        <Link href="/admin/rezervacije" className="portal-quicklink"><BedIcon size={16} /> <span>Rezervacije</span></Link>
+        <Link href="/admin/kalendar" className="portal-quicklink"><CalendarIcon size={16} /> <span>Kalendar</span></Link>
+        <Link href="/admin/aktivnost" className="portal-quicklink"><ActivityIcon size={16} /> <span>Aktivnost</span></Link>
       </div>
 
       {/* Sažete brojke — zamjena za "morate otvoriti Statistiku da vidite
           osnovno" osjećaj, ovo je uvijek vidljivo na vrhu. */}
+      {/* Kraći natpisi da na mobitelu (3 uska stupca) stanu u jedan red —
+          ranije se "Poruke (7 dana)" / "Otvoreni zadaci" lomilo u dva reda pa
+          brojke ispod nisu bile u istoj visini. */}
       <div className="grid grid-cols-3 gap-3">
-        <div className="na-card p-4">
-          <span className="na-kicker">Poruke (7 dana)</span>
-          <div className="na-stat-value mt-1">{totalMessages7d}</div>
+        <div className="na-card portal-stat-tile">
+          <span className="na-kicker">Poruke · 7d</span>
+          <div className="na-stat-value">{totalMessages7d}</div>
         </div>
-        <div className="na-card p-4">
-          <span className="na-kicker">Otvoreni zadaci</span>
-          <div className="na-stat-value mt-1">{openTasks}</div>
+        <div className="na-card portal-stat-tile">
+          <span className="na-kicker">Otvoreno</span>
+          <div className="na-stat-value">{openTasks}</div>
         </div>
-        <div className="na-card p-4">
+        <div className="na-card portal-stat-tile">
           <span className="na-kicker">Završeno</span>
-          <div className="na-stat-value mt-1">{doneTasks}</div>
+          <div className="na-stat-value">{doneTasks}</div>
         </div>
       </div>
 
@@ -260,7 +265,9 @@ export default function PortalOverview({
 
       <div className="flex flex-col gap-3">
         <h2 className="na-heading text-base">Tim chat</h2>
-        <div className="na-card p-4">{channelSlot}</div>
+        {/* Nit (.portal-thread) je sama kartica s rubom — ranije je bila
+            umotana u još jedan .na-card p-4, pa je chat imao dvostruki okvir. */}
+        {channelSlot}
       </div>
 
       <div className="flex flex-col gap-3">
