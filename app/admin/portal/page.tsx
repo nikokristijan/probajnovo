@@ -2,6 +2,7 @@ import { requireFullAdmin } from "@/lib/auth";
 import {
   listTeamMessagesWithReactions,
   listTeamTasks,
+  listCommentsForTasks,
   listTaskTemplates,
   listTeamMembers,
   listProperties,
@@ -57,6 +58,18 @@ export default async function PortalPage() {
   ]);
 
   const roster = teamMembers.map((m) => ({ email: m.email, displayName: m.displayName ?? null }));
+  // Plan #63: komentari na zadacima (backend je postojao, sučelja nije bilo).
+  const taskComments = await listCommentsForTasks(tasks.map((t) => t.id)).catch(() => []);
+  const commentsByTask: Record<number, { id: number; author: string; body: string; createdAt: string }[]> = {};
+  for (const c of taskComments) {
+    if (c.taskId == null) continue;
+    (commentsByTask[c.taskId] ??= []).push({
+      id: c.id,
+      author: roster.find((r) => r.email === c.adminEmail)?.displayName?.trim() || c.adminEmail.split("@")[0],
+      body: c.body,
+      createdAt: c.createdAt.toISOString(),
+    });
+  }
   const propertyNameById = new Map(properties.map((p) => [p.id, p.name]));
 
   // Rođendani (Task #24) — filtrira članove tima bez postavljenog rođendana,
@@ -107,7 +120,14 @@ export default async function PortalPage() {
         />
       }
       tasksSlot={
-        <TasksBoard tasks={tasks} teamMembers={teamMembers.map((m) => ({ email: m.email }))} properties={properties} companies={companies} templates={taskTemplates} />
+        <TasksBoard
+          tasks={tasks}
+          teamMembers={teamMembers.map((m) => ({ email: m.email }))}
+          properties={properties}
+          companies={companies}
+          templates={taskTemplates}
+          commentsByTask={commentsByTask}
+        />
       }
       statsSlot={<TeamStats messageCounts={messageCounts} statusCounts={statusCounts} completionByAdmin={completionByAdmin} roster={roster} />}
     />
