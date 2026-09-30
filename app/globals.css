@@ -1301,7 +1301,10 @@ html.novo-lock-scroll body {
   --neu-base: #ffffff;
   --neu-highlight: transparent;
   --neu-shadow: transparent;
-  --neu-border: rgba(0, 0, 0, 0.1);
+  /* Podignuto s 0.1 na 0.16 (korisnički feedback: "nema nikakvih okvira,
+     jako zbunjujuce izgleda" — 0.1 alpha crno na bijelom je tehnički rub,
+     ali u praksi gotovo nevidljiv). */
+  --neu-border: rgba(0, 0, 0, 0.16);
   --neu-ink: #0a0a0a;
   --neu-ink-faint: rgba(0, 0, 0, 0.5);
   --neu-accent: #ff7f00;
@@ -1425,7 +1428,9 @@ html.novo-lock-scroll body {
   --oh-ink-faint: rgba(11, 11, 31, 0.42);
   --oh-glass: rgba(243, 244, 255, 0.72);
   --oh-glass-chip: rgba(11, 11, 31, 0.05);
-  --oh-hairline: rgba(11, 11, 31, 0.1);
+  /* Podignuto s 0.1 na 0.16 (korisnički feedback: "nema nikakvih okvira,
+     jako zbunjujuce izgleda") — vidi isti popravak na --na-border gore. */
+  --oh-hairline: rgba(11, 11, 31, 0.16);
   /* Vlasnička (light) neumorphism paleta za izbornik — vidi opsežan
      komentar uz --neu-* na .admin-shell gore za zašto ova imena postoje na
      dva mjesta. --neu-base = ISTA boja kao pozadina ispod (#f2f3f9, vidi
@@ -1463,7 +1468,8 @@ html.novo-lock-scroll body {
   --oh-ink-faint: rgba(255, 255, 255, 0.58);
   --oh-glass: rgba(23, 23, 26, 0.92);
   --oh-glass-chip: rgba(255, 255, 255, 0.08);
-  --oh-hairline: rgba(255, 255, 255, 0.12);
+  /* Podignuto s 0.12 na 0.18 — vidi isti popravak uz --oh-hairline (light) gore. */
+  --oh-hairline: rgba(255, 255, 255, 0.18);
   /* --neu-base je sad STVARNA površina kartice (tamnosiva, različita od
      #0c0c0e podloge), ne "ista boja + sjena" — vidi opsežan komentar uz
      --neu-base u .admin-shell gore. */
@@ -1482,7 +1488,7 @@ html.novo-lock-scroll body {
     --oh-ink-faint: rgba(255, 255, 255, 0.58);
     --oh-glass: rgba(23, 23, 26, 0.92);
     --oh-glass-chip: rgba(255, 255, 255, 0.08);
-    --oh-hairline: rgba(255, 255, 255, 0.12);
+    --oh-hairline: rgba(255, 255, 255, 0.18);
     --neu-base: #17171a;
     --neu-highlight: transparent;
     --neu-shadow: transparent;
@@ -1563,7 +1569,13 @@ html:has(.owner-page-bg)::-webkit-scrollbar {
    isti minimalni jezik kao --na-border u Portalu/vlasničkom izborniku —
    umjesto da se svaki od ovih razreda zasebno prepravlja, svi dijele
    identičan tanki rub preko --neu-border (koji već grana light/dark/owner/
-   superadmin isto kao i ostatak --neu-* sustava). */
+   superadmin isto kao i ostatak --neu-* sustava).
+   DRUGI KRUG (korisnički feedback: "nema nikakvih okvira oko tipki i
+   svega") — .owner-input/.neu-empty/.portal-thread/.owner-theme-switch su
+   PRVI put propušteni u ovom popisu: imali su border:none i oslanjali se
+   isključivo na sad-prazan inset --neu-shadow/--neu-highlight, pa su bili
+   doslovno bez ijednog vizualnog ruba (npr. "Nova rezervacija"/"Novi
+   trošak" polja na vlasničkom mobitelu). Dodani ovdje. */
 .admin-quicklink,
 .admin-input,
 .neu-nav > a,
@@ -1575,7 +1587,11 @@ html:has(.owner-page-bg)::-webkit-scrollbar {
 .owner-quicklink,
 .owner-glass,
 .owner-glass-strong,
-.neu-disclosure {
+.neu-disclosure,
+.owner-input,
+.neu-empty,
+.portal-thread,
+.owner-theme-switch {
   border: 1px solid var(--neu-border);
 }
 
@@ -1623,7 +1639,11 @@ html:has(.owner-page-bg)::-webkit-scrollbar {
    gumb), .neu-btn pilulu (tekstualni gumb poput "Odjava"). */
 .neu-btn,
 .neu-toggle {
-  border: none;
+  /* NE stavljati "border: none" ovdje — .neu-btn/.neu-toggle su već u
+     kombiniranom pravilu iznad (border: 1px solid var(--neu-border)); ovaj
+     kasniji blok (isti razred, ista specifičnost) bi ga inače prepisao
+     natrag na ništa zbog redoslijeda u datoteci — ista greška kao kod
+     .owner-input/.neu-input, vidi komentar uz kombinirano pravilo. */
   background: var(--neu-base);
   color: inherit;
   box-shadow: 4px 4px 8px var(--neu-shadow), -4px -4px 8px var(--neu-highlight);
@@ -1698,29 +1718,36 @@ html:has(.owner-page-bg)::-webkit-scrollbar {
    dalje osigurava da mreža uvijek ispunjava punu širinu (2 stupca na
    uskom mobitelu, do 5 na desktopu). Vrijedi ISKLJUČIVO za vlasnika
    (superadmin/puni admin zadržava izvorni .neu-nav — različit problem,
-   9+ linkova treba hamburger). */
+   9+ linkova treba hamburger).
+   TREĆI PROLAZ (korisnički feedback: "ovaj gore navbar izgleda katastrofa
+   i zauzima pola ekrana") — auto-fit/minmax(90px, 1fr) je na uskom
+   mobitelu (< ~450px, tj. 5×90px) prelamao 5 pločica u 2 retka, što je uz
+   .owner-menu-secondary koji je ISPOD (i sam se prelamao na email+2 značke
+   +odjava) davalo cijeli "pola ekrana" dojam. repeat(5, 1fr) bez minmax
+   nema donju granicu širine stupca pa uvijek ostaje TOČNO jedan red, na
+   bilo kojoj širini — samo se pločice suze/šire. */
 .owner-menu-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(90px, 1fr));
-  gap: 4px;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 2px;
   width: 100%;
   background: var(--na-surface);
   border: 1px solid var(--na-border);
   border-radius: var(--na-radius);
-  padding: 5px;
+  padding: 4px;
 }
 .owner-menu-tile {
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 4px;
-  padding: 10px 6px;
+  gap: 3px;
+  padding: 8px 2px;
   border-radius: calc(var(--na-radius) - 5px);
   background: transparent;
   color: var(--na-ink-faint);
   font-family: var(--font-space-grotesk), sans-serif;
-  font-size: 12px;
+  font-size: 10.5px;
   font-weight: 600;
   text-align: center;
   line-height: 1.15;
@@ -1781,11 +1808,15 @@ html:has(.owner-page-bg)::-webkit-scrollbar {
    ne za app UI) — umjesto toga ravne (flat) kartice s mekim rubom i
    velikodušnim razmakom, bliže Revolutovom app stilu nego neumorphism
    dvostrukoj sjeni. */
+/* NAPOMENA (korisnički feedback nakon prvog kruga: "nema nikakvih okvira,
+   jako zbunjujuce izgleda") — --na-border je RANIJE bio 0.08/0.1 alpha,
+   tehnički postojeći rub, ali u praksi gotovo nevidljiv (npr. tražilica na
+   Portal početnoj). Podignuto na jasno vidljivu, i dalje suptilnu, liniju. */
 :root {
   --na-bg: #fafafa;
   --na-surface: #ffffff;
-  --na-border: rgba(0, 0, 0, 0.08);
-  --na-border-strong: rgba(0, 0, 0, 0.14);
+  --na-border: rgba(0, 0, 0, 0.15);
+  --na-border-strong: rgba(0, 0, 0, 0.22);
   --na-ink: #0a0a0a;
   --na-ink-faint: rgba(0, 0, 0, 0.5);
   --na-ink-faintest: rgba(0, 0, 0, 0.32);
@@ -1798,8 +1829,8 @@ html:has(.owner-page-bg)::-webkit-scrollbar {
 .owner-page-bg[data-theme="dark"] {
   --na-bg: #0c0c0e;
   --na-surface: #17171a;
-  --na-border: rgba(255, 255, 255, 0.1);
-  --na-border-strong: rgba(255, 255, 255, 0.18);
+  --na-border: rgba(255, 255, 255, 0.18);
+  --na-border-strong: rgba(255, 255, 255, 0.26);
   --na-ink: #f5f5f5;
   --na-ink-faint: rgba(255, 255, 255, 0.58);
   --na-ink-faintest: rgba(255, 255, 255, 0.36);
@@ -1808,8 +1839,8 @@ html:has(.owner-page-bg)::-webkit-scrollbar {
   .owner-page-bg:not([data-theme="light"]):not([data-theme="dark"]) {
     --na-bg: #0c0c0e;
     --na-surface: #17171a;
-    --na-border: rgba(255, 255, 255, 0.1);
-    --na-border-strong: rgba(255, 255, 255, 0.18);
+    --na-border: rgba(255, 255, 255, 0.18);
+    --na-border-strong: rgba(255, 255, 255, 0.26);
     --na-ink: #f5f5f5;
     --na-ink-faint: rgba(255, 255, 255, 0.58);
     --na-ink-faintest: rgba(255, 255, 255, 0.36);
@@ -1954,7 +1985,8 @@ html:has(.owner-page-bg)::-webkit-scrollbar {
    preko --neu-* umjesto --od-*, da forme na oba sučelja izgledaju kao dio
    iste obitelji komponenti. */
 .neu-input {
-  border: none;
+  /* border: 1px solid var(--neu-border) dolazi iz kombiniranog pravila gore
+     — NE "border: none" ovdje (isti razlog kao komentar uz .owner-input). */
   background: var(--neu-base);
   color: var(--neu-ink);
   border-radius: 10px;
@@ -1999,7 +2031,11 @@ html:has(.owner-page-bg)::-webkit-scrollbar {
 }
 .neu-skeleton {
   border-radius: 10px;
-  background: var(--neu-shadow);
+  /* --neu-shadow ovdje NIJE sjena nego samo ravna ploha boje (skeleton
+     ispuna) — otkad je --neu-shadow prazan (vidi napomenu uz kombinirano
+     .admin-quicklink/... pravilo gore), koristi se --neu-border (tanka
+     ali vidljiva, theme-aware boja) umjesto njega. */
+  background: var(--neu-border);
   animation: neu-pulse 1.6s ease-in-out infinite;
 }
 @media (prefers-reduced-motion: reduce) {
@@ -2410,7 +2446,7 @@ html:has(.owner-page-bg)::-webkit-scrollbar {
   margin-top: 1px;
 }
 .portal-thread-form {
-  border-top: 1px solid var(--neu-shadow);
+  border-top: 1px solid var(--neu-border);
   padding: 10px 12px;
   display: flex;
   gap: 8px;
@@ -2461,7 +2497,7 @@ html:has(.owner-page-bg)::-webkit-scrollbar {
   opacity: 0.55;
   transition: opacity 0.15s, color 0.15s, background 0.15s;
 }
-.portal-msg-action-btn:hover { opacity: 1; background: var(--neu-shadow); }
+.portal-msg-action-btn:hover { opacity: 1; background: var(--neu-border); }
 .portal-msg-action-btn.is-pinned { opacity: 1; color: var(--neu-accent); }
 
 .portal-reaction-pill {
@@ -2471,7 +2507,7 @@ html:has(.owner-page-bg)::-webkit-scrollbar {
   padding: 1px 6px;
   border-radius: 999px;
   font-size: 11.5px;
-  background: var(--neu-shadow);
+  background: var(--neu-border);
   color: var(--neu-ink-faint);
 }
 .portal-reaction-pill.is-mine {
@@ -2504,11 +2540,11 @@ html:has(.owner-page-bg)::-webkit-scrollbar {
   font-size: 15px;
   border-radius: 6px;
 }
-.portal-reaction-picker button:hover { background: var(--neu-shadow); }
+.portal-reaction-picker button:hover { background: var(--neu-border); }
 
 /* Prikvačene poruke — panel iznad niti, sažmljiv. */
 .portal-pinned-panel {
-  border-bottom: 1px solid var(--neu-shadow);
+  border-bottom: 1px solid var(--neu-border);
   background: rgba(255, 127, 0, 0.05);
 }
 .portal-pinned-toggle {
@@ -2531,7 +2567,7 @@ html:has(.owner-page-bg)::-webkit-scrollbar {
   border-radius: 8px;
   font-size: 12.5px;
 }
-.portal-pinned-item:hover { background: var(--neu-shadow); }
+.portal-pinned-item:hover { background: var(--neu-border); }
 .portal-pinned-author { font-weight: 700; flex-shrink: 0; }
 .portal-pinned-text {
   flex: 1;
@@ -2578,7 +2614,7 @@ html:has(.owner-page-bg)::-webkit-scrollbar {
   text-align: left;
 }
 .portal-mention-option.is-active,
-.portal-mention-option:hover { background: var(--neu-shadow); }
+.portal-mention-option:hover { background: var(--neu-border); }
 .portal-mention-avatar {
   width: 22px;
   height: 22px;
@@ -2599,7 +2635,7 @@ html:has(.owner-page-bg)::-webkit-scrollbar {
 .portal-donut-swatch { width: 10px; height: 10px; border-radius: 3px; flex-shrink: 0; }
 .portal-bar-row { display: flex; align-items: center; gap: 10px; font-size: 12.5px; }
 .portal-bar-row-label { width: 96px; flex-shrink: 0; color: var(--neu-ink-faint); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.portal-bar-track { flex: 1; height: 10px; border-radius: 999px; background: var(--neu-shadow); overflow: hidden; }
+.portal-bar-track { flex: 1; height: 10px; border-radius: 999px; background: var(--neu-border); overflow: hidden; }
 .portal-bar-fill { height: 100%; border-radius: 999px; background: var(--neu-accent); }
 .portal-bar-row-count { width: 22px; text-align: right; font-weight: 700; color: var(--neu-ink); flex-shrink: 0; }
 
@@ -3005,7 +3041,10 @@ a.owner-glass:active,
    varijabli (vidi --od-color-scheme gore) da nativna ikona <input
    type="date"> kalendara bude vidljiva u tamnoj temi. */
 .owner-input {
-  border: none;
+  /* border: 1px solid var(--neu-border) dolazi iz kombiniranog pravila
+     gore (.owner-input je dodan tamo) — NE stavljati "border: none" ovdje,
+     inače bi (zbog redoslijeda u datoteci) prepisalo taj rub natrag na
+     ništa, vidi komentar uz kombinirano pravilo. */
   background: var(--od-glass-bg);
   color: var(--od-ink);
   border-radius: 10px;
