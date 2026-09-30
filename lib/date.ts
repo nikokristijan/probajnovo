@@ -115,3 +115,14 @@ export function formatBirthdayZagreb(mmdd: string): string {
   const d = new Date(Date.UTC(2001, month - 1, day));
   return d.toLocaleDateString("hr-HR", { timeZone: "UTC", day: "numeric", month: "long" });
 }
+
+/** Pozdrav po dobu dana u Hrvatskoj (plan #41): "Dobro jutro" do 12 h,
+    "Dobar dan" do 18 h, inače "Dobra večer". */
+export function greetingZagreb(): string {
+  const hour = Number(
+    new Intl.DateTimeFormat("en-GB", { timeZone: "Europe/Zagreb", hour: "2-digit", hourCycle: "h23" }).format(new Date())
+  );
+  if (hour >= 5 && hour < 12) return "Dobro jutro";
+  if (hour >= 12 && hour < 18) return "Dobar dan";
+  return "Dobra večer";
+}
