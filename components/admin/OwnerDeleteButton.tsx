@@ -1,33 +1,36 @@
 "use client";
 
+import type { ReactNode } from "react";
+import ConfirmSubmit from "@/components/admin/ConfirmSubmit";
+
 /**
  * Zajednički vlasnički "Obriši" gumb (owner-btn-danger, vidi globals.css) —
- * jedna komponenta umjesto zasebnog forka za svaki entitet (rezervacija,
- * trošak...), jer su DeleteReservationButton/DeleteExpenseButton inače
- * identični osim akcije i potvrdne poruke. Puni admin i dalje koristi
- * originalne DeleteReservationButton/DeleteExpenseButton nepromijenjeno.
+ * jedna komponenta za rezervacije, troškove... Potvrda je vlastiti dijalog
+ * (plan #58, vidi ConfirmSubmit), ne browserov confirm().
  */
 export default function OwnerDeleteButton({
   action,
-  confirmMessage,
+  confirmTitle,
+  confirmDescription,
+  confirmLabel = "Obriši",
   label = "Obriši",
+  className = "owner-btn-danger",
 }: {
   action: (formData: FormData) => void | Promise<void>;
-  confirmMessage: string;
-  label?: string;
+  confirmTitle: string;
+  confirmDescription?: ReactNode;
+  confirmLabel?: string;
+  label?: ReactNode;
+  className?: string;
 }) {
   return (
-    <form
+    <ConfirmSubmit
       action={action}
-      onSubmit={(e) => {
-        if (!confirm(confirmMessage)) {
-          e.preventDefault();
-        }
-      }}
-    >
-      <button type="submit" className="owner-btn-danger">
-        {label}
-      </button>
-    </form>
+      title={confirmTitle}
+      description={confirmDescription}
+      confirmLabel={confirmLabel}
+      buttonLabel={label}
+      buttonClassName={className}
+    />
   );
 }
