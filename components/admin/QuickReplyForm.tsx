@@ -34,7 +34,7 @@ export default function QuickReplyForm({ inquiryId }: { inquiryId: number }) {
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className="text-xs font-semibold text-black/50 border border-black/15 rounded-full px-3 py-1.5 hover:border-black/40"
+        className="text-xs font-semibold text-white bg-black rounded-full px-4 py-1.5 hover:bg-black/80"
       >
         Odgovori
       </button>
@@ -46,7 +46,7 @@ export default function QuickReplyForm({ inquiryId }: { inquiryId: number }) {
   }
 
   return (
-    <form action={action} className="mt-3 flex flex-col gap-2 border-t border-black/10 pt-3">
+    <form action={action} className="mt-3 flex flex-col gap-2 border-t border-black/10 pt-3 basis-full w-full order-last">
       <div className="flex flex-wrap gap-1.5">
         {TEMPLATES.map((t) => (
           <button
