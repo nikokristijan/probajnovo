@@ -199,7 +199,7 @@ export default function AgencyLedgerTable({
                 return (
                   <tr key={`sale-${s.id}`} className="border-b border-black/5 last:border-0 align-top">
                     <td className="px-4 py-3 whitespace-nowrap">
-                      <span className="text-[11px] font-semibold px-2.5 py-1 rounded-full bg-[#ff7f00]/10 text-[#ff7f00]">
+                      <span className="text-[11px] font-semibold px-2.5 py-1 rounded-full bg-[#ff7f00]/10 text-[#b35600]">
                         Prodaja
                       </span>
                     </td>
