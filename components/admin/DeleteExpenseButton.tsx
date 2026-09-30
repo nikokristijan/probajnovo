@@ -1,6 +1,7 @@
 "use client";
 
 import { deleteExpenseAction } from "@/lib/actions";
+import ConfirmSubmit from "@/components/admin/ConfirmSubmit";
 
 export default function DeleteExpenseButton({
   propertyId,
@@ -12,20 +13,13 @@ export default function DeleteExpenseButton({
   description: string;
 }) {
   return (
-    <form
+    <ConfirmSubmit
       action={deleteExpenseAction.bind(null, propertyId, id, description)}
-      onSubmit={(e) => {
-        if (!confirm(`Sigurno želiš obrisati trošak "${description}"?`)) {
-          e.preventDefault();
-        }
-      }}
-    >
-      <button
-        type="submit"
-        className="text-xs font-semibold text-red-600 border border-red-200 rounded-full px-3 py-1.5 hover:bg-red-50"
-      >
-        Obriši
-      </button>
-    </form>
+      title={`Obrisati trošak ${description}?`}
+      description="Iznos se miče iz neto zarade za taj mjesec."
+      confirmLabel="Obriši trošak"
+      buttonLabel="Obriši"
+      buttonClassName="text-xs font-semibold text-red-600 border border-red-200 rounded-full px-3 py-1.5 hover:bg-red-50"
+    />
   );
 }
