@@ -9,6 +9,7 @@ import {
   getOccupancyStats,
   getExpenseCategoryBreakdown,
   getYearlyEarningsByMonth,
+  getInquiryById,
 } from "@/lib/db/queries";
 import { deleteExpenseAction } from "@/lib/actions";
 import ReservationForm from "@/components/admin/ReservationForm";
@@ -16,7 +17,7 @@ import ReservationsTable from "@/components/admin/ReservationsTable";
 import ExpenseForm from "@/components/admin/ExpenseForm";
 import DeleteExpenseButton from "@/components/admin/DeleteExpenseButton";
 import YearlyBarChart from "@/components/admin/YearlyBarChart";
-import OwnerReservationForm from "@/components/admin/OwnerReservationForm";
+import { OwnerNewReservationButton } from "@/components/admin/OwnerReservationSheet";
 import OwnerReservationsTable from "@/components/admin/OwnerReservationsTable";
 import OwnerExpenseForm from "@/components/admin/OwnerExpenseForm";
 import OwnerDeleteButton from "@/components/admin/OwnerDeleteButton";
@@ -26,14 +27,24 @@ import { DownloadIcon, ChevronDownIcon } from "@/components/admin/Icons";
 
 const MONTH_ABBR = ["Sij", "Velj", "Ožu", "Tra", "Svi", "Lip", "Srp", "Kol", "Ruj", "Lis", "Stu", "Pro"];
 
-function OwnerEarningsCard({ label, value, unit = "€" }: { label: string; value: number; unit?: string }) {
+function OwnerEarningsCard({
+  label,
+  value,
+  unit = "€",
+  className = "",
+}: {
+  label: string;
+  value: number;
+  unit?: string;
+  className?: string;
+}) {
   return (
-    <div className="owner-glass owner-glass-grain rounded-2xl px-4 py-3">
-      <div className="text-2xl font-bold tabular-nums" style={{ color: "var(--od-ink)" }}>
-        {value} {unit}
-      </div>
-      <div className="text-xs mt-0.5" style={{ color: "var(--od-ink-faint)" }}>
+    <div className={"owner-glass owner-glass-grain rounded-2xl px-4 py-3 " + className}>
+      <div className="text-xs font-medium" style={{ color: "var(--od-ink-soft)" }}>
         {label}
+      </div>
+      <div className="text-2xl font-bold tabular-nums mt-0.5" style={{ color: "var(--od-ink)" }}>
+        {value.toLocaleString("hr-HR")} {unit}
       </div>
     </div>
   );
@@ -232,6 +243,7 @@ export default async function AdminReservationsPage({
     month?: string;
     overlap?: string;
     capacityWarning?: string;
+    fromInquiry?: string;
   }>;
 }) {
   const admin = await getCurrentAdminRecord();
@@ -262,6 +274,21 @@ export default async function AdminReservationsPage({
   const selectedId = sp.property ? Number(sp.property) : properties[0].id;
   const property = properties.find((p) => p.id === selectedId) ?? properties[0];
   const redirectTo = `/admin/rezervacije?property=${property.id}`;
+
+  // Plan #28: "Napravi rezervaciju" iz upita — podaci gosta dolaze iz baze
+  // preko id-a upita (ne kroz URL), i samo ako upit pripada ovoj vikendici.
+  let inquiryPrefill: { guestName: string; email: string | null; phone: string | null; note: string | null } | null = null;
+  if (sp.fromInquiry && admin.role !== "owner") {
+    const inq = await getInquiryById(Number(sp.fromInquiry));
+    if (inq && inq.source === "property" && inq.sourceId === property.id) {
+      inquiryPrefill = {
+        guestName: inq.name,
+        email: inq.email,
+        phone: inq.phone,
+        note: `Iz upita (${new Date(inq.createdAt).toLocaleDateString("hr-HR")}): ${inq.message}`.slice(0, 500),
+      };
+    }
+  }
 
   const [reservations, expenses] = await Promise.all([
     listReservationsForProperty(property.id),
@@ -303,16 +330,20 @@ export default async function AdminReservationsPage({
   if (admin.role === "owner") {
     return (
       <div className="owner-dash flex flex-col gap-6" data-theme={admin.themePreference ?? "system"}>
-        <div>
-          <h1 className="text-xl font-bold">{property.name} — rezervacije</h1>
-          <p className="text-xs mt-0.5" style={{ color: "var(--od-ink-faint)" }}>
-            Puna knjiga rezervacija — gost, datumi, cijena i status plaćanja umjesto bilježnice.
-            Nova rezervacija automatski blokira noćenja u{" "}
-            <Link href={`/admin/kalendar?property=${property.id}`} className="underline">
-              kalendaru
-            </Link>
-            .
-          </p>
+        {/* Plan #38: "Nova rezervacija" uz naslov, otvara donji list —
+            ranije je forma bila na samom dnu duge stranice. */}
+        <div className="flex items-start justify-between gap-3 flex-wrap">
+          <div className="min-w-0">
+            <h1 className="text-xl font-bold">{property.name} — rezervacije</h1>
+            <p className="text-xs mt-0.5" style={{ color: "var(--od-ink-faint)" }}>
+              Nova rezervacija sama blokira noćenja u{" "}
+              <Link href={`/admin/kalendar?property=${property.id}`} className="underline">
+                kalendaru
+              </Link>
+              .
+            </p>
+          </div>
+          <OwnerNewReservationButton propertyId={property.id} redirectTo={redirectTo} capacityGuests={property.capacityGuests} />
         </div>
 
         {properties.length > 1 && (
@@ -359,7 +390,7 @@ export default async function AdminReservationsPage({
                 ← Prošli
               </Link>
               {!isCurrentMonth && (
-                <Link href={`/admin/rezervacije?property=${property.id}`} className="text-xs font-semibold text-[#ff7f00]">
+                <Link href={`/admin/rezervacije?property=${property.id}`} className="text-xs font-semibold text-[#b35600]">
                   Ovaj mjesec
                 </Link>
               )}
@@ -371,7 +402,7 @@ export default async function AdminReservationsPage({
           <div className="admin-animate-grid grid grid-cols-2 sm:grid-cols-3 gap-3">
             <OwnerEarningsCard label="Naplaćeno (bruto)" value={earnings.grossEur} />
             <OwnerEarningsCard label="Troškovi" value={earnings.expensesEur} />
-            <OwnerEarningsCard label="Neto zarada" value={earnings.netEur} />
+            <OwnerEarningsCard label="Neto zarada" value={earnings.netEur} className="col-span-2 sm:col-span-1" />
           </div>
           <p className="text-xs -mt-1" style={{ color: "var(--od-ink-faint)" }}>
             Bruto broji samo PLAĆENE rezervacije čiji je datum dolaska gosta u ovom mjesecu — zarada
@@ -458,10 +489,13 @@ export default async function AdminReservationsPage({
               </details>
             )}
           </div>
-          <OwnerReservationsTable propertyId={property.id} reservations={reservations} today={today} />
+          <OwnerReservationsTable
+            propertyId={property.id}
+            reservations={reservations}
+            today={today}
+            capacityGuests={property.capacityGuests}
+          />
         </section>
-
-        <OwnerReservationForm propertyId={property.id} redirectTo={redirectTo} capacityGuests={property.capacityGuests} />
 
         <section className="flex flex-col gap-3">
           <h2 className="text-xs font-semibold uppercase tracking-wide" style={{ color: "var(--od-ink-faint)" }}>
@@ -485,7 +519,9 @@ export default async function AdminReservationsPage({
                     <span className="text-sm tabular-nums">{e.amountEur} €</span>
                     <OwnerDeleteButton
                       action={deleteExpenseAction.bind(null, property.id, e.id, e.description)}
-                      confirmMessage={`Sigurno želiš obrisati trošak "${e.description}"?`}
+                      confirmTitle={`Obrisati trošak ${e.description}?`}
+                      confirmDescription="Iznos se miče iz neto zarade za taj mjesec."
+                      confirmLabel="Obriši trošak"
                     />
                   </div>
                 </div>
@@ -564,7 +600,7 @@ export default async function AdminReservationsPage({
             {!isCurrentMonth && (
               <Link
                 href={`/admin/rezervacije?property=${property.id}`}
-                className="text-xs font-semibold text-[#ff7f00]"
+                className="text-xs font-semibold text-[#b35600]"
               >
                 Ovaj mjesec
               </Link>
@@ -661,7 +697,13 @@ export default async function AdminReservationsPage({
         <ReservationsTable propertyId={property.id} reservations={reservations} today={today} />
       </section>
 
-      <ReservationForm propertyId={property.id} redirectTo={redirectTo} capacityGuests={property.capacityGuests} />
+      <ReservationForm
+        key={inquiryPrefill ? `inq-${sp.fromInquiry}` : "new"}
+        propertyId={property.id}
+        redirectTo={redirectTo}
+        capacityGuests={property.capacityGuests}
+        prefill={inquiryPrefill ?? undefined}
+      />
 
       <section className="flex flex-col gap-3">
         <h2 className="text-xs font-semibold uppercase tracking-wide text-black/40">
