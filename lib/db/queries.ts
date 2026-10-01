@@ -3189,3 +3189,10 @@ export async function listActivityPage(opts: {
 /* jednom malom popisu (imena i linkovi, bez osjetljivih podataka).   */
 /* ---------------------------------------------------------------- */
 
+export async function getCommandPaletteItems() {
+  const [props, comps] = await Promise.all([listProperties(), listCompanies()]);
+  return {
+    properties: props.map((p) => ({ id: p.id, name: p.name, slug: p.slug })),
+    companies: comps.map((c) => ({ id: c.id, name: c.name, slug: c.slug })),
+  };
+}
