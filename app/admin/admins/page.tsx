@@ -82,7 +82,7 @@ export default async function AdminsPage() {
               </div>
             </div>
             {a.isSuperAdmin ? (
-              <span className="text-xs font-semibold px-2.5 py-1 rounded-full bg-[#ff7f00]/10 text-[#ff7f00]">
+              <span className="text-xs font-semibold px-2.5 py-1 rounded-full bg-[#ff7f00]/10 text-[#b35600]">
                 glavni
               </span>
             ) : (

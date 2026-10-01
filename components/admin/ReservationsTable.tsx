@@ -132,7 +132,7 @@ export default function ReservationsTable({
                         type="submit"
                         className={
                           "text-[11px] font-semibold px-2.5 py-1 rounded-full " +
-                          (r.paid ? "bg-green-600/10 text-green-700" : "bg-[#ff7f00]/10 text-[#ff7f00]")
+                          (r.paid ? "bg-green-600/10 text-green-700" : "bg-[#ff7f00]/10 text-[#b35600]")
                         }
                       >
                         {r.paid ? "Plaćeno" : r.depositEur ? `Kapara ${r.depositEur} €` : "Čeka se"}
@@ -163,7 +163,7 @@ export default function ReservationsTable({
                     {r.note && <div className="mt-1 whitespace-pre-wrap">{r.note}</div>}
                   </td>
                   <td className="px-4 py-3 text-right">
-                    <DeleteReservationButton propertyId={propertyId} id={r.id} guestName={r.guestName} />
+                    <DeleteReservationButton propertyId={propertyId} id={r.id} guestName={r.guestName} checkIn={r.checkIn} checkOut={r.checkOut} />
                   </td>
                 </tr>
                 );

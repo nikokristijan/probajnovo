@@ -13,10 +13,13 @@ export default function ReservationForm({
   propertyId,
   redirectTo,
   capacityGuests,
+  prefill,
 }: {
   propertyId: number;
   redirectTo: string;
   capacityGuests?: number;
+  /** Plan #28: popunjeno iz upita (?fromInquiry=ID). */
+  prefill?: { guestName: string; email: string | null; phone: string | null; note: string | null };
 }) {
   const [state, action, pending] = useActionState<ActionState, FormData>(
     createReservationAction.bind(null, propertyId, redirectTo),
@@ -24,12 +27,12 @@ export default function ReservationForm({
   );
 
   return (
-    <form action={action} className="border border-black/10 rounded-xl p-5 bg-white flex flex-col gap-3">
-      <span className="text-sm font-semibold">Nova rezervacija</span>
+    <form id="nova-rezervacija" action={action} className="border border-black/10 rounded-xl p-5 bg-white flex flex-col gap-3 scroll-mt-6">
+      <span className="text-sm font-semibold">{prefill ? `Nova rezervacija iz upita — ${prefill.guestName}` : "Nova rezervacija"}</span>
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <label className="flex flex-col gap-1 text-xs font-medium text-black/60">
           Ime gosta
-          <input name="guestName" required className="admin-input" placeholder="npr. Ivan Ivić" />
+          <input name="guestName" required defaultValue={prefill?.guestName} className="admin-input" placeholder="npr. Ivan Ivić" />
         </label>
         <label className="flex flex-col gap-1 text-xs font-medium text-black/60">
           Cijena (€)
@@ -37,11 +40,11 @@ export default function ReservationForm({
         </label>
         <label className="flex flex-col gap-1 text-xs font-medium text-black/60">
           Telefon gosta (opcionalno)
-          <input name="phone" type="tel" className="admin-input" />
+          <input name="phone" type="tel" defaultValue={prefill?.phone ?? ""} className="admin-input" />
         </label>
         <label className="flex flex-col gap-1 text-xs font-medium text-black/60">
           Email gosta (opcionalno)
-          <input name="email" type="email" className="admin-input" />
+          <input name="email" type="email" defaultValue={prefill?.email ?? ""} className="admin-input" />
         </label>
         <label className="flex flex-col gap-1 text-xs font-medium text-black/60">
           Dolazak
@@ -62,7 +65,7 @@ export default function ReservationForm({
       </div>
       <label className="flex flex-col gap-1 text-xs font-medium text-black/60">
         Napomena / bilješka (opcionalno)
-        <textarea name="note" rows={2} className="admin-input" />
+        <textarea name="note" rows={2} defaultValue={prefill?.note ?? ""} className="admin-input" />
       </label>
       <label className="flex items-center gap-2 text-sm">
         <input name="paid" type="checkbox" className="w-4 h-4" />

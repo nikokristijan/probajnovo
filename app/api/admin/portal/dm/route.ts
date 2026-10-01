@@ -31,6 +31,7 @@ export async function GET(request: Request) {
       toEmail: m.toEmail,
       body: m.body,
       createdAt: m.createdAt.toISOString(),
+      readAt: m.readAt ? m.readAt.toISOString() : null,
     })),
   });
 }

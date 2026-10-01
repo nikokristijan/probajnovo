@@ -7,6 +7,7 @@ import bcrypt from "bcryptjs";
 import { z } from "zod";
 import { Secret, TOTP } from "otpauth";
 import QRCode from "qrcode";
+import { dateStringOffsetFromTodayZagreb } from "@/lib/date";
 import {
   createSessionToken,
   setSessionCookie,
@@ -19,6 +20,13 @@ import {
 } from "@/lib/auth";
 import {
   findAdminByEmail,
+  getReservationById,
+  getExpenseById,
+  updateReservation,
+  getLoginLockMinutesLeft,
+  registerFailedLogin,
+  clearFailedLogins,
+  LOGIN_LOCK_MINUTES,
   getAgency,
   updateAgency,
   createProperty,
@@ -160,19 +168,34 @@ export async function loginAction(
     return { error: "Pogrešan email ili lozinka." };
   }
 
+  // Zaključavanje nakon previše krivih pokušaja (plan #5) — štiti od
+  // pogađanja lozinke. Provjerava se PRIJE bcrypt usporedbe.
+  const lockedMinutes = await getLoginLockMinutesLeft(admin.id);
+  if (lockedMinutes > 0) {
+    return { error: `Previše neuspjelih pokušaja. Pokušaj ponovno za ${lockedMinutes} min.` };
+  }
+
   const valid = await bcrypt.compare(parsed.data.password, admin.passwordHash);
   if (!valid) {
-    return { error: "Pogrešan email ili lozinka." };
+    const { locked } = await registerFailedLogin(admin.id);
+    return {
+      error: locked
+        ? `Previše neuspjelih pokušaja — račun je zaključan ${LOGIN_LOCK_MINUTES} min.`
+        : "Pogrešan email ili lozinka.",
+    };
   }
 
   if (admin.twoFactorEnabled) {
     // Lozinka je točna, ali puna sesija se NE stvara dok admin ne potvrdi
     // TOTP kod — vidi verifyTwoFactorLoginAction i lib/auth.ts "pending 2FA".
+    // Lozinka točna — brojač krivih pokušaja se NE resetira dok 2FA kod
+    // ne prođe, inače bi napadač s lozinkom mogao beskonačno pogađati kod.
     const pendingToken = await createPendingTwoFactorToken(admin.id);
     await setPendingTwoFactorCookie(pendingToken);
     redirect("/admin/login/2fa");
   }
 
+  await clearFailedLogins(admin.id);
   const token = await createSessionToken({ adminId: admin.id, email: admin.email });
   await setSessionCookie(token);
   // Vlasnik (role="owner") nema pristup punom /admin panelu — vidi requireAdmin ispod
@@ -207,12 +230,24 @@ export async function verifyTwoFactorLoginAction(
     return { error: parsed.error.issues[0]?.message ?? "Unesi 6-znamenkasti kod." };
   }
 
+  const lockedMinutes = await getLoginLockMinutesLeft(admin.id);
+  if (lockedMinutes > 0) {
+    await clearPendingTwoFactorCookie();
+    return { error: `Previše neuspjelih pokušaja. Pokušaj ponovno za ${lockedMinutes} min.` };
+  }
+
   const totp = buildTotp(admin.email, Secret.fromBase32(admin.twoFactorSecret));
   const delta = totp.validate({ token: parsed.data.code, window: 1 });
   if (delta === null) {
+    const { locked } = await registerFailedLogin(admin.id);
+    if (locked) {
+      await clearPendingTwoFactorCookie();
+      return { error: `Previše neuspjelih pokušaja — račun je zaključan ${LOGIN_LOCK_MINUTES} min.` };
+    }
     return { error: "Kod nije ispravan ili je istekao." };
   }
 
+  await clearFailedLogins(admin.id);
   await clearPendingTwoFactorCookie();
   const token = await createSessionToken({ adminId: admin.id, email: admin.email });
   await setSessionCookie(token);
@@ -1499,6 +1534,13 @@ export async function sendInquiryReplyAction(
   }
 
   await markInquiryReplied(id);
+  // Za tjednu ljestvicu Portala (plan #70) i dnevnik aktivnosti.
+  await logActivity({
+    adminEmail: admin.email,
+    action: "replied_inquiry",
+    targetLabel: `${inquiry.name} (${inquiry.sourceName})`,
+    propertyId: inquiry.source === "property" ? inquiry.sourceId : null,
+  });
   revalidatePath("/admin/inquiries");
   return { success: true };
 }
@@ -1887,9 +1929,80 @@ export async function createReservationAction(
   redirect(params.length > 0 ? `${redirectTo}&${params.join("&")}` : redirectTo);
 }
 
+/** Rezervacija mora stvarno pripadati vikendici za koju je provjeren
+    pristup — inače bi vlasnik mogao poslati tuđi id uz svoj propertyId. */
+async function assertReservationInProperty(id: number, propertyId: number) {
+  const r = await getReservationById(id);
+  if (!r || r.propertyId !== propertyId) redirect("/admin/rezervacije");
+  return r;
+}
+
+const ReservationUpdateSchema = ReservationSchema.omit({ paid: true });
+
+/** Uređivanje postojeće rezervacije (plan #36) — vidi updateReservation. */
+export async function updateReservationAction(
+  propertyId: number,
+  id: number,
+  _prevState: ActionState,
+  formData: FormData
+): Promise<ActionState> {
+  const admin = await requireAdminOrOwner();
+  await assertPropertyAccess(admin, propertyId);
+  await assertReservationInProperty(id, propertyId);
+
+  const parsed = ReservationUpdateSchema.safeParse({
+    guestName: formData.get("guestName"),
+    phone: formData.get("phone"),
+    email: formData.get("email"),
+    checkIn: formData.get("checkIn"),
+    checkOut: formData.get("checkOut"),
+    priceEur: formData.get("priceEur"),
+    guestCount: formData.get("guestCount") || undefined,
+    depositEur: formData.get("depositEur") || undefined,
+    note: formData.get("note"),
+  });
+  if (!parsed.success) {
+    return { error: parsed.error.issues[0]?.message ?? "Provjeri unesene podatke." };
+  }
+  if (parsed.data.checkOut <= parsed.data.checkIn) {
+    return { error: "Datum odlaska mora biti nakon datuma dolaska." };
+  }
+
+  const { overlappingDates } = await updateReservation(id, {
+    guestName: parsed.data.guestName,
+    phone: parsed.data.phone || null,
+    email: parsed.data.email || null,
+    checkIn: parsed.data.checkIn,
+    checkOut: parsed.data.checkOut,
+    priceEur: parsed.data.priceEur,
+    guestCount: parsed.data.guestCount ?? null,
+    depositEur: parsed.data.depositEur ?? null,
+    note: parsed.data.note || null,
+  });
+  await logActivity({
+    adminEmail: admin.email,
+    action: "updated_reservation",
+    targetLabel: `${parsed.data.guestName} (${parsed.data.checkIn} → ${parsed.data.checkOut})`,
+    propertyId,
+  });
+
+  revalidatePath("/admin/rezervacije");
+  revalidatePath("/admin/kalendar");
+  revalidatePath("/admin");
+  revalidatePath("/admin/vikendice");
+  if (overlappingDates.length > 0) {
+    return {
+      success: true,
+      warning: `Spremljeno, ali ${overlappingDates.length} ${overlappingDates.length === 1 ? "dan je" : "dana je"} već bilo zauzeto — provjeri kalendar.`,
+    };
+  }
+  return { success: true };
+}
+
 export async function deleteReservationAction(propertyId: number, id: number, guestName: string) {
   const admin = await requireAdminOrOwner();
   await assertPropertyAccess(admin, propertyId);
+  await assertReservationInProperty(id, propertyId);
   await deleteReservation(id);
   await logActivity({ adminEmail: admin.email, action: "deleted_reservation", targetLabel: guestName, propertyId });
   revalidatePath("/admin/rezervacije");
@@ -1907,6 +2020,7 @@ export async function toggleReservationPaidAction(
 ) {
   const admin = await requireAdminOrOwner();
   await assertPropertyAccess(admin, propertyId);
+  await assertReservationInProperty(id, propertyId);
   await setReservationPaid(id, !currentlyPaid);
   revalidatePath("/admin/rezervacije");
   revalidatePath("/admin");
@@ -1919,6 +2033,7 @@ export async function toggleReservationPaidAction(
 export async function setReservationDepositAction(propertyId: number, id: number, formData: FormData) {
   const admin = await requireAdminOrOwner();
   await assertPropertyAccess(admin, propertyId);
+  await assertReservationInProperty(id, propertyId);
   const raw = formData.get("depositEur");
   const depositEur = raw && String(raw).trim() !== "" ? Number(raw) : null;
   if (depositEur != null && (!Number.isFinite(depositEur) || depositEur < 0)) return;
@@ -1974,6 +2089,8 @@ export async function createExpenseAction(
 export async function deleteExpenseAction(propertyId: number, id: number, description: string) {
   const admin = await requireAdminOrOwner();
   await assertPropertyAccess(admin, propertyId);
+  const expense = await getExpenseById(id);
+  if (!expense || expense.propertyId !== propertyId) redirect("/admin/rezervacije");
   await deleteExpense(id);
   await logActivity({ adminEmail: admin.email, action: "deleted_expense", targetLabel: description, propertyId });
   revalidatePath("/admin/rezervacije");
@@ -2037,8 +2154,8 @@ export async function deleteSaleAction(id: number) {
 }
 
 /* ---------------------------------------------------------------- */
-/* Broadcast push obavijest — /admin/settings, SAMO puni admini       */
-/* (requireAdmin, ne i vlasnici). Šalje se BAŠ SVAKOM pretplaćenom     */
+/* Broadcast push obavijest — /admin/settings, SAMO superadmin        */
+/* (requireSuperAdmin). Šalje se BAŠ SVAKOM pretplaćenom     */
 /* uređaju svih admina (uključujući vlasnike), vidi lib/push.ts        */
 /* sendPushToAllDevices.                                              */
 /* ---------------------------------------------------------------- */
@@ -2056,7 +2173,8 @@ export async function sendBroadcastPushAction(
   _prevState: BroadcastPushState,
   formData: FormData
 ): Promise<BroadcastPushState> {
-  await requireAdmin();
+  // Plan #6: obavijest ide na SVE uređaje (i vlasnicima) — smije samo superadmin.
+  await requireSuperAdmin();
 
   const parsed = BroadcastPushSchema.safeParse({
     title: formData.get("title"),
@@ -2339,6 +2457,30 @@ export async function createTeamTaskAction(
   redirect("/admin/portal");
 }
 
+/** Plan #28: upit jednim klikom postaje zadatak u Portalu — naslov s imenom
+    gosta, opis s porukom i kontaktom, povezan s vikendicom/firmom upita.
+    Upit se usput označi pročitanim. Samo puni admini (Portal je njihov). */
+export async function createTaskFromInquiryAction(inquiryId: number) {
+  const admin = await requireAdmin();
+  const inquiry = await getInquiryById(inquiryId);
+  if (!inquiry) redirect("/admin/inquiries");
+  const contact = [inquiry.email, inquiry.phone].filter(Boolean).join(" · ");
+  await createTeamTask({
+    title: `Odgovoriti na upit: ${inquiry.name} (${inquiry.sourceName})`.slice(0, 200),
+    description: `${inquiry.message}\n\nKontakt: ${contact}`,
+    priority: "normal",
+    assignedToEmail: admin.email,
+    createdByEmail: admin.email,
+    propertyId: inquiry.source === "property" ? inquiry.sourceId : null,
+    companyId: inquiry.source === "company" ? inquiry.sourceId : null,
+    dueDate: dateStringOffsetFromTodayZagreb(1),
+  });
+  await markInquiryRead(inquiryId);
+  revalidatePath("/admin/portal");
+  revalidatePath("/admin/inquiries");
+  redirect("/admin/portal");
+}
+
 /** Brisanje predloška zadatka (Portal, "Zadaci" tab) — bound-action gumb uz
  * svaki chip u TeamTaskForm, isti obrazac kao deleteTeamTaskAction. */
 export async function deleteTaskTemplateAction(id: number) {
@@ -2392,8 +2534,7 @@ export async function createTeamMessageAction(
   }
 
   await createTeamMessage({ adminEmail: admin.email, body: parsed.data.body, taskId: taskId ?? null });
-  revalidatePath("/admin/poruke");
-  revalidatePath("/admin/zadaci");
+  revalidatePath("/admin/portal");
   redirect(redirectTo);
 }
 

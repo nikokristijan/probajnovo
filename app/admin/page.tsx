@@ -16,16 +16,17 @@ import {
   getSubscriptionStats,
   getOwnerMonthlyTrend,
   getPropertiesMonthlyBreakdown,
+  countPageViewsSince,
+  listReservationsForProperty,
 } from "@/lib/db/queries";
 import type { AdminUser } from "@/lib/db/schema";
 import { StatCard } from "@/components/admin/StatCard";
 import { EmptyState } from "@/components/admin/EmptyState";
-import { currentYearMonthZagreb } from "@/lib/date";
+import { currentYearMonthZagreb, dateStringOffsetFromTodayZagreb, greetingZagreb, todayDateStringZagreb } from "@/lib/date";
 import OwnerHero from "@/components/admin/OwnerHero";
 import OwnerTrendChart from "@/components/admin/OwnerTrendChart";
 import OwnerPropertyCarousel from "@/components/admin/OwnerPropertyCarousel";
 import OwnerMiniCalendar from "@/components/admin/OwnerMiniCalendar";
-import OwnerThemeToggle from "@/components/admin/OwnerThemeToggle";
 import OwnerShareReport from "@/components/admin/OwnerShareReport";
 
 export default async function AdminDashboard() {
@@ -70,7 +71,7 @@ export default async function AdminDashboard() {
           <span className="text-sm font-semibold">
             {unreadInquiries} {unreadInquiries === 1 ? "novi upit čeka" : "novih upita čeka"}
           </span>
-          <span className="text-sm text-[#ff7f00] font-semibold">Pogledaj →</span>
+          <span className="text-sm text-[#b35600] font-semibold">Pogledaj →</span>
         </Link>
       )}
 
@@ -101,7 +102,7 @@ export default async function AdminDashboard() {
           <h2 className="text-xs font-semibold uppercase tracking-wide text-black/40">
             Zarada ovaj mjesec — sve vikendice
           </h2>
-          <Link href="/admin/vikendice" className="text-xs font-semibold text-[#ff7f00]">
+          <Link href="/admin/vikendice" className="text-xs font-semibold text-[#b35600]">
             Vikendice →
           </Link>
         </div>
@@ -118,12 +119,12 @@ export default async function AdminDashboard() {
             <h2 className="text-xs font-semibold uppercase tracking-wide text-black/40">
               NOVO pretplate klijenata
             </h2>
-            <Link href="/admin/financije" className="text-xs font-semibold text-[#ff7f00]">
+            <Link href="/admin/financije" className="text-xs font-semibold text-[#b35600]">
               Financije →
             </Link>
           </div>
           <div className="admin-animate-grid grid grid-cols-2 sm:grid-cols-3 gap-3">
-            <StatCard label="MRR (mjesečno)" value={subscriptionStats.mrrEur} suffix=" €" />
+            <StatCard label={subscriptionStats.trialMrrEur > 0 ? `MRR (+${subscriptionStats.trialMrrEur} € nakon probnih)` : "MRR (mjesečno)"} value={subscriptionStats.mrrEur} suffix=" €" />
             <StatCard label="Aktivne pretplate" value={subscriptionStats.activeCount} />
             <StatCard label="Na probnom periodu" value={subscriptionStats.trialCount} />
           </div>
@@ -356,7 +357,7 @@ export default async function AdminDashboard() {
                   <div className="font-semibold text-sm flex items-center gap-2">
                     {p.name}
                     {p.featured && (
-                      <span className="text-[10px] font-bold uppercase tracking-wide bg-[#ff7f00]/15 text-[#ff7f00] px-2 py-0.5 rounded-full">
+                      <span className="text-[10px] font-bold uppercase tracking-wide bg-[#ff7f00]/15 text-[#b35600] px-2 py-0.5 rounded-full">
                         Istaknuto
                       </span>
                     )}
@@ -478,7 +479,8 @@ async function OwnerDashboard({ admin }: { admin: AdminUser }) {
   const now = new Date(Date.UTC(nowZagreb.year, nowZagreb.month - 1, 1));
   const propertyIds = properties.map((p) => p.id);
 
-  const [blockedByProperty, trend, breakdown] = await Promise.all([
+  const weekAgo = dateStringOffsetFromTodayZagreb(-7);
+  const [blockedByProperty, trend, breakdown, reservationsByProperty, viewsThisWeek] = await Promise.all([
     Promise.all(properties.map((p) => listBlockedDates(p.id))),
     // 13 mjeseci: zadnjih 6 za trend graf ispod, + trend[0] je isti mjesec
     // prošle godine za usporedbu u hero kartici (vidi getOwnerMonthlyTrend).
@@ -486,7 +488,37 @@ async function OwnerDashboard({ admin }: { admin: AdminUser }) {
     properties.length > 1
       ? getPropertiesMonthlyBreakdown(propertyIds, monthPrefix)
       : Promise.resolve({} as Record<number, { daysBooked: number; netEur: number }>),
+    Promise.all(properties.map((p) => listReservationsForProperty(p.id))),
+    countPageViewsSince(
+      [
+        { source: "property", ids: propertyIds },
+        { source: "company", ids: companies.map((c) => c.id) },
+      ],
+      weekAgo
+    ).catch(() => 0),
   ]);
+
+  // Plan #41: "što je danas važno" — dolasci danas/sutra i upiti bez odgovora.
+  const todayStr = todayDateStringZagreb();
+  const tomorrowStr = dateStringOffsetFromTodayZagreb(1);
+  const allReservations = reservationsByProperty.flat();
+  const arrivalsToday = allReservations.filter((r) => r.checkIn === todayStr);
+  const arrivalsTomorrow = allReservations.filter((r) => r.checkIn === tomorrowStr);
+  const unanswered = inquiries.filter((i) => !i.replied).length;
+  const inquiriesThisWeek = inquiries.filter(
+    (i) => new Date(i.createdAt).toISOString().slice(0, 10) >= weekAgo
+  ).length;
+  const todayLines: string[] = [];
+  const namesOf = (list: typeof allReservations) =>
+    list.length === 1 ? list[0].guestName : `${list.length} gosta`;
+  if (arrivalsToday.length > 0) todayLines.push(`Danas dolazi ${namesOf(arrivalsToday)}.`);
+  if (arrivalsTomorrow.length > 0) todayLines.push(`Sutra dolazi ${namesOf(arrivalsTomorrow)}.`);
+  if (unanswered > 0)
+    todayLines.push(
+      unanswered === 1 ? "1 upit čeka odgovor." : `${unanswered} upita čeka odgovor.`
+    );
+  const displayName = admin.displayName?.trim() || hostName;
+  const firstName = displayName ? displayName.split(/\s+/)[0] : null;
   // Zbroj zauzetih dana preko SVIH dodijeljenih vikendica ovaj mjesec (ne
   // unique po datumu) — ako vlasnik ima dvije vikendice, svaka se broji
   // zasebno, jer je ovo "koliko je noćenja zauzeto", ne "koliko dana u
@@ -520,7 +552,11 @@ async function OwnerDashboard({ admin }: { admin: AdminUser }) {
 
   const recentTrend = trend.slice(-6);
 
-  const firstProperty = properties[0] ?? null;
+  const miniCalProperties = properties.map((p, i) => ({
+    id: p.id,
+    name: p.name,
+    blocked: (blockedByProperty[i] ?? []).map((b) => ({ date: b.date, source: b.source })),
+  }));
   const pageCount = properties.length + companies.length;
   const singleName = pageCount === 1 ? (properties[0]?.name ?? companies[0]?.name ?? null) : null;
   const monthLabel = `${OWNER_MONTH_NAMES_HR[nowZagreb.month - 1]} ${nowZagreb.year}`;
@@ -545,13 +581,18 @@ async function OwnerDashboard({ admin }: { admin: AdminUser }) {
       >
         <div className="flex items-start justify-between gap-4 flex-wrap">
           <div>
-            <h1 className="text-xl font-bold">Pozdrav{hostName ? `, ${hostName}` : ""}!</h1>
-            <p className="text-sm mt-1" style={{ color: "var(--od-ink-faint)" }}>
+            <h1 className="text-xl font-bold">
+              {greetingZagreb()}
+              {firstName ? `, ${firstName}` : ""}.
+            </h1>
+            <p className="text-sm mt-1" style={{ color: "var(--od-ink-soft)" }}>
               {pageCount === 0
                 ? "Nemaš dodijeljenu nijednu vikendicu ili firmu — javi se glavnom adminu."
-                : singleName
-                  ? `Pregled za ${singleName}.`
-                  : "Pregled tvojih dodijeljenih stranica."}
+                : todayLines.length > 0
+                  ? todayLines.join(" ")
+                  : singleName
+                    ? `Danas nema dolazaka ni upita koji čekaju — ${singleName} je pod kontrolom.`
+                    : "Danas nema dolazaka ni upita koji čekaju."}
             </p>
           </div>
           <div className="flex items-center gap-2">
@@ -568,7 +609,6 @@ async function OwnerDashboard({ admin }: { admin: AdminUser }) {
                 }}
               />
             )}
-            <OwnerThemeToggle initialTheme={(admin.themePreference as "light" | "dark" | "system" | null) ?? "system"} />
           </div>
         </div>
 
@@ -585,35 +625,28 @@ async function OwnerDashboard({ admin }: { admin: AdminUser }) {
               yoyDeltaDays={yoyDeltaDays}
             />
             <div className="flex flex-col gap-5">
-              {firstProperty && (
-                <OwnerMiniCalendar
-                  propertyId={firstProperty.id}
-                  propertyName={firstProperty.name}
-                  blocked={blockedByProperty[0] ?? []}
-                  now={now}
-                />
-              )}
+              {miniCalProperties.length > 0 && <OwnerMiniCalendar properties={miniCalProperties} now={now} />}
             </div>
           </div>
         )}
 
-        {/* Bez ijedne dodijeljene vikendice (samo firma, ili ništa) hero/
-            desni stupac iznad se ne prikazuju — kalendar onda ostaje ovdje
-            samostalno da ne nestane potpuno. */}
-        {properties.length === 0 && firstProperty && (
-          <OwnerMiniCalendar
-            propertyId={firstProperty.id}
-            propertyName={firstProperty.name}
-            blocked={blockedByProperty[0] ?? []}
-            now={now}
-          />
-        )}
 
         {pageCount > 0 && (
-          <section className="admin-animate-grid grid grid-cols-2 sm:grid-cols-3 gap-4">
-            <OwnerStatCard label={pendingCount === 1 ? "Novi upit" : "Novih upita"} value={pendingCount} accent="orange" />
-            <OwnerStatCard label="Dana zauzeto ovaj mjesec" value={daysBookedThisMonth} accent="navy" />
-            <OwnerStatCard label="Zarada ovaj mjesec (neto)" value={netEurThisMonth} suffix=" €" accent="purple" />
+          <section className="flex flex-col gap-2.5">
+            {/* Zarada je već velika u kartici gore, pa je treća pločica
+                posjete stranice (plan #43) — dokaz da se stranica isplati. */}
+            <div className="admin-animate-grid grid grid-cols-3 gap-3 sm:gap-4">
+              <OwnerStatCard label={pendingCount === 1 ? "Novi upit" : "Novih upita"} value={pendingCount} accent="orange" />
+              <OwnerStatCard label="Dana zauzeto ovaj mjesec" value={daysBookedThisMonth} accent="navy" />
+              <OwnerStatCard label="Posjeta stranice (7 dana)" value={viewsThisWeek} accent="purple" />
+            </div>
+            <p className="text-sm" style={{ color: "var(--od-ink-soft)" }}>
+              {viewsThisWeek > 0
+                ? `Tvoju stranicu je ovaj tjedan pogledalo ${viewsThisWeek.toLocaleString("hr-HR")} ${viewsThisWeek === 1 ? "posjetitelj" : "posjetitelja"}${inquiriesThisWeek > 0 ? `, a ${inquiriesThisWeek} ${inquiriesThisWeek === 1 ? "upit je stigao" : "upita je stiglo"} u istom razdoblju` : ""}.`
+                : inquiriesThisWeek > 0
+                  ? `Ovaj tjedan ${inquiriesThisWeek === 1 ? "stigao je 1 upit" : `stiglo je ${inquiriesThisWeek} upita`}. Posjete brojimo od prvog otvaranja stranice.`
+                  : "Ovaj tjedan još nema posjeta ni upita."}
+            </p>
           </section>
         )}
 
@@ -647,7 +680,7 @@ async function OwnerDashboard({ admin }: { admin: AdminUser }) {
                 <h2 className="text-xs font-semibold uppercase tracking-wide" style={{ color: "var(--od-ink-faint)" }}>
                   Zadnji upiti
                 </h2>
-                <Link href="/admin/inquiries" className="text-xs font-semibold text-[#ff7f00]">
+                <Link href="/admin/inquiries" className="text-xs font-semibold text-[#b35600]">
                   Svi upiti →
                 </Link>
               </div>
@@ -670,7 +703,7 @@ async function OwnerDashboard({ admin }: { admin: AdminUser }) {
                         </div>
                       </div>
                       {!i.read && (
-                        <span className="text-xs font-semibold px-2.5 py-1 rounded-full bg-[#ff7f00]/10 text-[#ff7f00] shrink-0">
+                        <span className="text-xs font-semibold px-2.5 py-1 rounded-full bg-[#ff7f00]/10 text-[#b35600] shrink-0">
                           novo
                         </span>
                       )}
@@ -721,12 +754,12 @@ function OwnerStatCard({
   accent?: "navy" | "orange" | "purple";
 }) {
   return (
-    <div className={`owner-glass owner-glass-grain owner-stat-card owner-stat-card-${accent} rounded-2xl px-4 py-3`}>
+    <div className={`owner-glass owner-glass-grain owner-stat-card owner-stat-card-${accent} rounded-2xl px-3 py-3 sm:px-4`}>
       <div className="text-2xl font-bold tabular-nums" style={{ color: "var(--od-ink)" }}>
-        {value}
+        {value.toLocaleString("hr-HR")}
         {suffix ?? ""}
       </div>
-      <div className="text-xs mt-0.5" style={{ color: "var(--od-ink-faint)" }}>
+      <div className="text-xs mt-0.5 leading-snug" style={{ color: "var(--od-ink-soft)" }}>
         {label}
       </div>
     </div>

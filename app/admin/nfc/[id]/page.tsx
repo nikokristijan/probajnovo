@@ -31,7 +31,7 @@ export default async function EditNfcTagPage({
       <Link
         href={`/nfc/${tag.slug}`}
         target="_blank"
-        className="text-xs font-semibold text-[#ff7f00] block mb-6"
+        className="text-xs font-semibold text-[#b35600] block mb-6"
       >
         probajnovo.com/nfc/{tag.slug} ↗
       </Link>

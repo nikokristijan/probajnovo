@@ -7,7 +7,7 @@ import {
   listCompaniesForAdmin,
   getPropertyById,
 } from "@/lib/db/queries";
-import { markInquiryReadAction, markInquiryRepliedAction } from "@/lib/actions";
+import { markInquiryReadAction, markInquiryRepliedAction, createTaskFromInquiryAction } from "@/lib/actions";
 import DeleteInquiryButton from "@/components/admin/DeleteInquiryButton";
 import QuickReplyForm from "@/components/admin/QuickReplyForm";
 import OwnerQuickReplyForm from "@/components/admin/OwnerQuickReplyForm";
@@ -45,6 +45,7 @@ export default async function AdminInquiriesPage({
   // imena") — bez ovoga generički naslov "Upiti" zna zbunjivati vlasnika koji
   // upravlja samo jednom vikendicom (djeluje kao da su prikazani upiti svih).
   let ownerScopeLabel: string | null = null;
+  const ownedPriceById = new Map<number, number>();
   if (admin.role === "owner") {
     const [ownedProperties, ownedCompanies] = await Promise.all([
       listPropertiesForAdmin(admin),
@@ -52,6 +53,7 @@ export default async function AdminInquiriesPage({
     ]);
     const names = [...ownedProperties.map((p) => p.name), ...ownedCompanies.map((c) => c.name)];
     ownerScopeLabel = names.length > 0 ? names.join(", ") : null;
+    for (const p of ownedProperties) ownedPriceById.set(p.id, p.priceFromEur);
   }
 
   const unreadCount = inquiries.filter((i) => !i.read).length;
@@ -89,54 +91,67 @@ export default async function AdminInquiriesPage({
         </p>
 
         {inquiries.length === 0 ? (
-          <p className="text-sm" style={{ color: "var(--od-ink-soft)" }}>
-            Još nema poslanih upita. Ako je tablica tek stvorena SQL migracijom, prvi upit će se
-            pojaviti ovdje čim netko pošalje obrazac.
-          </p>
+          <div className="owner-glass owner-glass-grain rounded-2xl px-5 py-6 text-sm" style={{ color: "var(--od-ink-soft)" }}>
+            Još nema upita. Kad gost pošalje poruku sa stranice, stići će ovdje i na mobitel.
+          </div>
         ) : (
           <div className="flex flex-col gap-3">
             {inquiries.map((i) => (
               <div key={i.id} className="owner-glass owner-glass-grain rounded-2xl px-4 py-3.5">
-                <div className="flex items-start justify-between gap-3 flex-wrap">
-                  <div>
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <span className="font-semibold text-sm">{i.name}</span>
-                      <span className="text-xs" style={{ color: "var(--od-ink-faint)" }}>
-                        {i.email}
-                      </span>
-                      {i.phone && (
-                        <span className="text-xs" style={{ color: "var(--od-ink-faint)" }}>
-                          · {i.phone}
-                        </span>
-                      )}
-                      {i.replied && <span className="owner-pill owner-pill-success">Odgovoreno</span>}
-                      {!i.read && !i.replied && <span className="owner-pill owner-pill-info">Novo</span>}
-                    </div>
-                    <div className="text-xs mt-0.5" style={{ color: "var(--od-ink-faint)" }}>
-                      {SOURCE_LABEL[i.source] ?? i.source} · {i.sourceName} ·{" "}
-                      {new Date(i.createdAt).toLocaleString("hr-HR")}
-                    </div>
+                {/* Plan #40: prvo tko i poruka, pa glavni gumb "Odgovori";
+                    "pročitano"/"odgovoreno" su tihe, sporedne akcije. */}
+                <div className="flex items-baseline justify-between gap-3 flex-wrap">
+                  <div className="flex items-center gap-2 flex-wrap min-w-0">
+                    <span className="font-semibold text-sm">{i.name}</span>
+                    {i.replied && <span className="owner-pill owner-pill-success">Odgovoreno</span>}
+                    {!i.read && !i.replied && <span className="owner-pill owner-pill-info">Novo</span>}
                   </div>
-                  <div className="flex items-center gap-2 shrink-0">
-                    {!i.read && (
-                      <form action={markInquiryReadAction.bind(null, i.id)}>
-                        <button type="submit" className="owner-quicklink">
-                          Označi pročitano
-                        </button>
-                      </form>
-                    )}
-                    {!i.replied && (
-                      <form action={markInquiryRepliedAction.bind(null, i.id)}>
-                        <button type="submit" className="owner-quicklink">
-                          Označi odgovoreno
-                        </button>
-                      </form>
-                    )}
-                  </div>
+                  <span className="text-xs tabular-nums" style={{ color: "var(--od-ink-faint)" }}>
+                    {new Date(i.createdAt).toLocaleString("hr-HR", {
+                      timeZone: "Europe/Zagreb",
+                      day: "numeric",
+                      month: "numeric",
+                      hour: "2-digit",
+                      minute: "2-digit",
+                    })}
+                  </span>
                 </div>
-                <p className="text-sm mt-3 whitespace-pre-wrap">{i.message}</p>
+                <p className="text-[15px] leading-relaxed mt-2 whitespace-pre-wrap">{i.message}</p>
+                <div className="text-xs mt-2 flex flex-wrap gap-x-2 gap-y-0.5" style={{ color: "var(--od-ink-faint)" }}>
+                  <a href={`mailto:${i.email}`} className="underline-offset-2 hover:underline">
+                    {i.email}
+                  </a>
+                  {i.phone && (
+                    <a href={`tel:${i.phone.replace(/\s+/g, "")}`} className="underline-offset-2 hover:underline">
+                      · {i.phone}
+                    </a>
+                  )}
+                  <span>· {i.sourceName}</span>
+                </div>
                 <div className="mt-3">
-                  <OwnerQuickReplyForm inquiryId={i.id} />
+                  <OwnerQuickReplyForm
+                    inquiryId={i.id}
+                    guestName={i.name}
+                    priceFromEur={i.source === "property" && i.sourceId != null ? ownedPriceById.get(i.sourceId) ?? null : null}
+                    secondaryActions={
+                      <>
+                        {!i.read && (
+                          <form action={markInquiryReadAction.bind(null, i.id)}>
+                            <button type="submit" className="owner-text-action">
+                              Označi pročitano
+                            </button>
+                          </form>
+                        )}
+                        {!i.replied && (
+                          <form action={markInquiryRepliedAction.bind(null, i.id)}>
+                            <button type="submit" className="owner-text-action">
+                              Već sam odgovorio
+                            </button>
+                          </form>
+                        )}
+                      </>
+                    }
+                  />
                 </div>
               </div>
             ))}
@@ -151,7 +166,7 @@ export default async function AdminInquiriesPage({
       {filterProperty && (
         <Link
           href={`/admin/vikendice/${filterProperty.id}`}
-          className="text-xs font-semibold text-black/40 hover:text-[#ff7f00]"
+          className="text-xs font-semibold text-black/40 hover:text-[#b35600]"
         >
           ← {filterProperty.name}
         </Link>
@@ -160,7 +175,7 @@ export default async function AdminInquiriesPage({
         <h1 className="text-xl font-bold">{pageTitle}</h1>
         <div className="flex items-center gap-2">
           {unreadCount > 0 && (
-            <span className="text-xs font-semibold px-2.5 py-1 rounded-full bg-[#ff7f00]/10 text-[#ff7f00]">
+            <span className="text-xs font-semibold px-2.5 py-1 rounded-full bg-[#ff7f00]/10 text-[#b35600]">
               {unreadCount} nepročitano
             </span>
           )}
@@ -186,8 +201,7 @@ export default async function AdminInquiriesPage({
 
       {inquiries.length === 0 ? (
         <p className="text-sm text-black/60">
-          Još nema poslanih upita. Ako je tablica tek stvorena SQL migracijom, prvi upit će se
-          pojaviti ovdje čim netko pošalje obrazac.
+          Još nema upita. Kad netko pošalje obrazac sa stranice vikendice ili firme, stići će ovdje.
         </p>
       ) : (
         <div className="flex flex-col gap-3">
@@ -241,8 +255,25 @@ export default async function AdminInquiriesPage({
                 </div>
               </div>
               <p className="text-sm mt-3 whitespace-pre-wrap">{i.message}</p>
-              <div className="mt-3">
+              {/* Plan #28: upit jednim klikom u rezervaciju ili zadatak. */}
+              <div className="flex flex-wrap items-start gap-2 mt-3">
                 <QuickReplyForm inquiryId={i.id} />
+                {i.source === "property" && i.sourceId != null && (
+                  <Link
+                    href={`/admin/rezervacije?property=${i.sourceId}&fromInquiry=${i.id}#nova-rezervacija`}
+                    className="text-xs font-semibold px-3 py-1.5 rounded-full border border-black/15 hover:border-black/40"
+                  >
+                    Napravi rezervaciju
+                  </Link>
+                )}
+                <form action={createTaskFromInquiryAction.bind(null, i.id)}>
+                  <button
+                    type="submit"
+                    className="text-xs font-semibold px-3 py-1.5 rounded-full border border-black/15 hover:border-black/40"
+                  >
+                    Napravi zadatak u Portalu
+                  </button>
+                </form>
               </div>
             </div>
           ))}

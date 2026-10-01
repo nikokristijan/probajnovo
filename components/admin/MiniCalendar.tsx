@@ -28,7 +28,7 @@ export default function MiniCalendar({
 }: {
   propertyId: number;
   propertyName: string;
-  blocked: { date: string }[];
+  blocked: { date: string; source?: string }[];
   now: Date;
 }) {
   const year = now.getFullYear();
@@ -36,7 +36,7 @@ export default function MiniCalendar({
   const firstOfMonth = new Date(Date.UTC(year, month, 1));
   const daysInMonth = new Date(Date.UTC(year, month + 1, 0)).getUTCDate();
   const leadingBlanks = miniMondayIndex(firstOfMonth);
-  const blockedSet = new Set(blocked.map((b) => b.date));
+  const sourceByDate = new Map(blocked.map((b) => [b.date, b.source ?? "manual"]));
   const cells: (number | null)[] = [
     ...Array.from({ length: leadingBlanks }, () => null),
     ...Array.from({ length: daysInMonth }, (_, i) => i + 1),
@@ -51,7 +51,7 @@ export default function MiniCalendar({
         <Link
           href={`/admin/kalendar?property=${propertyId}`}
           className="text-xs font-semibold"
-          style={{ color: "var(--neu-accent)" }}
+          style={{ color: "var(--neu-accent-ink, #b35600)" }}
         >
           Puni kalendar →
         </Link>
@@ -66,15 +66,21 @@ export default function MiniCalendar({
           {cells.map((day, i) => {
             if (day === null) return <div key={`b-${i}`} />;
             const dateStr = `${year}-${miniPad2(month + 1)}-${miniPad2(day)}`;
-            const isBlocked = blockedSet.has(dateStr);
+            const source = sourceByDate.get(dateStr);
+            // Plan #33: navy = rezervacija, sivo = ručno, isprekidano = iCal.
+            const cls =
+              source === "reservation"
+                ? "bg-[#0000c3] text-white"
+                : source === "ical"
+                  ? "border border-dashed border-black/50 text-black/80"
+                  : source
+                    ? "bg-black/25 text-black/85"
+                    : "";
             return (
               <div
                 key={dateStr}
-                className={
-                  "aspect-square rounded-md text-[10px] font-semibold flex items-center justify-center " +
-                  (isBlocked ? "bg-red-500 text-white" : "")
-                }
-                style={isBlocked ? undefined : { background: "color-mix(in srgb, var(--neu-shadow) 45%, transparent)" }}
+                className={"aspect-square rounded-md text-[10px] font-semibold flex items-center justify-center " + cls}
+                style={source ? undefined : { background: "color-mix(in srgb, var(--neu-shadow) 45%, transparent)" }}
               >
                 {day}
               </div>

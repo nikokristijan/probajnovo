@@ -199,7 +199,7 @@ export default async function AdminCalendarPage({
             })}
           </div>
 
-          <div className="flex items-center gap-4 mt-4 text-[11px] flex-wrap" style={{ color: "var(--od-ink-faint)" }}>
+          <div className="flex items-center gap-4 mt-4 text-[11px] flex-wrap" style={{ color: "var(--od-ink-soft)" }}>
             <span className="flex items-center gap-1.5">
               <span className="w-2.5 h-2.5 rounded-full owner-cal-cell-free inline-block" />
               slobodno
@@ -210,7 +210,7 @@ export default async function AdminCalendarPage({
             </span>
             <span className="flex items-center gap-1.5">
               <span className="w-2.5 h-2.5 rounded-full owner-cal-cell-ical inline-block" />
-              iCal (auto)
+              Booking/Airbnb (iCal)
             </span>
             <span className="flex items-center gap-1.5">
               <span className="w-2.5 h-2.5 rounded-full owner-cal-cell-reservation inline-block" />
@@ -318,7 +318,7 @@ export default async function AdminCalendarPage({
                 <div
                   key={dateStr}
                   title="Automatski povučeno (iCal) — ne može se ručno deblokirati ovdje"
-                  className="aspect-square rounded-lg text-xs font-semibold flex items-center justify-center bg-black/70 text-white"
+                  className="aspect-square rounded-lg text-xs font-semibold flex items-center justify-center border-[1.5px] border-dashed border-black/50 bg-black/[0.03]"
                 >
                   {day}
                 </div>
@@ -351,7 +351,7 @@ export default async function AdminCalendarPage({
                   className={
                     "aspect-square w-full rounded-lg text-xs font-semibold transition-colors " +
                     (isBlocked
-                      ? "bg-red-500 text-white hover:bg-red-600"
+                      ? "bg-black/25 text-black/85 hover:bg-black/35"
                       : "bg-black/5 hover:bg-black/10")
                   }
                 >
@@ -362,18 +362,18 @@ export default async function AdminCalendarPage({
           })}
         </div>
 
-        <div className="flex items-center gap-4 mt-4 text-[11px] text-black/50">
+        <div className="flex items-center gap-4 mt-4 text-[11px] text-black/65 flex-wrap">
           <span className="flex items-center gap-1.5">
             <span className="w-2.5 h-2.5 rounded-full bg-black/5 border border-black/10 inline-block" />
             slobodno
           </span>
           <span className="flex items-center gap-1.5">
-            <span className="w-2.5 h-2.5 rounded-full bg-red-500 inline-block" />
+            <span className="w-2.5 h-2.5 rounded-full bg-black/25 inline-block" />
             ručno blokirano
           </span>
           <span className="flex items-center gap-1.5">
-            <span className="w-2.5 h-2.5 rounded-full bg-black/70 inline-block" />
-            iCal (auto)
+            <span className="w-2.5 h-2.5 rounded-full border border-dashed border-black/50 inline-block" />
+            Booking/Airbnb (iCal)
           </span>
           <span className="flex items-center gap-1.5">
             <span className="w-2.5 h-2.5 rounded-full bg-[#0000c3] inline-block" />

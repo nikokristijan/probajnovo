@@ -4,6 +4,7 @@ type CarouselProperty = {
   id: number;
   name: string;
   images: string[];
+  bannerImage?: string | null;
 };
 
 /**
@@ -34,7 +35,8 @@ export default function OwnerPropertyCarousel({
       <div className="owner-carousel">
         {properties.map((p) => {
           const stats = breakdown[p.id] ?? { daysBooked: 0, netEur: 0 };
-          const cover = p.images[0];
+          // Plan #50: naslovna slika, pa prva iz galerije.
+          const cover = p.bannerImage || p.images[0];
           return (
             <Link
               key={p.id}
@@ -45,16 +47,16 @@ export default function OwnerPropertyCarousel({
                 className="h-28 w-full bg-cover bg-center"
                 style={{
                   backgroundColor: "rgba(120,120,150,0.12)",
-                  ...(cover ? { backgroundImage: `url(${cover})` } : {}),
+                  ...(cover ? { backgroundImage: `url(${JSON.stringify(cover)})` } : {}),
                 }}
               />
               <div className="p-3 flex flex-col gap-1.5">
                 <span className="text-sm font-semibold truncate" style={{ color: "var(--od-ink)" }}>
                   {p.name}
                 </span>
-                <div className="flex items-center justify-between text-xs" style={{ color: "var(--od-ink-faint)" }}>
+                <div className="flex items-center justify-between text-xs" style={{ color: "var(--od-ink-soft)" }}>
                   <span>{stats.daysBooked} dana zauzeto</span>
-                  <span className="font-semibold tabular-nums" style={{ color: "var(--od-ink-soft)" }}>
+                  <span className="font-semibold tabular-nums" style={{ color: "var(--od-ink)" }}>
                     {stats.netEur} €
                   </span>
                 </div>

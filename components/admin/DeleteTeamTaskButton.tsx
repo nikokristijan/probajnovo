@@ -1,21 +1,17 @@
 "use client";
 
 import { deleteTeamTaskAction } from "@/lib/actions";
+import ConfirmSubmit from "@/components/admin/ConfirmSubmit";
 
-/** Isti obrazac kao DeleteExpenseButton — potvrda prije nepovratne radnje. */
 export default function DeleteTeamTaskButton({ id, title }: { id: number; title: string }) {
   return (
-    <form
+    <ConfirmSubmit
       action={deleteTeamTaskAction.bind(null, id)}
-      onSubmit={(e) => {
-        if (!confirm(`Sigurno želiš obrisati zadatak "${title}"?`)) {
-          e.preventDefault();
-        }
-      }}
-    >
-      <button type="submit" className="text-xs font-semibold text-red-600 border border-red-200 rounded-full px-3 py-1.5 hover:bg-red-50">
-        Obriši
-      </button>
-    </form>
+      title={`Obrisati zadatak ${title}?`}
+      description="Zadatak se briše i ne može se vratiti."
+      confirmLabel="Obriši zadatak"
+      buttonLabel="Obriši"
+      buttonClassName="text-xs font-semibold text-red-600 border border-red-200 rounded-full px-3 py-1.5 hover:bg-red-50"
+    />
   );
 }

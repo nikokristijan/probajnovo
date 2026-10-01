@@ -23,15 +23,15 @@ import { EmptyState } from "@/components/admin/EmptyState";
  * tri broja NUŽNO iz istog razdoblja.
  */
 function FunnelBar({ views, inquiries, reservations }: { views: number; inquiries: number; reservations: number }) {
-  const max = Math.max(views, 1);
+  // Plan #26: skala je najveći od tri broja (ne samo pregledi), a postotak
+  // se prikazuje samo kad ima smisla — prethodni korak postoji i nije manji
+  // od ovoga. Ranije je 0 pregleda i 3 upita crtalo traku od "200 %".
+  const max = Math.max(views, inquiries, reservations, 1);
+  const rate = (value: number, prev: number) => (prev > 0 && value <= prev ? Math.round((value / prev) * 100) : null);
   const stages = [
-    { label: "Pregledi stranice", value: views, pct: null as number | null },
-    { label: "Upiti", value: inquiries, pct: views > 0 ? Math.round((inquiries / views) * 100) : null },
-    {
-      label: "Rezervacije",
-      value: reservations,
-      pct: inquiries > 0 ? Math.round((reservations / inquiries) * 100) : null,
-    },
+    { label: "Pregledi stranice", value: views, pct: null as number | null, of: "" },
+    { label: "Upiti", value: inquiries, pct: rate(inquiries, views), of: "pregleda" },
+    { label: "Rezervacije", value: reservations, pct: rate(reservations, inquiries), of: "upita" },
   ];
   return (
     <div className="flex flex-col gap-2.5">
@@ -43,21 +43,29 @@ function FunnelBar({ views, inquiries, reservations }: { views: number; inquirie
             style={{ boxShadow: "inset 2px 2px 5px var(--neu-shadow), inset -2px -2px 5px var(--neu-highlight)" }}
           >
             <div
-              className="admin-bar-grow h-full rounded-full flex items-center justify-end px-2"
+              className="admin-bar-grow h-full rounded-full"
               style={{
-                width: `${Math.max((s.value / max) * 100, s.value > 0 ? 6 : 0)}%`,
+                width: `${Math.min(100, Math.max((s.value / max) * 100, s.value > 0 ? 4 : 0))}%`,
                 animationDelay: `${i * 0.12}s`,
                 background: "var(--neu-accent)",
               }}
-            >
-              {s.value > 0 && <span className="text-[11px] font-bold text-white tabular-nums">{s.value}</span>}
-            </div>
+            />
           </div>
-          <div className="w-12 shrink-0 text-xs tabular-nums text-right" style={{ color: "var(--neu-ink-faint)" }}>
-            {s.pct !== null ? `${s.pct}%` : ""}
+          <div className="w-28 shrink-0 text-xs tabular-nums text-right">
+            <span className="font-bold">{s.value}</span>
+            {s.pct !== null && (
+              <span style={{ color: "var(--neu-ink-faint)" }} title={`${s.pct} % od ${s.of}`}>
+                {" "}· {s.pct} %
+              </span>
+            )}
           </div>
         </div>
       ))}
+      {views === 0 && (inquiries > 0 || reservations > 0) && (
+        <p className="text-xs" style={{ color: "var(--neu-ink-faint)" }}>
+          Pregledi se broje tek od kad je brojač uključen, pa postotak pretvorbe još nema smisla.
+        </p>
+      )}
     </div>
   );
 }
@@ -148,7 +156,7 @@ export default async function AdminVikendicaHubPage({ params }: { params: Promis
           <Link
             href={`/admin/inquiries?property=${propertyId}`}
             className="text-xs font-semibold"
-            style={{ color: "var(--neu-accent)" }}
+            style={{ color: "var(--neu-accent-ink, #b35600)" }}
           >
             Svi upiti →
           </Link>
@@ -205,7 +213,7 @@ export default async function AdminVikendicaHubPage({ params }: { params: Promis
             <Link
               href={`/admin/rezervacije?property=${propertyId}`}
               className="text-xs font-semibold"
-              style={{ color: "var(--neu-accent)" }}
+              style={{ color: "var(--neu-accent-ink, #b35600)" }}
             >
               Sve rezervacije →
             </Link>
@@ -222,7 +230,7 @@ export default async function AdminVikendicaHubPage({ params }: { params: Promis
                 <span
                   className={
                     "text-[11px] font-semibold px-2.5 py-1 rounded-full " +
-                    (r.paid ? "bg-green-600/10 text-green-700" : "bg-[#ff7f00]/10 text-[#ff7f00]")
+                    (r.paid ? "bg-green-600/10 text-green-700" : "bg-[#ff7f00]/10 text-[#b35600]")
                   }
                 >
                   {r.paid ? "Plaćeno" : "Čeka se"}

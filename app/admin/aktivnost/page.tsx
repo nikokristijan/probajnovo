@@ -6,6 +6,8 @@ import { todayDateStringZagreb, dateStringOffsetFromTodayZagreb } from "@/lib/da
 const ACTION_LABELS: Record<string, string> = {
   created_reservation: "Nova rezervacija",
   deleted_reservation: "Obrisana rezervacija",
+  updated_reservation: "Uređena rezervacija",
+  replied_inquiry: "Odgovor na upit",
   created_expense: "Novi trošak",
   deleted_expense: "Obrisan trošak",
 };

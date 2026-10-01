@@ -37,6 +37,8 @@ type Birthday = { email: string; label: string; birthday: string; daysUntil: num
 const ACTION_LABELS: Record<string, string> = {
   created_reservation: "Nova rezervacija",
   deleted_reservation: "Obrisana rezervacija",
+  updated_reservation: "Uređena rezervacija",
+  replied_inquiry: "Odgovor na upit",
   created_expense: "Novi trošak",
   deleted_expense: "Obrisan trošak",
 };
@@ -240,7 +242,7 @@ export default function PortalOverview({
                 <ActivityIcon size={16} className="text-[var(--na-accent)]" />
                 <h3 className="na-heading text-sm">Aktivnost</h3>
               </div>
-              <Link href="/admin/aktivnost" className="text-xs font-semibold" style={{ color: "var(--na-accent)" }}>
+              <Link href="/admin/aktivnost" className="text-xs font-semibold" style={{ color: "var(--na-accent-ink)" }}>
                 Sve →
               </Link>
             </div>

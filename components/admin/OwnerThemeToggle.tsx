@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { updateOwnerThemeAction } from "@/lib/actions";
+import { ThemeMoonIcon, ThemeSunIcon, ThemeSystemIcon } from "@/components/admin/Icons";
 
 type Theme = "light" | "dark" | "system";
 
@@ -41,10 +42,10 @@ export default function OwnerThemeToggle({ initialTheme }: { initialTheme: Theme
     });
   }
 
-  const options: { value: Theme; icon: string; label: string }[] = [
-    { value: "light", icon: "☀️", label: "Svijetlo" },
-    { value: "system", icon: "🖥️", label: "Sustav" },
-    { value: "dark", icon: "🌙", label: "Tamno" },
+  const options: { value: Theme; icon: React.ReactNode; label: string }[] = [
+    { value: "light", icon: <ThemeSunIcon />, label: "Svijetlo" },
+    { value: "system", icon: <ThemeSystemIcon />, label: "Kao uređaj" },
+    { value: "dark", icon: <ThemeMoonIcon />, label: "Tamno" },
   ];
 
   return (
@@ -55,11 +56,10 @@ export default function OwnerThemeToggle({ initialTheme }: { initialTheme: Theme
           type="button"
           onClick={() => choose(o.value)}
           aria-pressed={theme === o.value}
-          aria-label={o.label}
-          title={o.label}
-          className={theme === o.value ? "owner-theme-switch-active" : ""}
+          className={"owner-theme-option" + (theme === o.value ? " owner-theme-switch-active" : "")}
         >
           {o.icon}
+          <span>{o.label}</span>
         </button>
       ))}
     </div>

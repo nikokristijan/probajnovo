@@ -1,28 +1,46 @@
 "use client";
 
-import { useActionState, useState } from "react";
+import { useActionState, useState, type ReactNode } from "react";
 import { sendInquiryReplyAction, type ActionState } from "@/lib/actions";
 
-const TEMPLATES = [
-  {
-    label: "Termin slobodan",
-    text: "Hvala na upitu! Traženi termin je slobodan — javi mi broj gostiju i mogu ti poslati ponudu.",
-  },
-  {
-    label: "Termin zauzet",
-    text: "Hvala na upitu! Nažalost, traženi termin je već zauzet — javi ako te zanima neki drugi termin.",
-  },
-  {
-    label: "Šaljem ponudu",
-    text: "Hvala na upitu! Uskoro ti šaljem detaljnu ponudu s cijenom i dostupnim terminima.",
-  },
-];
+/** Predlošci se personaliziraju imenom gosta i cijenom "od" (plan #40). */
+function buildTemplates(guestName: string, priceFromEur: number | null) {
+  const first = guestName.trim().split(/\s+/)[0] ?? "";
+  const hello = first ? `Pozdrav ${first}, hvala na upitu!` : "Pozdrav, hvala na upitu!";
+  const price = priceFromEur ? ` Cijena je od ${priceFromEur} € po noći, ovisno o terminu i broju gostiju.` : "";
+  return [
+    {
+      label: "Termin slobodan",
+      text: `${hello} Traženi termin je slobodan.${price} Javi mi broj gostiju pa ti pošaljem točnu ponudu.`,
+    },
+    {
+      label: "Termin zauzet",
+      text: `${hello} Nažalost, traženi termin je već zauzet. Javi ako te zanima neki drugi termin.`,
+    },
+    {
+      label: "Šaljem ponudu",
+      text: `${hello}${price} Uskoro ti šaljem detaljnu ponudu s cijenom i slobodnim terminima.`,
+    },
+  ];
+}
 
 /**
  * Stakleni klon QuickReplyForm.tsx — NAMJERNO odvojena komponenta (vidi
- * OwnerReservationForm za obrazloženje). Ista logika/predlošci.
+ * OwnerReservationForm za obrazloženje). "Odgovori" je glavni gumb, a
+ * secondaryActions (pročitano/odgovoreno) stoje tiho pored njega.
  */
-export default function OwnerQuickReplyForm({ inquiryId }: { inquiryId: number }) {
+export default function OwnerQuickReplyForm({
+  inquiryId,
+  guestName = "",
+  priceFromEur = null,
+  secondaryActions,
+}: {
+  inquiryId: number;
+  guestName?: string;
+  priceFromEur?: number | null;
+  secondaryActions?: ReactNode;
+}) {
+  const TEMPLATES = buildTemplates(guestName, priceFromEur);
   const [open, setOpen] = useState(false);
   const [message, setMessage] = useState("");
   const [state, action, pending] = useActionState<ActionState, FormData>(
@@ -32,9 +50,12 @@ export default function OwnerQuickReplyForm({ inquiryId }: { inquiryId: number }
 
   if (!open) {
     return (
-      <button type="button" onClick={() => setOpen(true)} className="owner-quicklink">
-        Odgovori
-      </button>
+      <div className="flex items-center gap-x-4 gap-y-2 flex-wrap">
+        <button type="button" onClick={() => setOpen(true)} className="owner-btn-primary text-sm px-5 py-2">
+          Odgovori
+        </button>
+        {secondaryActions}
+      </div>
     );
   }
 

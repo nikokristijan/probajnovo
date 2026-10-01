@@ -1265,7 +1265,7 @@ html.novo-lock-scroll body {
   transition: box-shadow 0.15s ease, color 0.15s ease, transform 0.15s ease;
 }
 .admin-quicklink:hover {
-  color: var(--neu-accent);
+  color: var(--neu-accent-ink);
   box-shadow: 2px 2px 5px var(--neu-shadow), -2px -2px 5px var(--neu-highlight);
   transform: translateY(-1px);
 }
@@ -1306,8 +1306,9 @@ html.novo-lock-scroll body {
      ali u praksi gotovo nevidljiv). */
   --neu-border: rgba(0, 0, 0, 0.16);
   --neu-ink: #0a0a0a;
-  --neu-ink-faint: rgba(0, 0, 0, 0.5);
+  --neu-ink-faint: rgba(0, 0, 0, 0.62);
   --neu-accent: #ff7f00;
+  --neu-accent-ink: #b35600;
 }
 /* Utisnuta neumorphism površina (isti jezik kao .neu-input) — RANIJE
    obična bijela pločica s tankim rubom. */
@@ -1329,7 +1330,7 @@ html.novo-lock-scroll body {
 }
 .admin-repeat-row { display: flex; flex-direction: column; gap: 8px; border: 1px solid rgba(0,0,0,0.1); border-radius: 10px; padding: 12px; background: #fff; }
 .admin-repeat-add { align-self: flex-start; font-size: 13px; font-weight: 600; border: 1px dashed rgba(0,0,0,0.25); border-radius: 999px; padding: 8px 16px; background: transparent; cursor: pointer; transition: border-color 0.15s ease, color 0.15s ease; }
-.admin-repeat-add:hover { border-color: #ff7f00; color: #ff7f00; }
+.admin-repeat-add:hover { border-color: #ff7f00; color: #b35600; }
 .admin-repeat-remove { align-self: flex-start; font-size: 12px; font-weight: 600; color: #b3261e; background: transparent; border: none; cursor: pointer; padding: 2px 0; text-decoration: underline; }
 .admin-repeat-remove:hover { color: #7a1a15; }
 
@@ -1425,7 +1426,7 @@ html.novo-lock-scroll body {
      zasebne varijable) da uređivanje jednog sustava slučajno ne pomakne
      drugi. */
   --oh-ink: #0b0b1f;
-  --oh-ink-faint: rgba(11, 11, 31, 0.42);
+  --oh-ink-faint: rgba(11, 11, 31, 0.6);
   --oh-glass: rgba(243, 244, 255, 0.72);
   --oh-glass-chip: rgba(11, 11, 31, 0.05);
   /* Podignuto s 0.1 na 0.16 (korisnički feedback: "nema nikakvih okvira,
@@ -1443,6 +1444,7 @@ html.novo-lock-scroll body {
   --neu-ink: var(--oh-ink);
   --neu-ink-faint: var(--oh-ink-faint);
   --neu-accent: #ff7f00;
+  --neu-accent-ink: #b35600;
 }
 /* NEUMORPHISM redizajn sadržaja (na izričit zahtjev: "napravi cijeli
    dashboard u tom stilu... makni sve gradijente jer izgledaju cheap i AI")
@@ -1480,6 +1482,7 @@ html.novo-lock-scroll body {
   --neu-ink: var(--oh-ink);
   --neu-ink-faint: var(--oh-ink-faint);
   --neu-accent: #ff7f00;
+  --neu-accent-ink: #ffab5e;
 }
 @media (prefers-color-scheme: dark) {
   .owner-page-bg:not([data-theme="light"]):not([data-theme="dark"]) {
@@ -1496,6 +1499,7 @@ html.novo-lock-scroll body {
     --neu-ink: var(--oh-ink);
     --neu-ink-faint: var(--oh-ink-faint);
     --neu-accent: #ff7f00;
+    --neu-accent-ink: #ffab5e;
   }
 }
 
@@ -1632,7 +1636,7 @@ html:has(.owner-page-bg)::-webkit-scrollbar {
     color 0.18s ease;
 }
 .neu-nav > a:hover {
-  color: var(--neu-accent);
+  color: var(--neu-accent-ink);
   box-shadow: 2px 2px 5px var(--neu-shadow), -2px -2px 5px var(--neu-highlight);
 }
 .neu-nav > a:active {
@@ -1661,7 +1665,7 @@ html:has(.owner-page-bg)::-webkit-scrollbar {
 .neu-toggle { border-radius: 12px; }
 .neu-btn:hover,
 .neu-toggle:hover {
-  color: var(--neu-accent);
+  color: var(--neu-accent-ink);
 }
 .neu-btn:active,
 .neu-toggle:active {
@@ -1688,7 +1692,7 @@ html:has(.owner-page-bg)::-webkit-scrollbar {
    TRAJNA dok se ne ode na drugu stranicu, umjesto da nestane čim se pusti
    miš/prst — bez ovoga nav nije imao nikakav vizualni znak "ovdje si sada". */
 .neu-nav > a[aria-current="page"] {
-  color: var(--neu-accent);
+  color: var(--neu-accent-ink);
   font-weight: 700;
   box-shadow: inset 3px 3px 6px var(--neu-shadow), inset -3px -3px 6px var(--neu-highlight);
 }
@@ -1831,10 +1835,11 @@ html:has(.owner-page-bg)::-webkit-scrollbar {
   --na-border: rgba(0, 0, 0, 0.15);
   --na-border-strong: rgba(0, 0, 0, 0.22);
   --na-ink: #0a0a0a;
-  --na-ink-faint: rgba(0, 0, 0, 0.5);
+  --na-ink-faint: rgba(0, 0, 0, 0.62);
   --na-ink-faintest: rgba(0, 0, 0, 0.32);
   --na-blue: #0000c3;
   --na-accent: #ff7f00;
+  --na-accent-ink: #b35600;
   --na-radius-lg: 22px;
   --na-radius: 16px;
   --na-radius-sm: 11px;
@@ -1847,6 +1852,7 @@ html:has(.owner-page-bg)::-webkit-scrollbar {
   --na-ink: #f5f5f5;
   --na-ink-faint: rgba(255, 255, 255, 0.58);
   --na-ink-faintest: rgba(255, 255, 255, 0.36);
+  --na-accent-ink: #ffab5e;
 }
 @media (prefers-color-scheme: dark) {
   .owner-page-bg:not([data-theme="light"]):not([data-theme="dark"]) {
@@ -1857,6 +1863,7 @@ html:has(.owner-page-bg)::-webkit-scrollbar {
     --na-ink: #f5f5f5;
     --na-ink-faint: rgba(255, 255, 255, 0.58);
     --na-ink-faintest: rgba(255, 255, 255, 0.36);
+    --na-accent-ink: #ffab5e;
   }
 }
 
@@ -1926,7 +1933,7 @@ html:has(.owner-page-bg)::-webkit-scrollbar {
 }
 .na-btn-ghost:hover {
   border-color: var(--na-accent);
-  color: var(--na-accent);
+  color: var(--na-accent-ink);
 }
 .na-input {
   font-family: inherit;
@@ -2512,7 +2519,7 @@ html:has(.owner-page-bg)::-webkit-scrollbar {
   padding: 0 4px;
   border-radius: 5px;
   font-weight: 700;
-  color: var(--neu-accent);
+  color: var(--neu-accent-ink);
   background: rgba(255, 127, 0, 0.12);
 }
 .portal-mention.is-me { color: #fff; background: var(--neu-accent); }
@@ -2536,6 +2543,86 @@ html:has(.owner-page-bg)::-webkit-scrollbar {
 .portal-msg-row:hover { background: var(--na-bg); }
 .portal-msg-row.mentions-me { border-left-color: var(--neu-accent); }
 .portal-msg-row + .portal-msg-row { margin-top: 2px; }
+
+/* Plan #61: vrijeme svake poruke u lijevom rubu (kao Slack), vidljivo na
+   prelazak mišem/fokus; prva poruka grupe već ima vrijeme uz ime. */
+.portal-msg-row-time {
+  position: absolute;
+  right: 100%;
+  top: 3px;
+  margin-right: 6px;
+  font-size: 10.5px;
+  color: var(--neu-ink-faint);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  opacity: 0;
+  transition: opacity 0.12s ease;
+}
+.portal-msg-row:hover .portal-msg-row-time,
+.portal-msg-row:focus-within .portal-msg-row-time { opacity: 1; }
+.portal-msg-head + .portal-msg-row .portal-msg-row-time { display: none; }
+
+/* Razdjelnik dana u niti ("Danas", "Jučer", "28. 9."). */
+.portal-day-sep {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 14px 0 8px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--neu-ink-faint);
+}
+.portal-day-sep::before,
+.portal-day-sep::after {
+  content: "";
+  flex: 1;
+  height: 1px;
+  background: var(--na-border);
+}
+.portal-day-sep span {
+  padding: 2px 10px;
+  border: 1px solid var(--na-border);
+  border-radius: 999px;
+  background: var(--na-surface);
+}
+
+/* Plan #63: komentari na kartici zadatka (TasksBoard). */
+.task-comments summary {
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--neu-ink-faint);
+  list-style: none;
+  width: fit-content;
+}
+.task-comments summary::-webkit-details-marker { display: none; }
+.task-comments summary::before { content: "▸ "; }
+.task-comments[open] summary::before { content: "▾ "; }
+.task-comments-body {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px solid var(--na-border);
+}
+.task-comment { font-size: 12.5px; line-height: 1.45; }
+.task-comment-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: 11px;
+  color: var(--neu-ink-faint);
+  margin-bottom: 2px;
+}
+
+/* Plan #72: "Pročitano 14:05" ispod zadnje poslane DM poruke. */
+.portal-read-receipt {
+  text-align: right;
+  font-size: 11px;
+  color: var(--neu-ink-faint);
+  margin: 2px 4px 0 0;
+}
 
 .portal-msg-reactions {
   display: flex;
@@ -2594,7 +2681,7 @@ html:has(.owner-page-bg)::-webkit-scrollbar {
   transition: color 0.15s, background 0.15s;
 }
 .portal-msg-action-btn:hover { color: var(--na-ink); background: var(--na-bg); }
-.portal-msg-action-btn.is-pinned { color: var(--neu-accent); }
+.portal-msg-action-btn.is-pinned { color: var(--neu-accent-ink); }
 
 .portal-reaction-pill {
   display: inline-flex;
@@ -2612,7 +2699,7 @@ html:has(.owner-page-bg)::-webkit-scrollbar {
 .portal-reaction-pill.is-mine {
   background: rgba(255, 127, 0, 0.12);
   border-color: rgba(255, 127, 0, 0.45);
-  color: var(--neu-accent);
+  color: var(--neu-accent-ink);
   font-weight: 700;
 }
 .portal-reaction-count { font-variant-numeric: tabular-nums; }
@@ -2658,7 +2745,7 @@ html:has(.owner-page-bg)::-webkit-scrollbar {
   padding: 8px 14px;
   font-size: 12px;
   font-weight: 700;
-  color: var(--neu-accent);
+  color: var(--neu-accent-ink);
 }
 .portal-pinned-chevron { margin-left: auto; color: var(--neu-ink-faint); transition: transform 0.15s ease; }
 .portal-pinned-chevron.is-open { transform: rotate(180deg); }
@@ -2692,7 +2779,7 @@ html:has(.owner-page-bg)::-webkit-scrollbar {
   color: var(--neu-ink-faint);
   opacity: 0.6;
 }
-.portal-pinned-unpin:hover { opacity: 1; color: var(--neu-accent); }
+.portal-pinned-unpin:hover { opacity: 1; color: var(--neu-accent-ink); }
 
 /* @spominjanje padajući izbornik — iznad textarea (thread-form je pri dnu
    niti, izbornik mora rasti prema gore, ne prema dolje izvan vidljivog
@@ -2771,7 +2858,7 @@ html:has(.owner-page-bg)::-webkit-scrollbar {
   transition: border-color 0.15s ease, color 0.15s ease;
 }
 .portal-quicklink span { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.portal-quicklink:hover { border-color: var(--na-accent); color: var(--na-accent); }
+.portal-quicklink:hover { border-color: var(--na-accent); color: var(--na-accent-ink); }
 @media (min-width: 640px) {
   .portal-quicklinks { display: flex; flex-wrap: wrap; }
   .portal-quicklink { flex-direction: row; gap: 7px; padding: 8px 14px; font-size: 13.5px; }
@@ -2824,8 +2911,8 @@ html:has(.owner-page-bg)::-webkit-scrollbar {
   --od-purple: #6a21b0;
 
   --od-ink: #0b0b1f;
-  --od-ink-soft: rgba(11, 11, 31, 0.62);
-  --od-ink-faint: rgba(11, 11, 31, 0.42);
+  --od-ink-soft: rgba(11, 11, 31, 0.74);
+  --od-ink-faint: rgba(11, 11, 31, 0.6);
   /* NEUMORPHISM: "staklo" (--od-glass-bg*) više ne znači prozirnost/blur —
      znači "ista boja kao podloga", jer u soft-UI dubina dolazi isključivo iz
      --neu-shadow/--neu-highlight dvostruke sjene (vidi .owner-glass niže),
@@ -2853,6 +2940,7 @@ html:has(.owner-page-bg)::-webkit-scrollbar {
   --od-ink-faint: rgba(243, 243, 251, 0.66);
   --od-hairline: rgba(255, 255, 255, 0.16);
   --od-color-scheme: dark;
+  --od-reserved: #3a4bff;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -2862,6 +2950,7 @@ html:has(.owner-page-bg)::-webkit-scrollbar {
     --od-ink-faint: rgba(243, 243, 251, 0.66);
     --od-hairline: rgba(255, 255, 255, 0.16);
     --od-color-scheme: dark;
+    --od-reserved: #3a4bff;
   }
 }
 
@@ -3132,17 +3221,26 @@ a.owner-glass:active,
   cursor: pointer;
   transition: background 0.15s ease, color 0.15s ease;
 }
+.owner-theme-switch button.owner-theme-option {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--od-ink-soft);
+}
+.owner-theme-switch button:focus-visible { outline: 2px solid var(--od-navy); outline-offset: 1px; }
 .owner-theme-switch button.owner-theme-switch-active {
   background: var(--od-glass-bg-strong);
-  color: var(--neu-accent);
+  color: var(--neu-accent-ink);
   box-shadow: inset 2px 2px 4px var(--neu-shadow), inset -2px -2px 4px var(--neu-highlight);
 }
 
 /* ---- Sitni kalendar (OwnerMiniCalendar) -------------------------------- */
+/* Plan #33: ručno blokirano = prigušeno sivo (ranije crveno, a crvena je
+   na Početnoj značila "rezervirano" — zbunjujuće). Rezervacija = navy,
+   iCal = isprekidani rub. Crvena ostaje samo za greške. */
 .owner-cal-cell-blocked {
-  background: #ff3b30;
-  color: #fff;
-  box-shadow: 0 2px 6px -2px rgba(255, 59, 48, 0.6);
+  background: rgba(110, 110, 135, 0.42);
+  color: var(--od-ink);
 }
 .owner-cal-cell-free {
   background: rgba(120, 120, 150, 0.1);
@@ -3177,11 +3275,12 @@ a.owner-glass:active,
 .owner-cal-cell-btn:active { transform: scale(0.94); }
 
 .owner-cal-cell-ical {
-  background: rgba(140, 140, 165, 0.38);
+  background: rgba(110, 110, 135, 0.1);
+  border: 1.5px dashed rgba(110, 110, 135, 0.75);
   color: var(--od-ink);
 }
 .owner-cal-cell-reservation {
-  background: var(--od-navy);
+  background: var(--od-reserved, #0000c3);
   color: #fff;
   box-shadow: 0 2px 6px -2px rgba(0, 0, 195, 0.55);
 }
@@ -3243,6 +3342,24 @@ a.owner-glass:active,
 .owner-btn-primary:active { transform: translateY(0) scale(0.98); }
 .owner-btn-primary:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
 
+/* Tiha tekstualna akcija uz glavni gumb (plan #40, npr. "Označi pročitano"
+   ispod upita) — bez okvira i pozadine, da ne konkurira gumbu "Odgovori". */
+.owner-text-action {
+  background: none;
+  border: none;
+  padding: 6px 2px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--od-ink-soft);
+  cursor: pointer;
+  text-decoration: underline;
+  text-decoration-color: transparent;
+  text-underline-offset: 3px;
+  transition: text-decoration-color 0.15s ease, color 0.15s ease;
+}
+.owner-text-action:hover { color: var(--od-ink); text-decoration-color: currentColor; }
+.owner-text-action:focus-visible { outline: 2px solid var(--od-navy); outline-offset: 2px; border-radius: 4px; }
+
 /* Destruktivna/upozoravajuća akcija (npr. obriši upit, otkaži rezervaciju) —
    ista puna crvena kao .owner-cal-cell-blocked, radi Apple-ovski dosljedno
    "crveno = destruktivno" kroz cijeli vlasnički admin. */
@@ -3260,6 +3377,175 @@ a.owner-glass:active,
 }
 .owner-btn-danger:hover { transform: translateY(-1px); }
 .owner-btn-danger:active { transform: translateY(0) scale(0.98); }
+
+/* Donji list za unos/uređivanje rezervacije (plan #36/#38,
+   components/admin/OwnerReservationSheet.tsx). Na mobitelu izlazi odozdo,
+   od 640px je centriran prozor. */
+.owner-sheet {
+  position: fixed;
+  inset: 0;
+  height: fit-content;
+  border: none;
+  padding: 0;
+  background: transparent;
+  color: var(--od-ink, #0b0b1f);
+  width: 100%;
+  max-width: 100%;
+  max-height: 100dvh;
+  margin: auto auto 0;
+}
+.owner-sheet::backdrop { background: rgba(10, 10, 20, 0.45); }
+.owner-sheet-card {
+  background: var(--od-glass-bg-strong, #ffffff);
+  border-top: 1px solid var(--od-hairline, rgba(0, 0, 0, 0.1));
+  border-radius: 22px 22px 0 0;
+  padding: 18px 16px calc(18px + env(safe-area-inset-bottom));
+  max-height: 88dvh;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  box-shadow: 0 -20px 50px -20px rgba(0, 0, 0, 0.4);
+  text-align: left;
+  font-weight: 400;
+  white-space: normal;
+}
+.owner-sheet[open] .owner-sheet-card { animation: owner-sheet-up 0.22s cubic-bezier(0.2, 0.8, 0.2, 1); }
+@keyframes owner-sheet-up {
+  from { transform: translateY(24px); opacity: 0; }
+  to { transform: none; opacity: 1; }
+}
+@media (min-width: 640px) {
+  .owner-sheet { max-width: 560px; margin: auto; }
+  .owner-sheet-card { border-radius: 22px; border: 1px solid var(--od-hairline, rgba(0, 0, 0, 0.1)); padding: 22px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .owner-sheet[open] .owner-sheet-card { animation: none; }
+}
+.owner-sheet-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.owner-sheet-close {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 999px;
+  border: 1px solid var(--od-hairline, rgba(0, 0, 0, 0.12));
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+.owner-sheet-close:hover { background: rgba(127, 127, 127, 0.12); }
+.owner-btn-with-icon {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+/* Rezervacija kao kartica na mobitelu (plan #37). */
+.owner-res-card {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 14px 16px;
+}
+.owner-res-card-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+/* Potvrda brisanja (plan #58, components/admin/ConfirmSubmit.tsx) — zamjena
+   za browserov confirm(). Boje iz tokena pretka: --od-* kod vlasnika,
+   --na-* na Portalu, inače bijelo/crno za superadmin. */
+.confirm-dialog {
+  position: fixed;
+  inset: 0;
+  margin: auto;
+  height: fit-content;
+  border: none;
+  padding: 0;
+  background: transparent;
+  max-width: min(420px, calc(100vw - 32px));
+  width: 100%;
+  color: var(--od-ink, var(--na-ink, #111118));
+}
+.confirm-dialog::backdrop {
+  background: rgba(10, 10, 20, 0.45);
+}
+.confirm-dialog[open] {
+  animation: confirm-dialog-in 0.16s ease-out;
+}
+@keyframes confirm-dialog-in {
+  from { opacity: 0; transform: translateY(8px) scale(0.98); }
+  to { opacity: 1; transform: none; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .confirm-dialog[open] { animation: none; }
+}
+.confirm-dialog-card {
+  background: var(--od-glass-bg-strong, var(--na-surface, #ffffff));
+  border: 1px solid var(--od-hairline, var(--na-border, rgba(0, 0, 0, 0.12)));
+  border-radius: 18px;
+  padding: 20px;
+  box-shadow: 0 24px 60px -20px rgba(0, 0, 0, 0.45);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  text-align: left;
+  white-space: normal;
+}
+.confirm-dialog-title {
+  font-size: 17px;
+  font-weight: 700;
+  line-height: 1.3;
+  text-wrap: balance;
+}
+.confirm-dialog-desc {
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--od-ink-soft, var(--na-ink-faint, rgba(0, 0, 0, 0.66)));
+}
+.confirm-dialog-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 6px;
+  flex-wrap: wrap;
+}
+.confirm-dialog-cancel,
+.confirm-dialog-danger {
+  border-radius: 999px;
+  font-size: 14px;
+  font-weight: 600;
+  padding: 9px 18px;
+  cursor: pointer;
+  border: 1px solid transparent;
+}
+.confirm-dialog-cancel {
+  background: transparent;
+  color: inherit;
+  border-color: var(--od-hairline, var(--na-border, rgba(0, 0, 0, 0.15)));
+}
+.confirm-dialog-cancel:hover { background: rgba(127, 127, 127, 0.1); }
+.confirm-dialog-danger {
+  background: #d70015;
+  color: #fff;
+}
+.confirm-dialog-danger:hover { background: #b80012; }
+.confirm-dialog-danger:disabled { opacity: 0.6; cursor: progress; }
+.confirm-dialog-cancel:focus-visible,
+.confirm-dialog-danger:focus-visible {
+  outline: 2px solid #0000c3;
+  outline-offset: 2px;
+}
 
 /* Sitna statusna pilula (npr. "na čekanju" / "riješeno" na upitima,
    "plaćeno" na rezervacijama) — neutralna glass verzija koje boje se onda
