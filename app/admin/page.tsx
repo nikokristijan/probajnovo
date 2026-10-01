@@ -7,7 +7,6 @@ import {
   listStudies,
   listProducts,
   listNfcTags,
-  countUnreadInquiries,
   listPropertiesForAdmin,
   listCompaniesForAdmin,
   listInquiriesForAdmin,
@@ -28,6 +27,7 @@ import OwnerTrendChart from "@/components/admin/OwnerTrendChart";
 import OwnerPropertyCarousel from "@/components/admin/OwnerPropertyCarousel";
 import OwnerMiniCalendar from "@/components/admin/OwnerMiniCalendar";
 import OwnerShareReport from "@/components/admin/OwnerShareReport";
+import SuperadminToday from "@/components/admin/SuperadminToday";
 
 export default async function AdminDashboard() {
   // Prije se ovdje zvao requireFullAdmin() koji je vlasnika (role="owner")
@@ -38,13 +38,12 @@ export default async function AdminDashboard() {
   if (!admin) redirect("/admin/login");
   if (admin.role === "owner") return <OwnerDashboard admin={admin} />;
 
-  const [properties, companies, studies, products, nfcTags, unreadInquiries, subscriptionStats] = await Promise.all([
+  const [properties, companies, studies, products, nfcTags, subscriptionStats] = await Promise.all([
     listProperties(),
     listCompanies(),
     listStudies(),
     listProducts(),
     listNfcTags(),
-    countUnreadInquiries(),
     // Financije brojke su vidljive samo glavnom adminu (isti gate kao
     // /admin/financije) — "obični" puni admini ne trebaju vidjeti NOVO-ovu
     // vlastitu naplatu klijentima na naslovnici.
@@ -63,29 +62,9 @@ export default async function AdminDashboard() {
 
   return (
     <div className="flex flex-col gap-12">
-      {unreadInquiries > 0 && (
-        <Link
-          href="/admin/inquiries"
-          className="flex items-center justify-between border border-[#ff7f00]/40 bg-[#ff7f00]/5 rounded-xl px-4 py-3 hover:border-[#ff7f00]"
-        >
-          <span className="text-sm font-semibold">
-            {unreadInquiries} {unreadInquiries === 1 ? "novi upit čeka" : "novih upita čeka"}
-          </span>
-          <span className="text-sm text-[#b35600] font-semibold">Pogledaj →</span>
-        </Link>
-      )}
-
-      {subscriptionStats && subscriptionStats.expiringSoonCount > 0 && (
-        <Link
-          href="/admin/financije"
-          className="flex items-center justify-between border border-red-300 bg-red-50 rounded-xl px-4 py-3 hover:border-red-400"
-        >
-          <span className="text-sm font-semibold">
-            {subscriptionStats.expiringSoonCount} pretplata ističe uskoro
-          </span>
-          <span className="text-sm text-red-600 font-semibold">Financije →</span>
-        </Link>
-      )}
+      {/* Plan #27: jutarnji "Danas" — dolasci, odlasci, upiti bez odgovora,
+          moji zadaci i uplate koje čekaju, umjesto dva odvojena bannera. */}
+      <SuperadminToday admin={admin} />
 
       <section className="admin-animate-grid grid grid-cols-2 sm:grid-cols-7 gap-3">
         <StatCard label="Vikendice" value={properties.length} />
@@ -202,7 +181,7 @@ export default async function AdminDashboard() {
                 <div>
                   <div className="font-semibold text-sm">{p.name}</div>
                   <div className="text-xs text-black/50 mt-0.5">
-                    novo.hr/{p.slug} · {p.location} · {p.layoutStyle}
+                    probajnovo.com/{p.slug} · {p.location} · {p.layoutStyle}
                     {p.darkMode ? " · dark" : ""}
                   </div>
                 </div>
