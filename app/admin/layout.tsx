@@ -2,7 +2,13 @@ import type { Metadata, Viewport } from "next";
 import Link from "next/link";
 import { getCurrentAdminRecord } from "@/lib/auth";
 import { logoutAction } from "@/lib/actions";
-import { listPropertiesForAdmin, listCompaniesForAdmin, countUnreadDirectMessages } from "@/lib/db/queries";
+import {
+  listPropertiesForAdmin,
+  listCompaniesForAdmin,
+  countUnreadDirectMessages,
+  getCommandPaletteItems,
+} from "@/lib/db/queries";
+import CommandPalette, { type PaletteItem } from "@/components/admin/CommandPalette";
 import PwaRegister from "@/components/admin/PwaRegister";
 import PresenceHeartbeat from "@/components/admin/PresenceHeartbeat";
 import AdminNavLink from "@/components/admin/AdminNavLink";
@@ -82,8 +88,51 @@ export default async function AdminLayout({ children }: { children: React.ReactN
   // Značka nepročitanih DM-ova uz "Portal" link (Faza 3) — samo punim
   // adminima/superadminima, isto ograničenje kao sam Portal (requireFullAdmin).
   let unreadDmCount = 0;
+  // Plan #22: stavke za Cmd+K paletu — samo za tim (vlasnik ima 5 stavki u izborniku).
+  let paletteItems: PaletteItem[] = [];
   if (admin && admin.role !== "owner") {
-    unreadDmCount = await countUnreadDirectMessages(admin.email);
+    const [dmCount, palette] = await Promise.all([
+      countUnreadDirectMessages(admin.email),
+      getCommandPaletteItems(),
+    ]);
+    unreadDmCount = dmCount;
+    const sup = admin.isSuperAdmin;
+    paletteItems = [
+      ...(sup
+        ? [
+            { id: "novi-klijent", label: "Novi klijent", href: "/admin/novi-klijent", group: "Radnje" as const, keywords: ["dodaj", "klijent", "čarobnjak"] },
+            { id: "pozovi", label: "Pozovi admina ili vlasnika", href: "/admin/admins/new", group: "Radnje" as const, keywords: ["pozivnica", "dodaj"] },
+          ]
+        : []),
+      { id: "nova-vikendica", label: "Nova vikendica", href: "/admin/properties/new", group: "Radnje" as const },
+      { id: "nova-firma", label: "Nova firma", href: "/admin/companies/new", group: "Radnje" as const },
+      { id: "pregled", label: "Pregled", href: "/admin", group: "Idi na" as const, keywords: ["danas", "početna"] },
+      { id: "upiti", label: "Upiti", href: "/admin/inquiries", group: "Idi na" as const },
+      { id: "vikendice", label: "Vikendice", href: "/admin/vikendice", group: "Idi na" as const },
+      { id: "firme", label: "Firme", href: "/admin#firme", group: "Idi na" as const },
+      { id: "agencija", label: "Sadržaj agencije", href: "/admin/agency", group: "Idi na" as const },
+      ...(sup ? [{ id: "financije", label: "Financije", href: "/admin/financije", group: "Idi na" as const, keywords: ["pretplate", "uplate", "mrr"] }] : []),
+      { id: "portal", label: "Portal", href: "/admin/portal", group: "Idi na" as const, keywords: ["zadaci", "poruke", "chat"] },
+      { id: "aktivnost", label: "Aktivnost", href: "/admin/aktivnost", group: "Idi na" as const, keywords: ["dnevnik", "log"] },
+      ...(sup ? [{ id: "admini", label: "Admini", href: "/admin/admins", group: "Idi na" as const, keywords: ["tim", "vlasnici"] }] : []),
+      { id: "postavke", label: "Postavke", href: "/admin/settings", group: "Idi na" as const },
+      ...palette.properties.map((p) => ({
+        id: `v-${p.id}`,
+        label: p.name,
+        href: `/admin/vikendice/${p.id}`,
+        group: "Vikendice" as const,
+        keywords: [p.slug, "kalendar", "rezervacije"],
+        hint: `/${p.slug}`,
+      })),
+      ...palette.companies.map((c) => ({
+        id: `f-${c.id}`,
+        label: c.name,
+        href: `/admin/companies/${c.id}`,
+        group: "Firme" as const,
+        keywords: [c.slug],
+        hint: `/${c.slug}`,
+      })),
+    ];
   }
 
   // "owner-page-bg" + data-theme dolje SAMO za role="owner" (vidi opsežan
@@ -195,7 +244,10 @@ export default async function AdminLayout({ children }: { children: React.ReactN
                 jednom flex redu koji se na 1440px lomio pa je "Odjava" ostajala
                 sama u drugom redu. Na mobitelu ostaju unutar hamburger izbornika
                 (vidi sm:hidden kopije dolje). */}
-            <div className="hidden sm:flex items-center gap-3 ml-auto">
+            <div className="flex items-center gap-3 ml-auto">
+              <CommandPalette items={paletteItems} />
+            </div>
+            <div className="hidden sm:flex items-center gap-3">
               <span className="owner-header-faint flex items-center gap-1.5 text-sm">
                 {admin.email}
                 {admin.isSuperAdmin && (
@@ -219,33 +271,33 @@ export default async function AdminLayout({ children }: { children: React.ReactN
               <MenuIcon />
             </label>
             <nav className="hidden peer-checked:flex sm:flex items-start sm:items-center gap-3 sm:gap-2.5 text-sm flex-col sm:flex-row w-full flex-wrap neu-nav">
+              {/* Plan #22: izbornik grupiran po namjeni — klijenti, novac, tim —
+                  s tankim razdjelnicima; sve ostalo dohvatljivo i preko Cmd+K. */}
               <AdminNavLink href="/admin" exact>
                 Pregled
               </AdminNavLink>
-              <AdminNavLink href="/admin/agency">
-                Sadržaj agencije
+              <span className="neu-nav-sep" aria-hidden="true" />
+              {/* Kalendar/Rezervacije/Upiti su grupirani pod jedan hub (bira se
+                  vikendica pa se tek onda vidi njen kalendar/rezervacije/upiti),
+                  vidi app/admin/vikendice. */}
+              <AdminNavLink href="/admin/vikendice">
+                Vikendice
               </AdminNavLink>
               <AdminNavLink href="/admin#firme">
                 Firme
               </AdminNavLink>
-              {/* Kalendar/Rezervacije/Upiti su grupirani pod jedan hub (bira se
-                  vikendica pa se tek onda vidi njen kalendar/rezervacije/upiti)
-                  umjesto tri zasebna taba koja su miješala sve vikendice odjednom
-                  i postajala krcata — vidi app/admin/vikendice. */}
-              <AdminNavLink href="/admin/vikendice">
-                Vikendice
+              <AdminNavLink href="/admin/agency">
+                Sadržaj agencije
               </AdminNavLink>
-              {/* Prodaja je spojena u Financije (na izričit zahtjev korisnika:
-                  "spoji tab financije i prodaja u jedan") — jedan link, jedna
-                  stranica, vidi app/admin/financije AgencyLedgerTable. */}
               {admin.isSuperAdmin && (
-                <AdminNavLink href="/admin/financije">
-                  Financije
-                </AdminNavLink>
+                <>
+                  <span className="neu-nav-sep" aria-hidden="true" />
+                  <AdminNavLink href="/admin/financije">
+                    Financije
+                  </AdminNavLink>
+                </>
               )}
-              <AdminNavLink href="/admin/aktivnost">
-                Aktivnost
-              </AdminNavLink>
+              <span className="neu-nav-sep" aria-hidden="true" />
               {/* Portal (Faza 3) — spojeni Zadaci+Poruke+DM+statistika tab
                   ("Zadaci i poruke nek budu u jednom tabu, 'Portal'"),
                   dostupno SVIM punim adminima i superadminima, ne samo
@@ -265,11 +317,15 @@ export default async function AdminLayout({ children }: { children: React.ReactN
                   </span>
                 )}
               </AdminNavLink>
+              <AdminNavLink href="/admin/aktivnost">
+                Aktivnost
+              </AdminNavLink>
               {admin.isSuperAdmin && (
                 <AdminNavLink href="/admin/admins">
                   Admini
                 </AdminNavLink>
               )}
+              <span className="neu-nav-sep" aria-hidden="true" />
               <AdminNavLink href="/admin/settings">
                 Postavke
               </AdminNavLink>
