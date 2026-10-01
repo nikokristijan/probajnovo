@@ -370,3 +370,78 @@ export async function createClientWizardAction(_prev: InviteState, formData: For
   if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "Provjeri unesene podatke." };
   const d = parsed.data;
   if (RESERVED_SLUGS.has(d.slug)) return { error: `"${d.slug}" je rezervirana adresa, odaberi drugu.` };
+  if (await isSlugTaken(d.slug)) return { error: `Adresa "${d.slug}" je već zauzeta — odaberi drugu.` };
+  if (d.ownerEmail && (await findAdminByEmail(d.ownerEmail))) {
+    return { error: "Vlasnik s tim e-mailom već ima račun — dodaj mu ovu stranicu u Admini → Uredi." };
+  }
+
+  let sourceId: number;
+  let editHref: string;
+  if (d.kind === "property") {
+    const p = await createProperty({
+      slug: d.slug,
+      name: d.name,
+      location: d.location,
+      tagline: "",
+      description: "",
+      priceFromEur: d.priceFromEur,
+      capacityGuests: d.capacityGuests,
+      bedrooms: d.bedrooms,
+      distanceFromCenter: "",
+      published: false,
+    });
+    sourceId = p.id;
+    editHref = `/admin/properties/${p.id}`;
+  } else {
+    const c = await createCompany({ slug: d.slug, name: d.name, location: d.location, tagline: "", description: "", published: false });
+    sourceId = c.id;
+    editHref = `/admin/companies/${c.id}`;
+  }
+
+  if (d.monthlyPriceEur > 0) {
+    const today = todayDateStringZagreb();
+    const isTrial = d.trialDays > 0;
+    const trialEndsAt = isTrial ? addDays(today, d.trialDays) : null;
+    await createSubscription({
+      source: d.kind,
+      sourceId,
+      sourceName: d.name,
+      monthlyPriceEur: d.monthlyPriceEur,
+      startDate: today,
+      isTrial,
+      trialEndsAt,
+      status: isTrial ? "trial" : "active",
+      nextRenewalDate: trialEndsAt ?? addMonths(today, 1),
+      note: null,
+    });
+  }
+
+  let link: string | undefined;
+  let emailed: boolean | undefined;
+  if (d.ownerEmail) {
+    const owner = await createAdmin({
+      email: d.ownerEmail,
+      passwordHash: await bcrypt.hash(randomBytes(24).toString("base64url"), 12),
+      isSuperAdmin: false,
+      role: "owner",
+    });
+    if (d.ownerName) await updateAdminAccount(owner.id, { role: "owner", displayName: d.ownerName, jobTitle: null });
+    await setAdminAccess(owner.id, {
+      propertyIds: d.kind === "property" ? [sourceId] : [],
+      companyIds: d.kind === "company" ? [sourceId] : [],
+    });
+    ({ link, emailed } = await issueInvite(owner, me, { isReset: false, scopeLabel: d.name }));
+  }
+
+  await logActivity({
+    adminEmail: me.email,
+    action: "created_client",
+    targetLabel: d.name,
+    propertyId: d.kind === "property" ? sourceId : null,
+  });
+  revalidatePath("/admin");
+  revalidatePath("/admin/vikendice");
+  revalidatePath("/admin/financije");
+  revalidatePath("/admin/admins");
+  return { success: true, link, emailed, email: d.ownerEmail || undefined, nextHref: editHref };
+}
