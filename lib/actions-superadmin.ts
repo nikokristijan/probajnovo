@@ -191,3 +191,182 @@ export async function acceptInviteAction(token: string, _prev: SimpleState, form
 
   await acceptAdminInvite(admin.id, await bcrypt.hash(parsed.data.password, 12));
   await clearFailedLogins(admin.id);
+  await logActivity({ adminEmail: admin.email, action: "accepted_invite", targetLabel: admin.email, propertyId: null });
+
+  if (admin.twoFactorEnabled) {
+    // 2FA ostaje uključena — prijava ide normalnim putem s kodom.
+    redirect("/admin/login?lozinka=postavljena");
+  }
+  await setSessionCookie(await createSessionToken({ adminId: admin.id, email: admin.email }));
+  redirect("/admin");
+}
+
+/* ---------------------------------------------------------------- */
+/* Uređivanje admina i vlasnika (plan #14)                           */
+/* ---------------------------------------------------------------- */
+
+const EditAdminSchema = z.object({
+  role: z.enum(["admin", "owner"]),
+  displayName: z.string().trim().max(80).optional(),
+  jobTitle: z.string().trim().max(80).optional(),
+  propertyIds: z.array(z.coerce.number().int()).default([]),
+  companyIds: z.array(z.coerce.number().int()).default([]),
+});
+
+export async function updateAdminAccountAction(adminId: number, _prev: SimpleState, formData: FormData): Promise<SimpleState> {
+  const me = await requireSuper();
+  const target = await getAdminById(adminId);
+  if (!target) return { error: "Račun više ne postoji." };
+  const parsed = EditAdminSchema.safeParse({
+    role: formData.get("role"),
+    displayName: formData.get("displayName") || undefined,
+    jobTitle: formData.get("jobTitle") || undefined,
+    propertyIds: formData.getAll("propertyIds"),
+    companyIds: formData.getAll("companyIds"),
+  });
+  if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "Provjeri unesene podatke." };
+  const d = parsed.data;
+  if (target.isSuperAdmin && d.role !== "admin") return { error: "Glavni admin ne može postati vlasnik." };
+  if (d.role === "owner" && d.propertyIds.length === 0 && d.companyIds.length === 0) {
+    return { error: "Vlasnik mora imati barem jednu vikendicu ili firmu." };
+  }
+  await updateAdminAccount(adminId, { role: d.role, displayName: d.displayName || null, jobTitle: d.jobTitle || null });
+  if (d.role === "owner") await setAdminAccess(adminId, { propertyIds: d.propertyIds, companyIds: d.companyIds });
+  await logActivity({ adminEmail: me.email, action: "updated_admin", targetLabel: target.email, propertyId: null });
+  revalidatePath("/admin/admins");
+  revalidatePath(`/admin/admins/${adminId}`);
+  return { success: true };
+}
+
+/** Isključuje 2FA drugome (npr. izgubio mobitel) — sljedeća prijava je samo lozinkom. */
+export async function resetAdminTwoFactorAction(adminId: number) {
+  const me = await requireSuper();
+  const target = await getAdminById(adminId);
+  if (!target || target.id === me.id) redirect(`/admin/admins/${adminId}`);
+  await disableTwoFactor(adminId);
+  await logActivity({ adminEmail: me.email, action: "reset_2fa", targetLabel: target.email, propertyId: null });
+  revalidatePath(`/admin/admins/${adminId}`);
+  redirect(`/admin/admins/${adminId}?spremljeno=2fa`);
+}
+
+/* ---------------------------------------------------------------- */
+/* Evidencija uplata (plan #17)                                      */
+/* ---------------------------------------------------------------- */
+
+const PaymentSchema = z.object({
+  amountEur: z.coerce.number().int({ message: "Iznos mora biti cijeli broj eura." }).min(1, { message: "Upiši iznos." }),
+  paidOn: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, { message: "Odaberi datum uplate." }),
+  months: z.coerce.number().int().min(1).max(24).default(1),
+  method: z.string().trim().max(40).optional(),
+  note: z.string().trim().max(300).optional(),
+});
+
+export async function recordPaymentAction(subscriptionId: number, _prev: SimpleState, formData: FormData): Promise<SimpleState> {
+  const me = await requireSuper();
+  const sub = await getSubscriptionById(subscriptionId);
+  if (!sub) return { error: "Pretplata više ne postoji." };
+  const parsed = PaymentSchema.safeParse({
+    amountEur: formData.get("amountEur"),
+    paidOn: formData.get("paidOn"),
+    months: formData.get("months") || 1,
+    method: formData.get("method") || undefined,
+    note: formData.get("note") || undefined,
+  });
+  if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "Provjeri podatke uplate." };
+  await recordSubscriptionPayment({
+    subscriptionId,
+    amountEur: parsed.data.amountEur,
+    paidOn: parsed.data.paidOn,
+    months: parsed.data.months,
+    method: parsed.data.method || null,
+    note: parsed.data.note || null,
+    recordedBy: me.email,
+  });
+  await logActivity({
+    adminEmail: me.email,
+    action: "recorded_payment",
+    targetLabel: `${sub.sourceName} — ${parsed.data.amountEur} €`,
+    propertyId: sub.source === "property" ? sub.sourceId : null,
+  });
+  revalidatePath("/admin/financije");
+  revalidatePath(`/admin/financije/${subscriptionId}`);
+  revalidatePath("/admin");
+  return { success: true };
+}
+
+/** Brza uplata iz tablice: jedan mjesec po trenutnoj cijeni, plaćeno danas. */
+export async function quickPaymentAction(subscriptionId: number) {
+  const me = await requireSuper();
+  const sub = await getSubscriptionById(subscriptionId);
+  if (!sub) return;
+  await recordSubscriptionPayment({
+    subscriptionId,
+    amountEur: sub.monthlyPriceEur,
+    paidOn: todayDateStringZagreb(),
+    months: 1,
+    method: null,
+    note: null,
+    recordedBy: me.email,
+  });
+  await logActivity({
+    adminEmail: me.email,
+    action: "recorded_payment",
+    targetLabel: `${sub.sourceName} — ${sub.monthlyPriceEur} €`,
+    propertyId: sub.source === "property" ? sub.sourceId : null,
+  });
+  revalidatePath("/admin/financije");
+  revalidatePath("/admin");
+}
+
+export async function deletePaymentAction(paymentId: number) {
+  await requireSuper();
+  const subId = await deleteSubscriptionPayment(paymentId);
+  revalidatePath("/admin/financije");
+  if (subId) revalidatePath(`/admin/financije/${subId}`);
+}
+
+/* ---------------------------------------------------------------- */
+/* Čarobnjak za novog klijenta (plan #12)                            */
+/* ---------------------------------------------------------------- */
+
+const WizardSchema = z
+  .object({
+    kind: z.enum(["property", "company"]),
+    name: z.string().trim().min(2, { message: "Upiši naziv klijenta." }).max(120),
+    slug: z
+      .string()
+      .trim()
+      .toLowerCase()
+      .regex(/^[a-z0-9-]{2,60}$/, { message: "Adresa smije imati samo mala slova, brojeve i crtice." }),
+    location: z.string().trim().max(120).default(""),
+    priceFromEur: z.coerce.number().int().min(0).default(0),
+    capacityGuests: z.coerce.number().int().min(1).default(2),
+    bedrooms: z.coerce.number().int().min(0).default(1),
+    monthlyPriceEur: z.coerce.number().int().min(0).default(0),
+    trialDays: z.coerce.number().int().min(0).max(120).default(0),
+    ownerEmail: z.union([z.literal(""), z.string().trim().toLowerCase().email({ message: "E-mail vlasnika nije ispravan." })]).default(""),
+    ownerName: z.string().trim().max(80).default(""),
+  });
+
+function addDays(date: string, days: number): string {
+  const d = new Date(`${date}T12:00:00Z`);
+  d.setUTCDate(d.getUTCDate() + days);
+  return d.toISOString().slice(0, 10);
+}
+
+function addMonths(date: string, months: number): string {
+  const [y, m, d] = date.split("-").map(Number);
+  return new Date(Date.UTC(y, m - 1 + months, d)).toISOString().slice(0, 10);
+}
+
+/**
+ * Jedan korak umjesto tri stranice: stvori (neobjavljenu) vikendicu ili
+ * firmu, pretplatu i vlasnika s pozivnicom. Stranica ostaje skrivena dok je
+ * ne popuniš i objaviš — čarobnjak samo postavi kostur.
+ */
+export async function createClientWizardAction(_prev: InviteState, formData: FormData): Promise<InviteState> {
+  const me = await requireSuper();
+  const parsed = WizardSchema.safeParse(Object.fromEntries(formData.entries()));
+  if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "Provjeri unesene podatke." };
+  const d = parsed.data;
+  if (RESERVED_SLUGS.has(d.slug)) return { error: `"${d.slug}" je rezervirana adresa, odaberi drugu.` };
