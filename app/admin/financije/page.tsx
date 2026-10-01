@@ -9,7 +9,10 @@ import {
   listSales,
   getSalesMonthlyEarnings,
   getSalesYearlyByMonth,
+  getClientHealthSignals,
 } from "@/lib/db/queries";
+import { describeSubscription } from "@/lib/subscriptionState";
+import { scoreClientHealth } from "@/lib/clientHealth";
 import { createSubscriptionAction } from "@/lib/actions";
 import { currentYearMonthZagreb, todayDateStringZagreb } from "@/lib/date";
 import SubscriptionForm from "@/components/admin/SubscriptionForm";
@@ -46,7 +49,7 @@ export default async function AdminFinancijePage({
   const year = sp.year ? Number(sp.year) : nowZagreb.year;
   const monthPrefix = `${nowZagreb.year}-${String(nowZagreb.month).padStart(2, "0")}`;
 
-  const [subscriptions, subStats, subValueByMonth, properties, companies, sales, salesThisMonth, salesByMonth] =
+  const [subscriptions, subStats, subValueByMonth, properties, companies, sales, salesThisMonth, salesByMonth, healthSignals] =
     await Promise.all([
       listSubscriptions(),
       getSubscriptionStats(),
@@ -56,15 +59,21 @@ export default async function AdminFinancijePage({
       listSales(),
       getSalesMonthlyEarnings(monthPrefix),
       getSalesYearlyByMonth(year),
+      getClientHealthSignals(),
     ]);
 
   const today = todayDateStringZagreb();
-  const expiringSoon = subscriptions.filter((s) => {
-    if (s.status !== "active" && s.status !== "trial") return false;
-    const cutoff = new Date(`${today}T12:00:00Z`);
-    cutoff.setUTCDate(cutoff.getUTCDate() + 7);
-    return s.nextRenewalDate <= cutoff.toISOString().slice(0, 10);
-  });
+  // Plan #16: što treba naplatiti — računa se iz datuma (kasni / naplata uskoro).
+  const needsPayment = subscriptions
+    .map((s) => ({ s, st: describeSubscription(s, today) }))
+    .filter((x) => x.st.needsPayment)
+    .sort((a, b) => b.st.daysLate - a.st.daysLate || a.s.nextRenewalDate.localeCompare(b.s.nextRenewalDate));
+
+  // Plan #19: zdravlje klijenata — prvo oni s rizikom.
+  const health = healthSignals.map((c) => scoreClientHealth(c, today));
+  const order = { rizik: 0, pratiti: 1, dobro: 2 } as const;
+  const attention = health.filter((h) => h.level !== "dobro").sort((a, b) => order[a.level] - order[b.level]);
+  const healthyCount = health.length - attention.length;
 
   // "Jedan zbrojeni promet" po mjesecu — prodaja (stvarno primljen novac tog
   // mjeseca) + vrijednost NOVIH pretplata pokrenutih tog mjeseca (vidi
@@ -89,20 +98,23 @@ export default async function AdminFinancijePage({
         </p>
       </div>
 
-      {expiringSoon.length > 0 && (
-        <div className="border border-[#ff7f00]/40 bg-[#ff7f00]/5 rounded-xl px-4 py-3 flex flex-col gap-1.5">
+      {needsPayment.length > 0 && (
+        <div className="border border-[#ff7f00]/40 bg-[#ff7f00]/5 rounded-xl px-4 py-3 flex flex-col gap-2">
           <span className="text-sm font-semibold">
-            {expiringSoon.length} {expiringSoon.length === 1 ? "pretplata ističe" : "pretplata ističe"} uskoro
-            (7 dana)
+            {needsPayment.length === 1 ? "1 pretplata čeka uplatu" : `${needsPayment.length} pretplate čekaju uplatu`}
           </span>
           <div className="flex flex-wrap gap-1.5">
-            {expiringSoon.map((s) => (
-              <span
+            {needsPayment.map(({ s, st }) => (
+              <Link
                 key={s.id}
-                className="text-xs font-semibold px-2.5 py-1 rounded-full bg-white border border-[#ff7f00]/30"
+                href={`/admin/financije/${s.id}`}
+                className={
+                  "text-xs font-semibold px-2.5 py-1 rounded-full bg-white border " +
+                  (st.daysLate > 0 ? "border-[#d70015]/40 text-[#b80012]" : "border-[#ff7f00]/30")
+                }
               >
-                {s.sourceName} · {s.nextRenewalDate}
-              </span>
+                {s.sourceName} · {st.label}
+              </Link>
             ))}
           </div>
         </div>
@@ -125,6 +137,47 @@ export default async function AdminFinancijePage({
         <StatCard label="Ističe uskoro" value={subStats.expiringSoonCount} />
         <StatCard label="Otkazane pretplate" value={subStats.cancelledCount} />
         <StatCard label="Broj prodaja ovaj mjesec" value={salesThisMonth.count} />
+      </section>
+
+      <section className="flex flex-col gap-3" aria-labelledby="zdravlje-naslov">
+        <h2 id="zdravlje-naslov" className="text-xs font-semibold uppercase tracking-wide text-black/60">
+          Zdravlje klijenata
+        </h2>
+        {attention.length === 0 ? (
+          <p className="text-sm text-black/70">
+            Svih {health.length} klijenata je u redu: plaćaju na vrijeme, stranice imaju posjete i vlasnici ulaze.
+          </p>
+        ) : (
+          <ul className="flex flex-col gap-2">
+            {attention.map((h) => (
+              <li key={`${h.source}-${h.sourceId}`} className="neu-card px-4 py-3 flex items-start justify-between gap-3 flex-wrap">
+                <div className="min-w-0">
+                  <div className="flex items-center gap-2 font-semibold text-sm">
+                    <span className={"health-dot health-" + h.level} aria-hidden="true" />
+                    {h.name}
+                    <span className="text-[11px] font-semibold text-black/60">{h.level === "rizik" ? "Rizik" : "Pratiti"}</span>
+                  </div>
+                  <p className="text-xs text-black/70 mt-0.5">{h.reasons.join(" · ")}</p>
+                </div>
+                <Link
+                  href={
+                    h.subscriptionId && h.reasons.some((r) => r.startsWith("Uplata"))
+                      ? `/admin/financije/${h.subscriptionId}`
+                      : h.source === "property"
+                        ? `/admin/vikendice/${h.sourceId}`
+                        : `/admin/companies/${h.sourceId}`
+                  }
+                  className="text-xs font-semibold px-3 py-1.5 rounded-full border border-black/15 hover:border-black/40 shrink-0"
+                >
+                  Otvori
+                </Link>
+              </li>
+            ))}
+          </ul>
+        )}
+        {attention.length > 0 && healthyCount > 0 && (
+          <p className="text-xs text-black/60">Ostalih {healthyCount} klijenata je u redu.</p>
+        )}
       </section>
 
       <YearlyBarChart key={year} data={combinedByMonth} year={year} color="#0000c3" />

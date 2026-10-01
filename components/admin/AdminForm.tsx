@@ -1,7 +1,8 @@
 "use client";
 
 import { useActionState, useState } from "react";
-import { createAdminAction, type ActionState } from "@/lib/actions";
+import { inviteAdminAction, type InviteState } from "@/lib/actions-superadmin";
+import InviteResult from "@/components/admin/InviteResult";
 
 type Option = { id: number; name: string };
 
@@ -12,15 +13,12 @@ export default function AdminForm({
   properties: Option[];
   companies: Option[];
 }) {
-  const [state, action, pending] = useActionState<ActionState, FormData>(
-    createAdminAction,
-    undefined
-  );
-  const [email, setEmail] = useState("");
+  const [state, action, pending] = useActionState<InviteState, FormData>(inviteAdminAction, undefined);
   const [role, setRole] = useState<"admin" | "owner">("admin");
 
   return (
-    <form action={action} className="flex flex-col gap-4 max-w-sm">
+    // React nakon akcije resetira formu — vrati i prikaz uloge na početno.
+    <form action={action} onReset={() => setRole("admin")} className="flex flex-col gap-4 max-w-sm">
       <div className="flex flex-col gap-1.5">
         <label htmlFor="email" className="text-sm font-medium">
           Email novog admina
@@ -29,26 +27,21 @@ export default function AdminForm({
           id="email"
           name="email"
           type="email"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
+          // Novi link = nova pozivnica poslana: polje se isprazni (remount).
+          key={state?.link ?? "novi"}
           required
           autoComplete="off"
           className="admin-input"
         />
       </div>
       <div className="flex flex-col gap-1.5">
-        <label htmlFor="password" className="text-sm font-medium">
-          Lozinka (barem 8 znakova)
+        <label htmlFor="displayName" className="text-sm font-medium">
+          Ime (nije obavezno)
         </label>
-        <input
-          id="password"
-          name="password"
-          type="password"
-          required
-          minLength={8}
-          autoComplete="new-password"
-          className="admin-input"
-        />
+        <input id="displayName" name="displayName" type="text" autoComplete="off" className="admin-input" placeholder="npr. Ana Horvat" />
+        <p className="text-xs text-black/55">
+          Osoba dobiva e-mail s linkom i sama postavi lozinku — lozinku više ne treba slati porukom.
+        </p>
       </div>
 
       <div className="flex flex-col gap-1.5">
@@ -128,13 +121,18 @@ export default function AdminForm({
         </div>
       )}
 
-      {state?.error && <p className="text-sm text-red-600">{state.error}</p>}
+      {state?.error && (
+        <p className="text-sm text-red-600" role="alert">
+          {state.error}
+        </p>
+      )}
+      {state?.success && state.link && <InviteResult email={state.email} link={state.link} emailed={state.emailed} />}
       <button
         type="submit"
         disabled={pending}
         className="self-start rounded-full bg-black text-white text-sm font-semibold px-5 py-2.5 disabled:opacity-50"
       >
-        {pending ? "Dodavanje…" : "Dodaj admina"}
+        {pending ? "Šaljem…" : "Pošalji pozivnicu"}
       </button>
     </form>
   );

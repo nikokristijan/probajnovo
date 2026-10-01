@@ -11,6 +11,15 @@ import { markInquiryReadAction, markInquiryRepliedAction, createTaskFromInquiryA
 import DeleteInquiryButton from "@/components/admin/DeleteInquiryButton";
 import QuickReplyForm from "@/components/admin/QuickReplyForm";
 import OwnerQuickReplyForm from "@/components/admin/OwnerQuickReplyForm";
+import Pagination from "@/components/admin/Pagination";
+
+const INQ_PAGE_SIZE = 30;
+const STATUS_FILTERS = [
+  { key: "", label: "Svi" },
+  { key: "bez-odgovora", label: "Bez odgovora" },
+  { key: "neprocitani", label: "Nepročitani" },
+  { key: "odgovoreni", label: "Odgovoreni" },
+] as const;
 
 const SOURCE_LABEL: Record<string, string> = {
   property: "Vikendica",
@@ -22,7 +31,7 @@ const SOURCE_LABEL: Record<string, string> = {
 export default async function AdminInquiriesPage({
   searchParams,
 }: {
-  searchParams: Promise<{ property?: string }>;
+  searchParams: Promise<{ property?: string; status?: string; q?: string; page?: string }>;
 }) {
   const admin = await getCurrentAdminRecord();
   if (!admin) redirect("/admin/login");
@@ -161,6 +170,31 @@ export default async function AdminInquiriesPage({
     );
   }
 
+  // Plan #24: filtri, pretraga i stranice za pune admine (vlasnik ima malo upita).
+  const statusKey = STATUS_FILTERS.some((f) => f.key === sp.status) ? (sp.status ?? "") : "";
+  const q = sp.q?.trim().toLowerCase().slice(0, 80) ?? "";
+  const page = Math.max(1, Number(sp.page) || 1);
+  const totalAll = inquiries.length;
+  const shown = inquiries.filter((i) => {
+    if (statusKey === "bez-odgovora" && i.replied) return false;
+    if (statusKey === "neprocitani" && i.read) return false;
+    if (statusKey === "odgovoreni" && !i.replied) return false;
+    if (q) {
+      const hay = `${i.name} ${i.email} ${i.phone ?? ""} ${i.message} ${i.sourceName}`.toLowerCase();
+      if (!hay.includes(q)) return false;
+    }
+    return true;
+  });
+  const pageItems = shown.slice((page - 1) * INQ_PAGE_SIZE, page * INQ_PAGE_SIZE);
+  const filterHref = (status: string) => {
+    const p = new URLSearchParams();
+    if (filterPropertyId) p.set("property", String(filterPropertyId));
+    if (status) p.set("status", status);
+    if (q) p.set("q", q);
+    const qs = p.toString();
+    return qs ? `/admin/inquiries?${qs}` : "/admin/inquiries";
+  };
+
   return (
     <div>
       {filterProperty && (
@@ -199,13 +233,45 @@ export default async function AdminInquiriesPage({
             : "Upiti poslani putem obrasca na stranicama vikendica i firmi."}
       </p>
 
-      {inquiries.length === 0 ? (
+      {totalAll > 0 && (
+        <div className="flex flex-wrap items-center gap-2 mb-4">
+          {STATUS_FILTERS.map((f) => (
+            <Link
+              key={f.key}
+              href={filterHref(f.key)}
+              aria-current={statusKey === f.key ? "page" : undefined}
+              className={
+                "text-xs font-semibold px-3 py-1.5 rounded-full border " +
+                (statusKey === f.key ? "bg-black text-white border-black" : "border-black/15 hover:border-black/40")
+              }
+            >
+              {f.label}
+            </Link>
+          ))}
+          <form method="get" role="search" className="flex items-center gap-2 ml-auto">
+            {filterPropertyId && <input type="hidden" name="property" value={filterPropertyId} />}
+            {statusKey && <input type="hidden" name="status" value={statusKey} />}
+            <input
+              type="search"
+              name="q"
+              defaultValue={q}
+              placeholder="Pretraži ime, e-mail, poruku…"
+              aria-label="Pretraži upite"
+              className="admin-input text-sm w-60 max-w-full"
+            />
+          </form>
+        </div>
+      )}
+
+      {totalAll === 0 ? (
         <p className="text-sm text-black/60">
           Još nema upita. Kad netko pošalje obrazac sa stranice vikendice ili firme, stići će ovdje.
         </p>
+      ) : shown.length === 0 ? (
+        <p className="text-sm text-black/60">Nijedan upit ne odgovara filtru.</p>
       ) : (
         <div className="flex flex-col gap-3">
-          {inquiries.map((i) => (
+          {pageItems.map((i) => (
             <div
               key={i.id}
               className={
@@ -277,6 +343,13 @@ export default async function AdminInquiriesPage({
               </div>
             </div>
           ))}
+          <Pagination
+            basePath="/admin/inquiries"
+            params={{ property: filterPropertyId ? String(filterPropertyId) : undefined, status: statusKey || undefined, q: q || undefined }}
+            page={page}
+            pageSize={INQ_PAGE_SIZE}
+            total={shown.length}
+          />
         </div>
       )}
     </div>

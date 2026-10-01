@@ -401,3 +401,59 @@ export async function sendSubscriptionExpiryAlert(params: {
     console.error("[sendSubscriptionExpiryAlert] Resend slanje nije uspjelo:", err);
   }
 }
+
+/**
+ * Pozivnica za novi admin/vlasnički račun (plan #13) — umjesto da se lozinka
+ * šalje porukom, osoba dobije link i sama je postavi. Vraća true ako je
+ * Resend prihvatio poruku; superadmin u svakom slučaju vidi i link za
+ * kopiranje (npr. za WhatsApp), pa neuspjeh e-maila ne blokira ništa.
+ */
+export async function sendAdminInvite(params: {
+  to: string;
+  link: string;
+  role: "admin" | "owner";
+  inviterName: string;
+  scopeLabel?: string | null;
+  isReset?: boolean;
+}): Promise<boolean> {
+  const apiKey = process.env.RESEND_API_KEY;
+  if (!apiKey) return false;
+  const what = params.isReset
+    ? "postavi novu lozinku za NOVO admin"
+    : params.role === "owner"
+      ? `pristup panelu za ${params.scopeLabel ? `"${params.scopeLabel}"` : "svoju stranicu"}`
+      : "pristup NOVO adminu";
+  try {
+    const resend = new Resend(apiKey);
+    const { error } = await resend.emails.send({
+      from: FROM_ADDRESS,
+      to: [params.to],
+      subject: params.isReset ? "Nova lozinka za NOVO admin" : "Pozivnica u NOVO admin",
+      html: `
+        <div style="font-family: sans-serif; max-width: 480px; margin: 0 auto; color: #111;">
+          <h2 style="margin: 0 0 12px;">${params.isReset ? "Postavi novu lozinku" : "Dobrodošli u NOVO"}</h2>
+          <p style="font-size: 15px; line-height: 1.5; margin: 0 0 18px;">
+            ${escapeHtml(params.inviterName)} ti šalje link da ${escapeHtml(what)}.
+            Klikni gumb, upiši lozinku koju želiš i odmah si unutra.
+          </p>
+          <p style="margin: 0 0 22px;">
+            <a href="${escapeHtml(params.link)}" style="display: inline-block; background: #111; color: #fff; text-decoration: none; font-weight: 600; padding: 12px 22px; border-radius: 999px;">
+              ${params.isReset ? "Postavi lozinku" : "Prihvati pozivnicu"}
+            </a>
+          </p>
+          <p style="font-size: 13px; color: #666; line-height: 1.5; margin: 0;">
+            Link vrijedi 7 dana i može se iskoristiti jednom. Ako nisi očekivao ovu poruku, slobodno je zanemari.
+          </p>
+        </div>
+      `,
+    });
+    if (error) {
+      console.error("[sendAdminInvite] Resend je vratio gresku:", error);
+      return false;
+    }
+    return true;
+  } catch (err) {
+    console.error("[sendAdminInvite] slanje nije uspjelo:", err);
+    return false;
+  }
+}

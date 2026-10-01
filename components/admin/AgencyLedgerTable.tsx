@@ -2,23 +2,12 @@
 
 import { useMemo, useState } from "react";
 import Link from "next/link";
-import { extendSubscriptionAction } from "@/lib/actions";
+import { quickPaymentAction } from "@/lib/actions-superadmin";
+import { describeSubscription, TONE_CLASSES } from "@/lib/subscriptionState";
 import DeleteSubscriptionButton from "@/components/admin/DeleteSubscriptionButton";
 import DeleteSaleButton from "@/components/admin/DeleteSaleButton";
 import type { Subscription, Sale } from "@/lib/db/schema";
 
-const STATUS_LABELS: Record<string, string> = {
-  active: "Aktivna",
-  trial: "Probni period",
-  paused: "Pauzirana",
-  cancelled: "Otkazana",
-};
-const STATUS_CLASSES: Record<string, string> = {
-  active: "bg-green-100 text-green-700",
-  trial: "bg-[#0000c3]/10 text-[#0000c3]",
-  paused: "bg-black/5 text-black/50",
-  cancelled: "bg-red-50 text-red-600",
-};
 const SALE_CATEGORY_LABELS: Record<string, string> = {
   stranica: "Izrada stranice",
   proizvod: "Proizvod",
@@ -59,12 +48,6 @@ export default function AgencyLedgerTable({
 }) {
   const [search, setSearch] = useState("");
   const [type, setType] = useState<"" | "pretplata" | "prodaja">("");
-
-  const cutoff7 = useMemo(() => {
-    const d = new Date(`${today}T12:00:00Z`);
-    d.setUTCDate(d.getUTCDate() + 7);
-    return d.toISOString().slice(0, 10);
-  }, [today]);
 
   const rows: LedgerRow[] = useMemo(() => {
     const subRows: LedgerRow[] = subscriptions.map((s) => ({
@@ -131,9 +114,8 @@ export default function AgencyLedgerTable({
               {filtered.map((r) => {
                 if (r.kind === "pretplata") {
                   const s = r.data;
-                  const isExpiringSoon =
-                    (s.status === "active" || s.status === "trial") && s.nextRenewalDate <= cutoff7;
-                  const isOverdue = isExpiringSoon && s.nextRenewalDate < today;
+                  // Plan #16: stanje se računa iz datuma ("Kasni 12 dana"), ne ručno.
+                  const st = describeSubscription(s, today);
                   return (
                     <tr key={`sub-${s.id}`} className="border-b border-black/5 last:border-0 align-top">
                       <td className="px-4 py-3 whitespace-nowrap">
@@ -154,29 +136,28 @@ export default function AgencyLedgerTable({
                       </td>
                       <td className="px-4 py-3 whitespace-nowrap tabular-nums">{s.monthlyPriceEur} €/mj</td>
                       <td className="px-4 py-3 whitespace-nowrap">
-                        <span
-                          className={"text-[11px] font-semibold px-2.5 py-1 rounded-full " + STATUS_CLASSES[s.status]}
-                        >
-                          {STATUS_LABELS[s.status] ?? s.status}
+                        <span className={"text-[11px] font-semibold px-2.5 py-1 rounded-full " + TONE_CLASSES[st.tone]}>
+                          {st.label}
                         </span>
-                        {isExpiringSoon && (
+                        {st.needsPayment && (
                           <div className="mt-1">
-                            <form action={extendSubscriptionAction.bind(null, s.id, 1)}>
+                            {/* Plan #17: "Plaćeno" zapiše uplatu (cijena × 1 mj., danas)
+                                i produlji pretplatu — više nema produljenja bez zapisa. */}
+                            <form action={quickPaymentAction.bind(null, s.id)}>
                               <button
                                 type="submit"
                                 className="text-[11px] font-semibold px-2.5 py-1 rounded-full bg-black text-white"
+                                title={`Zapiši uplatu ${s.monthlyPriceEur} € i produlji za 1 mjesec`}
                               >
-                                Produži 1 mj.
+                                Plaćeno +1 mj.
                               </button>
                             </form>
                           </div>
                         )}
                       </td>
                       <td className="px-4 py-3 whitespace-nowrap">
-                        <span className={isOverdue ? "font-semibold text-red-600" : ""}>
-                          {formatDate(s.startDate)}
-                        </span>
-                        <div className="mt-0.5 text-xs text-black/40">
+                        <span>{formatDate(s.startDate)}</span>
+                        <div className={"mt-0.5 text-xs " + (st.daysLate > 0 ? "font-semibold text-[#b80012]" : "text-black/60")}>
                           sljedeća naplata {formatDate(s.nextRenewalDate)}
                         </div>
                       </td>

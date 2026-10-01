@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { requireFullAdmin } from "@/lib/auth";
-import { listRecentActivity, listProperties } from "@/lib/db/queries";
+import { listActivityPage, listProperties } from "@/lib/db/queries";
+import Pagination from "@/components/admin/Pagination";
 import { todayDateStringZagreb, dateStringOffsetFromTodayZagreb } from "@/lib/date";
 
 const ACTION_LABELS: Record<string, string> = {
@@ -10,7 +11,16 @@ const ACTION_LABELS: Record<string, string> = {
   replied_inquiry: "Odgovor na upit",
   created_expense: "Novi trošak",
   deleted_expense: "Obrisan trošak",
+  invited_admin: "Pozivnica poslana",
+  accepted_invite: "Pozivnica prihvaćena",
+  sent_password_link: "Link za lozinku",
+  updated_admin: "Uređen račun",
+  reset_2fa: "Isključen 2FA",
+  recorded_payment: "Uplata pretplate",
+  created_client: "Novi klijent",
 };
+
+const PAGE_SIZE = 50;
 
 /** "YYYY-MM-DD" za proizvoljni Date u Europe/Zagreb — isti obrazac kao
     lib/date.ts todayDateStringZagreb, ali za bilo koji trenutak (ne samo
@@ -50,17 +60,22 @@ function dayHeaderLabel(dayKey: string, todayKey: string, yesterdayKey: string):
 export default async function AdminActivityLogPage({
   searchParams,
 }: {
-  searchParams: Promise<{ property?: string }>;
+  searchParams: Promise<{ property?: string; action?: string; q?: string; page?: string }>;
 }) {
   await requireFullAdmin();
   const sp = await searchParams;
-  const selectedPropertyId = sp.property ? Number(sp.property) : null;
+  const selectedPropertyId = sp.property ? Number(sp.property) || null : null;
+  const action = sp.action && ACTION_LABELS[sp.action] ? sp.action : null;
+  const q = sp.q?.trim().slice(0, 80) || null;
+  const page = Math.max(1, Number(sp.page) || 1);
 
-  const [allEntries, properties] = await Promise.all([listRecentActivity(200), listProperties()]);
+  // Plan #24: filtriranje i stranice u bazi, ne "zadnjih 200 pa filtriraj".
+  const [{ rows: entries, total }, properties] = await Promise.all([
+    listActivityPage({ propertyId: selectedPropertyId, action, q, page, pageSize: PAGE_SIZE }),
+    listProperties(),
+  ]);
   const propertyNameById = new Map(properties.map((p) => [p.id, p.name]));
-  const entries = selectedPropertyId
-    ? allEntries.filter((e) => e.propertyId === selectedPropertyId)
-    : allEntries;
+  const filtered = Boolean(selectedPropertyId || action || q);
 
   const todayKey = todayDateStringZagreb();
   const yesterdayKey = dateStringOffsetFromTodayZagreb(-1);
@@ -77,56 +92,71 @@ export default async function AdminActivityLogPage({
     <div className="flex flex-col gap-6">
       <div>
         <h1 className="text-xl font-bold">Aktivnost</h1>
-        <p className="text-xs text-black/50 mt-0.5">
-          Zadnjih {allEntries.length} radnji nad rezervacijama i troškovima (svi admini i vlasnici).
+        <p className="text-xs text-black/60 mt-0.5">
+          Tko je što napravio: rezervacije, troškovi, uplate, pozivnice i računi.
         </p>
       </div>
 
-      {properties.length > 1 && (
-        <div className="flex flex-wrap gap-2">
-          <Link
-            href="/admin/aktivnost"
-            className={
-              "text-xs font-semibold px-3 py-1.5 rounded-full border " +
-              (selectedPropertyId === null
-                ? "bg-black text-white border-black"
-                : "border-black/15 hover:border-black/40")
-            }
-          >
-            Sve vikendice
+      <form method="get" className="flex flex-wrap items-end gap-2" role="search">
+        <label className="flex flex-col gap-1 text-xs font-semibold text-black/60">
+          Pretraga
+          <input
+            type="search"
+            name="q"
+            defaultValue={q ?? ""}
+            placeholder="gost, e-mail, klijent…"
+            className="admin-input text-sm font-normal w-56 max-w-full"
+          />
+        </label>
+        <label className="flex flex-col gap-1 text-xs font-semibold text-black/60">
+          Radnja
+          <select name="action" defaultValue={action ?? ""} className="admin-input text-sm font-normal">
+            <option value="">Sve radnje</option>
+            {Object.entries(ACTION_LABELS).map(([k, v]) => (
+              <option key={k} value={k}>
+                {v}
+              </option>
+            ))}
+          </select>
+        </label>
+        {properties.length > 1 && (
+          <label className="flex flex-col gap-1 text-xs font-semibold text-black/60">
+            Vikendica
+            <select name="property" defaultValue={selectedPropertyId ?? ""} className="admin-input text-sm font-normal">
+              <option value="">Sve vikendice</option>
+              {properties.map((p) => (
+                <option key={p.id} value={p.id}>
+                  {p.name}
+                </option>
+              ))}
+            </select>
+          </label>
+        )}
+        <button type="submit" className="rounded-full bg-black text-white text-xs font-semibold px-4 py-2">
+          Filtriraj
+        </button>
+        {filtered && (
+          <Link href="/admin/aktivnost" className="text-xs font-semibold px-3 py-2 text-black/70 hover:text-black">
+            Očisti
           </Link>
-          {properties.map((p) => (
-            <Link
-              key={p.id}
-              href={`/admin/aktivnost?property=${p.id}`}
-              className={
-                "text-xs font-semibold px-3 py-1.5 rounded-full border " +
-                (p.id === selectedPropertyId
-                  ? "bg-black text-white border-black"
-                  : "border-black/15 hover:border-black/40")
-              }
-            >
-              {p.name}
-            </Link>
-          ))}
-        </div>
-      )}
+        )}
+      </form>
 
       {entries.length === 0 ? (
         <p className="text-sm text-black/60">
-          {selectedPropertyId ? "Nema zabilježenih radnji za ovu vikendicu." : "Još nema zabilježenih radnji."}
+          {filtered ? "Nijedna radnja ne odgovara filtru." : "Još nema zabilježenih radnji."}
         </p>
       ) : (
         <div className="flex flex-col gap-5">
           {groups.map((g) => (
             <div key={g.dayKey} className="flex flex-col gap-2">
-              <span className="text-xs font-semibold uppercase tracking-wide text-black/40">
+              <span className="text-xs font-semibold uppercase tracking-wide text-black/60">
                 {dayHeaderLabel(g.dayKey, todayKey, yesterdayKey)}
               </span>
               {g.items.map((e) => (
                 <div
                   key={e.id}
-                  className="flex items-center justify-between border border-black/10 rounded-xl px-4 py-2.5 bg-white"
+                  className="flex items-center justify-between gap-x-3 gap-y-1 flex-wrap border border-black/10 rounded-xl px-4 py-2.5 bg-white"
                 >
                   <div>
                     <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-black/5 text-black/60 mr-2">
@@ -134,12 +164,12 @@ export default async function AdminActivityLogPage({
                     </span>
                     <span className="text-sm">{e.targetLabel}</span>
                     {e.propertyId != null && propertyNameById.has(e.propertyId) && (
-                      <span className="text-xs text-black/40 ml-2">
+                      <span className="text-xs text-black/60 ml-2">
                         · {propertyNameById.get(e.propertyId)}
                       </span>
                     )}
                   </div>
-                  <div className="text-xs text-black/40 shrink-0 ml-3">
+                  <div className="text-xs text-black/60 shrink-0">
                     {e.adminEmail} ·{" "}
                     {e.createdAt.toLocaleTimeString("hr-HR", {
                       timeZone: "Europe/Zagreb",
@@ -153,6 +183,13 @@ export default async function AdminActivityLogPage({
           ))}
         </div>
       )}
+      <Pagination
+        basePath="/admin/aktivnost"
+        params={{ q: q ?? undefined, action: action ?? undefined, property: selectedPropertyId ? String(selectedPropertyId) : undefined }}
+        page={page}
+        pageSize={PAGE_SIZE}
+        total={total}
+      />
     </div>
   );
 }

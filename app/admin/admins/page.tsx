@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getCurrentAdminRecord } from "@/lib/auth";
-import { listAdmins, getAdminAccessGrants, listProperties, listCompanies } from "@/lib/db/queries";
+import { listAdmins, getAdminAccessGrants, listProperties, listCompanies, getAdminInviteStatuses } from "@/lib/db/queries";
 import DeleteAdminButton from "@/components/admin/DeleteAdminButton";
 
 export default async function AdminsPage() {
@@ -9,10 +9,11 @@ export default async function AdminsPage() {
   if (!me) redirect("/admin/login");
   if (!me.isSuperAdmin) redirect("/admin");
 
-  const [admins, properties, companies] = await Promise.all([
+  const [admins, properties, companies, inviteStatuses] = await Promise.all([
     listAdmins(),
     listProperties(),
     listCompanies(),
+    getAdminInviteStatuses(),
   ]);
   const propertyNameById = new Map(properties.map((p) => [p.id, p.name]));
   const companyNameById = new Map(companies.map((c) => [c.id, c.name]));
@@ -40,15 +41,15 @@ export default async function AdminsPage() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-xl font-bold">Admini</h1>
-          <p className="text-xs text-black/50 mt-0.5">
-            Samo glavni admin (ti) može dodavati ili micati druge admine.
+          <p className="text-xs text-black/60 mt-0.5">
+            Tim i vlasnici s pristupom. Nove osobe pozivaš e-mailom — same postave lozinku.
           </p>
         </div>
         <Link
           href="/admin/admins/new"
           className="rounded-full bg-black text-white text-sm font-semibold px-4 py-2 shrink-0"
         >
-          + Dodaj admina
+          + Pozovi osobu
         </Link>
       </div>
 
@@ -56,11 +57,25 @@ export default async function AdminsPage() {
         {admins.map((a) => (
           <div
             key={a.id}
-            className="flex items-center justify-between neu-card px-4 py-3"
+            className="flex items-center justify-between gap-3 flex-wrap neu-card px-4 py-3"
           >
             <div>
-              <div className="font-semibold text-sm flex items-center gap-2">
+              <div className="font-semibold text-sm flex items-center gap-2 flex-wrap">
+                {a.displayName?.trim() ? `${a.displayName} · ` : ""}
                 {a.email}
+                {inviteStatuses.get(a.id)?.pending && (
+                  <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-[#0000c3]/10 text-[#0000c3]">
+                    čeka prihvaćanje
+                  </span>
+                )}
+                {inviteStatuses.get(a.id)?.expired && (
+                  <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-[#ff7f00]/12 text-[#9a4a00]">
+                    pozivnica istekla
+                  </span>
+                )}
+                {a.twoFactorEnabled && (
+                  <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-black/5 text-black/60">2FA</span>
+                )}
                 {a.id === me.id && (
                   <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-black/5 text-black/50">
                     ti
@@ -81,13 +96,20 @@ export default async function AdminsPage() {
                 )}
               </div>
             </div>
-            {a.isSuperAdmin ? (
-              <span className="text-xs font-semibold px-2.5 py-1 rounded-full bg-[#ff7f00]/10 text-[#b35600]">
-                glavni
-              </span>
-            ) : (
-              <DeleteAdminButton id={a.id} email={a.email} />
-            )}
+            <div className="flex items-center gap-1.5 shrink-0">
+              {a.isSuperAdmin && (
+                <span className="text-xs font-semibold px-2.5 py-1 rounded-full bg-[#ff7f00]/10 text-[#b35600]">
+                  glavni
+                </span>
+              )}
+              <Link
+                href={`/admin/admins/${a.id}`}
+                className="text-xs font-semibold px-3 py-1.5 rounded-full border border-black/15 hover:border-black/40"
+              >
+                Uredi
+              </Link>
+              {!a.isSuperAdmin && <DeleteAdminButton id={a.id} email={a.email} />}
+            </div>
           </div>
         ))}
       </div>

@@ -2731,3 +2731,468 @@ export async function getWeeklyLeaderboard(): Promise<{ email: string; score: nu
   `);
   return result.map((r) => ({ email: r.email, score: Number(r.score) }));
 }
+
+/* ================================================================ */
+/* FAZA 2 — superadmin (plan #12–#27)                                */
+/* ================================================================ */
+
+/* ---------------------------------------------------------------- */
+/* Pozivnice e-mailom (plan #13). Novi admin/vlasnik ne dobiva         */
+/* lozinku porukom — dobiva link s jednokratnim tokenom i sam postavi  */
+/* lozinku. U bazi je samo SHA-256 hash tokena, nikad sam token.       */
+/* Isti link služi i kao "postavi novu lozinku" kad netko zaboravi.    */
+/* ---------------------------------------------------------------- */
+
+export const INVITE_VALID_DAYS = 7;
+
+let inviteColumnsPromise: Promise<void> | null = null;
+function ensureInviteColumns(): Promise<void> {
+  if (!inviteColumnsPromise) {
+    inviteColumnsPromise = (async () => {
+      await db.execute(sql`ALTER TABLE admin_users ADD COLUMN IF NOT EXISTS invite_token_hash TEXT`);
+      await db.execute(sql`ALTER TABLE admin_users ADD COLUMN IF NOT EXISTS invite_expires_at TIMESTAMP`);
+      await db.execute(sql`ALTER TABLE admin_users ADD COLUMN IF NOT EXISTS invite_sent_at TIMESTAMP`);
+      await db.execute(sql`ALTER TABLE admin_users ADD COLUMN IF NOT EXISTS password_set_at TIMESTAMP`);
+    })().catch((err) => {
+      inviteColumnsPromise = null;
+      throw err;
+    });
+  }
+  return inviteColumnsPromise;
+}
+
+export async function setAdminInvite(adminId: number, tokenHash: string): Promise<void> {
+  await ensureInviteColumns();
+  await db.execute(sql`
+    UPDATE admin_users SET
+      invite_token_hash = ${tokenHash},
+      invite_expires_at = NOW() + (${INVITE_VALID_DAYS} || ' days')::interval,
+      invite_sent_at = NOW()
+    WHERE id = ${adminId}
+  `);
+}
+
+/** Admin kojemu pripada (još važeći) token pozivnice, ili null. */
+export async function findAdminByInviteHash(tokenHash: string) {
+  await ensureInviteColumns();
+  const rows = await db.execute<{ id: number }>(
+    sql`SELECT id FROM admin_users WHERE invite_token_hash = ${tokenHash} AND invite_expires_at > NOW() LIMIT 1`
+  );
+  const id = rows[0]?.id;
+  return id != null ? getAdminById(Number(id)) : null;
+}
+
+/** Postavlja lozinku iz pozivnice i poništava token (jednokratan je). */
+export async function acceptAdminInvite(adminId: number, passwordHash: string): Promise<void> {
+  await ensureInviteColumns();
+  await db.execute(sql`
+    UPDATE admin_users SET
+      password_hash = ${passwordHash},
+      invite_token_hash = NULL,
+      invite_expires_at = NULL,
+      password_set_at = NOW()
+    WHERE id = ${adminId}
+  `);
+}
+
+export type AdminInviteStatus = {
+  /** Pozivnica poslana, a lozinka još nije postavljena. */
+  pending: boolean;
+  /** Link je istekao, a lozinka nije postavljena. */
+  expired: boolean;
+  sentAt: string | null;
+};
+
+/** Status pozivnice po adminu — za oznaku "Čeka prihvaćanje" u popisu. */
+export async function getAdminInviteStatuses(): Promise<Map<number, AdminInviteStatus>> {
+  await ensureInviteColumns();
+  const rows = await db.execute<{
+    id: number;
+    has_token: boolean;
+    expired: boolean;
+    sent_at: string | null;
+    password_set_at: string | null;
+  }>(sql`
+    SELECT id,
+      invite_token_hash IS NOT NULL AS has_token,
+      (invite_expires_at IS NOT NULL AND invite_expires_at <= NOW()) AS expired,
+      invite_sent_at::text AS sent_at,
+      password_set_at::text AS password_set_at
+    FROM admin_users
+  `);
+  const map = new Map<number, AdminInviteStatus>();
+  for (const r of rows) {
+    const waiting = Boolean(r.has_token) && !r.password_set_at;
+    map.set(Number(r.id), {
+      pending: waiting && !r.expired,
+      expired: waiting && Boolean(r.expired),
+      sentAt: r.sent_at,
+    });
+  }
+  return map;
+}
+
+/* ---------------------------------------------------------------- */
+/* Uređivanje admina i vlasnika (plan #14)                            */
+/* ---------------------------------------------------------------- */
+
+export async function updateAdminAccount(
+  id: number,
+  data: { role: "admin" | "owner"; displayName: string | null; jobTitle: string | null }
+): Promise<void> {
+  await db
+    .update(adminUsers)
+    .set({ role: data.role, displayName: data.displayName, jobTitle: data.jobTitle })
+    .where(eq(adminUsers.id, id));
+  if (data.role === "admin") {
+    // Puni admin vidi sve — stare dodjele samo bi zbunjivale ako ga se
+    // kasnije opet prebaci u vlasnika.
+    await db.delete(adminAccess).where(eq(adminAccess.adminId, id));
+  }
+}
+
+/* ---------------------------------------------------------------- */
+/* Uplate pretplata (plan #17) i automatski statusi (plan #16)        */
+/* ---------------------------------------------------------------- */
+
+let subscriptionPaymentsTablePromise: Promise<void> | null = null;
+function ensureSubscriptionPaymentsTable(): Promise<void> {
+  if (!subscriptionPaymentsTablePromise) {
+    subscriptionPaymentsTablePromise = (async () => {
+      await ensureSubscriptionsTableOnce();
+      await db.execute(sql`
+        CREATE TABLE IF NOT EXISTS subscription_payments (
+          id SERIAL PRIMARY KEY,
+          subscription_id INTEGER NOT NULL,
+          amount_eur INTEGER NOT NULL,
+          paid_on TEXT NOT NULL,
+          months INTEGER NOT NULL DEFAULT 1,
+          method TEXT,
+          note TEXT,
+          recorded_by TEXT,
+          created_at TIMESTAMP NOT NULL DEFAULT NOW()
+        )
+      `);
+      await db.execute(
+        sql`CREATE INDEX IF NOT EXISTS subscription_payments_sub_idx ON subscription_payments (subscription_id, paid_on DESC)`
+      );
+    })().catch((err) => {
+      subscriptionPaymentsTablePromise = null;
+      throw err;
+    });
+  }
+  return subscriptionPaymentsTablePromise;
+}
+
+export type SubscriptionPayment = {
+  id: number;
+  subscriptionId: number;
+  amountEur: number;
+  paidOn: string;
+  months: number;
+  method: string | null;
+  note: string | null;
+  recordedBy: string | null;
+  createdAt: string;
+};
+
+type PaymentRow = {
+  id: number;
+  subscription_id: number;
+  amount_eur: number;
+  paid_on: string;
+  months: number;
+  method: string | null;
+  note: string | null;
+  recorded_by: string | null;
+  created_at: string;
+};
+
+function mapPayment(r: PaymentRow): SubscriptionPayment {
+  return {
+    id: Number(r.id),
+    subscriptionId: Number(r.subscription_id),
+    amountEur: Number(r.amount_eur),
+    paidOn: r.paid_on,
+    months: Number(r.months),
+    method: r.method,
+    note: r.note,
+    recordedBy: r.recorded_by,
+    createdAt: r.created_at,
+  };
+}
+
+/**
+ * Evidentira uplatu i produljuje pretplatu za `months` mjeseci (isti izračun
+ * kao "Produži" — vidi extendSubscription). Uplata i produljenje idu zajedno
+ * da se nikad ne razidu: nema produljenja bez zapisa o novcu.
+ */
+export async function recordSubscriptionPayment(data: {
+  subscriptionId: number;
+  amountEur: number;
+  paidOn: string;
+  months: number;
+  method: string | null;
+  note: string | null;
+  recordedBy: string;
+}) {
+  await ensureSubscriptionPaymentsTable();
+  await db.execute(sql`
+    INSERT INTO subscription_payments (subscription_id, amount_eur, paid_on, months, method, note, recorded_by)
+    VALUES (${data.subscriptionId}, ${data.amountEur}, ${data.paidOn}, ${data.months}, ${data.method}, ${data.note}, ${data.recordedBy})
+  `);
+  return extendSubscription(data.subscriptionId, data.months);
+}
+
+export async function listPaymentsForSubscription(subscriptionId: number): Promise<SubscriptionPayment[]> {
+  await ensureSubscriptionPaymentsTable();
+  const rows = await db.execute<PaymentRow>(sql`
+    SELECT id, subscription_id, amount_eur, paid_on, months, method, note, recorded_by, created_at::text AS created_at
+    FROM subscription_payments WHERE subscription_id = ${subscriptionId}
+    ORDER BY paid_on DESC, id DESC
+  `);
+  return [...rows].map(mapPayment);
+}
+
+export async function deleteSubscriptionPayment(id: number): Promise<number | null> {
+  await ensureSubscriptionPaymentsTable();
+  const rows = await db.execute<{ subscription_id: number }>(
+    sql`DELETE FROM subscription_payments WHERE id = ${id} RETURNING subscription_id`
+  );
+  return rows[0] ? Number(rows[0].subscription_id) : null;
+}
+
+/** Zadnja uplata po pretplati (za tablicu i zdravlje klijenta). */
+export async function getLastPaymentBySubscription(): Promise<Map<number, string>> {
+  await ensureSubscriptionPaymentsTable();
+  const rows = await db.execute<{ subscription_id: number; last_paid: string }>(sql`
+    SELECT subscription_id, MAX(paid_on) AS last_paid FROM subscription_payments GROUP BY subscription_id
+  `);
+  return new Map([...rows].map((r) => [Number(r.subscription_id), r.last_paid]));
+}
+
+/** Uplaćeno po mjesecu za `year` (12 brojeva) — stvarno primljen novac. */
+export async function getPaymentsYearlyByMonth(year: number): Promise<number[]> {
+  await ensureSubscriptionPaymentsTable();
+  const rows = await db.execute<{ m: string; total: string | number }>(sql`
+    SELECT substring(paid_on, 6, 2) AS m, SUM(amount_eur) AS total
+    FROM subscription_payments WHERE paid_on LIKE ${`${year}-%`}
+    GROUP BY 1
+  `);
+  const out = new Array(12).fill(0);
+  for (const r of rows) {
+    const i = Number(r.m) - 1;
+    if (i >= 0 && i < 12) out[i] = Number(r.total) || 0;
+  }
+  return out;
+}
+
+/**
+ * Automatski statusi (plan #16) — poziva se iz dnevnog crona. Probni period
+ * koji je završio prelazi u "active" (klijent sad plaća), a sljedeća naplata
+ * je dan kad je probni završio. Ništa se ne otkazuje automatski: pretplata
+ * koja kasni samo se tako prikazuje (vidi lib/subscriptionState.ts) da
+ * odluku o pauzi donese čovjek.
+ */
+export async function autoUpdateSubscriptionStatuses(): Promise<{ trialsEnded: number }> {
+  await ensureSubscriptionsTableOnce();
+  const today = todayDateStringZagreb();
+  const rows = await db.execute<{ id: number }>(sql`
+    UPDATE subscriptions SET
+      status = 'active',
+      is_trial = false,
+      next_renewal_date = CASE WHEN trial_ends_at IS NOT NULL AND trial_ends_at > next_renewal_date
+        THEN trial_ends_at ELSE next_renewal_date END,
+      updated_at = NOW()
+    WHERE (status = 'trial' OR is_trial = true)
+      AND trial_ends_at IS NOT NULL AND trial_ends_at <= ${today}
+      AND status NOT IN ('cancelled', 'paused')
+    RETURNING id
+  `);
+  return { trialsEnded: [...rows].length };
+}
+
+/* ---------------------------------------------------------------- */
+/* Zdravlje klijenta (plan #19)                                       */
+/* ---------------------------------------------------------------- */
+
+export type ClientHealth = {
+  source: "property" | "company";
+  sourceId: number;
+  name: string;
+  slug: string;
+  published: boolean;
+  monthlyPriceEur: number | null;
+  subscriptionId: number | null;
+  subscriptionStatus: string | null;
+  nextRenewalDate: string | null;
+  views30d: number;
+  inquiries60d: number;
+  lastInquiryAt: string | null;
+  ownerCount: number;
+  ownerLastSeen: string | null;
+};
+
+/** Sirovi signali po klijentu (vikendica/firma); ocjenu računa
+    lib/clientHealth.ts da se pravila mogu mijenjati bez diranja SQL-a. */
+export async function getClientHealthSignals(): Promise<ClientHealth[]> {
+  await ensureSubscriptionsTableOnce();
+  const since30 = dateStringOffsetFromTodayZagreb(-30);
+  const [props, comps, subs, views, inqs, owners] = await Promise.all([
+    listProperties(),
+    listCompanies(),
+    db.select().from(subscriptions),
+    db.execute<{ source: string; source_id: number; n: string | number }>(
+      sql`SELECT source, source_id, COUNT(*) AS n FROM page_views WHERE date >= ${since30} GROUP BY source, source_id`
+    ),
+    db.execute<{ source: string; source_id: number; n: string | number; last_at: string | null }>(sql`
+      SELECT source, source_id,
+        COUNT(*) FILTER (WHERE created_at >= NOW() - INTERVAL '60 days') AS n,
+        MAX(created_at)::text AS last_at
+      FROM inquiries WHERE source_id IS NOT NULL GROUP BY source, source_id
+    `).catch(() => [] as { source: string; source_id: number; n: string | number; last_at: string | null }[]),
+    db.execute<{ property_id: number | null; company_id: number | null; n: string | number; last_seen: string | null }>(sql`
+      SELECT a.property_id, a.company_id, COUNT(*) AS n, MAX(u.last_login_date) AS last_seen
+      FROM admin_access a JOIN admin_users u ON u.id = a.admin_id
+      GROUP BY a.property_id, a.company_id
+    `),
+  ]);
+  const key = (s: string, id: number) => `${s}:${id}`;
+  const viewMap = new Map([...views].map((v) => [key(v.source, Number(v.source_id)), Number(v.n)]));
+  const inqMap = new Map([...inqs].map((v) => [key(v.source, Number(v.source_id)), v]));
+  const ownerMap = new Map<string, { n: number; lastSeen: string | null }>();
+  for (const o of owners) {
+    const k = o.property_id != null ? key("property", Number(o.property_id)) : key("company", Number(o.company_id));
+    ownerMap.set(k, { n: Number(o.n), lastSeen: o.last_seen });
+  }
+  // Najnovija ne-otkazana pretplata po klijentu (ili bilo koja ako su sve otkazane).
+  const subMap = new Map<string, (typeof subs)[number]>();
+  for (const s of subs) {
+    const k = key(s.source, s.sourceId);
+    const prev = subMap.get(k);
+    const rank = (x: (typeof subs)[number]) => (x.status === "cancelled" ? 0 : 1);
+    if (!prev || rank(s) > rank(prev) || (rank(s) === rank(prev) && s.id > prev.id)) subMap.set(k, s);
+  }
+  const build = (
+    source: "property" | "company",
+    c: { id: number; name: string; slug: string; published: boolean }
+  ): ClientHealth => {
+    const k = key(source, c.id);
+    const sub = subMap.get(k);
+    const inq = inqMap.get(k);
+    const own = ownerMap.get(k);
+    return {
+      source,
+      sourceId: c.id,
+      name: c.name,
+      slug: c.slug,
+      published: c.published,
+      monthlyPriceEur: sub?.monthlyPriceEur ?? null,
+      subscriptionId: sub?.id ?? null,
+      subscriptionStatus: sub?.status ?? null,
+      nextRenewalDate: sub?.nextRenewalDate ?? null,
+      views30d: viewMap.get(k) ?? 0,
+      inquiries60d: inq ? Number(inq.n) : 0,
+      lastInquiryAt: inq?.last_at ?? null,
+      ownerCount: own?.n ?? 0,
+      ownerLastSeen: own?.lastSeen ?? null,
+    };
+  };
+  return [...props.map((p) => build("property", p)), ...comps.map((c) => build("company", c))];
+}
+
+/* ---------------------------------------------------------------- */
+/* Superadmin "Danas" (plan #27)                                      */
+/* ---------------------------------------------------------------- */
+
+export type SuperadminToday = {
+  arrivals: { guestName: string; propertyName: string; propertyId: number }[];
+  departures: { guestName: string; propertyName: string; propertyId: number }[];
+  unansweredInquiries: number;
+  oldestUnansweredHours: number | null;
+  myTasksDue: { id: number; title: string; dueDate: string | null }[];
+};
+
+export async function getSuperadminToday(email: string): Promise<SuperadminToday> {
+  const today = todayDateStringZagreb();
+  const props = await listProperties();
+  const nameById = new Map(props.map((p) => [p.id, p.name]));
+  const [arr, dep, unanswered, tasks] = await Promise.all([
+    db.select().from(reservations).where(eq(reservations.checkIn, today)),
+    db.select().from(reservations).where(eq(reservations.checkOut, today)),
+    db
+      .execute<{ n: string | number; oldest_h: string | number | null }>(sql`
+        SELECT COUNT(*) AS n, EXTRACT(EPOCH FROM (NOW() - MIN(created_at))) / 3600 AS oldest_h
+        FROM inquiries WHERE replied = false
+      `)
+      .catch(() => [{ n: 0, oldest_h: null }]),
+    (async (): Promise<{ id: number; title: string; due_date: string | null }[]> => {
+      if (!(await tableExists("team_tasks"))) return [];
+      const r = await db.execute<{ id: number; title: string; due_date: string | null }>(sql`
+        SELECT id, title, due_date FROM team_tasks
+        WHERE assigned_to_email = ${email} AND status <> 'done'
+          AND due_date IS NOT NULL AND due_date <> '' AND due_date <= ${today}
+        ORDER BY due_date ASC LIMIT 8
+      `);
+      return [...r];
+    })(),
+  ]);
+  const toRow = (r: (typeof arr)[number]) => ({
+    guestName: r.guestName,
+    propertyName: nameById.get(r.propertyId) ?? "Vikendica",
+    propertyId: r.propertyId,
+  });
+  const u = [...unanswered][0];
+  return {
+    arrivals: arr.map(toRow),
+    departures: dep.map(toRow),
+    unansweredInquiries: Number(u?.n ?? 0),
+    oldestUnansweredHours: u?.oldest_h == null ? null : Math.round(Number(u.oldest_h)),
+    myTasksDue: [...tasks].map((t) => ({ id: Number(t.id), title: t.title, dueDate: t.due_date })),
+  };
+}
+
+/* ---------------------------------------------------------------- */
+/* Paginacija i filtri (plan #24)                                     */
+/* ---------------------------------------------------------------- */
+
+export async function listActivityPage(opts: {
+  propertyId?: number | null;
+  action?: string | null;
+  q?: string | null;
+  page: number;
+  pageSize: number;
+}) {
+  const conds = [];
+  if (opts.propertyId) conds.push(eq(activityLog.propertyId, opts.propertyId));
+  if (opts.action) conds.push(eq(activityLog.action, opts.action));
+  if (opts.q) {
+    const like = `%${opts.q}%`;
+    conds.push(sql`(${activityLog.targetLabel} ILIKE ${like} OR ${activityLog.adminEmail} ILIKE ${like})`);
+  }
+  const where = conds.length ? and(...conds) : undefined;
+  const [rows, total] = await Promise.all([
+    db
+      .select()
+      .from(activityLog)
+      .where(where)
+      .orderBy(desc(activityLog.createdAt))
+      .limit(opts.pageSize)
+      .offset((opts.page - 1) * opts.pageSize),
+    db.select({ n: sql<number>`count(*)::int` }).from(activityLog).where(where),
+  ]);
+  return { rows, total: Number(total[0]?.n ?? 0) };
+}
+
+/* ---------------------------------------------------------------- */
+/* Paleta naredbi Cmd+K (plan #22) — sve što se može otvoriti, u      */
+/* jednom malom popisu (imena i linkovi, bez osjetljivih podataka).   */
+/* ---------------------------------------------------------------- */
+
+export async function getCommandPaletteItems() {
+  const [props, comps] = await Promise.all([listProperties(), listCompanies()]);
+  return {
+    properties: props.map((p) => ({ id: p.id, name: p.name, slug: p.slug })),
+    companies: comps.map((c) => ({ id: c.id, name: c.name, slug: c.slug })),
+  };
+}
