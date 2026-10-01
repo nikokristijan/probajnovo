@@ -81,7 +81,13 @@ export async function proxy(req: NextRequest) {
   // Optimistic check (čita samo kolačić) — svaka server akcija radi i svoju
   // pravu provjeru sesije prije bilo kakve izmjene baze. Vidi lib/auth.ts.
   const { pathname } = req.nextUrl;
-  if (!pathname.startsWith("/admin") || PUBLIC_ADMIN_PATHS.has(pathname)) {
+  // Plan #13: link iz pozivnice (/admin/pozivnica/<token>) otvara osoba koja
+  // još nema lozinku ni sesiju — stranica sama provjerava token.
+  if (
+    !pathname.startsWith("/admin") ||
+    PUBLIC_ADMIN_PATHS.has(pathname) ||
+    pathname.startsWith("/admin/pozivnica/")
+  ) {
     return NextResponse.next();
   }
 
