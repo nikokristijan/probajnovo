@@ -7,6 +7,7 @@ import {
   listSubscriptionsDueForReminder,
   markSubscriptionReminderSent,
   getAgency,
+  autoUpdateSubscriptionStatuses,
 } from "@/lib/db/queries";
 import { sendReservationReminder, sendSubscriptionExpiryAlert } from "@/lib/email";
 import { dateStringOffsetFromTodayZagreb } from "@/lib/date";
@@ -68,6 +69,9 @@ export async function GET(req: Request) {
     // (subscriptions.reminderSentAt), šalje mail glavnom adminu (agencijski
     // contactEmail) i push svim superadminima, pa označi kao poslano da se
     // ne šalje iznova svaki dan.
+    // Plan #16: probni periodi koji su istekli prelaze u aktivne (naplatne)
+    // prije provjere podsjetnika, da i oni dobiju podsjetnik o naplati.
+    await autoUpdateSubscriptionStatuses();
     const dueSubscriptions = await listSubscriptionsDueForReminder(7);
     if (dueSubscriptions.length > 0) {
       const agency = await getAgency();
