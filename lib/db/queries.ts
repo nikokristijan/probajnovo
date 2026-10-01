@@ -2976,3 +2976,216 @@ export async function getPaymentsYearlyByMonth(year: number): Promise<number[]> 
   await ensureSubscriptionPaymentsTable();
   const rows = await db.execute<{ m: string; total: string | number }>(sql`
     SELECT substring(paid_on, 6, 2) AS m, SUM(amount_eur) AS total
+    FROM subscription_payments WHERE paid_on LIKE ${`${year}-%`}
+    GROUP BY 1
+  `);
+  const out = new Array(12).fill(0);
+  for (const r of rows) {
+    const i = Number(r.m) - 1;
+    if (i >= 0 && i < 12) out[i] = Number(r.total) || 0;
+  }
+  return out;
+}
+
+/**
+ * Automatski statusi (plan #16) — poziva se iz dnevnog crona. Probni period
+ * koji je završio prelazi u "active" (klijent sad plaća), a sljedeća naplata
+ * je dan kad je probni završio. Ništa se ne otkazuje automatski: pretplata
+ * koja kasni samo se tako prikazuje (vidi lib/subscriptionState.ts) da
+ * odluku o pauzi donese čovjek.
+ */
+export async function autoUpdateSubscriptionStatuses(): Promise<{ trialsEnded: number }> {
+  await ensureSubscriptionsTableOnce();
+  const today = todayDateStringZagreb();
+  const rows = await db.execute<{ id: number }>(sql`
+    UPDATE subscriptions SET
+      status = 'active',
+      is_trial = false,
+      next_renewal_date = CASE WHEN trial_ends_at IS NOT NULL AND trial_ends_at > next_renewal_date
+        THEN trial_ends_at ELSE next_renewal_date END,
+      updated_at = NOW()
+    WHERE (status = 'trial' OR is_trial = true)
+      AND trial_ends_at IS NOT NULL AND trial_ends_at <= ${today}
+      AND status NOT IN ('cancelled', 'paused')
+    RETURNING id
+  `);
+  return { trialsEnded: [...rows].length };
+}
+
+/* ---------------------------------------------------------------- */
+/* Zdravlje klijenta (plan #19)                                       */
+/* ---------------------------------------------------------------- */
+
+export type ClientHealth = {
+  source: "property" | "company";
+  sourceId: number;
+  name: string;
+  slug: string;
+  published: boolean;
+  monthlyPriceEur: number | null;
+  subscriptionId: number | null;
+  subscriptionStatus: string | null;
+  nextRenewalDate: string | null;
+  views30d: number;
+  inquiries60d: number;
+  lastInquiryAt: string | null;
+  ownerCount: number;
+  ownerLastSeen: string | null;
+};
+
+/** Sirovi signali po klijentu (vikendica/firma); ocjenu računa
+    lib/clientHealth.ts da se pravila mogu mijenjati bez diranja SQL-a. */
+export async function getClientHealthSignals(): Promise<ClientHealth[]> {
+  await ensureSubscriptionsTableOnce();
+  const since30 = dateStringOffsetFromTodayZagreb(-30);
+  const [props, comps, subs, views, inqs, owners] = await Promise.all([
+    listProperties(),
+    listCompanies(),
+    db.select().from(subscriptions),
+    db.execute<{ source: string; source_id: number; n: string | number }>(
+      sql`SELECT source, source_id, COUNT(*) AS n FROM page_views WHERE date >= ${since30} GROUP BY source, source_id`
+    ),
+    db.execute<{ source: string; source_id: number; n: string | number; last_at: string | null }>(sql`
+      SELECT source, source_id,
+        COUNT(*) FILTER (WHERE created_at >= NOW() - INTERVAL '60 days') AS n,
+        MAX(created_at)::text AS last_at
+      FROM inquiries WHERE source_id IS NOT NULL GROUP BY source, source_id
+    `).catch(() => [] as { source: string; source_id: number; n: string | number; last_at: string | null }[]),
+    db.execute<{ property_id: number | null; company_id: number | null; n: string | number; last_seen: string | null }>(sql`
+      SELECT a.property_id, a.company_id, COUNT(*) AS n, MAX(u.last_login_date) AS last_seen
+      FROM admin_access a JOIN admin_users u ON u.id = a.admin_id
+      GROUP BY a.property_id, a.company_id
+    `),
+  ]);
+  const key = (s: string, id: number) => `${s}:${id}`;
+  const viewMap = new Map([...views].map((v) => [key(v.source, Number(v.source_id)), Number(v.n)]));
+  const inqMap = new Map([...inqs].map((v) => [key(v.source, Number(v.source_id)), v]));
+  const ownerMap = new Map<string, { n: number; lastSeen: string | null }>();
+  for (const o of owners) {
+    const k = o.property_id != null ? key("property", Number(o.property_id)) : key("company", Number(o.company_id));
+    ownerMap.set(k, { n: Number(o.n), lastSeen: o.last_seen });
+  }
+  // Najnovija ne-otkazana pretplata po klijentu (ili bilo koja ako su sve otkazane).
+  const subMap = new Map<string, (typeof subs)[number]>();
+  for (const s of subs) {
+    const k = key(s.source, s.sourceId);
+    const prev = subMap.get(k);
+    const rank = (x: (typeof subs)[number]) => (x.status === "cancelled" ? 0 : 1);
+    if (!prev || rank(s) > rank(prev) || (rank(s) === rank(prev) && s.id > prev.id)) subMap.set(k, s);
+  }
+  const build = (
+    source: "property" | "company",
+    c: { id: number; name: string; slug: string; published: boolean }
+  ): ClientHealth => {
+    const k = key(source, c.id);
+    const sub = subMap.get(k);
+    const inq = inqMap.get(k);
+    const own = ownerMap.get(k);
+    return {
+      source,
+      sourceId: c.id,
+      name: c.name,
+      slug: c.slug,
+      published: c.published,
+      monthlyPriceEur: sub?.monthlyPriceEur ?? null,
+      subscriptionId: sub?.id ?? null,
+      subscriptionStatus: sub?.status ?? null,
+      nextRenewalDate: sub?.nextRenewalDate ?? null,
+      views30d: viewMap.get(k) ?? 0,
+      inquiries60d: inq ? Number(inq.n) : 0,
+      lastInquiryAt: inq?.last_at ?? null,
+      ownerCount: own?.n ?? 0,
+      ownerLastSeen: own?.lastSeen ?? null,
+    };
+  };
+  return [...props.map((p) => build("property", p)), ...comps.map((c) => build("company", c))];
+}
+
+/* ---------------------------------------------------------------- */
+/* Superadmin "Danas" (plan #27)                                      */
+/* ---------------------------------------------------------------- */
+
+export type SuperadminToday = {
+  arrivals: { guestName: string; propertyName: string; propertyId: number }[];
+  departures: { guestName: string; propertyName: string; propertyId: number }[];
+  unansweredInquiries: number;
+  oldestUnansweredHours: number | null;
+  myTasksDue: { id: number; title: string; dueDate: string | null }[];
+};
+
+export async function getSuperadminToday(email: string): Promise<SuperadminToday> {
+  const today = todayDateStringZagreb();
+  const props = await listProperties();
+  const nameById = new Map(props.map((p) => [p.id, p.name]));
+  const [arr, dep, unanswered, tasks] = await Promise.all([
+    db.select().from(reservations).where(eq(reservations.checkIn, today)),
+    db.select().from(reservations).where(eq(reservations.checkOut, today)),
+    db
+      .execute<{ n: string | number; oldest_h: string | number | null }>(sql`
+        SELECT COUNT(*) AS n, EXTRACT(EPOCH FROM (NOW() - MIN(created_at))) / 3600 AS oldest_h
+        FROM inquiries WHERE replied = false
+      `)
+      .catch(() => [{ n: 0, oldest_h: null }]),
+    (async (): Promise<{ id: number; title: string; due_date: string | null }[]> => {
+      if (!(await tableExists("team_tasks"))) return [];
+      const r = await db.execute<{ id: number; title: string; due_date: string | null }>(sql`
+        SELECT id, title, due_date FROM team_tasks
+        WHERE assigned_to_email = ${email} AND status <> 'done'
+          AND due_date IS NOT NULL AND due_date <> '' AND due_date <= ${today}
+        ORDER BY due_date ASC LIMIT 8
+      `);
+      return [...r];
+    })(),
+  ]);
+  const toRow = (r: (typeof arr)[number]) => ({
+    guestName: r.guestName,
+    propertyName: nameById.get(r.propertyId) ?? "Vikendica",
+    propertyId: r.propertyId,
+  });
+  const u = [...unanswered][0];
+  return {
+    arrivals: arr.map(toRow),
+    departures: dep.map(toRow),
+    unansweredInquiries: Number(u?.n ?? 0),
+    oldestUnansweredHours: u?.oldest_h == null ? null : Math.round(Number(u.oldest_h)),
+    myTasksDue: [...tasks].map((t) => ({ id: Number(t.id), title: t.title, dueDate: t.due_date })),
+  };
+}
+
+/* ---------------------------------------------------------------- */
+/* Paginacija i filtri (plan #24)                                     */
+/* ---------------------------------------------------------------- */
+
+export async function listActivityPage(opts: {
+  propertyId?: number | null;
+  action?: string | null;
+  q?: string | null;
+  page: number;
+  pageSize: number;
+}) {
+  const conds = [];
+  if (opts.propertyId) conds.push(eq(activityLog.propertyId, opts.propertyId));
+  if (opts.action) conds.push(eq(activityLog.action, opts.action));
+  if (opts.q) {
+    const like = `%${opts.q}%`;
+    conds.push(sql`(${activityLog.targetLabel} ILIKE ${like} OR ${activityLog.adminEmail} ILIKE ${like})`);
+  }
+  const where = conds.length ? and(...conds) : undefined;
+  const [rows, total] = await Promise.all([
+    db
+      .select()
+      .from(activityLog)
+      .where(where)
+      .orderBy(desc(activityLog.createdAt))
+      .limit(opts.pageSize)
+      .offset((opts.page - 1) * opts.pageSize),
+    db.select({ n: sql<number>`count(*)::int` }).from(activityLog).where(where),
+  ]);
+  return { rows, total: Number(total[0]?.n ?? 0) };
+}
+
+/* ---------------------------------------------------------------- */
+/* Paleta naredbi Cmd+K (plan #22) — sve što se može otvoriti, u      */
+/* jednom malom popisu (imena i linkovi, bez osjetljivih podataka).   */
+/* ---------------------------------------------------------------- */
+
