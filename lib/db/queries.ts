@@ -132,8 +132,42 @@ const [row] = await db
 return row;
 }
 
+/** Postoji li tablica u bazi — neke tablice (pretplate, NFC, Portal) nastaju
+    tek pri prvom korištenju, pa brisanje ne smije pasti ako ih još nema. */
+async function tableExists(name: string): Promise<boolean> {
+  const rows = await db.execute<{ ok: boolean }>(sql`SELECT to_regclass(${"public." + name}) IS NOT NULL AS ok`);
+  return Boolean(rows[0]?.ok);
+}
+
+/**
+ * Briše vikendicu ZAJEDNO sa svime što na nju pokazuje (plan #2). Ranije se
+ * brisao samo redak vikendice, a rezervacije, troškovi, blokirani dani,
+ * pristupi vlasnika, upiti, pregledi i prijevod ostajali su u bazi bez
+ * roditelja (nema stranih ključeva). Pretplata se NE briše nego označava
+ * "cancelled" da ostane financijska povijest; zadaci iz Portala i dnevnik
+ * aktivnosti samo gube poveznicu. Sve u jednoj transakciji.
+ */
 export async function deleteProperty(id: number) {
-await db.delete(properties).where(eq(properties.id, id));
+  const [hasSubs, hasTasks, hasViews, hasTranslations, hasActivity] = await Promise.all([
+    tableExists("subscriptions"),
+    tableExists("team_tasks"),
+    tableExists("page_views"),
+    tableExists("property_translations_en"),
+    tableExists("activity_log"),
+  ]);
+  await db.transaction(async (tx) => {
+    await tx.delete(reservations).where(eq(reservations.propertyId, id));
+    await tx.delete(expenses).where(eq(expenses.propertyId, id));
+    await tx.delete(propertyBlockedDates).where(eq(propertyBlockedDates.propertyId, id));
+    await tx.delete(adminAccess).where(eq(adminAccess.propertyId, id));
+    await tx.delete(inquiries).where(and(eq(inquiries.source, "property"), eq(inquiries.sourceId, id)));
+    if (hasTranslations) await tx.execute(sql`DELETE FROM property_translations_en WHERE property_id = ${id}`);
+    if (hasActivity) await tx.execute(sql`UPDATE activity_log SET property_id = NULL WHERE property_id = ${id}`);
+    if (hasViews) await tx.execute(sql`DELETE FROM page_views WHERE source = 'property' AND source_id = ${id}`);
+    if (hasSubs) await tx.execute(sql`UPDATE subscriptions SET status = 'cancelled', updated_at = now() WHERE source = 'property' AND source_id = ${id}`);
+    if (hasTasks) await tx.execute(sql`UPDATE team_tasks SET property_id = NULL WHERE property_id = ${id}`);
+    await tx.delete(properties).where(eq(properties.id, id));
+  });
 }
 
 /** Isti razlog kao isMissingCompaniesTable ispod — tablica s prijevodima može zaostajati iza migracije. */
@@ -278,8 +312,21 @@ const [row] = await db
 return row;
 }
 
+/** Isto kao deleteProperty (plan #2), za firme. */
 export async function deleteCompany(id: number) {
-await db.delete(companies).where(eq(companies.id, id));
+  const [hasSubs, hasTasks, hasViews] = await Promise.all([
+    tableExists("subscriptions"),
+    tableExists("team_tasks"),
+    tableExists("page_views"),
+  ]);
+  await db.transaction(async (tx) => {
+    await tx.delete(adminAccess).where(eq(adminAccess.companyId, id));
+    await tx.delete(inquiries).where(and(eq(inquiries.source, "company"), eq(inquiries.sourceId, id)));
+    if (hasViews) await tx.execute(sql`DELETE FROM page_views WHERE source = 'company' AND source_id = ${id}`);
+    if (hasSubs) await tx.execute(sql`UPDATE subscriptions SET status = 'cancelled', updated_at = now() WHERE source = 'company' AND source_id = ${id}`);
+    if (hasTasks) await tx.execute(sql`UPDATE team_tasks SET company_id = NULL WHERE company_id = ${id}`);
+    await tx.delete(companies).where(eq(companies.id, id));
+  });
 }
 
 export async function listStudies({ onlyPublished = false } = {}) {
@@ -658,7 +705,211 @@ export async function getFullBackupData() {
       return { property: property.name, slug: property.slug, reservations, expenses };
     })
   );
-  return { exportedAt: new Date().toISOString(), properties: perProperty };
+  const safeSelect = async <T,>(table: string, run: () => Promise<T[]>): Promise<T[]> =>
+    (await tableExists(table)) ? run() : [];
+  const [
+    agencyRows,
+    companyRows,
+    studyRows,
+    productRows,
+    inquiryRows,
+    salesRows,
+    blockedRows,
+    translationRows,
+    accessRows,
+    adminRows,
+    subscriptionRows,
+    nfcRows,
+  ] = await Promise.all([
+    db.select().from(agency),
+    db.select().from(companies),
+    db.select().from(studies),
+    db.select().from(products),
+    db.select().from(inquiries),
+    db.select().from(sales),
+    db.select().from(propertyBlockedDates),
+    safeSelect("property_translations_en", () => db.select().from(propertyTranslationsEn)),
+    db.select().from(adminAccess),
+    // Namjerno BEZ lozinki i 2FA tajni — backup ide mailom.
+    db
+      .select({
+        id: adminUsers.id,
+        email: adminUsers.email,
+        role: adminUsers.role,
+        isSuperAdmin: adminUsers.isSuperAdmin,
+        displayName: adminUsers.displayName,
+        jobTitle: adminUsers.jobTitle,
+        createdAt: adminUsers.createdAt,
+      })
+      .from(adminUsers),
+    safeSelect("subscriptions", () => db.select().from(subscriptions)),
+    safeSelect("nfc_tags", () => db.select().from(nfcTags)),
+  ]);
+  return {
+    exportedAt: new Date().toISOString(),
+    // Rezervacije i troškovi po vikendici (kao dosad)...
+    properties: perProperty,
+    // ...plus sve ostalo što bi trebalo za oporavak (plan #8): kompletan
+    // sadržaj stranica, upiti, prodaje, pretplate, NFC, pristupi vlasnika.
+    content: {
+      agency: agencyRows,
+      properties,
+      propertyTranslationsEn: translationRows,
+      propertyBlockedDates: blockedRows,
+      companies: companyRows,
+      studies: studyRows,
+      products: productRows,
+    },
+    inquiries: inquiryRows,
+    sales: salesRows,
+    subscriptions: subscriptionRows,
+    nfcTags: nfcRows,
+    admins: adminRows,
+    adminAccess: accessRows,
+  };
+}
+
+/* ---------------------------------------------------------------- */
+/* Dnevnik automatskih poslova (plan #30) — lib/cron.ts runCron.      */
+/* Tablica se stvara sama pri prvom zapisu, kao i ostale "lijene".    */
+/* ---------------------------------------------------------------- */
+
+let cronRunsTablePromise: Promise<void> | null = null;
+function ensureCronRunsTable(): Promise<void> {
+  if (!cronRunsTablePromise) {
+    cronRunsTablePromise = (async () => {
+      await db.execute(sql`
+        CREATE TABLE IF NOT EXISTS cron_runs (
+          id SERIAL PRIMARY KEY,
+          name TEXT NOT NULL,
+          ok BOOLEAN NOT NULL,
+          summary TEXT,
+          started_at TIMESTAMP NOT NULL,
+          finished_at TIMESTAMP NOT NULL DEFAULT NOW()
+        )
+      `);
+      await db.execute(sql`CREATE INDEX IF NOT EXISTS cron_runs_name_idx ON cron_runs (name, finished_at DESC)`);
+    })().catch((err) => {
+      cronRunsTablePromise = null;
+      throw err;
+    });
+  }
+  return cronRunsTablePromise;
+}
+
+export async function recordCronRun(run: { name: string; ok: boolean; summary: string; startedAt: Date }) {
+  await ensureCronRunsTable();
+  await db.execute(
+    sql`INSERT INTO cron_runs (name, ok, summary, started_at) VALUES (${run.name}, ${run.ok}, ${run.summary}, ${run.startedAt.toISOString()})`
+  );
+  // Čuvamo samo zadnjih ~200 zapisa po poslu — dovoljno za pregled, bez rasta tablice.
+  await db.execute(sql`
+    DELETE FROM cron_runs WHERE name = ${run.name} AND id NOT IN (
+      SELECT id FROM cron_runs WHERE name = ${run.name} ORDER BY id DESC LIMIT 200
+    )
+  `);
+}
+
+export type CronRunRow = {
+  name: string;
+  ok: boolean;
+  summary: string | null;
+  startedAt: string;
+  finishedAt: string;
+  lastOkAt: string | null;
+  /** Sati od zadnjeg uspjeha (null = nikad nije uspio). */
+  hoursSinceOk: number | null;
+  failuresLast7d: number;
+};
+
+/** Zadnje pokretanje svakog automatskog posla + kad je zadnji put uspio. */
+export async function listLatestCronRuns(): Promise<CronRunRow[]> {
+  if (!(await tableExists("cron_runs"))) return [];
+  const rows = await db.execute<{
+    name: string;
+    ok: boolean;
+    summary: string | null;
+    started_at: string;
+    finished_at: string;
+    last_ok_at: string | null;
+    hours_since_ok: string | number | null;
+    failures_7d: string | number;
+  }>(sql`
+    SELECT DISTINCT ON (r.name)
+      r.name, r.ok, r.summary, r.started_at::text AS started_at, r.finished_at::text AS finished_at,
+      (SELECT MAX(finished_at)::text FROM cron_runs o WHERE o.name = r.name AND o.ok) AS last_ok_at,
+      (SELECT EXTRACT(EPOCH FROM (NOW() - MAX(finished_at))) / 3600 FROM cron_runs o WHERE o.name = r.name AND o.ok) AS hours_since_ok,
+      (SELECT COUNT(*) FROM cron_runs f WHERE f.name = r.name AND NOT f.ok AND f.finished_at > NOW() - INTERVAL '7 days') AS failures_7d
+    FROM cron_runs r
+    ORDER BY r.name, r.finished_at DESC
+  `);
+  return [...rows].map((r) => ({
+    name: r.name,
+    ok: r.ok,
+    summary: r.summary,
+    startedAt: r.started_at,
+    finishedAt: r.finished_at,
+    lastOkAt: r.last_ok_at,
+    hoursSinceOk: r.hours_since_ok == null ? null : Number(r.hours_since_ok),
+    failuresLast7d: Number(r.failures_7d) || 0,
+  }));
+}
+
+/* ---------------------------------------------------------------- */
+/* Zaključavanje prijave nakon previše krivih pokušaja (plan #5).     */
+/* Stupci se namjerno NE dodaju u Drizzle shemu (admin_users se čita  */
+/* na puno mjesta bez ensure-a) — koriste se samo ovim sirovim SQL-om. */
+/* ---------------------------------------------------------------- */
+
+export const LOGIN_MAX_FAILURES = 5;
+export const LOGIN_LOCK_MINUTES = 15;
+
+let loginLockColumnsPromise: Promise<void> | null = null;
+function ensureLoginLockColumns(): Promise<void> {
+  if (!loginLockColumnsPromise) {
+    loginLockColumnsPromise = (async () => {
+      await db.execute(sql`ALTER TABLE admin_users ADD COLUMN IF NOT EXISTS failed_login_count INTEGER NOT NULL DEFAULT 0`);
+      await db.execute(sql`ALTER TABLE admin_users ADD COLUMN IF NOT EXISTS locked_until TIMESTAMP`);
+    })().catch((err) => {
+      loginLockColumnsPromise = null;
+      throw err;
+    });
+  }
+  return loginLockColumnsPromise;
+}
+
+/** Koliko je još minuta račun zaključan (0 = nije zaključan). */
+export async function getLoginLockMinutesLeft(adminId: number): Promise<number> {
+  await ensureLoginLockColumns();
+  const rows = await db.execute<{ secs: string | number | null }>(
+    sql`SELECT EXTRACT(EPOCH FROM (locked_until - NOW())) AS secs FROM admin_users WHERE id = ${adminId} AND locked_until > NOW()`
+  );
+  const secs = Number(rows[0]?.secs ?? 0);
+  return secs > 0 ? Math.ceil(secs / 60) : 0;
+}
+
+/** Bilježi krivi pokušaj; nakon LOGIN_MAX_FAILURES zaredom zaključava račun. */
+export async function registerFailedLogin(adminId: number): Promise<{ locked: boolean }> {
+  await ensureLoginLockColumns();
+  const rows = await db.execute<{ failed_login_count: number }>(sql`
+    UPDATE admin_users SET
+      failed_login_count = failed_login_count + 1,
+      locked_until = CASE WHEN failed_login_count + 1 >= ${LOGIN_MAX_FAILURES}
+        THEN NOW() + (${LOGIN_LOCK_MINUTES} || ' minutes')::interval ELSE locked_until END
+    WHERE id = ${adminId}
+    RETURNING failed_login_count
+  `);
+  const count = Number(rows[0]?.failed_login_count ?? 0);
+  if (count >= LOGIN_MAX_FAILURES) {
+    await db.execute(sql`UPDATE admin_users SET failed_login_count = 0 WHERE id = ${adminId}`);
+    return { locked: true };
+  }
+  return { locked: false };
+}
+
+export async function clearFailedLogins(adminId: number): Promise<void> {
+  await ensureLoginLockColumns();
+  await db.execute(sql`UPDATE admin_users SET failed_login_count = 0, locked_until = NULL WHERE id = ${adminId}`);
 }
 
 export async function deleteAdmin(id: number) {
@@ -1026,6 +1277,63 @@ export async function createReservation(data: {
   }
 
   return { reservation, overlappingDates };
+}
+
+export async function getExpenseById(id: number) {
+  const rows = await db.select().from(expenses).where(eq(expenses.id, id)).limit(1);
+  return rows[0] ?? null;
+}
+
+export async function getReservationById(id: number) {
+  const rows = await db.select().from(reservations).where(eq(reservations.id, id)).limit(1);
+  return rows[0] ?? null;
+}
+
+/**
+ * Uređivanje rezervacije (plan #36) — promjena gosta, datuma, cijene, broja
+ * gostiju, kapare ili napomene bez brisanja i ponovnog unosa. Ako su se
+ * datumi promijenili, blokirani dani TE rezervacije se ponovno slože (isti
+ * dedup kao createReservation: dani koje već drži nešto drugo se preskaču i
+ * vraćaju kao overlappingDates za upozorenje). Status plaćanja se ne dira.
+ */
+export async function updateReservation(
+  id: number,
+  data: {
+    guestName: string;
+    phone: string | null;
+    email: string | null;
+    checkIn: string;
+    checkOut: string;
+    priceEur: number;
+    guestCount: number | null;
+    depositEur: number | null;
+    note: string | null;
+  }
+): Promise<{ overlappingDates: string[] }> {
+  return db.transaction(async (tx) => {
+    const [before] = await tx.select().from(reservations).where(eq(reservations.id, id)).limit(1);
+    if (!before) return { overlappingDates: [] };
+    await tx.update(reservations).set(data).where(eq(reservations.id, id));
+    if (before.checkIn === data.checkIn && before.checkOut === data.checkOut) {
+      return { overlappingDates: [] };
+    }
+    await tx.delete(propertyBlockedDates).where(eq(propertyBlockedDates.reservationId, id));
+    const nights = datesInRange(data.checkIn, data.checkOut).slice(0, -1);
+    const taken = nights.length
+      ? await tx
+          .select({ date: propertyBlockedDates.date })
+          .from(propertyBlockedDates)
+          .where(and(eq(propertyBlockedDates.propertyId, before.propertyId), inArray(propertyBlockedDates.date, nights)))
+      : [];
+    const takenSet = new Set(taken.map((t) => t.date));
+    const free = nights.filter((d) => !takenSet.has(d));
+    if (free.length > 0) {
+      await tx.insert(propertyBlockedDates).values(
+        free.map((date) => ({ propertyId: before.propertyId, date, source: "reservation", reservationId: id }))
+      );
+    }
+    return { overlappingDates: nights.filter((d) => takenSet.has(d)) };
+  });
 }
 
 /** Briše rezervaciju i SAMO blokirane dane koji joj pripadaju (preko
@@ -1446,6 +1754,24 @@ export async function recordPageView(source: "property" | "company", sourceId: n
   await db.insert(pageViews).values({ source, sourceId, date });
 }
 
+/** Pregledi stranica vlasnika od `sinceDate` (plan #43) — zbroj preko svih
+    njegovih vikendica/firmi, za "Tvoju stranicu je ovaj tjedan pogledalo…". */
+export async function countPageViewsSince(
+  targets: { source: "property" | "company"; ids: number[] }[],
+  sinceDate: string
+): Promise<number> {
+  let total = 0;
+  for (const t of targets) {
+    if (t.ids.length === 0) continue;
+    const rows = await db
+      .select({ n: sql<number>`count(*)::int` })
+      .from(pageViews)
+      .where(and(eq(pageViews.source, t.source), inArray(pageViews.sourceId, t.ids), gte(pageViews.date, sinceDate)));
+    total += Number(rows[0]?.n ?? 0);
+  }
+  return total;
+}
+
 /** Ukupno pregleda i pregledi zadnjih 30 dana za jednu stranicu. */
 export async function getPageViewCounts(source: "property" | "company", sourceId: number, sinceDate: string) {
   const rows = await db
@@ -1626,6 +1952,8 @@ export async function markSubscriptionReminderSent(id: number) {
 
 export type SubscriptionStats = {
   mrrEur: number;
+  /** Mjesečni iznos probnih pretplata — postaje MRR kad probni period završi. */
+  trialMrrEur: number;
   activeCount: number;
   trialCount: number;
   expiringSoonCount: number;
@@ -1641,14 +1969,20 @@ export async function getSubscriptionStats(): Promise<SubscriptionStats> {
   const cutoff = dateStringOffsetFromTodayZagreb(7);
   const activeCount = all.filter((s) => s.status === "active").length;
   const trialCount = all.filter((s) => s.status === "trial" || s.isTrial).length;
+  // Plan #3: MRR su SAMO plaćajuće (aktivne, ne-probne) pretplate. Ranije su
+  // se brojale i probne, pa je MRR bio napuhan. Probne su sad zaseban broj
+  // (trialMrrEur) — "koliko MRR-a dolazi kad probni periodi završe".
   const mrrEur = all
-    .filter((s) => s.status === "active" || s.status === "trial")
+    .filter((s) => s.status === "active" && !s.isTrial)
+    .reduce((sum, s) => sum + s.monthlyPriceEur, 0);
+  const trialMrrEur = all
+    .filter((s) => s.status === "trial" || (s.status === "active" && s.isTrial))
     .reduce((sum, s) => sum + s.monthlyPriceEur, 0);
   const expiringSoonCount = all.filter(
     (s) => (s.status === "active" || s.status === "trial") && s.nextRenewalDate <= cutoff
   ).length;
   const cancelledCount = all.filter((s) => s.status === "cancelled").length;
-  return { mrrEur, activeCount, trialCount, expiringSoonCount, cancelledCount };
+  return { mrrEur, trialMrrEur, activeCount, trialCount, expiringSoonCount, cancelledCount };
 }
 
 /** Broj NOVIH pretplata (po startDate) po mjesecu za `year` (12 brojeva,
@@ -2025,6 +2359,18 @@ export async function listTaskComments(taskId: number) {
     .orderBy(asc(teamMessages.createdAt));
 }
 
+/** Komentari za više zadataka odjednom (plan #63) — jedan upit za cijelu
+    ploču umjesto po zadatku. */
+export async function listCommentsForTasks(taskIds: number[]) {
+  if (taskIds.length === 0) return [];
+  await ensureTeamMessagesTableOnce();
+  return db
+    .select()
+    .from(teamMessages)
+    .where(inArray(teamMessages.taskId, taskIds))
+    .orderBy(asc(teamMessages.createdAt));
+}
+
 export async function createTeamMessage(data: NewTeamMessage) {
   await ensureTeamMessagesTableOnce();
   const [row] = await db.insert(teamMessages).values(data).returning();
@@ -2333,28 +2679,53 @@ export async function getTeamTaskCompletionByAdmin(): Promise<{ email: string; c
     doprinosi timu ovaj tjedan", isti duh kao GitHub contribution graf, ne
     precizan sat/minuta obračun. Prazno/bez ijedne akcije = admin se ne
     pojavljuje u ljestvici (nema smisla prikazati 0 među aktivnima). */
+/**
+ * Tjedna ljestvica (plan #70) — ranije je svaka poruka vrijedila bod pa je
+ * ljestvica nagrađivala spam. Sad se boduje stvarni rad:
+ *  - završen zadatak 5 (+2 ako je visokog prioriteta, +1 ako je u roku),
+ *  - odgovor gostu na upit iz admina 3, nova rezervacija 2,
+ *  - poruke (tim + DM) najviše 5 bodova po danu.
+ */
 export async function getWeeklyLeaderboard(): Promise<{ email: string; score: number }[]> {
   await Promise.all([ensureTeamTasksTableOnce(), ensureTeamMessagesTableOnce(), ensureDirectMessagesTableOnce()]);
+  const hasActivity = await tableExists("activity_log");
+  const activityPart = hasActivity
+    ? sql`
+      UNION ALL
+      SELECT a.admin_email AS email,
+        SUM(CASE a.action WHEN 'replied_inquiry' THEN 3 WHEN 'created_reservation' THEN 2 ELSE 0 END) AS pts
+      FROM activity_log a
+      JOIN admin_users u ON u.email = a.admin_email AND u.role <> 'owner'
+      WHERE a.created_at >= now() - interval '7 days'
+      GROUP BY a.admin_email`
+    : sql``;
   const result = await db.execute<{ email: string; score: string }>(sql`
-    WITH scores AS (
-      SELECT assigned_to_email AS email, COUNT(*) * 3 AS pts
+    WITH chat AS (
+      SELECT admin_email AS email, created_at::date AS d FROM team_messages
+      WHERE created_at >= now() - interval '7 days'
+      UNION ALL
+      SELECT from_email AS email, created_at::date AS d FROM direct_messages
+      WHERE created_at >= now() - interval '7 days'
+    ),
+    scores AS (
+      SELECT assigned_to_email AS email,
+        SUM(5
+          + CASE WHEN priority = 'high' THEN 2 ELSE 0 END
+          + CASE WHEN due_date IS NOT NULL AND due_date <> '' AND completed_at::date <= due_date::date THEN 1 ELSE 0 END
+        ) AS pts
       FROM team_tasks
       WHERE status = 'done' AND completed_at >= now() - interval '7 days' AND assigned_to_email IS NOT NULL
       GROUP BY assigned_to_email
       UNION ALL
-      SELECT admin_email AS email, COUNT(*) AS pts
-      FROM team_messages
-      WHERE created_at >= now() - interval '7 days'
-      GROUP BY admin_email
-      UNION ALL
-      SELECT from_email AS email, COUNT(*) AS pts
-      FROM direct_messages
-      WHERE created_at >= now() - interval '7 days'
-      GROUP BY from_email
+      SELECT email, SUM(LEAST(n, 5)) AS pts
+      FROM (SELECT email, d, COUNT(*) AS n FROM chat GROUP BY email, d) per_day
+      GROUP BY email
+      ${activityPart}
     )
     SELECT email, SUM(pts)::int AS score
     FROM scores
     GROUP BY email
+    HAVING SUM(pts) > 0
     ORDER BY score DESC
     LIMIT 5
   `);
