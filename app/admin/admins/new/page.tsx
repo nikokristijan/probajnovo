@@ -12,7 +12,7 @@ export default async function NewAdminPage() {
 
   return (
     <div className="flex flex-col gap-6">
-      <h1 className="text-xl font-bold">Dodaj admina</h1>
+      <h1 className="text-xl font-bold">Pozovi admina ili vlasnika</h1>
       <AdminForm
         properties={properties.map((p) => ({ id: p.id, name: p.name }))}
         companies={companies.map((c) => ({ id: c.id, name: c.name }))}
