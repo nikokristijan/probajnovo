@@ -406,6 +406,15 @@ async function ensureProductColumns(): Promise<void> {
     sql`ALTER TABLE products ADD COLUMN IF NOT EXISTS testimonials JSONB NOT NULL DEFAULT '[]'::jsonb`
   );
   await db.execute(
+    sql`ALTER TABLE products ADD COLUMN IF NOT EXISTS quantity_discounts JSONB NOT NULL DEFAULT '[]'::jsonb`
+  );
+  await db.execute(
+    sql`ALTER TABLE products ADD COLUMN IF NOT EXISTS addon_product_ids JSONB NOT NULL DEFAULT '[]'::jsonb`
+  );
+  await db.execute(
+    sql`ALTER TABLE products ADD COLUMN IF NOT EXISTS addon_discount_percent INTEGER NOT NULL DEFAULT 0`
+  );
+  await db.execute(
     sql`CREATE UNIQUE INDEX IF NOT EXISTS products_slug_key ON products (slug)`
   );
 }
