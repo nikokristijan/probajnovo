@@ -2,7 +2,8 @@
 
 import { useActionState, useState } from "react";
 import type { ActionState } from "@/lib/actions";
-import type { Product } from "@/lib/db/schema";
+import type { FaqItem, Product, Testimonial } from "@/lib/db/schema";
+import { FaqEditor, TestimonialsEditor } from "./CompanyForm";
 import ImageUploader from "./ImageUploader";
 import VideoUploader from "./VideoUploader";
 import { Field } from "./Field";
@@ -28,6 +29,8 @@ type FormValues = {
   ctaButtonText: string;
   seoTitle: string;
   seoDescription: string;
+  faq: FaqItem[];
+  testimonials: Testimonial[];
 };
 
 function initialValues(product?: Product): FormValues {
@@ -47,6 +50,8 @@ function initialValues(product?: Product): FormValues {
     ctaButtonText: product?.ctaButtonText ?? "",
     seoTitle: product?.seoTitle ?? "",
     seoDescription: product?.seoDescription ?? "",
+    faq: product?.faq ?? [],
+    testimonials: product?.testimonials ?? [],
   };
 }
 
@@ -209,6 +214,24 @@ export default function ProductForm({
         </Field>
       </div>
 
+      <div className="border border-black/10 rounded-xl p-4 flex flex-col gap-4 bg-black/[0.02]">
+        <p className="text-sm font-semibold">Recenzije kupaca</p>
+        <p className="text-xs text-black/50 -mt-2">
+          Samo stvarne recenzije (npr. iz poruka ili Googlea) — uz ime i mjesto/objekt, ako kupac pristane. Prikazuju se ispod
+          cijene i u posebnoj sekciji. Prazno = ništa se ne prikazuje.
+        </p>
+        <TestimonialsEditor value={values.testimonials} onChange={(v) => set("testimonials", v)} />
+      </div>
+
+      <div className="border border-black/10 rounded-xl p-4 flex flex-col gap-4 bg-black/[0.02]">
+        <p className="text-sm font-semibold">Česta pitanja</p>
+        <p className="text-xs text-black/50 -mt-2">
+          Odgovori na ono što kupce koči (npr. &bdquo;Radi li sa svim mobitelima?&ldquo;, &bdquo;Što ako promijenim WiFi
+          lozinku?&ldquo;, &bdquo;Koliko traje izrada?&ldquo;). Prikazuju se iznad obrasca za upit i u Google rezultatima.
+        </p>
+        <FaqEditor value={values.faq} onChange={(v) => set("faq", v)} />
+      </div>
+
       <label className="flex items-center gap-2 text-sm font-medium">
         <input
           type="checkbox"
@@ -231,6 +254,8 @@ export default function ProductForm({
 
       {/* Skriveno polje koje server action očekuje kao string */}
       <input type="hidden" name="images" value={JSON.stringify(values.images)} />
+      <input type="hidden" name="faq" value={JSON.stringify(values.faq)} />
+      <input type="hidden" name="testimonials" value={JSON.stringify(values.testimonials)} />
 
       {state?.error && <p className="text-sm text-red-600">{state.error}</p>}
       {state?.success && <p className="text-sm text-green-700">Spremljeno.</p>}
