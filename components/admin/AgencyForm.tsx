@@ -11,7 +11,10 @@ officeText: string;
 contactEmail: string;
 instagramHandle: string;
 city: string;
-       };
+phone: string;
+metaPixelId: string;
+gaMeasurementId: string;
+};
 
 export default function AgencyForm({ agency }: { agency: Agency }) {
 const [state, action, pending] = useActionState<ActionState, FormData>(
@@ -24,6 +27,9 @@ heroTitle: agency.heroTitle,
   contactEmail: agency.contactEmail,
   instagramHandle: agency.instagramHandle,
   city: agency.city,
+  phone: agency.phone ?? "",
+  metaPixelId: agency.metaPixelId ?? "",
+  gaMeasurementId: agency.gaMeasurementId ?? "",
   });
 
 function set<K extends keyof FormValues>(key: K, value: FormValues[K]) {
@@ -80,6 +86,47 @@ onChange={(e) => set("city", e.target.value)}
 className="admin-input"
 />
 </Field>
+
+<Field label="Telefon / WhatsApp (opcionalno — npr. +385 91 234 5678)">
+  <input
+  name="phone"
+  type="tel"
+  value={values.phone}
+onChange={(e) => set("phone", e.target.value)}
+  placeholder="+385 …"
+className="admin-input"
+/>
+</Field>
+<p className="text-xs text-black/50 -mt-3">
+  Kad je upisan, stranice proizvoda dobiju gumbe &bdquo;Pitajte na WhatsAppu&ldquo; i &bdquo;Nazovite&ldquo;. Prazno = gumbi se ne prikazuju.
+</p>
+
+<div className="border border-black/10 rounded-xl p-4 flex flex-col gap-4 bg-black/[0.02]">
+  <p className="text-sm font-semibold">Mjerenje oglasa</p>
+  <p className="text-xs text-black/50">
+    Skripte se učitavaju tek kad posjetitelj na baneru prihvati kolačiće (GDPR). Dok su oba polja prazna, baner se ne prikazuje.
+    Bilježe se pregled stranice, pregled proizvoda, odabir količine, klik na WhatsApp i poslan upit (Lead).
+  </p>
+  <Field label="Meta Pixel ID (Events Manager → Data sources → Pixel ID)">
+    <input
+    name="metaPixelId"
+    inputMode="numeric"
+    value={values.metaPixelId}
+  onChange={(e) => set("metaPixelId", e.target.value)}
+    placeholder="npr. 1234567890123456"
+  className="admin-input"
+  />
+  </Field>
+  <Field label="Google Analytics 4 ID (opcionalno)">
+    <input
+    name="gaMeasurementId"
+    value={values.gaMeasurementId}
+  onChange={(e) => set("gaMeasurementId", e.target.value)}
+    placeholder="G-XXXXXXXXXX"
+  className="admin-input"
+  />
+  </Field>
+</div>
 
 {state?.error && <p className="text-sm text-red-600">{state.error}</p>}
 {state?.success && <p className="text-sm text-green-700">Spremljeno.</p>}
