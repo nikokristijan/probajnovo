@@ -7,7 +7,9 @@ import { todayDateStringZagreb } from "@/lib/date";
 import NovoShell from "@/components/novo/NovoShell";
 import ProductGalleryNovo from "@/components/novo/ProductGalleryNovo";
 import ProductInquiryNovo from "@/components/novo/ProductInquiryNovo";
-import ProductDescription from "@/components/novo/ProductDescription";
+import ProductDescription, { parseDescription } from "@/components/novo/ProductDescription";
+import ProductVideoNovo from "@/components/novo/ProductVideoNovo";
+import QtyQuickPick from "@/components/novo/QtyQuickPick";
 import ShareProductButton from "@/components/novo/ShareProductButton";
 import ProductStickyCta from "@/components/novo/ProductStickyCta";
 
@@ -34,6 +36,15 @@ function videoEmbed(url: string): string | null {
     if (host === "vimeo.com") return `https://player.vimeo.com/video/${u.pathname.split("/").filter(Boolean)[0]}`;
   } catch {}
   return null;
+}
+
+/** "U cijenu je uključeno" popis iz opisa (ili prvi popis u opisu), najviše 5 stavki. */
+function includedItems(description: string): string[] {
+  const blocks = parseDescription(description);
+  const h = blocks.findIndex((b) => b.kind === "h" && /uklju/i.test(b.text));
+  const list =
+    (h >= 0 ? blocks.slice(h + 1).find((b) => b.kind === "ul") : undefined) ?? blocks.find((b) => b.kind === "ul");
+  return list && list.kind === "ul" ? list.items.slice(0, 5) : [];
 }
 
 export async function generateMetadata({ params }: { params: Promise<Params> }): Promise<Metadata> {
@@ -89,6 +100,10 @@ export default async function ProductPage({ params }: { params: Promise<Params> 
   const url = `${BASE_URL}/proizvodi/${product.slug}`;
   const others = all.filter((p) => p.id !== product.id && p.slug).slice(0, 3);
   const embed = product.videoUrl ? videoEmbed(product.videoUrl) : null;
+  // Snimka uploadana u admin (ne YouTube/Vimeo) ide na vrh kao glavni sadržaj.
+  const fileVideo = product.videoUrl && !embed ? product.videoUrl : null;
+  const included = includedItems(product.description);
+  const ctaLabel = (product.ctaButtonText?.trim() || "Zatraži ponudu").toUpperCase();
 
   const jsonLd = [
     {
@@ -146,10 +161,18 @@ export default async function ProductPage({ params }: { params: Promise<Params> 
         </div>
 
         <div className="pd-scroll">
-          <article className="pd-top">
-            <ProductGalleryNovo images={product.images} name={product.name} />
+          <article className={fileVideo ? "pd-top pd-split pd-top--video" : "pd-top pd-split"}>
+            {fileVideo ? (
+              <div className="pd-media">
+                <ProductVideoNovo src={fileVideo} name={product.name} poster={product.images[0]} />
+              </div>
+            ) : (
+              <div className="pd-media">
+                <ProductGalleryNovo images={product.images} name={product.name} />
+              </div>
+            )}
 
-            <div className="pd-info">
+            <div className="pd-info pd-head">
               <div className="pd-kicker">
                 <span className="novo-os-kicker mono">{(product.category || "Proizvod").toUpperCase()}</span>
                 {product.featured && <span className="pl-badge pl-badge--static mono">ISTAKNUTO</span>}
@@ -161,8 +184,21 @@ export default async function ProductPage({ params }: { params: Promise<Params> 
                 <span className="pd-price-value">{priceLabel(product.priceEur)}</span>
                 {product.priceEur != null && <span className="mono muted pd-price-unit">/ KOM</span>}
               </div>
+            </div>
 
-              {product.features.length > 0 && (
+            <div className="pd-info pd-rest">
+              {included.length > 0 && (
+                <div className="pd-included">
+                  <span className="pq-label mono">UKLJUČENO U CIJENU</span>
+                  <ul>
+                    {included.map((item) => (
+                      <li key={item}>{item}</li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+
+              {included.length === 0 && product.features.length > 0 && (
                 <ul className="pd-features" aria-label="Značajke">
                   {product.features.map((f) => (
                     <li key={f} className="novo-os-chip mono">
@@ -172,20 +208,27 @@ export default async function ProductPage({ params }: { params: Promise<Params> 
                 </ul>
               )}
 
-              <div className="pd-actions">
-                <a href="#upit" className="novo-os-cta mono">
-                  {(product.ctaButtonText?.trim() || "Pošalji upit").toUpperCase()} ↓
-                </a>
-                <ShareProductButton url={url} title={product.name} />
-              </div>
+              <QtyQuickPick priceEur={product.priceEur} ctaLabel={ctaLabel} />
 
-              <ul className="pd-trust mono">
-                <li>ODGOVOR UNUTAR 24 H</li>
-                <li>IZRADA PO MJERI</li>
-                <li>UPIT JE BESPLATAN I NE OBVEZUJE</li>
-              </ul>
+              <div className="pd-meta-row">
+                <ShareProductButton url={url} title={product.name} />
+                {fileVideo && product.images.length > 0 && (
+                  <a href="#fotografije" className="mono link">
+                    FOTOGRAFIJE ({product.images.length}) ↓
+                  </a>
+                )}
+              </div>
             </div>
           </article>
+
+          {fileVideo && product.images.length > 0 && (
+            <section className="pd-section pd-photos" id="fotografije" aria-labelledby="pd-foto">
+              <h2 id="pd-foto" className="section-title">
+                FOTOGRAFIJE
+              </h2>
+              <ProductGalleryNovo images={product.images} name={product.name} />
+            </section>
+          )}
 
           {product.description.trim() && (
             <section className="pd-section" aria-labelledby="pd-opis">
@@ -196,23 +239,19 @@ export default async function ProductPage({ params }: { params: Promise<Params> 
             </section>
           )}
 
-          {product.videoUrl && (
+          {embed && (
             <section className="pd-section" aria-labelledby="pd-video">
               <h2 id="pd-video" className="section-title">
                 VIDEO
               </h2>
               <div className="pd-video">
-                {embed ? (
-                  <iframe
-                    src={embed}
-                    title={`${product.name} — video`}
-                    loading="lazy"
-                    allow="accelerometer; encrypted-media; gyroscope; picture-in-picture"
-                    allowFullScreen
-                  />
-                ) : (
-                  <video src={product.videoUrl} controls playsInline preload="metadata" poster={product.images[0]} />
-                )}
+                <iframe
+                  src={embed}
+                  title={`${product.name} — video`}
+                  loading="lazy"
+                  allow="accelerometer; encrypted-media; gyroscope; picture-in-picture"
+                  allowFullScreen
+                />
               </div>
             </section>
           )}
