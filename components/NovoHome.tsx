@@ -817,25 +817,106 @@ export default function NovoHome({
         )
       )}
 
-      {slovaWindow &&
-        (slovaWindow.fullscreen ? (
-          <SlovaFullscreenOverlay onExitFullscreen={toggleFullscreenSlova} onClose={closeSlova} />
-        ) : (
-          <FloatingWindow
-            title="CUSTOM SLOVA PO MJERI"
-            x={slovaWindow.x}
-            y={slovaWindow.y}
-            z={slovaWindow.z}
-            onFocus={focusSlova}
-            onClose={closeSlova}
-            minimized={slovaWindow.minimized}
-            onToggleMinimize={toggleMinimizeSlova}
-            onToggleFullscreen={toggleFullscreenSlova}
-            width={260}
-          >
-            <SlovaTeaserContent onOpenFullscreen={toggleFullscreenSlova} />
-          </FloatingWindow>
-        ))}
-    </div>
+    </>
+  );
+
+  return (
+    <NovoShell
+      active={view}
+      onSelect={selectView}
+      contactEmail={contactEmail}
+      instagramHandle={instagramHandle}
+      city={city}
+      overlay={overlay}
+    >
+        {view === "home" && (
+          <div className="novo-os-hero">
+            <div className="novo-os-hero-content">
+              <span className="novo-os-kicker mono">KREATIVNI STUDIO</span>
+              <h1>{heroTitle}</h1>
+              <div className="novo-os-services">
+                {SERVICES.map((s) => (
+                  <span key={s} className="novo-os-chip mono">
+                    {s}
+                  </span>
+                ))}
+              </div>
+              <button className="novo-os-cta mono" onClick={() => selectView("studies")}>
+                POGLEDAJ RADOVE ↗
+              </button>
+            </div>
+          </div>
+        )}
+
+        {view === "studies" && (
+          <div className="novo-os-panel">
+            <h2 className="section-title">RADOVI</h2>
+            <div className="studies-head">
+              <span>BR.</span>
+              <span>NAZIV</span>
+              <span className="col-cat">INFO</span>
+              <span>GODINA</span>
+            </div>
+            <div className="studies-scroll">
+              {projects.length === 0 && (
+                <p className="studies-empty">Još nema dodanih radova — dodaj prvi u /admin.</p>
+              )}
+              {projects.map((p, i) => (
+                <button key={p.id} className="studies-row" onClick={() => openProject(p)}>
+                  <div className="studies-row-grid">
+                    <span className="proj-no">{pad(i)}</span>
+                    <span className="proj-name">{p.name.toUpperCase()}</span>
+                    <span className="proj-cat col-cat">{p.location}</span>
+                    <span className="proj-year">{p.year}</span>
+                  </div>
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {view === "products" && <ProductsView products={products} onOpenWithoutPage={openProduct} />}
+
+        {view === "office" && (
+          <div className="novo-os-panel">
+            <h2 className="section-title">STUDIO</h2>
+            <div className="office-grid">
+              <div className="office-col">
+                <p className="office-text">{officeText}</p>
+                <div className="novo-os-services office-services">
+                  {SERVICES.map((s) => (
+                    <span key={s} className="novo-os-chip mono">
+                      {s}
+                    </span>
+                  ))}
+                </div>
+              </div>
+              <div className="office-col office-contact">
+                <div className="office-block">
+                  <span className="mono muted">LOKACIJA</span>
+                  <span>{city}</span>
+                </div>
+                <div className="office-block">
+                  <span className="mono muted">UPIT</span>
+                  <a href={`mailto:${contactEmail}`}>{contactEmail}</a>
+                </div>
+                <div className="office-block">
+                  <span className="mono muted">PRATI NAS</span>
+                  <a href={instaUrl} target="_blank" rel="noreferrer">
+                    {instagramHandle}
+                  </a>
+                </div>
+                <div className="office-block">
+                  <span className="mono muted">PRAVNO</span>
+                  <Link href="/privatnost">Politika privatnosti</Link>
+                  <Link href="/uvjeti">Uvjeti korištenja</Link>
+                  <Link href="/povrat">Politika povrata</Link>
+                  <Link href="/kolacici">Politika kolačića</Link>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+    </NovoShell>
   );
 }
