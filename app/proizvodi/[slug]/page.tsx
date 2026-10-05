@@ -234,3 +234,63 @@ export default async function ProductPage({ params }: { params: Promise<Params> 
                   <span className="mono">03</span> Dogovorimo detalje i krećemo u izradu.
                 </li>
               </ol>
+              <p className="pd-inquiry-alt mono">
+                ILI PIŠITE NA{" "}
+                <a href={`mailto:${contact.contactEmail}?subject=${encodeURIComponent(`Upit — ${product.name}`)}`}>
+                  {contact.contactEmail}
+                </a>
+              </p>
+            </div>
+            <ProductInquiryNovo
+              productId={product.id}
+              productName={product.name}
+              priceEur={product.priceEur}
+              ctaLabel={product.ctaButtonText}
+            />
+          </section>
+
+          {others.length > 0 && (
+            <section className="pd-section" aria-labelledby="pd-ostali">
+              <h2 id="pd-ostali" className="section-title">
+                OSTALI PROIZVODI
+              </h2>
+              <div className="pl-grid">
+                {others.map((p) => (
+                  <Link key={p.id} href={`/proizvodi/${p.slug}`} className="pl-card">
+                    <div className="pl-card-img">
+                      {p.images[0] ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img src={p.images[0]} alt={p.name} className="pl-card-thumb" loading="lazy" />
+                      ) : null}
+                    </div>
+                    <div className="pl-card-body">
+                      <span className="pl-card-cat mono">{(p.category || "Proizvod").toUpperCase()}</span>
+                      <span className="pl-card-name">{p.name}</span>
+                      <span className="pl-card-tagline">{p.tagline}</span>
+                      <span className="pl-card-foot">
+                        <span className="pl-card-price mono">{priceLabel(p.priceEur)}</span>
+                        <span className="pl-card-go mono" aria-hidden="true">
+                          DETALJI →
+                        </span>
+                      </span>
+                    </div>
+                  </Link>
+                ))}
+              </div>
+            </section>
+          )}
+
+          <footer className="pd-legal mono">
+            <Link href="/uvjeti">UVJETI</Link>
+            <Link href="/povrat">POVRAT</Link>
+            <Link href="/privatnost">PRIVATNOST</Link>
+            <Link href="/kolacici">KOLAČIĆI</Link>
+          </footer>
+
+          {/* Mobitel: cijena i upit uvijek pri dnu ekrana. */}
+          <ProductStickyCta price={priceLabel(product.priceEur)} />
+        </div>
+      </div>
+    </NovoShell>
+  );
+}
