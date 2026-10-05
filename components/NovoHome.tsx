@@ -732,23 +732,6 @@ export default function NovoHome({
       )
     );
 
-  const openSlova = () => {
-    setSlovaWindow((w) => {
-      if (w) return { ...w, z: ++zCounter.current, minimized: false };
-      const count = projectWindows.length + productWindows.length;
-      const vw = typeof window !== "undefined" ? window.innerWidth : 1200;
-      const vh = typeof window !== "undefined" ? window.innerHeight : 800;
-      const baseX = Math.min(220 + count * 36, Math.max(vw - 280, 60));
-      const baseY = Math.min(100 + count * 36, Math.max(vh - 420, 70));
-      return { x: baseX, y: baseY, z: ++zCounter.current, minimized: false, fullscreen: false };
-    });
-  };
-  const closeSlova = () => setSlovaWindow(null);
-  const toggleMinimizeSlova = () => setSlovaWindow((w) => (w ? { ...w, minimized: !w.minimized } : w));
-  const focusSlova = () => setSlovaWindow((w) => (w ? { ...w, z: ++zCounter.current } : w));
-  const toggleFullscreenSlova = () =>
-    setSlovaWindow((w) => (w ? { ...w, fullscreen: !w.fullscreen, minimized: false, z: ++zCounter.current } : w));
-
   // Esc zatvara prozor koji je trenutno navrh (najveći z) — tipkovničko
   // korištenje bez miša, isto kao što bi se očekivalo od pravog OS prozora.
   useEffect(() => {
@@ -757,13 +740,12 @@ export default function NovoHome({
       const candidates = [
         ...projectWindows.filter((w) => !w.minimized).map((w) => ({ z: w.z, close: () => closeProject(w.key) })),
         ...productWindows.filter((w) => !w.minimized).map((w) => ({ z: w.z, close: () => closeProduct(w.key) })),
-        ...(slovaWindow && !slovaWindow.minimized ? [{ z: slovaWindow.z, close: closeSlova }] : []),
       ];
       candidates.sort((a, b) => b.z - a.z)[0]?.close();
     }
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, [projectWindows, productWindows, slovaWindow]);
+  }, [projectWindows, productWindows]);
 
   const exhibitImages =
     projects.length > 0
