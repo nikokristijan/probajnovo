@@ -34,6 +34,8 @@ export type Testimonial = { author: string; text: string; rating: number };
 export type FaqItem = { question: string; answer: string };
 export type SeasonalPrice = { label: string; priceEur: number };
 export type ServiceItem = { name: string; description: string; priceEur: number | null };
+/** Količinski popust: od `minQty` komada cijena po komadu je niža za `percent` %. */
+export type QuantityDiscount = { minQty: number; percent: number };
 
 /**
  * One row per vikendica (holiday cottage) site, served at /[slug].
@@ -255,6 +257,12 @@ export const products = pgTable("products", {
   faq: jsonb("faq").$type<FaqItem[]>().notNull().default([]),
   /** Stvarne recenzije kupaca koje admin upiše. Prazno = sekcija se ne prikazuje. */
   testimonials: jsonb("testimonials").$type<Testimonial[]>().notNull().default([]),
+  /** Količinski popusti (npr. od 3 kom −10 %). Prazno = nema popusta. */
+  quantityDiscounts: jsonb("quantity_discounts").$type<QuantityDiscount[]>().notNull().default([]),
+  /** Proizvodi koje kupac može dodati uz ovaj u istom upitu ("Dodajte uz narudžbu"). */
+  addonProductIds: jsonb("addon_product_ids").$type<number[]>().notNull().default([]),
+  /** Postotak popusta na dodatke kad se uzmu uz ovaj proizvod (paket). 0 = bez popusta. */
+  addonDiscountPercent: integer("addon_discount_percent").notNull().default(0),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
