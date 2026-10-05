@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import LegalPage from "@/components/LegalPage";
 
 export const metadata: Metadata = {
@@ -10,7 +11,7 @@ export const metadata: Metadata = {
 
 export default function PrivacyPolicyPage() {
   return (
-    <LegalPage title="Politika privatnosti" updated="21. rujna 2026.">
+    <LegalPage title="Politika privatnosti" updated="5. listopada 2026.">
       <p>
         <strong>
           Ovo je predložak politike privatnosti prilagođen uslugama i podacima koje NOVO stvarno
@@ -62,6 +63,12 @@ export default function PrivacyPolicyPage() {
         Ne prodajemo i ne iznajmljujemo vaše podatke. Podaci se dijele isključivo s pružateljima usluga
         nužnima za rad stranice — hosting i baza podataka (Vercel) — koji podatke obrađuju u naše ime,
         pod istim standardima zaštite.
+      </p>
+      <p>
+        Ako na baneru za kolačiće prihvatite mjerenje, Meta (Pixel) i Google (Analytics) primaju
+        podatke o posjetu (npr. koju ste stranicu i proizvod pogledali te jeste li poslali upit) radi
+        mjerenja učinka naših oglasa. Podatke koje upišete u obrazac tim pružateljima ne šaljemo.
+        Detalji i promjena izbora: <Link href="/kolacici">Politika kolačića</Link>.
       </p>
 
       <h2>6. Koliko dugo čuvamo podatke</h2>

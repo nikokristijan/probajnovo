@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { track } from "@/lib/track";
 
 export const QTY_EVENT = "novo:qty";
 const OPTIONS = [1, 3, 5, 10];
@@ -9,10 +10,23 @@ const OPTIONS = [1, 3, 5, 10];
  * Brzi odabir količine pokraj cijene: odmah pokaže okvirni iznos, a klik na
  * "Zatraži ponudu" prenese količinu u obrazac za upit i skrola do njega.
  */
-export default function QtyQuickPick({ priceEur, ctaLabel }: { priceEur: number | null; ctaLabel: string }) {
+export default function QtyQuickPick({
+  priceEur,
+  ctaLabel,
+  productName,
+}: {
+  priceEur: number | null;
+  ctaLabel: string;
+  productName: string;
+}) {
   const [qty, setQty] = useState(1);
 
   const go = () => {
+    track("InitiateCheckout", {
+      content_name: productName,
+      num_items: qty,
+      ...(priceEur != null ? { value: qty * priceEur, currency: "EUR" } : {}),
+    });
     window.dispatchEvent(new CustomEvent(QTY_EVENT, { detail: qty }));
     const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
     document.getElementById("upit")?.scrollIntoView({ behavior: reduce ? "auto" : "smooth", block: "start" });

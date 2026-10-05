@@ -520,7 +520,7 @@ function ImageCategoriesEditor({
   );
 }
 
-function TestimonialsEditor({
+export function TestimonialsEditor({
   value,
   onChange,
 }: {
@@ -581,7 +581,7 @@ function TestimonialsEditor({
   );
 }
 
-function FaqEditor({ value, onChange }: { value: FaqItem[]; onChange: (v: FaqItem[]) => void }) {
+export function FaqEditor({ value, onChange }: { value: FaqItem[]; onChange: (v: FaqItem[]) => void }) {
   function update(i: number, patch: Partial<FaqItem>) {
     onChange(value.map((f, idx) => (idx === i ? { ...f, ...patch } : f)));
   }
