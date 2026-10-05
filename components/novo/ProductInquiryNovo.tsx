@@ -3,16 +3,13 @@
 import { useActionState, useEffect, useState } from "react";
 import { createInquiryAction, type ActionState } from "@/lib/actions";
 import { QTY_EVENT } from "@/components/novo/QtyQuickPick";
+import { track } from "@/lib/track";
 
 const APEX_HOST = process.env.NEXT_PUBLIC_APEX_HOST || "";
 const PRIVACY_POLICY_URL = APEX_HOST ? `https://${APEX_HOST}/privatnost` : "/privatnost";
 const ATTR_KEY = "novo-attribution";
 
-type AdWindow = Window & {
-  fbq?: (...args: unknown[]) => void;
-  gtag?: (...args: unknown[]) => void;
-  dataLayer?: unknown[];
-};
+type AdWindow = Window & { dataLayer?: unknown[] };
 
 /**
  * Odakle je posjetitelj došao (utm_* parametri oglasa, gclid/fbclid,
@@ -87,14 +84,16 @@ export default function ProductInquiryNovo({
     setAttribution(readAttribution());
   }, []);
 
-  // Konverzija za oglase (ako je na stranici Meta Pixel / Google tag).
+  // Konverzija za oglase (Meta Pixel / Google, samo uz pristanak — vidi lib/track).
   useEffect(() => {
     if (!state?.success) return;
-    const w = window as AdWindow;
-    w.fbq?.("track", "Lead", { content_name: productName });
-    w.gtag?.("event", "generate_lead", { item_name: productName });
-    w.dataLayer?.push({ event: "product_inquiry", product: productName, quantity: qty });
-  }, [state?.success, productName, qty]);
+    track("Lead", {
+      content_name: productName,
+      num_items: qty,
+      ...(priceEur != null ? { value: qty * priceEur, currency: "EUR" } : {}),
+    });
+    (window as AdWindow).dataLayer?.push({ event: "product_inquiry", product: productName, quantity: qty });
+  }, [state?.success, productName, qty, priceEur]);
 
   if (state?.success) {
     return (
