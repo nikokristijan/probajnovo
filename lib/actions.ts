@@ -326,6 +326,19 @@ const AgencySchema = z.object({
   contactEmail: z.string().email("Unesi ispravan email."),
   instagramHandle: z.string().min(1),
   city: z.string().min(1),
+  phone: z
+    .string()
+    .trim()
+    .refine((v) => v === "" || /^\+?[0-9 ()/-]{6,25}$/.test(v), "Telefon smije sadržavati samo brojke, razmake i +."),
+  metaPixelId: z
+    .string()
+    .trim()
+    .refine((v) => v === "" || /^\d{6,20}$/.test(v), "Meta Pixel ID je niz brojki (npr. 1234567890123456)."),
+  gaMeasurementId: z
+    .string()
+    .trim()
+    .toUpperCase()
+    .refine((v) => v === "" || /^G-[A-Z0-9]{4,15}$/.test(v), "Google Analytics ID izgleda kao G-ABC123XYZ."),
 });
 
 export async function updateAgencyAction(
@@ -339,12 +352,21 @@ export async function updateAgencyAction(
     contactEmail: formData.get("contactEmail"),
     instagramHandle: formData.get("instagramHandle"),
     city: formData.get("city"),
+    phone: formData.get("phone") ?? "",
+    metaPixelId: formData.get("metaPixelId") ?? "",
+    gaMeasurementId: formData.get("gaMeasurementId") ?? "",
   });
   if (!parsed.success) {
     return { error: parsed.error.issues[0]?.message ?? "Provjeri unesene podatke." };
   }
-  await updateAgency(parsed.data);
+  await updateAgency({
+    ...parsed.data,
+    phone: emptyToNull(parsed.data.phone),
+    metaPixelId: emptyToNull(parsed.data.metaPixelId),
+    gaMeasurementId: emptyToNull(parsed.data.gaMeasurementId),
+  });
   revalidatePath("/");
+  revalidatePath("/proizvodi", "layout");
   revalidatePath("/admin");
   return { success: true };
 }
@@ -1081,6 +1103,8 @@ const ProductSchema = z.object({
   ctaButtonText: z.string().optional(),
   seoTitle: z.string().optional(),
   seoDescription: z.string().optional(),
+  faq: z.string().optional(), // JSON niz {question, answer}
+  testimonials: z.string().optional(), // JSON niz {author, text, rating}
 });
 
 function readProductFormData(formData: FormData) {
@@ -1100,6 +1124,8 @@ function readProductFormData(formData: FormData) {
     ctaButtonText: formData.get("ctaButtonText") ?? "",
     seoTitle: formData.get("seoTitle") ?? "",
     seoDescription: formData.get("seoDescription") ?? "",
+    faq: formData.get("faq") ?? "[]",
+    testimonials: formData.get("testimonials") ?? "[]",
   };
 }
 
@@ -1138,6 +1164,8 @@ export async function createProductAction(
     ctaButtonText: emptyToNull(parsed.data.ctaButtonText),
     seoTitle: emptyToNull(parsed.data.seoTitle),
     seoDescription: emptyToNull(parsed.data.seoDescription),
+    faq: parseFaq(parsed.data.faq),
+    testimonials: parseTestimonials(parsed.data.testimonials),
   });
   revalidatePath("/");
   revalidatePath("/admin");
@@ -1175,6 +1203,8 @@ export async function updateProductAction(
     ctaButtonText: emptyToNull(parsed.data.ctaButtonText),
     seoTitle: emptyToNull(parsed.data.seoTitle),
     seoDescription: emptyToNull(parsed.data.seoDescription),
+    faq: parseFaq(parsed.data.faq),
+    testimonials: parseTestimonials(parsed.data.testimonials),
   });
   revalidatePath("/");
   revalidatePath("/admin");
