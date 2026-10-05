@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import LegalPage from "@/components/LegalPage";
+import ConsentReset from "@/components/novo/ConsentReset";
 
 export const metadata: Metadata = {
   title: "Politika kolačića",
@@ -10,7 +11,7 @@ export const metadata: Metadata = {
 
 export default function CookiePolicyPage() {
   return (
-    <LegalPage title="Politika kolačića" updated="21. rujna 2026.">
+    <LegalPage title="Politika kolačića" updated="5. listopada 2026.">
       <p>
         Ova stranica namjerno koristi vrlo malo kolačića — evo potpunog popisa, temeljenog na pregledu
         koda stranice, ne generičkog predloška.
@@ -18,10 +19,15 @@ export default function CookiePolicyPage() {
 
       <h2>1. Javne stranice (naslovnica, vikendice, firme, proizvodi)</h2>
       <p>
-        Javne stranice <strong>ne postavljaju kolačiće za praćenje ili marketing</strong>. Statistiku
-        posjećenosti mjerimo preko Vercel Analytics, koji prema dokumentaciji pružatelja radi bez
-        kolačića (ne sprema identifikator u vaš preglednik) — zato ovdje nema banera za pristanak na
-        kolačiće: nemamo neophodne kolačiće za koje bi po zakonu trebali tražiti privolu.
+        Bez vašeg pristanka javne stranice <strong>ne postavljaju kolačiće za praćenje ili marketing</strong>.
+        Osnovnu statistiku posjećenosti mjerimo preko Vercel Analytics, koji prema dokumentaciji pružatelja
+        radi bez kolačića (ne sprema identifikator u vaš preglednik).
+      </p>
+      <p>
+        Na NOVO naslovnici i stranicama proizvoda možete vidjeti baner &bdquo;Kolačići&ldquo;. Tek ako
+        kliknete <strong>Prihvaćam</strong>, učitavaju se alati za mjerenje oglasa opisani u točki 3.
+        Kliknete li <strong>Odbijam</strong>, ništa se ne učitava, a stranica radi jednako. Vaš izbor
+        pamtimo samo u vašem pregledniku (localStorage), ne na našem poslužitelju.
       </p>
 
       <h2>2. Prijava u admin sučelje</h2>
@@ -36,17 +42,27 @@ export default function CookiePolicyPage() {
 
       <h2>3. Kolačići trećih strana</h2>
       <p>
-        Ne koristimo Google Analytics, Facebook Pixel niti druge marketinške/oglašivačke kolačiće
-        trećih strana. Ako neka vikendica/firma na svojoj stranici ugradi video s YouTubea ili Vimea,
+        <strong>Samo uz vaš pristanak</strong> koristimo Meta Pixel (Meta Platforms Ireland Ltd.) i
+        Google Analytics (Google Ireland Ltd.). Oni postavljaju kolačiće poput <code>_fbp</code> i{" "}
+        <code>_ga</code> kako bismo vidjeli koliko je posjetitelja došlo s naših oglasa na Instagramu,
+        Facebooku ili Googleu, koje su proizvode pogledali i je li poslan upit. Podatke iz obrasca
+        (ime, email, telefon) tim alatima ne šaljemo. Takvi kolačići traju do 2 godine, osim ako ih
+        ranije ne obrišete.
+      </p>
+      <p>
+        Ako neka vikendica/firma na svojoj stranici ugradi video s YouTubea ili Vimea,
         taj vanjski servis može pri reprodukciji postaviti svoj kolačić — to je izvan naše kontrole i
         podliježe politici privatnosti YouTubea/Vimea.
       </p>
 
       <h2>4. Kako upravljati kolačićima</h2>
       <p>
-        Budući da javne stranice ne postavljaju kolačiće koji zahtijevaju pristanak, nema postavki za
-        isključivanje na samoj stranici. Kolačić prijave u admin sučelje možete obrisati u svakom
-        trenutku kroz postavke preglednika, čime ćete biti odjavljeni.
+        Svoj izbor možete promijeniti u svakom trenutku:
+      </p>
+      <ConsentReset />
+      <p>
+        Već postavljene kolačiće (i kolačić prijave u admin sučelje) možete obrisati kroz postavke
+        preglednika. Brisanjem kolačića prijave bit ćete odjavljeni.
       </p>
     </LegalPage>
   );
