@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 
 /** Mobitel: cijena i "Pošalji upit" pri dnu ekrana, skriveno dok je obrazac za upit na ekranu. */
-export default function ProductStickyCta({ price }: { price: string }) {
+export default function ProductStickyCta({ price, label = "POŠALJI UPIT" }: { price: string; label?: string }) {
   const [formVisible, setFormVisible] = useState(false);
 
   useEffect(() => {
@@ -18,7 +18,7 @@ export default function ProductStickyCta({ price }: { price: string }) {
     <div className={formVisible ? "pd-sticky is-hidden" : "pd-sticky"} aria-hidden={formVisible}>
       <span className="pd-sticky-price">{price}</span>
       <a href="#upit" className="novo-os-cta mono" tabIndex={formVisible ? -1 : undefined}>
-        POŠALJI UPIT ↓
+        {label} ↓
       </a>
     </div>
   );
