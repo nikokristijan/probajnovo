@@ -478,6 +478,126 @@ function ProductFullscreenPage({
 }
 
 /* ------------------------------------------------------------------ */
+/* PROIZVODI — popis. Svaka kartica je pravi link na /proizvodi/<slug>   */
+/* (vlastiti URL za oglase i dijeljenje).                               */
+/* ------------------------------------------------------------------ */
+
+function priceLabel(priceEur: number | null) {
+  return priceEur != null ? `od ${priceEur} €` : "Cijena na upit";
+}
+
+function ProductsView({
+  products,
+  onOpenWithoutPage,
+}: {
+  products: ProductCard[];
+  /** Proizvod bez sluga (nema vlastitu stranicu) otvara se kao prozor, kao prije. */
+  onOpenWithoutPage: (p: ProductCard) => void;
+}) {
+  const categories = Array.from(new Set(products.map((p) => p.category?.trim()).filter((c): c is string => !!c)));
+  const [category, setCategory] = useState<string | null>(null);
+  const sorted = [...products].sort((a, b) => Number(b.featured) - Number(a.featured));
+  const visible = category ? sorted.filter((p) => p.category?.trim() === category) : sorted;
+  const total = products.length + 1; // + prostorna slova (/slova)
+
+  return (
+    <div className="novo-os-panel">
+      <div className="pl-head">
+        <h1 className="section-title">PROIZVODI</h1>
+        <span className="mono muted pl-count">{String(total).padStart(2, "0")} PROIZVODA</span>
+      </div>
+      <p className="pl-lede">
+        Fizički proizvodi za vikendice, apartmane i firme, izrađeni po mjeri. Otvori proizvod za detalje, cijenu i
+        upit.
+      </p>
+
+      {categories.length > 1 && (
+        <div className="pl-filters" role="group" aria-label="Kategorija">
+          <button
+            type="button"
+            className="novo-os-chip mono"
+            aria-pressed={category === null}
+            onClick={() => setCategory(null)}
+          >
+            SVE
+          </button>
+          {categories.map((c) => (
+            <button
+              key={c}
+              type="button"
+              className="novo-os-chip mono"
+              aria-pressed={category === c}
+              onClick={() => setCategory(c)}
+            >
+              {c.toUpperCase()}
+            </button>
+          ))}
+        </div>
+      )}
+
+      <div className="products-scroll">
+        <div className="pl-grid">
+          {visible.map((p) => {
+            const inner = (
+              <>
+                <div className="pl-card-img">
+                  <ProjectImage src={p.images[0]} alt={p.name} className="pl-card-thumb" />
+                  {p.featured && <span className="pl-badge mono">ISTAKNUTO</span>}
+                </div>
+                <div className="pl-card-body">
+                  <span className="pl-card-cat mono">{(p.category || "Proizvod").toUpperCase()}</span>
+                  <span className="pl-card-name">{p.name}</span>
+                  <span className="pl-card-tagline">{p.tagline}</span>
+                  <span className="pl-card-foot">
+                    <span className="pl-card-price mono">{priceLabel(p.priceEur)}</span>
+                    <span className="pl-card-go mono" aria-hidden="true">
+                      DETALJI →
+                    </span>
+                  </span>
+                </div>
+              </>
+            );
+            return p.slug ? (
+              <Link key={p.id} href={`/proizvodi/${p.slug}`} className="pl-card">
+                {inner}
+              </Link>
+            ) : (
+              <button key={p.id} type="button" className="pl-card" onClick={() => onOpenWithoutPage(p)}>
+                {inner}
+              </button>
+            );
+          })}
+
+          {/* Prostorna slova nisu u tablici products — to je zaseban
+              konfigurator s vlastitom stranicom /slova. */}
+          {category === null && (
+            <Link href="/slova" className="pl-card">
+              <div className="pl-card-img pl-card-img--slova" aria-hidden="true">
+                <span className="pl-slova-word">ABC</span>
+              </div>
+              <div className="pl-card-body">
+                <span className="pl-card-cat mono">KONFIGURATOR</span>
+                <span className="pl-card-name">Prostorna slova po mjeri</span>
+                <span className="pl-card-tagline">Odaberite font, veličinu i boju, pogledajte uživo i pošaljite upit.</span>
+                <span className="pl-card-foot">
+                  <span className="pl-card-price mono">od 4 €/slovo</span>
+                  <span className="pl-card-go mono" aria-hidden="true">
+                    SLOŽI →
+                  </span>
+                </span>
+              </div>
+            </Link>
+          )}
+        </div>
+        {products.length === 0 && (
+          <p className="studies-empty">Uskoro još proizvoda — NFC pločice za vikendice i firme.</p>
+        )}
+      </div>
+    </div>
+  );
+}
+
+/* ------------------------------------------------------------------ */
 /* Glavna komponenta                                                    */
 /* ------------------------------------------------------------------ */
 
@@ -506,18 +626,30 @@ export default function NovoHome({
   const [productWindows, setProductWindows] = useState<
     { key: string; product: ProductCard; x: number; y: number; z: number; minimized: boolean; fullscreen: boolean }[]
   >([]);
-  /* "Custom slova po mjeri" nije u `products` tablici (zaseban interaktivni
-     alat, ne DB kartica) pa ima svoj, jednostruki prozor umjesto niza kao
-     projectWindows/productWindows — u svakom trenutku postoji najviše jedan. */
-  const [slovaWindow, setSlovaWindow] = useState<
-    { x: number; y: number; z: number; minimized: boolean; fullscreen: boolean } | null
-  >(null);
-  const [coords, setCoords] = useState({ x: 0, y: 0 });
 
-  // no page-scroll: zaključaj <html>/<body> dok je ova stranica montirana
+  /* Svaki tab ima svoju adresu (PROIZVODI = /proizvodi, ostali /?view=…).
+     Promjena taba samo zamijeni adresu (pushState) bez ponovnog učitavanja,
+     a "natrag" u pregledniku vraća prethodni tab. */
+  const selectView = (next: View) => {
+    setView(next);
+    const href = VIEW_HREF[next];
+    if (window.location.pathname + window.location.search !== href) {
+      window.history.pushState(null, "", href);
+    }
+  };
+
   useEffect(() => {
-    document.documentElement.classList.add("novo-lock-scroll");
-    return () => document.documentElement.classList.remove("novo-lock-scroll");
+    const fromLocation = (): View => {
+      if (window.location.pathname.startsWith("/proizvodi")) return "products";
+      const v = new URLSearchParams(window.location.search).get("view");
+      return v === "studies" || v === "office" ? v : "home";
+    };
+    const onPop = () => setView(fromLocation());
+    // "Natrag" iz stranice proizvoda na /proizvodi zna ponovno montirati
+    // naslovnicu s početnim tabom — uskladi tab s adresom u pregledniku.
+    onPop();
+    window.addEventListener("popstate", onPop);
+    return () => window.removeEventListener("popstate", onPop);
   }, []);
 
   useEffect(() => {
@@ -530,10 +662,6 @@ export default function NovoHome({
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setExhibit((e) => ({ ...e, x: Math.max(vw - 300, 20), y: Math.max(vh - 360, 90) }));
     setExhibitReady(true);
-
-    const onMove = (e: MouseEvent) => setCoords({ x: e.clientX, y: e.clientY });
-    window.addEventListener("mousemove", onMove);
-    return () => window.removeEventListener("mousemove", onMove);
   }, []);
 
   const bringExhibitFront = () => setExhibit((e) => ({ ...e, z: ++zCounter.current }));
