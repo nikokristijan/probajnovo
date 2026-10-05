@@ -12,6 +12,9 @@ import ProductVideoNovo from "@/components/novo/ProductVideoNovo";
 import QtyQuickPick from "@/components/novo/QtyQuickPick";
 import ShareProductButton from "@/components/novo/ShareProductButton";
 import ProductStickyCta from "@/components/novo/ProductStickyCta";
+import ConsentTracking from "@/components/novo/ConsentTracking";
+import { ContactLink, TrackProductView, WhatsAppIcon } from "@/components/novo/ProductContactLinks";
+import { telHref, whatsappUrl } from "@/lib/phone";
 
 export const revalidate = 0;
 
@@ -45,6 +48,16 @@ function includedItems(description: string): string[] {
   const list =
     (h >= 0 ? blocks.slice(h + 1).find((b) => b.kind === "ul") : undefined) ?? blocks.find((b) => b.kind === "ul");
   return list && list.kind === "ul" ? list.items.slice(0, 5) : [];
+}
+
+function Stars({ rating }: { rating: number }) {
+  const full = Math.round(rating);
+  return (
+    <span className="pd-stars" aria-hidden="true">
+      {"★".repeat(full)}
+      <span className="pd-stars-off">{"★".repeat(5 - full)}</span>
+    </span>
+  );
 }
 
 export async function generateMetadata({ params }: { params: Promise<Params> }): Promise<Metadata> {
@@ -104,6 +117,13 @@ export default async function ProductPage({ params }: { params: Promise<Params> 
   const fileVideo = product.videoUrl && !embed ? product.videoUrl : null;
   const included = includedItems(product.description);
   const ctaLabel = (product.ctaButtonText?.trim() || "Zatraži ponudu").toUpperCase();
+  const reviews = product.testimonials ?? [];
+  const faq = product.faq ?? [];
+  const avgRating = reviews.length ? reviews.reduce((s, r) => s + r.rating, 0) / reviews.length : 0;
+  const waHref = contact.phone
+    ? whatsappUrl(contact.phone, `Pozdrav! Zanima me ${product.name} (${url})`)
+    : null;
+  const phoneHref = contact.phone ? telHref(contact.phone) : null;
 
   const jsonLd = [
     {
@@ -115,6 +135,21 @@ export default async function ProductPage({ params }: { params: Promise<Params> 
       url,
       brand: { "@type": "Brand", name: "NOVO" },
       ...(product.category ? { category: product.category } : {}),
+      ...(reviews.length
+        ? {
+            aggregateRating: {
+              "@type": "AggregateRating",
+              ratingValue: Number(avgRating.toFixed(1)),
+              reviewCount: reviews.length,
+            },
+            review: reviews.map((r) => ({
+              "@type": "Review",
+              author: { "@type": "Person", name: r.author },
+              reviewBody: r.text,
+              reviewRating: { "@type": "Rating", ratingValue: r.rating, bestRating: 5 },
+            })),
+          }
+        : {}),
       ...(product.priceEur != null
         ? {
             offers: {
@@ -137,6 +172,19 @@ export default async function ProductPage({ params }: { params: Promise<Params> 
         { "@type": "ListItem", position: 3, name: product.name, item: url },
       ],
     },
+    ...(faq.length
+      ? [
+          {
+            "@context": "https://schema.org",
+            "@type": "FAQPage",
+            mainEntity: faq.map((f) => ({
+              "@type": "Question",
+              name: f.question,
+              acceptedAnswer: { "@type": "Answer", text: f.answer },
+            })),
+          },
+        ]
+      : []),
   ];
 
   return (
@@ -184,6 +232,13 @@ export default async function ProductPage({ params }: { params: Promise<Params> 
                 <span className="pd-price-value">{priceLabel(product.priceEur)}</span>
                 {product.priceEur != null && <span className="mono muted pd-price-unit">/ KOM</span>}
               </div>
+              {reviews.length > 0 && (
+                <a href="#recenzije" className="pd-rating mono">
+                  <Stars rating={avgRating} />
+                  {avgRating.toLocaleString("hr-HR", { minimumFractionDigits: 1, maximumFractionDigits: 1 })} ·{" "}
+                  {reviews.length} {reviews.length === 1 ? "RECENZIJA" : reviews.length < 5 ? "RECENZIJE" : "RECENZIJA"} ↓
+                </a>
+              )}
             </div>
 
             <div className="pd-info pd-rest">
@@ -208,7 +263,14 @@ export default async function ProductPage({ params }: { params: Promise<Params> 
                 </ul>
               )}
 
-              <QtyQuickPick priceEur={product.priceEur} ctaLabel={ctaLabel} />
+              <QtyQuickPick priceEur={product.priceEur} ctaLabel={ctaLabel} productName={product.name} />
+
+              {waHref && (
+                <ContactLink href={waHref} productName={product.name} channel="whatsapp" className="pd-wa mono">
+                  <WhatsAppIcon />
+                  IMATE PITANJE? PITAJTE NA WHATSAPPU
+                </ContactLink>
+              )}
 
               <div className="pd-meta-row">
                 <ShareProductButton url={url} title={product.name} />
@@ -220,6 +282,23 @@ export default async function ProductPage({ params }: { params: Promise<Params> 
               </div>
             </div>
           </article>
+
+          {reviews.length > 0 && (
+            <section className="pd-section" id="recenzije" aria-labelledby="pd-recenzije">
+              <h2 id="pd-recenzije" className="section-title">
+                RECENZIJE KUPACA
+              </h2>
+              <ul className="pd-reviews">
+                {reviews.map((r, i) => (
+                  <li key={i} className="pd-review">
+                    <Stars rating={r.rating} />
+                    <blockquote>{r.text}</blockquote>
+                    <span className="pd-review-author mono">{r.author.toUpperCase()}</span>
+                  </li>
+                ))}
+              </ul>
+            </section>
+          )}
 
           {fileVideo && product.images.length > 0 && (
             <section className="pd-section pd-photos" id="fotografije" aria-labelledby="pd-foto">
@@ -252,6 +331,22 @@ export default async function ProductPage({ params }: { params: Promise<Params> 
                   allow="accelerometer; encrypted-media; gyroscope; picture-in-picture"
                   allowFullScreen
                 />
+              </div>
+            </section>
+          )}
+
+          {faq.length > 0 && (
+            <section className="pd-section" id="pitanja" aria-labelledby="pd-faq">
+              <h2 id="pd-faq" className="section-title">
+                ČESTA PITANJA
+              </h2>
+              <div className="pd-faq">
+                {faq.map((f, i) => (
+                  <details key={i} className="pd-faq-item" open={i === 0}>
+                    <summary>{f.question}</summary>
+                    <p>{f.answer}</p>
+                  </details>
+                ))}
               </div>
             </section>
           )}
