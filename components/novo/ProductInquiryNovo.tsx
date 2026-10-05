@@ -2,6 +2,7 @@
 
 import { useActionState, useEffect, useState } from "react";
 import { createInquiryAction, type ActionState } from "@/lib/actions";
+import { QTY_EVENT } from "@/components/novo/QtyQuickPick";
 
 const APEX_HOST = process.env.NEXT_PUBLIC_APEX_HOST || "";
 const PRIVACY_POLICY_URL = APEX_HOST ? `https://${APEX_HOST}/privatnost` : "/privatnost";
@@ -67,6 +68,18 @@ export default function ProductInquiryNovo({
   const [note, setNote] = useState("");
   const [email, setEmail] = useState("");
   const [attribution, setAttribution] = useState("");
+  const [showMore, setShowMore] = useState(false);
+
+  // Količina odabrana gore uz cijenu (QtyQuickPick) dolazi ovamo.
+  useEffect(() => {
+    const onQty = (e: Event) => {
+      const n = Number((e as CustomEvent<number>).detail);
+      if (n > 0) setQty(Math.min(999, Math.round(n)));
+      setTimeout(() => document.getElementById("pq-name")?.focus({ preventScroll: true }), 450);
+    };
+    window.addEventListener(QTY_EVENT, onQty);
+    return () => window.removeEventListener(QTY_EVENT, onQty);
+  }, []);
 
   useEffect(() => {
     // sessionStorage/URL postoje tek u pregledniku.
@@ -180,30 +193,40 @@ export default function ProductInquiryNovo({
           <span className="pq-label mono">TELEFON</span>
           <input id="pq-phone" type="tel" name="phone" maxLength={40} autoComplete="tel" />
         </label>
-        <label className="pq-field">
-          <span className="pq-label mono">NAZIV OBJEKTA</span>
-          <input
-            id="pq-place"
-            type="text"
-            maxLength={120}
-            placeholder="npr. Apartman Lozica"
-            value={place}
-            onChange={(e) => setPlace(e.target.value)}
-          />
-        </label>
       </div>
 
-      <label className="pq-field">
-        <span className="pq-label mono">PORUKA</span>
-        <textarea
-          id="pq-note"
-          rows={3}
-          maxLength={3000}
-          placeholder="Boja, natpis, rok… sve što nam pomaže pripremiti ponudu."
-          value={note}
-          onChange={(e) => setNote(e.target.value)}
-        />
-      </label>
+      {showMore ? (
+        <div className="pq-grid">
+          <label className="pq-field">
+            <span className="pq-label mono">NAZIV OBJEKTA</span>
+            <input
+              id="pq-place"
+              type="text"
+              maxLength={120}
+              placeholder="npr. Apartman Lozica"
+              value={place}
+              onChange={(e) => setPlace(e.target.value)}
+            />
+          </label>
+        </div>
+      ) : (
+        <button type="button" className="mono link link-btn pq-more" onClick={() => setShowMore(true)}>
+          + DODAJ NAZIV OBJEKTA ILI PORUKU (NIJE OBAVEZNO)
+        </button>
+      )}
+      {showMore && (
+        <label className="pq-field">
+          <span className="pq-label mono">PORUKA</span>
+          <textarea
+            id="pq-note"
+            rows={3}
+            maxLength={3000}
+            placeholder="Boja, natpis, rok… sve što nam pomaže pripremiti ponudu."
+            value={note}
+            onChange={(e) => setNote(e.target.value)}
+          />
+        </label>
+      )}
 
       <label className="pq-consent">
         <input id="pq-consent" type="checkbox" name="consent" required />

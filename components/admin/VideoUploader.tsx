@@ -23,12 +23,22 @@ export default function VideoUploader({
   const inputRef = useRef<HTMLInputElement>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [warning, setWarning] = useState<string | null>(null);
 
   async function handleFile(files: FileList | null) {
     const file = files?.[0];
     if (!file) return;
     setBusy(true);
     setError(null);
+    // Velik video (npr. 4K .MOV s iPhonea) se na mobitelu gosta učitava
+    // sekundama ili se uopće ne prikaže — upozori, ali ipak dopusti upload.
+    const mb = file.size / 1024 / 1024;
+    const isMov = /quicktime/i.test(file.type) || /\.mov$/i.test(file.name);
+    setWarning(
+      mb > 15 || isMov
+        ? `Ovaj video ima ${Math.round(mb)} MB${isMov ? " i .MOV je format" : ""} — gostima će se sporo učitavati. Za brzu stranicu izvezi ga kao MP4 (720p) do 10 MB.`
+        : null
+    );
     try {
       const blob = await upload(file.name, file, {
         access: "public",
@@ -73,6 +83,7 @@ export default function VideoUploader({
         />
       </label>
 
+      {warning && <p className="text-sm text-amber-700">{warning}</p>}
       {error && <p className="text-sm text-red-600">{error}</p>}
     </div>
   );
