@@ -327,7 +327,7 @@ export default async function ProductPage({ params }: { params: Promise<Params> 
           </footer>
 
           {/* Mobitel: cijena i upit uvijek pri dnu ekrana. */}
-          <ProductStickyCta price={priceLabel(product.priceEur)} />
+          <ProductStickyCta price={priceLabel(product.priceEur)} label={ctaLabel} />
         </div>
       </div>
     </NovoShell>
