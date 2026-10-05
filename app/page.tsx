@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import NovoHome from "@/components/NovoHome";
 import { loadNovoHomeData } from "@/lib/novoHomeData";
+import ConsentTracking from "@/components/novo/ConsentTracking";
 
 export const revalidate = 0; // uvijek svježe iz baze (admin izmjene odmah vidljive)
 
@@ -19,15 +20,18 @@ export default async function HomePage({
   const data = await loadNovoHomeData();
 
   return (
-    <NovoHome
-      heroTitle={data.heroTitle}
-      officeText={data.officeText}
-      contactEmail={data.contactEmail}
-      instagramHandle={data.instagramHandle}
-      city={data.city}
-      projects={data.projects}
-      products={data.products}
-      initialView={initialView}
-    />
+    <>
+      <NovoHome
+        heroTitle={data.heroTitle}
+        officeText={data.officeText}
+        contactEmail={data.contactEmail}
+        instagramHandle={data.instagramHandle}
+        city={data.city}
+        projects={data.projects}
+        products={data.products}
+        initialView={initialView}
+      />
+      <ConsentTracking metaPixelId={data.metaPixelId} gaMeasurementId={data.gaMeasurementId} />
+    </>
   );
 }
