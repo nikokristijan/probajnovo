@@ -373,6 +373,23 @@ export default async function ProductPage({ params }: { params: Promise<Params> 
                 <a href={`mailto:${contact.contactEmail}?subject=${encodeURIComponent(`Upit — ${product.name}`)}`}>
                   {contact.contactEmail}
                 </a>
+                {phoneHref && contact.phone && (
+                  <>
+                    <br />
+                    ILI NAZOVITE{" "}
+                    <ContactLink href={phoneHref} productName={product.name} channel="phone">
+                      {contact.phone}
+                    </ContactLink>
+                  </>
+                )}
+                {waHref && (
+                  <>
+                    <br />
+                    <ContactLink href={waHref} productName={product.name} channel="whatsapp">
+                      WHATSAPP →
+                    </ContactLink>
+                  </>
+                )}
               </p>
             </div>
             <ProductInquiryNovo
@@ -422,9 +439,16 @@ export default async function ProductPage({ params }: { params: Promise<Params> 
           </footer>
 
           {/* Mobitel: cijena i upit uvijek pri dnu ekrana. */}
-          <ProductStickyCta price={priceLabel(product.priceEur)} label={ctaLabel} />
+          <ProductStickyCta
+            price={priceLabel(product.priceEur)}
+            label={ctaLabel}
+            whatsappHref={waHref}
+            productName={product.name}
+          />
         </div>
       </div>
+      <TrackProductView name={product.name} slug={product.slug} priceEur={product.priceEur} />
+      <ConsentTracking metaPixelId={contact.metaPixelId} gaMeasurementId={contact.gaMeasurementId} />
     </NovoShell>
   );
 }
