@@ -165,7 +165,7 @@ export default function ProductForm({
         </Field>
         <VideoUploader
           label="Video (opcionalno)"
-          helpText="Uploadaj kratku snimku proizvoda — prikazuje se na stranici proizvoda ispod opisa."
+          helpText="Kratka snimka proizvoda u upotrebi — prikazuje se na vrhu stranice proizvoda i sama se vrti bez zvuka. Najbolje uspravna snimka s mobitela, 5–15 sekundi, MP4 do 10 MB."
           value={values.videoUrl}
           onChange={(url) => set("videoUrl", url)}
         />
