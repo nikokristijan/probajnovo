@@ -1,16 +1,39 @@
-import { redirect } from "next/navigation";
+import type { Metadata } from "next";
+import NovoHome from "@/components/NovoHome";
+import { loadNovoHomeData } from "@/lib/novoHomeData";
+
+export const revalidate = 0;
+
+export const metadata: Metadata = {
+  title: "Proizvodi",
+  description:
+    "NFC pločice za WiFi, prostorna slova i ostali proizvodi za vikendice, apartmane i firme — izrađeni po mjeri u NOVO studiju.",
+  alternates: { canonical: "https://www.probajnovo.com/proizvodi" },
+  openGraph: {
+    title: "Proizvodi — NOVO",
+    description: "NFC pločice za WiFi, prostorna slova i ostali proizvodi za vikendice, apartmane i firme.",
+    url: "https://www.probajnovo.com/proizvodi",
+  },
+};
 
 /**
- * Homepage (NovoHome.tsx) već ima potpuno funkcionalan "PROIZVODI" tab (isti
- * proizvodi, isti /slova unos) — ova zasebna listing stranica ga je samo
- * duplicirala, pa je spojena natrag u naslovnicu. Stari /proizvodi linkovi
- * (vanjski, spremljeni u pretraživačima i sl.) sad odmah otvore taj tab
- * umjesto da gost završi na POČETNA tabu i mora ručno kliknuti dalje.
- *
- * Pojedine stranice proizvoda (/proizvodi/[slug]) OSTAJU — one imaju svoju
- * SEO metadatu i vlastiti link za dijeljenje, što homepage tab (bez prave
- * rute po proizvodu) ne može zamijeniti.
+ * /proizvodi — ista NOVO naslovnica, otvorena na tabu PROIZVODI, ali s
+ * vlastitim URL-om (za oglase, tražilice i dijeljenje). Klik na PROIZVODI
+ * na naslovnici samo promijeni adresu u /proizvodi bez ponovnog učitavanja
+ * (vidi NovoHome), a svaki proizvod vodi na /proizvodi/<slug>.
  */
-export default function ProductsListingRedirect() {
-  redirect("/?view=products");
+export default async function ProductsPage() {
+  const data = await loadNovoHomeData();
+  return (
+    <NovoHome
+      heroTitle={data.heroTitle}
+      officeText={data.officeText}
+      contactEmail={data.contactEmail}
+      instagramHandle={data.instagramHandle}
+      city={data.city}
+      projects={data.projects}
+      products={data.products}
+      initialView="products"
+    />
+  );
 }

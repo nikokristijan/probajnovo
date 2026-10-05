@@ -1,30 +1,8 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import Image from "next/image";
 import Link from "next/link";
-import dynamic from "next/dynamic";
-
-/* Konfigurator prostornih slova (fontovi + SlovaCustomizer) učitan tek kad
-   se stvarno otvori (klik na ikonu širenja u "CUSTOM SLOVA PO MJERI"
-   prozoru) — ssr:false + dynamic import, da posjetitelji naslovnice koji
-   ga ne otvore ne preuzimaju 10 dodatnih Google fontova. Vidi
-   components/slova/SlovaFullscreenOverlay.tsx. */
-const SlovaFullscreenOverlay = dynamic(() => import("@/components/slova/SlovaFullscreenOverlay"), {
-  ssr: false,
-  loading: () => (
-    <div className="product-full">
-      <div className="product-full-topbar">
-        <span className="product-full-brand mono muted">NOVO — PROSTORNA SLOVA</span>
-      </div>
-      <div className="product-full-scroll">
-        <div className="novo-product-wrap">
-          <p className="studies-empty">Učitavanje konfiguratora…</p>
-        </div>
-      </div>
-    </div>
-  ),
-});
+import NovoShell, { VIEW_HREF } from "@/components/novo/NovoShell";
 
 /* ------------------------------------------------------------------ */
 /* Tipovi                                                              */
@@ -403,43 +381,6 @@ function ProductContent({ product, contactEmail }: { product: ProductCard; conta
   );
 }
 
-/* Sadržaj malog pop-up prozora za "Custom slova po mjeri" — konfigurator sam
-   (SlovaCustomizer) je prevelik za mali plutajući prozor (puni desktop alat s
-   3D pregledom, biračem fonta/veličine/boje i formom za upit), zato ovdje
-   stoji samo kratak teaser s CTA-om koji ga otvara preko cijelog zaslona
-   (isti "proširi" mehanizam kao kod pravih proizvoda) — ne šalje gosta na
-   /slova, ostaje unutar OS shella kao i svi ostali proizvodi. */
-function SlovaTeaserContent({ onOpenFullscreen }: { onOpenFullscreen: () => void }) {
-  return (
-    <div className="proj-viewport">
-      <button
-        type="button"
-        className="proj-image-btn"
-        onClick={onOpenFullscreen}
-        aria-label="Otvori konfigurator prostornih slova"
-        style={{ background: "#0b0b10" }}
-      />
-      <div className="proj-info">
-        <p className="proj-desc">
-          Odaberite font, veličinu i boju prostornih slova, pogledajte uživo i pošaljite upit u dva
-          klika.
-        </p>
-        <div className="proj-meta">
-          <span className="mono muted">od 4 €/slovo</span>
-        </div>
-        <div className="proj-actions">
-          <button type="button" className="mono link link-btn" onClick={onOpenFullscreen}>
-            OTVORI KONFIGURATOR ↗
-          </button>
-          <Link href="/slova" className="mono link">
-            STRANICA PROIZVODA ↗
-          </Link>
-        </div>
-      </div>
-    </div>
-  );
-}
-
 /* Cijeli zaslon proizvoda — umjesto malog plutajućeg prozora, proizvod
    "postane" vlastita stranica preko cijelog ekrana (veća galerija, čitljiviji
    opis). Otvara se klikom na ikonu širenja kraj minimiziranja, zatvara se
@@ -537,6 +478,126 @@ function ProductFullscreenPage({
 }
 
 /* ------------------------------------------------------------------ */
+/* PROIZVODI — popis. Svaka kartica je pravi link na /proizvodi/<slug>   */
+/* (vlastiti URL za oglase i dijeljenje).                               */
+/* ------------------------------------------------------------------ */
+
+function priceLabel(priceEur: number | null) {
+  return priceEur != null ? `od ${priceEur} €` : "Cijena na upit";
+}
+
+function ProductsView({
+  products,
+  onOpenWithoutPage,
+}: {
+  products: ProductCard[];
+  /** Proizvod bez sluga (nema vlastitu stranicu) otvara se kao prozor, kao prije. */
+  onOpenWithoutPage: (p: ProductCard) => void;
+}) {
+  const categories = Array.from(new Set(products.map((p) => p.category?.trim()).filter((c): c is string => !!c)));
+  const [category, setCategory] = useState<string | null>(null);
+  const sorted = [...products].sort((a, b) => Number(b.featured) - Number(a.featured));
+  const visible = category ? sorted.filter((p) => p.category?.trim() === category) : sorted;
+  const total = products.length + 1; // + prostorna slova (/slova)
+
+  return (
+    <div className="novo-os-panel">
+      <div className="pl-head">
+        <h1 className="section-title">PROIZVODI</h1>
+        <span className="mono muted pl-count">{String(total).padStart(2, "0")} PROIZVODA</span>
+      </div>
+      <p className="pl-lede">
+        Fizički proizvodi za vikendice, apartmane i firme, izrađeni po mjeri. Otvori proizvod za detalje, cijenu i
+        upit.
+      </p>
+
+      {categories.length > 1 && (
+        <div className="pl-filters" role="group" aria-label="Kategorija">
+          <button
+            type="button"
+            className="novo-os-chip mono"
+            aria-pressed={category === null}
+            onClick={() => setCategory(null)}
+          >
+            SVE
+          </button>
+          {categories.map((c) => (
+            <button
+              key={c}
+              type="button"
+              className="novo-os-chip mono"
+              aria-pressed={category === c}
+              onClick={() => setCategory(c)}
+            >
+              {c.toUpperCase()}
+            </button>
+          ))}
+        </div>
+      )}
+
+      <div className="products-scroll">
+        <div className="pl-grid">
+          {visible.map((p) => {
+            const inner = (
+              <>
+                <div className="pl-card-img">
+                  <ProjectImage src={p.images[0]} alt={p.name} className="pl-card-thumb" />
+                  {p.featured && <span className="pl-badge mono">ISTAKNUTO</span>}
+                </div>
+                <div className="pl-card-body">
+                  <span className="pl-card-cat mono">{(p.category || "Proizvod").toUpperCase()}</span>
+                  <span className="pl-card-name">{p.name}</span>
+                  <span className="pl-card-tagline">{p.tagline}</span>
+                  <span className="pl-card-foot">
+                    <span className="pl-card-price mono">{priceLabel(p.priceEur)}</span>
+                    <span className="pl-card-go mono" aria-hidden="true">
+                      DETALJI →
+                    </span>
+                  </span>
+                </div>
+              </>
+            );
+            return p.slug ? (
+              <Link key={p.id} href={`/proizvodi/${p.slug}`} className="pl-card">
+                {inner}
+              </Link>
+            ) : (
+              <button key={p.id} type="button" className="pl-card" onClick={() => onOpenWithoutPage(p)}>
+                {inner}
+              </button>
+            );
+          })}
+
+          {/* Prostorna slova nisu u tablici products — to je zaseban
+              konfigurator s vlastitom stranicom /slova. */}
+          {category === null && (
+            <Link href="/slova" className="pl-card">
+              <div className="pl-card-img pl-card-img--slova" aria-hidden="true">
+                <span className="pl-slova-word">ABC</span>
+              </div>
+              <div className="pl-card-body">
+                <span className="pl-card-cat mono">KONFIGURATOR</span>
+                <span className="pl-card-name">Prostorna slova po mjeri</span>
+                <span className="pl-card-tagline">Odaberite font, veličinu i boju, pogledajte uživo i pošaljite upit.</span>
+                <span className="pl-card-foot">
+                  <span className="pl-card-price mono">od 4 €/slovo</span>
+                  <span className="pl-card-go mono" aria-hidden="true">
+                    SLOŽI →
+                  </span>
+                </span>
+              </div>
+            </Link>
+          )}
+        </div>
+        {products.length === 0 && (
+          <p className="studies-empty">Uskoro još proizvoda — NFC pločice za vikendice i firme.</p>
+        )}
+      </div>
+    </div>
+  );
+}
+
+/* ------------------------------------------------------------------ */
 /* Glavna komponenta                                                    */
 /* ------------------------------------------------------------------ */
 
@@ -565,18 +626,30 @@ export default function NovoHome({
   const [productWindows, setProductWindows] = useState<
     { key: string; product: ProductCard; x: number; y: number; z: number; minimized: boolean; fullscreen: boolean }[]
   >([]);
-  /* "Custom slova po mjeri" nije u `products` tablici (zaseban interaktivni
-     alat, ne DB kartica) pa ima svoj, jednostruki prozor umjesto niza kao
-     projectWindows/productWindows — u svakom trenutku postoji najviše jedan. */
-  const [slovaWindow, setSlovaWindow] = useState<
-    { x: number; y: number; z: number; minimized: boolean; fullscreen: boolean } | null
-  >(null);
-  const [coords, setCoords] = useState({ x: 0, y: 0 });
 
-  // no page-scroll: zaključaj <html>/<body> dok je ova stranica montirana
+  /* Svaki tab ima svoju adresu (PROIZVODI = /proizvodi, ostali /?view=…).
+     Promjena taba samo zamijeni adresu (pushState) bez ponovnog učitavanja,
+     a "natrag" u pregledniku vraća prethodni tab. */
+  const selectView = (next: View) => {
+    setView(next);
+    const href = VIEW_HREF[next];
+    if (window.location.pathname + window.location.search !== href) {
+      window.history.pushState(null, "", href);
+    }
+  };
+
   useEffect(() => {
-    document.documentElement.classList.add("novo-lock-scroll");
-    return () => document.documentElement.classList.remove("novo-lock-scroll");
+    const fromLocation = (): View => {
+      if (window.location.pathname.startsWith("/proizvodi")) return "products";
+      const v = new URLSearchParams(window.location.search).get("view");
+      return v === "studies" || v === "office" ? v : "home";
+    };
+    const onPop = () => setView(fromLocation());
+    // "Natrag" iz stranice proizvoda na /proizvodi zna ponovno montirati
+    // naslovnicu s početnim tabom — uskladi tab s adresom u pregledniku.
+    onPop();
+    window.addEventListener("popstate", onPop);
+    return () => window.removeEventListener("popstate", onPop);
   }, []);
 
   useEffect(() => {
@@ -589,10 +662,6 @@ export default function NovoHome({
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setExhibit((e) => ({ ...e, x: Math.max(vw - 300, 20), y: Math.max(vh - 360, 90) }));
     setExhibitReady(true);
-
-    const onMove = (e: MouseEvent) => setCoords({ x: e.clientX, y: e.clientY });
-    window.addEventListener("mousemove", onMove);
-    return () => window.removeEventListener("mousemove", onMove);
   }, []);
 
   const bringExhibitFront = () => setExhibit((e) => ({ ...e, z: ++zCounter.current }));
@@ -663,23 +732,6 @@ export default function NovoHome({
       )
     );
 
-  const openSlova = () => {
-    setSlovaWindow((w) => {
-      if (w) return { ...w, z: ++zCounter.current, minimized: false };
-      const count = projectWindows.length + productWindows.length;
-      const vw = typeof window !== "undefined" ? window.innerWidth : 1200;
-      const vh = typeof window !== "undefined" ? window.innerHeight : 800;
-      const baseX = Math.min(220 + count * 36, Math.max(vw - 280, 60));
-      const baseY = Math.min(100 + count * 36, Math.max(vh - 420, 70));
-      return { x: baseX, y: baseY, z: ++zCounter.current, minimized: false, fullscreen: false };
-    });
-  };
-  const closeSlova = () => setSlovaWindow(null);
-  const toggleMinimizeSlova = () => setSlovaWindow((w) => (w ? { ...w, minimized: !w.minimized } : w));
-  const focusSlova = () => setSlovaWindow((w) => (w ? { ...w, z: ++zCounter.current } : w));
-  const toggleFullscreenSlova = () =>
-    setSlovaWindow((w) => (w ? { ...w, fullscreen: !w.fullscreen, minimized: false, z: ++zCounter.current } : w));
-
   // Esc zatvara prozor koji je trenutno navrh (najveći z) — tipkovničko
   // korištenje bez miša, isto kao što bi se očekivalo od pravog OS prozora.
   useEffect(() => {
@@ -688,13 +740,12 @@ export default function NovoHome({
       const candidates = [
         ...projectWindows.filter((w) => !w.minimized).map((w) => ({ z: w.z, close: () => closeProject(w.key) })),
         ...productWindows.filter((w) => !w.minimized).map((w) => ({ z: w.z, close: () => closeProduct(w.key) })),
-        ...(slovaWindow && !slovaWindow.minimized ? [{ z: slovaWindow.z, close: closeSlova }] : []),
       ];
       candidates.sort((a, b) => b.z - a.z)[0]?.close();
     }
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, [projectWindows, productWindows, slovaWindow]);
+  }, [projectWindows, productWindows]);
 
   const exhibitImages =
     projects.length > 0
@@ -703,211 +754,10 @@ export default function NovoHome({
 
   const instaUrl = `https://instagram.com/${instagramHandle.replace(/^@/, "")}`;
 
-  return (
-    <div className="novo-os">
-      <div className="novo-os-topbar">
-        <button
-          type="button"
-          className="novo-os-brand"
-          onClick={() => setView("home")}
-          aria-label="NOVO — natrag na početnu"
-        >
-          <Image
-            src="/novo-logo.png"
-            alt="NOVO"
-            className="novo-os-logo-img"
-            width={1474}
-            height={497}
-            priority
-          />
-        </button>
-        <span className="novo-os-coords mono muted">
-          {coords.x}(X), {coords.y}(Y)
-        </span>
-      </div>
-
-      <nav className="novo-os-nav">
-        <button className={view === "home" ? "novo-os-navbtn active" : "novo-os-navbtn"} onClick={() => setView("home")}>
-          POČETNA
-        </button>
-        <button
-          className={view === "studies" ? "novo-os-navbtn active" : "novo-os-navbtn"}
-          onClick={() => setView("studies")}
-        >
-          RADOVI
-        </button>
-        <button
-          className={view === "products" ? "novo-os-navbtn active" : "novo-os-navbtn"}
-          onClick={() => setView("products")}
-        >
-          PROIZVODI
-        </button>
-        <button
-          className={view === "office" ? "novo-os-navbtn active" : "novo-os-navbtn"}
-          onClick={() => setView("office")}
-        >
-          STUDIO
-        </button>
-      </nav>
-
-      <main className="novo-os-main">
-        {view === "home" && (
-          <div className="novo-os-hero">
-            <div className="novo-os-hero-content">
-              <span className="novo-os-kicker mono">KREATIVNI STUDIO</span>
-              <h1>{heroTitle}</h1>
-              <div className="novo-os-services">
-                {SERVICES.map((s) => (
-                  <span key={s} className="novo-os-chip mono">
-                    {s}
-                  </span>
-                ))}
-              </div>
-              <button className="novo-os-cta mono" onClick={() => setView("studies")}>
-                POGLEDAJ RADOVE ↗
-              </button>
-            </div>
-          </div>
-        )}
-
-        {view === "studies" && (
-          <div className="novo-os-panel">
-            <h2 className="section-title">RADOVI</h2>
-            <div className="studies-head">
-              <span>BR.</span>
-              <span>NAZIV</span>
-              <span className="col-cat">INFO</span>
-              <span>GODINA</span>
-            </div>
-            <div className="studies-scroll">
-              {projects.length === 0 && (
-                <p className="studies-empty">Još nema dodanih radova — dodaj prvi u /admin.</p>
-              )}
-              {projects.map((p, i) => (
-                <button key={p.id} className="studies-row" onClick={() => openProject(p)}>
-                  <div className="studies-row-grid">
-                    <span className="proj-no">{pad(i)}</span>
-                    <span className="proj-name">{p.name.toUpperCase()}</span>
-                    <span className="proj-cat col-cat">{p.location}</span>
-                    <span className="proj-year">{p.year}</span>
-                  </div>
-                </button>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {view === "products" && (
-          <div className="novo-os-panel">
-            <h2 className="section-title">PROIZVODI</h2>
-            <div className="products-scroll">
-              <div className="products-grid">
-                {/* /slova konfigurator nije u `products` tablici (zaseban interaktivni
-                    alat, ne tekst/slika+upit kartica kao ostali proizvodi) — uvijek
-                    prikazan prvi, isto kao što je prije bio na zasebnoj /proizvodi
-                    listing stranici prije spajanja u ovaj tab. Otvara se kao popup
-                    prozor (openSlova), isto kao svi ostali proizvodi — ne šalje gosta
-                    na /slova (ta stranica i dalje postoji za izravne/SEO posjete). */}
-                <button type="button" className="product-card" onClick={openSlova}>
-                  <div className="product-card-img" style={{ background: "#0b0b10" }} />
-                  <div className="product-card-body">
-                    <span className="product-card-name">Custom slova po mjeri</span>
-                    <span className="product-card-tagline">
-                      Odaberite font, veličinu i boju, pogledajte uživo i pošaljite upit.
-                    </span>
-                    <span className="product-card-price mono">od 4 €/slovo</span>
-                  </div>
-                </button>
-                {products.length === 0 ? (
-                  <p className="studies-empty">
-                    Uskoro dostupno — 3D printane pločice s NFC oznakama za vikendice i firme.
-                  </p>
-                ) : (
-                  products.map((p) => (
-                    <button key={p.id} className="product-card" onClick={() => openProduct(p)}>
-                      <div className="product-card-img">
-                        <ProjectImage src={p.images[0]} alt={p.name} className="product-card-thumb" />
-                      </div>
-                      <div className="product-card-body">
-                        <span className="product-card-name">{p.name}</span>
-                        <span className="product-card-tagline">{p.tagline}</span>
-                        <span className="product-card-price mono">
-                          {p.priceEur != null ? `od ${p.priceEur} €` : "na upit"}
-                        </span>
-                      </div>
-                    </button>
-                  ))
-                )}
-              </div>
-            </div>
-          </div>
-        )}
-
-        {view === "office" && (
-          <div className="novo-os-panel">
-            <h2 className="section-title">STUDIO</h2>
-            <div className="office-grid">
-              <div className="office-col">
-                <p className="office-text">{officeText}</p>
-                <div className="novo-os-services office-services">
-                  {SERVICES.map((s) => (
-                    <span key={s} className="novo-os-chip mono">
-                      {s}
-                    </span>
-                  ))}
-                </div>
-              </div>
-              <div className="office-col office-contact">
-                <div className="office-block">
-                  <span className="mono muted">LOKACIJA</span>
-                  <span>{city}</span>
-                </div>
-                <div className="office-block">
-                  <span className="mono muted">UPIT</span>
-                  <a href={`mailto:${contactEmail}`}>{contactEmail}</a>
-                </div>
-                <div className="office-block">
-                  <span className="mono muted">PRATI NAS</span>
-                  <a href={instaUrl} target="_blank" rel="noreferrer">
-                    {instagramHandle}
-                  </a>
-                </div>
-                <div className="office-block">
-                  <span className="mono muted">PRAVNO</span>
-                  <Link href="/privatnost">Politika privatnosti</Link>
-                  <Link href="/uvjeti">Uvjeti korištenja</Link>
-                  <Link href="/povrat">Politika povrata</Link>
-                  <Link href="/kolacici">Politika kolačića</Link>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
-      </main>
-
-      <aside className="novo-os-side">
-        <div className="novo-os-side-block">
-          <span className="mono muted">UPIT</span>
-          <a href={`mailto:${contactEmail}`}>{contactEmail}</a>
-        </div>
-        <div className="novo-os-side-block">
-          <span className="mono muted">PRATI NAS</span>
-          <a href={instaUrl} target="_blank" rel="noreferrer">
-            {instagramHandle}
-          </a>
-        </div>
-        <div className="novo-os-side-block">
-          <span className="mono muted">LOKACIJA</span>
-          <span>{city}</span>
-        </div>
-      </aside>
-
-      <div className="novo-os-footer">
-        <span>© {new Date().getFullYear()} NOVO</span>
-        <span>{city}</span>
-      </div>
-
-      {exhibitReady && (
+  const overlay = (
+    <>
+      {/* GALERIJA je izlog radova — na popisu proizvoda bi samo prekrivala kartice. */}
+      {exhibitReady && view !== "products" && (
         <FloatingWindow
           title="GALERIJA"
           x={exhibit.x}
@@ -967,25 +817,106 @@ export default function NovoHome({
         )
       )}
 
-      {slovaWindow &&
-        (slovaWindow.fullscreen ? (
-          <SlovaFullscreenOverlay onExitFullscreen={toggleFullscreenSlova} onClose={closeSlova} />
-        ) : (
-          <FloatingWindow
-            title="CUSTOM SLOVA PO MJERI"
-            x={slovaWindow.x}
-            y={slovaWindow.y}
-            z={slovaWindow.z}
-            onFocus={focusSlova}
-            onClose={closeSlova}
-            minimized={slovaWindow.minimized}
-            onToggleMinimize={toggleMinimizeSlova}
-            onToggleFullscreen={toggleFullscreenSlova}
-            width={260}
-          >
-            <SlovaTeaserContent onOpenFullscreen={toggleFullscreenSlova} />
-          </FloatingWindow>
-        ))}
-    </div>
+    </>
+  );
+
+  return (
+    <NovoShell
+      active={view}
+      onSelect={selectView}
+      contactEmail={contactEmail}
+      instagramHandle={instagramHandle}
+      city={city}
+      overlay={overlay}
+    >
+        {view === "home" && (
+          <div className="novo-os-hero">
+            <div className="novo-os-hero-content">
+              <span className="novo-os-kicker mono">KREATIVNI STUDIO</span>
+              <h1>{heroTitle}</h1>
+              <div className="novo-os-services">
+                {SERVICES.map((s) => (
+                  <span key={s} className="novo-os-chip mono">
+                    {s}
+                  </span>
+                ))}
+              </div>
+              <button className="novo-os-cta mono" onClick={() => selectView("studies")}>
+                POGLEDAJ RADOVE ↗
+              </button>
+            </div>
+          </div>
+        )}
+
+        {view === "studies" && (
+          <div className="novo-os-panel">
+            <h2 className="section-title">RADOVI</h2>
+            <div className="studies-head">
+              <span>BR.</span>
+              <span>NAZIV</span>
+              <span className="col-cat">INFO</span>
+              <span>GODINA</span>
+            </div>
+            <div className="studies-scroll">
+              {projects.length === 0 && (
+                <p className="studies-empty">Još nema dodanih radova — dodaj prvi u /admin.</p>
+              )}
+              {projects.map((p, i) => (
+                <button key={p.id} className="studies-row" onClick={() => openProject(p)}>
+                  <div className="studies-row-grid">
+                    <span className="proj-no">{pad(i)}</span>
+                    <span className="proj-name">{p.name.toUpperCase()}</span>
+                    <span className="proj-cat col-cat">{p.location}</span>
+                    <span className="proj-year">{p.year}</span>
+                  </div>
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {view === "products" && <ProductsView products={products} onOpenWithoutPage={openProduct} />}
+
+        {view === "office" && (
+          <div className="novo-os-panel">
+            <h2 className="section-title">STUDIO</h2>
+            <div className="office-grid">
+              <div className="office-col">
+                <p className="office-text">{officeText}</p>
+                <div className="novo-os-services office-services">
+                  {SERVICES.map((s) => (
+                    <span key={s} className="novo-os-chip mono">
+                      {s}
+                    </span>
+                  ))}
+                </div>
+              </div>
+              <div className="office-col office-contact">
+                <div className="office-block">
+                  <span className="mono muted">LOKACIJA</span>
+                  <span>{city}</span>
+                </div>
+                <div className="office-block">
+                  <span className="mono muted">UPIT</span>
+                  <a href={`mailto:${contactEmail}`}>{contactEmail}</a>
+                </div>
+                <div className="office-block">
+                  <span className="mono muted">PRATI NAS</span>
+                  <a href={instaUrl} target="_blank" rel="noreferrer">
+                    {instagramHandle}
+                  </a>
+                </div>
+                <div className="office-block">
+                  <span className="mono muted">PRAVNO</span>
+                  <Link href="/privatnost">Politika privatnosti</Link>
+                  <Link href="/uvjeti">Uvjeti korištenja</Link>
+                  <Link href="/povrat">Politika povrata</Link>
+                  <Link href="/kolacici">Politika kolačića</Link>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+    </NovoShell>
   );
 }

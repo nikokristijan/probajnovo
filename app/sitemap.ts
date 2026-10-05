@@ -22,9 +22,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
 
   const staticEntries: MetadataRoute.Sitemap = [
     { url: BASE_URL, changeFrequency: "weekly", priority: 1 },
-    // /proizvodi je sad redirect na /?view=products (spojeno u homepage PROIZVODI
-    // tab) — tražilice ne smiju indeksirati redirect kao vlastiti URL, zato ga
-    // više nema ovdje. Pojedine stranice proizvoda ostaju ispod (productEntries).
+    { url: `${BASE_URL}/proizvodi`, changeFrequency: "weekly", priority: 0.8 },
     { url: `${BASE_URL}/slova`, changeFrequency: "monthly", priority: 0.7 },
     { url: `${BASE_URL}/privatnost`, changeFrequency: "yearly", priority: 0.3 },
     { url: `${BASE_URL}/uvjeti`, changeFrequency: "yearly", priority: 0.3 },
@@ -52,7 +50,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       url: `${BASE_URL}/proizvodi/${p.slug}`,
       lastModified: p.updatedAt,
       changeFrequency: "monthly",
-      priority: 0.6,
+      priority: 0.7,
     }));
 
   return [...staticEntries, ...propertyEntries, ...companyEntries, ...productEntries];

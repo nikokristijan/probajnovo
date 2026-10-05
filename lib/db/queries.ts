@@ -1750,7 +1750,7 @@ export async function listRecentActivity(limit = 100) {
 /* i app/f/[slug]/page.tsx (firme), lib/date.ts todayDateStringZagreb.   */
 /* ---------------------------------------------------------------- */
 
-export async function recordPageView(source: "property" | "company", sourceId: number, date: string) {
+export async function recordPageView(source: "property" | "company" | "product", sourceId: number, date: string) {
   await db.insert(pageViews).values({ source, sourceId, date });
 }
 
@@ -3194,5 +3194,36 @@ export async function getCommandPaletteItems() {
   return {
     properties: props.map((p) => ({ id: p.id, name: p.name, slug: p.slug })),
     companies: comps.map((c) => ({ id: c.id, name: c.name, slug: c.slug })),
+  };
+}
+
+/* ---------------------------------------------------------------- */
+/* Proizvodi — statistika za oglase (pregledi /proizvodi/<slug> i   */
+/* upiti s te stranice), prikazuje se u /admin/products/[id].        */
+/* ---------------------------------------------------------------- */
+
+export async function getProductPromoStats(productId: number, sinceDate: string) {
+  const [views, inq] = await Promise.all([
+    db
+      .select({
+        total: sql<number>`count(*)::int`,
+        recent: sql<number>`count(*) filter (where ${pageViews.date} >= ${sinceDate})::int`,
+      })
+      .from(pageViews)
+      .where(and(eq(pageViews.source, "product"), eq(pageViews.sourceId, productId))),
+    db
+      .select({
+        total: sql<number>`count(*)::int`,
+        recent: sql<number>`count(*) filter (where ${inquiries.createdAt} >= ${sinceDate}::date)::int`,
+      })
+      .from(inquiries)
+      .where(and(eq(inquiries.source, "product"), eq(inquiries.sourceId, productId)))
+      .catch(() => [{ total: 0, recent: 0 }]),
+  ]);
+  return {
+    viewsTotal: Number(views[0]?.total ?? 0),
+    views30d: Number(views[0]?.recent ?? 0),
+    inquiriesTotal: Number(inq[0]?.total ?? 0),
+    inquiries30d: Number(inq[0]?.recent ?? 0),
   };
 }

@@ -1384,6 +1384,17 @@ export async function createInquiryAction(
   const sourceId = parsed.data.sourceId ? Number(parsed.data.sourceId) || null : null;
   const ip = await getClientIp();
 
+  // Izvor posjeta (utm parametri oglasa, referrer) — šalje ga obrazac na
+  // stranici proizvoda (ProductInquiryNovo). Dodaje se na kraj poruke da se
+  // u /admin/inquiries i u e-mail obavijesti vidi s kojeg je oglasa upit.
+  const attribution = String(formData.get("attribution") ?? "")
+    .replace(/[\r\n]+/g, " ")
+    .trim()
+    .slice(0, 300);
+  const message = attribution
+    ? `${parsed.data.message.trim()}\n\n— Izvor: ${attribution}`
+    : parsed.data.message.trim();
+
   if (ip) {
     const since = new Date(Date.now() - INQUIRY_RATE_LIMIT_WINDOW_MINUTES * 60 * 1000);
     const recentCount = await countRecentInquiriesByIp(ip, since);
@@ -1400,7 +1411,7 @@ export async function createInquiryAction(
       name: parsed.data.name.trim(),
       email: parsed.data.email.trim(),
       phone: parsed.data.phone?.trim() || null,
-      message: parsed.data.message.trim(),
+      message,
       ip,
     });
   } catch (err) {
@@ -1423,7 +1434,7 @@ export async function createInquiryAction(
         name: parsed.data.name.trim(),
         email: parsed.data.email.trim(),
         phone: parsed.data.phone?.trim() || null,
-        message: parsed.data.message.trim(),
+        message,
       });
     }
   } catch (err) {

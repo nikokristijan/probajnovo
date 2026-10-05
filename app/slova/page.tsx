@@ -53,7 +53,7 @@ const FONT_VARS = [
 ].join(" ");
 
 export const metadata: Metadata = {
-  title: "Prostorna slova po mjeri — NOVO",
+  title: { absolute: "Prostorna slova po mjeri — NOVO" },
   description:
     "Izradimo vam prostorna slova po mjeri, u fontu, veličini i boji koju odaberete. Ispišite tekst, pogledajte uživo prije narudžbe i pošaljite upit.",
   robots: { index: true, follow: true },
@@ -81,7 +81,7 @@ export default function SlovaPage() {
               priority
             />
           </Link>
-          <Link href="/?view=products" className="novo-product-back">
+          <Link href="/proizvodi" className="novo-product-back">
             ← SVI PROIZVODI
           </Link>
         </div>
