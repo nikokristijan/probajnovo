@@ -19,6 +19,14 @@ export const agency = pgTable("agency", {
   contactEmail: text("contact_email").notNull(),
   instagramHandle: text("instagram_handle").notNull(),
   city: text("city").notNull(),
+  /** Telefon agencije (npr. "+385 91 234 5678") — prikazuje WhatsApp i
+      "Nazovite" na stranicama proizvoda. Null = gumbi se ne prikazuju. */
+  phone: text("phone"),
+  /** Meta (Facebook/Instagram) Pixel ID za mjerenje oglasa. Učitava se tek
+      kad posjetitelj prihvati kolačiće (vidi ConsentTracking). Null = isključeno. */
+  metaPixelId: text("meta_pixel_id"),
+  /** Google Analytics 4 ID (G-XXXXXXX), isto samo uz pristanak. Null = isključeno. */
+  gaMeasurementId: text("ga_measurement_id"),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
 
@@ -243,6 +251,10 @@ export const products = pgTable("products", {
   seoTitle: text("seo_title"),
   /** SEO meta opis za /proizvodi/<slug>. Null = koristi tagline. */
   seoDescription: text("seo_description"),
+  /** Česta pitanja na stranici proizvoda (+ FAQPage za Google). Prazno = sekcija se ne prikazuje. */
+  faq: jsonb("faq").$type<FaqItem[]>().notNull().default([]),
+  /** Stvarne recenzije kupaca koje admin upiše. Prazno = sekcija se ne prikazuje. */
+  testimonials: jsonb("testimonials").$type<Testimonial[]>().notNull().default([]),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
