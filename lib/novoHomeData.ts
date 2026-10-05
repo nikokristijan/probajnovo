@@ -5,7 +5,11 @@ import type { Product } from "@/lib/db/schema";
 export type AgencyContact = { contactEmail: string; instagramHandle: string; city: string };
 
 /** Kontakt podaci agencije s istim zadanim vrijednostima kao naslovnica. */
-export async function getAgencyContact(): Promise<AgencyContact & { heroTitle: string; officeText: string }> {
+export type AgencyTracking = { metaPixelId: string | null; gaMeasurementId: string | null };
+
+export async function getAgencyContact(): Promise<
+  AgencyContact & AgencyTracking & { heroTitle: string; officeText: string; phone: string | null }
+> {
   const agencyData = await getAgency();
   return {
     heroTitle:
@@ -14,6 +18,9 @@ export async function getAgencyContact(): Promise<AgencyContact & { heroTitle: s
     contactEmail: agencyData?.contactEmail ?? "hello@novo.studio",
     instagramHandle: agencyData?.instagramHandle ?? "@novo.hr",
     city: agencyData?.city ?? "Slavonski Brod, Hrvatska",
+    phone: agencyData?.phone?.trim() || null,
+    metaPixelId: agencyData?.metaPixelId?.trim() || null,
+    gaMeasurementId: agencyData?.gaMeasurementId?.trim() || null,
   };
 }
 

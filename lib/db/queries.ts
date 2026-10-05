@@ -46,7 +46,27 @@ import {
 
 const AGENCY_ROW_ID = 1;
 
+/** Stupci agency tablice dodani nakon lansiranja (telefon, Pixel, GA) —
+    isti ADD COLUMN IF NOT EXISTS obrazac kao ensureProductColumns. */
+async function ensureAgencyColumns(): Promise<void> {
+  await db.execute(sql`ALTER TABLE agency ADD COLUMN IF NOT EXISTS phone TEXT`);
+  await db.execute(sql`ALTER TABLE agency ADD COLUMN IF NOT EXISTS meta_pixel_id TEXT`);
+  await db.execute(sql`ALTER TABLE agency ADD COLUMN IF NOT EXISTS ga_measurement_id TEXT`);
+}
+
+let agencyColumnsPromise: Promise<void> | null = null;
+function ensureAgencyColumnsOnce(): Promise<void> {
+  if (!agencyColumnsPromise) {
+    agencyColumnsPromise = ensureAgencyColumns().catch((err) => {
+      agencyColumnsPromise = null;
+      throw err;
+    });
+  }
+  return agencyColumnsPromise;
+}
+
 export async function getAgency() {
+await ensureAgencyColumnsOnce();
 const rows = await db.select().from(agency).where(eq(agency.id, AGENCY_ROW_ID)).limit(1);
 return rows[0] ?? null;
 }
@@ -57,7 +77,11 @@ officeText: string;
 contactEmail: string;
 instagramHandle: string;
 city: string;
+phone: string | null;
+metaPixelId: string | null;
+gaMeasurementId: string | null;
 }) {
+await ensureAgencyColumnsOnce();
 const [row] = await db
 .update(agency)
 .set({ ...data, updatedAt: new Date() })
@@ -377,6 +401,10 @@ async function ensureProductColumns(): Promise<void> {
   await db.execute(sql`ALTER TABLE products ADD COLUMN IF NOT EXISTS cta_button_text TEXT`);
   await db.execute(sql`ALTER TABLE products ADD COLUMN IF NOT EXISTS seo_title TEXT`);
   await db.execute(sql`ALTER TABLE products ADD COLUMN IF NOT EXISTS seo_description TEXT`);
+  await db.execute(sql`ALTER TABLE products ADD COLUMN IF NOT EXISTS faq JSONB NOT NULL DEFAULT '[]'::jsonb`);
+  await db.execute(
+    sql`ALTER TABLE products ADD COLUMN IF NOT EXISTS testimonials JSONB NOT NULL DEFAULT '[]'::jsonb`
+  );
   await db.execute(
     sql`CREATE UNIQUE INDEX IF NOT EXISTS products_slug_key ON products (slug)`
   );
@@ -707,6 +735,8 @@ export async function getFullBackupData() {
   );
   const safeSelect = async <T,>(table: string, run: () => Promise<T[]>): Promise<T[]> =>
     (await tableExists(table)) ? run() : [];
+  // Novi stupci moraju postojati prije select() * nad agency/products.
+  await Promise.all([ensureAgencyColumnsOnce(), ensureProductColumnsOnce()]);
   const [
     agencyRows,
     companyRows,
