@@ -1,30 +1,8 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import Image from "next/image";
 import Link from "next/link";
-import dynamic from "next/dynamic";
-
-/* Konfigurator prostornih slova (fontovi + SlovaCustomizer) učitan tek kad
-   se stvarno otvori (klik na ikonu širenja u "CUSTOM SLOVA PO MJERI"
-   prozoru) — ssr:false + dynamic import, da posjetitelji naslovnice koji
-   ga ne otvore ne preuzimaju 10 dodatnih Google fontova. Vidi
-   components/slova/SlovaFullscreenOverlay.tsx. */
-const SlovaFullscreenOverlay = dynamic(() => import("@/components/slova/SlovaFullscreenOverlay"), {
-  ssr: false,
-  loading: () => (
-    <div className="product-full">
-      <div className="product-full-topbar">
-        <span className="product-full-brand mono muted">NOVO — PROSTORNA SLOVA</span>
-      </div>
-      <div className="product-full-scroll">
-        <div className="novo-product-wrap">
-          <p className="studies-empty">Učitavanje konfiguratora…</p>
-        </div>
-      </div>
-    </div>
-  ),
-});
+import NovoShell, { VIEW_HREF } from "@/components/novo/NovoShell";
 
 /* ------------------------------------------------------------------ */
 /* Tipovi                                                              */
@@ -397,43 +375,6 @@ function ProductContent({ product, contactEmail }: { product: ProductCard; conta
               STRANICA PROIZVODA ↗
             </Link>
           )}
-        </div>
-      </div>
-    </div>
-  );
-}
-
-/* Sadržaj malog pop-up prozora za "Custom slova po mjeri" — konfigurator sam
-   (SlovaCustomizer) je prevelik za mali plutajući prozor (puni desktop alat s
-   3D pregledom, biračem fonta/veličine/boje i formom za upit), zato ovdje
-   stoji samo kratak teaser s CTA-om koji ga otvara preko cijelog zaslona
-   (isti "proširi" mehanizam kao kod pravih proizvoda) — ne šalje gosta na
-   /slova, ostaje unutar OS shella kao i svi ostali proizvodi. */
-function SlovaTeaserContent({ onOpenFullscreen }: { onOpenFullscreen: () => void }) {
-  return (
-    <div className="proj-viewport">
-      <button
-        type="button"
-        className="proj-image-btn"
-        onClick={onOpenFullscreen}
-        aria-label="Otvori konfigurator prostornih slova"
-        style={{ background: "#0b0b10" }}
-      />
-      <div className="proj-info">
-        <p className="proj-desc">
-          Odaberite font, veličinu i boju prostornih slova, pogledajte uživo i pošaljite upit u dva
-          klika.
-        </p>
-        <div className="proj-meta">
-          <span className="mono muted">od 4 €/slovo</span>
-        </div>
-        <div className="proj-actions">
-          <button type="button" className="mono link link-btn" onClick={onOpenFullscreen}>
-            OTVORI KONFIGURATOR ↗
-          </button>
-          <Link href="/slova" className="mono link">
-            STRANICA PROIZVODA ↗
-          </Link>
         </div>
       </div>
     </div>
