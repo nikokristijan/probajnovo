@@ -1105,7 +1105,35 @@ const ProductSchema = z.object({
   seoDescription: z.string().optional(),
   faq: z.string().optional(), // JSON niz {question, answer}
   testimonials: z.string().optional(), // JSON niz {author, text, rating}
+  quantityDiscounts: z.string().optional(), // JSON niz {minQty, percent}
+  addonProductIds: z.string().optional(), // JSON niz id-jeva
+  addonDiscountPercent: z.coerce.number().int().min(0).max(90).default(0),
 });
+
+function parseQuantityDiscounts(raw?: string): { minQty: number; percent: number }[] {
+  try {
+    const arr = JSON.parse(raw ?? "[]");
+    if (!Array.isArray(arr)) return [];
+    const seen = new Set<number>();
+    return arr
+      .map((t) => ({ minQty: Math.round(Number(t?.minQty)), percent: Math.round(Number(t?.percent)) }))
+      .filter((t) => t.minQty >= 2 && t.minQty <= 999 && t.percent > 0 && t.percent <= 90)
+      .filter((t) => (seen.has(t.minQty) ? false : (seen.add(t.minQty), true)))
+      .sort((a, b) => a.minQty - b.minQty);
+  } catch {
+    return [];
+  }
+}
+
+function parseIdList(raw?: string, excludeId?: number): number[] {
+  try {
+    const arr = JSON.parse(raw ?? "[]");
+    if (!Array.isArray(arr)) return [];
+    return [...new Set(arr.map(Number).filter((n) => Number.isInteger(n) && n > 0 && n !== excludeId))].slice(0, 6);
+  } catch {
+    return [];
+  }
+}
 
 function readProductFormData(formData: FormData) {
   return {
@@ -1126,6 +1154,9 @@ function readProductFormData(formData: FormData) {
     seoDescription: formData.get("seoDescription") ?? "",
     faq: formData.get("faq") ?? "[]",
     testimonials: formData.get("testimonials") ?? "[]",
+    quantityDiscounts: formData.get("quantityDiscounts") ?? "[]",
+    addonProductIds: formData.get("addonProductIds") ?? "[]",
+    addonDiscountPercent: formData.get("addonDiscountPercent") || "0",
   };
 }
 
@@ -1166,6 +1197,8 @@ export async function createProductAction(
     seoDescription: emptyToNull(parsed.data.seoDescription),
     faq: parseFaq(parsed.data.faq),
     testimonials: parseTestimonials(parsed.data.testimonials),
+    quantityDiscounts: parseQuantityDiscounts(parsed.data.quantityDiscounts),
+    addonProductIds: parseIdList(parsed.data.addonProductIds),
   });
   revalidatePath("/");
   revalidatePath("/admin");
@@ -1205,6 +1238,8 @@ export async function updateProductAction(
     seoDescription: emptyToNull(parsed.data.seoDescription),
     faq: parseFaq(parsed.data.faq),
     testimonials: parseTestimonials(parsed.data.testimonials),
+    quantityDiscounts: parseQuantityDiscounts(parsed.data.quantityDiscounts),
+    addonProductIds: parseIdList(parsed.data.addonProductIds, id),
   });
   revalidatePath("/");
   revalidatePath("/admin");
