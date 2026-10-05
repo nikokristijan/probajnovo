@@ -2,7 +2,7 @@
 
 import { useActionState, useState } from "react";
 import type { ActionState } from "@/lib/actions";
-import type { FaqItem, Product, Testimonial } from "@/lib/db/schema";
+import type { FaqItem, Product, QuantityDiscount, Testimonial } from "@/lib/db/schema";
 import { FaqEditor, TestimonialsEditor } from "./CompanyForm";
 import ImageUploader from "./ImageUploader";
 import VideoUploader from "./VideoUploader";
@@ -31,6 +31,9 @@ type FormValues = {
   seoDescription: string;
   faq: FaqItem[];
   testimonials: Testimonial[];
+  quantityDiscounts: QuantityDiscount[];
+  addonProductIds: number[];
+  addonDiscountPercent: string;
 };
 
 function initialValues(product?: Product): FormValues {
@@ -52,6 +55,9 @@ function initialValues(product?: Product): FormValues {
     seoDescription: product?.seoDescription ?? "",
     faq: product?.faq ?? [],
     testimonials: product?.testimonials ?? [],
+    quantityDiscounts: product?.quantityDiscounts ?? [],
+    addonProductIds: product?.addonProductIds ?? [],
+    addonDiscountPercent: String(product?.addonDiscountPercent ?? 0),
   };
 }
 
@@ -61,10 +67,13 @@ export default function ProductForm({
   product,
   action,
   submitLabel,
+  otherProducts = [],
 }: {
   product?: Product;
   action: ProductAction;
   submitLabel: string;
+  /** Ostali proizvodi koje se može ponuditi kao dodatak uz ovaj. */
+  otherProducts?: { id: number; name: string; priceEur: number | null }[];
 }) {
   const [state, formAction, pending] = useActionState<ActionState, FormData>(
     action,
@@ -215,6 +224,53 @@ export default function ProductForm({
       </div>
 
       <div className="border border-black/10 rounded-xl p-4 flex flex-col gap-4 bg-black/[0.02]">
+        <p className="text-sm font-semibold">Količinski popust</p>
+        <p className="text-xs text-black/50 -mt-2">
+          Npr. od 3 kom &minus;10 %, od 5 kom &minus;15 %. Kupac odmah vidi uštedu uz odabir količine, a iznos u upitu je već
+          umanjen. Prazno = bez popusta.
+        </p>
+        <DiscountEditor value={values.quantityDiscounts} onChange={(v) => set("quantityDiscounts", v)} />
+      </div>
+
+      {otherProducts.length > 0 && (
+        <div className="border border-black/10 rounded-xl p-4 flex flex-col gap-3 bg-black/[0.02]">
+          <p className="text-sm font-semibold">Paket: ponudi uz ovaj proizvod</p>
+          <p className="text-xs text-black/50 -mt-1">
+            Označeni proizvodi pojavljuju se u obrascu kao &bdquo;Dodajte uz narudžbu&ldquo; i ulaze u isti upit i iznos.
+          </p>
+          {otherProducts.map((p) => (
+            <label key={p.id} className="flex items-center gap-2 text-sm">
+              <input
+                type="checkbox"
+                checked={values.addonProductIds.includes(p.id)}
+                onChange={(e) =>
+                  set(
+                    "addonProductIds",
+                    e.target.checked
+                      ? [...values.addonProductIds, p.id]
+                      : values.addonProductIds.filter((x) => x !== p.id)
+                  )
+                }
+              />
+              {p.name}
+              {p.priceEur != null && <span className="text-black/40">· od {p.priceEur} €</span>}
+            </label>
+          ))}
+          <Field label="Popust na dodatke kad se uzmu u paketu (%) — 0 = bez popusta">
+            <input
+              name="addonDiscountPercent"
+              type="number"
+              min={0}
+              max={90}
+              value={values.addonDiscountPercent}
+              onChange={(e) => set("addonDiscountPercent", e.target.value)}
+              className="admin-input max-w-[160px]"
+            />
+          </Field>
+        </div>
+      )}
+
+      <div className="border border-black/10 rounded-xl p-4 flex flex-col gap-4 bg-black/[0.02]">
         <p className="text-sm font-semibold">Recenzije kupaca</p>
         <p className="text-xs text-black/50 -mt-2">
           Samo stvarne recenzije (npr. iz poruka ili Googlea) — uz ime i mjesto/objekt, ako kupac pristane. Prikazuju se ispod
@@ -256,6 +312,11 @@ export default function ProductForm({
       <input type="hidden" name="images" value={JSON.stringify(values.images)} />
       <input type="hidden" name="faq" value={JSON.stringify(values.faq)} />
       <input type="hidden" name="testimonials" value={JSON.stringify(values.testimonials)} />
+      <input type="hidden" name="quantityDiscounts" value={JSON.stringify(values.quantityDiscounts)} />
+      <input type="hidden" name="addonProductIds" value={JSON.stringify(values.addonProductIds)} />
+      {otherProducts.length === 0 && (
+        <input type="hidden" name="addonDiscountPercent" value={values.addonDiscountPercent} />
+      )}
 
       {state?.error && <p className="text-sm text-red-600">{state.error}</p>}
       {state?.success && <p className="text-sm text-green-700">Spremljeno.</p>}
@@ -268,5 +329,63 @@ export default function ProductForm({
         {pending ? "Spremanje…" : submitLabel}
       </button>
     </form>
+  );
+}
+
+function DiscountEditor({
+  value,
+  onChange,
+}: {
+  value: QuantityDiscount[];
+  onChange: (v: QuantityDiscount[]) => void;
+}) {
+  function update(i: number, patch: Partial<QuantityDiscount>) {
+    onChange(value.map((t, idx) => (idx === i ? { ...t, ...patch } : t)));
+  }
+  return (
+    <div className="flex flex-col gap-2">
+      {value.map((t, i) => (
+        <div key={i} className="flex items-center gap-2 text-sm">
+          <span>od</span>
+          <input
+            type="number"
+            min={2}
+            max={999}
+            className="admin-input w-24"
+            value={t.minQty}
+            onChange={(e) => update(i, { minQty: Number(e.target.value) })}
+            aria-label="Najmanja količina"
+          />
+          <span>kom &minus;</span>
+          <input
+            type="number"
+            min={1}
+            max={90}
+            className="admin-input w-20"
+            value={t.percent}
+            onChange={(e) => update(i, { percent: Number(e.target.value) })}
+            aria-label="Popust u postocima"
+          />
+          <span>%</span>
+          <button
+            type="button"
+            onClick={() => onChange(value.filter((_, idx) => idx !== i))}
+            className="admin-repeat-remove"
+          >
+            Ukloni
+          </button>
+        </div>
+      ))}
+      <button
+        type="button"
+        onClick={() => {
+          const last = value[value.length - 1];
+          onChange([...value, last ? { minQty: last.minQty + 2, percent: last.percent + 5 } : { minQty: 3, percent: 10 }]);
+        }}
+        className="admin-repeat-add self-start"
+      >
+        + Dodaj prag popusta
+      </button>
+    </div>
   );
 }
