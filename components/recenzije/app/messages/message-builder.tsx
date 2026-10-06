@@ -259,3 +259,167 @@ export function MessageBuilder({
                     }}
                     className="w-full border border-border-strong bg-white p-3 text-left text-sm leading-relaxed hover:border-foreground"
                   >
+                    <span className="label mb-1 block text-subtle">Varijanta {i + 1} · klikni za korištenje</span>
+                    {v}
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+        </Card>
+
+        {/* Recipients */}
+        <Card className="p-5">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <h2 className="label">Primatelji</h2>
+            <span className="text-xs text-muted">Odabrano: {recipients.size}</span>
+          </div>
+          <div className="relative mt-3">
+            <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-subtle" />
+            <Input id="r-search" value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Traži klijenta" className="pl-9" type="search" aria-label="Traži klijenta" />
+          </div>
+          <ul className="mt-3 max-h-64 divide-y divide-border overflow-y-auto border border-border">
+            {filtered.length === 0 && <li className="px-3 py-6 text-center text-sm text-muted">Nema klijenata</li>}
+            {filtered.map((c) => (
+              <li key={c.id}>
+                <label className={cn("flex cursor-pointer items-center gap-3 px-3 py-2.5 text-sm hover:bg-surface-2", c.optOut && "opacity-50")}>
+                  <input
+                    type="checkbox"
+                    className="size-4 accent-black"
+                    disabled={c.optOut}
+                    checked={recipients.has(c.id)}
+                    onChange={() =>
+                      setRecipients((s) => {
+                        const n = new Set(s);
+                        if (n.has(c.id)) n.delete(c.id);
+                        else n.add(c.id);
+                        return n;
+                      })
+                    }
+                  />
+                  <span className="flex-1 truncate">{c.name}</span>
+                  <span className="truncate text-xs text-muted">{c.optOut ? "Odjavljen" : c.service}</span>
+                </label>
+              </li>
+            ))}
+          </ul>
+        </Card>
+
+        <div className="sticky bottom-0 z-10 -mx-4 flex flex-col gap-2 border-t border-border bg-background/90 px-4 py-3 backdrop-blur sm:static sm:mx-0 sm:flex-row sm:items-center sm:border-0 sm:bg-transparent sm:p-0">
+          {notReady && <p className="flex-1 text-[13px] text-warning">{notReady}</p>}
+          <div className="flex flex-wrap gap-2 sm:ml-auto">
+            <Button variant="outline" onClick={() => setTestOpen(true)}>
+              <FlaskConical /> Pošalji test
+            </Button>
+            <Button variant="secondary" onClick={() => setSaveOpen(true)}>
+              <Save /> Spremi predložak
+            </Button>
+            <Button
+              loading={sendPending}
+              disabled={recipients.size === 0}
+              onClick={() =>
+                startSend(async () => {
+                  const r = await sendNowAction([...recipients], text);
+                  if (r.ok) {
+                    toast.success(r.message);
+                    setRecipients(new Set());
+                  } else toast.error(r.error ?? "Poruka nije poslana");
+                })
+              }
+            >
+              {!sendPending && <Send />} Pošalji sada{recipients.size ? ` (${recipients.size})` : ""}
+            </Button>
+          </div>
+        </div>
+      </div>
+
+      <aside className="xl:sticky xl:top-20 xl:self-start">
+        <p className="label mb-3 text-center text-muted">
+          Pregled{previewClient ? `: ${previewClient.name}` : ""}
+        </p>
+        <PhoneMockup sender={businessName} messages={[{ text: rendered, time: "Danas 14:32" }]} />
+        <p className="mx-auto mt-3 max-w-[290px] text-center text-[11px] text-subtle">
+          Link se za svakog klijenta zamjenjuje jedinstvenim praćenim linkom.
+        </p>
+      </aside>
+
+      <Dialog open={testOpen} onOpenChange={setTestOpen}>
+        <DialogContent title="Testna poruka" description="Varijable se pune primjerima. Poruka je označena s [TEST].">
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              startTest(async () => {
+                const r = await sendTestAction(testPhone, text);
+                if (r.ok) {
+                  toast.success(r.message);
+                  setTestOpen(false);
+                } else toast.error(r.error ?? "Poruka nije poslana");
+              });
+            }}
+            className="space-y-4"
+          >
+            <Field label="Vaš broj mobitela" htmlFor="test-phone">
+              <Input id="test-phone" type="tel" value={testPhone} onChange={(e) => setTestPhone(e.target.value)} placeholder="091 234 5678" required autoFocus />
+            </Field>
+            <div className="flex justify-end gap-2">
+              <Button type="button" variant="ghost" onClick={() => setTestOpen(false)}>
+                Odustani
+              </Button>
+              <Button type="submit" loading={testPending}>
+                Pošalji test
+              </Button>
+            </div>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={saveOpen} onOpenChange={setSaveOpen}>
+        <DialogContent title={templateId ? "Ažuriraj predložak" : "Spremi kao predložak"}>
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              const fd = new FormData(e.currentTarget);
+              startSave(async () => {
+                const r = await saveTemplateAction({
+                  id: fd.get("asNew") === "on" ? undefined : templateId || undefined,
+                  name: tplName,
+                  kind: String(fd.get("kind")),
+                  body: text,
+                });
+                if (r.ok) {
+                  toast.success(r.message);
+                  setSaveOpen(false);
+                } else toast.error(r.error);
+              });
+            }}
+            className="space-y-4"
+          >
+            <Field label="Naziv predloška" htmlFor="tpl-name">
+              <Input id="tpl-name" value={tplName} onChange={(e) => setTplName(e.target.value)} required autoFocus />
+            </Field>
+            <Field label="Koristi se za" htmlFor="tpl-kind">
+              <Select id="tpl-kind" name="kind" defaultValue={kind === "follow_up" ? "FOLLOW_UP" : "REVIEW_REQUEST"}>
+                <option value="REVIEW_REQUEST">Zahtjev za recenziju</option>
+                <option value="FOLLOW_UP">Podsjetnik</option>
+                <option value="MANUAL">Ostale poruke</option>
+              </Select>
+            </Field>
+            {templateId && (
+              <label className="flex items-center gap-2 text-sm">
+                <input type="checkbox" name="asNew" className="size-4 accent-black" /> Spremi kao novi predložak
+              </label>
+            )}
+            <div className="flex justify-end gap-2">
+              <Button type="button" variant="ghost" onClick={() => setSaveOpen(false)}>
+                Odustani
+              </Button>
+              <Button type="submit" loading={savePending}>
+                Spremi
+              </Button>
+            </div>
+          </form>
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
+}
