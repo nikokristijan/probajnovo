@@ -310,3 +310,148 @@ export const reviews = pgTable(
     replyText: text("reply_text"),
     repliedAt: timestamp("replied_at", { withTimezone: true }),
     clientId: text("client_id").references(() => clients.id, { onDelete: "set null" }),
+    match: reviewMatch("match").notNull().default("NONE"),
+    createdAt: createdAt(),
+  },
+  (t) => [
+    uniqueIndex("nr_review_org_external").on(t.organizationId, t.externalId),
+    index("nr_review_org_date").on(t.organizationId, t.reviewedAt),
+  ]
+);
+
+// --- Automations ---
+
+export const automations = pgTable(
+  "nr_automations",
+  {
+    id: id(),
+    organizationId: orgRef(),
+    name: text("name").notNull(),
+    description: text("description"),
+    trigger: automationTrigger("trigger").notNull().default("SERVICE_COMPLETED"),
+    enabled: boolean("enabled").notNull().default(true),
+    steps: jsonb("steps").$type<import("@/lib/recenzije/automation/types").AutomationStep[]>().notNull(),
+    templateKey: text("template_key"),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
+  },
+  (t) => [index("nr_automation_org_trigger").on(t.organizationId, t.trigger, t.enabled)]
+);
+
+export const automationRuns = pgTable(
+  "nr_automation_runs",
+  {
+    id: id(),
+    organizationId: orgRef(),
+    automationId: text("automation_id").references(() => automations.id, { onDelete: "cascade" }),
+    campaignId: text("campaign_id").references(() => campaigns.id, { onDelete: "cascade" }),
+    clientId: text("client_id")
+      .notNull()
+      .references(() => clients.id, { onDelete: "cascade" }),
+    serviceId: text("service_id").references(() => services.id, { onDelete: "set null" }),
+    status: runStatus("status").notNull().default("RUNNING"),
+    stepIndex: integer("step_index").notNull().default(0),
+    nextRunAt: timestamp("next_run_at", { withTimezone: true }).notNull().defaultNow(),
+    log: jsonb("log").$type<RunLogEntry[]>().notNull().default(sql`'[]'::jsonb`),
+    error: text("error"),
+    startedAt: timestamp("started_at", { withTimezone: true }).notNull().defaultNow(),
+    finishedAt: timestamp("finished_at", { withTimezone: true }),
+  },
+  (t) => [index("nr_run_due").on(t.status, t.nextRunAt), index("nr_run_org_started").on(t.organizationId, t.startedAt)]
+);
+
+export const activityEvents = pgTable(
+  "nr_activity_events",
+  {
+    id: id(),
+    organizationId: orgRef(),
+    clientId: text("client_id").references(() => clients.id, { onDelete: "cascade" }),
+    type: text("type").$type<ActivityType>().notNull(),
+    title: text("title").notNull(),
+    meta: jsonb("meta").$type<Record<string, unknown>>(),
+    createdAt: createdAt(),
+  },
+  (t) => [index("nr_activity_org_created").on(t.organizationId, t.createdAt), index("nr_activity_client").on(t.clientId)]
+);
+
+// --- Billing ---
+
+/** Plans live in the database (seeded), so prices/limits change without a deploy. */
+export const plans = pgTable("nr_plans", {
+  id: id(),
+  key: text("key").notNull().unique(),
+  name: text("name").notNull(),
+  description: text("description"),
+  priceMonthlyCents: integer("price_monthly_cents").notNull(),
+  currency: text("currency").notNull().default("eur"),
+  stripePriceId: text("stripe_price_id"),
+  smsMonthlyLimit: integer("sms_monthly_limit").notNull(),
+  locationLimit: integer("location_limit").notNull().default(1),
+  features: jsonb("features").$type<string[]>().notNull().default(sql`'[]'::jsonb`),
+  position: integer("position").notNull().default(0),
+  active: boolean("active").notNull().default(true),
+  createdAt: createdAt(),
+  updatedAt: updatedAt(),
+});
+
+export const subscriptions = pgTable("nr_subscriptions", {
+  id: id(),
+  organizationId: orgRef().unique(),
+  planKey: text("plan_key").notNull().default("trial"),
+  status: text("status").notNull().default("trialing"),
+  stripeCustomerId: text("stripe_customer_id").unique(),
+  stripeSubscriptionId: text("stripe_subscription_id").unique(),
+  currentPeriodEnd: timestamp("current_period_end", { withTimezone: true }),
+  cancelAtPeriodEnd: boolean("cancel_at_period_end").notNull().default(false),
+  trialEndsAt: timestamp("trial_ends_at", { withTimezone: true }),
+  createdAt: createdAt(),
+  updatedAt: updatedAt(),
+});
+
+// --- Types ---
+
+export type ReviewStatus = (typeof reviewStatus.enumValues)[number];
+export type MessageKind = (typeof messageKind.enumValues)[number];
+export type MessageStatus = (typeof messageStatus.enumValues)[number];
+export type CampaignAudience = { serviceWithinDays: number; statuses: ReviewStatus[]; service?: string };
+export type RunLogEntry = { at: string; stepIndex: number; type: string; message: string };
+export type ActivityType =
+  | "client_created"
+  | "service_completed"
+  | "request_sent"
+  | "link_clicked"
+  | "review_received"
+  | "follow_up_scheduled"
+  | "follow_up_sent"
+  | "message_failed"
+  | "reply_received"
+  | "opt_out"
+  | "automation_completed";
+
+export type User = typeof users.$inferSelect;
+export type Organization = typeof organizations.$inferSelect;
+export type Client = typeof clients.$inferSelect;
+export type Service = typeof services.$inferSelect;
+export type Message = typeof messages.$inferSelect;
+export type Review = typeof reviews.$inferSelect;
+export type Campaign = typeof campaigns.$inferSelect;
+export type Automation = typeof automations.$inferSelect;
+export type AutomationRun = typeof automationRuns.$inferSelect;
+export type ActivityEvent = typeof activityEvents.$inferSelect;
+export type Plan = typeof plans.$inferSelect;
+export type Subscription = typeof subscriptions.$inferSelect;
+export type MessageTemplate = typeof messageTemplates.$inferSelect;
+
+// --- Relations ---
+
+export const clientRelations = relations(clients, ({ many, one }) => ({
+  organization: one(organizations, { fields: [clients.organizationId], references: [organizations.id] }),
+  services: many(services),
+  messages: many(messages),
+}));
+export const serviceRelations = relations(services, ({ one }) => ({
+  client: one(clients, { fields: [services.clientId], references: [clients.id] }),
+}));
+export const messageRelations = relations(messages, ({ one }) => ({
+  client: one(clients, { fields: [messages.clientId], references: [clients.id] }),
+}));
