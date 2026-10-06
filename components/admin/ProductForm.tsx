@@ -34,6 +34,9 @@ type FormValues = {
   quantityDiscounts: QuantityDiscount[];
   addonProductIds: number[];
   addonDiscountPercent: string;
+  salePercent: string;
+  saleEndsAt: string;
+  showNfcPreview: boolean;
 };
 
 function initialValues(product?: Product): FormValues {
@@ -58,6 +61,9 @@ function initialValues(product?: Product): FormValues {
     quantityDiscounts: product?.quantityDiscounts ?? [],
     addonProductIds: product?.addonProductIds ?? [],
     addonDiscountPercent: String(product?.addonDiscountPercent ?? 0),
+    salePercent: String(product?.salePercent ?? 0),
+    saleEndsAt: product?.saleEndsAt ?? "",
+    showNfcPreview: product?.showNfcPreview ?? false,
   };
 }
 
@@ -224,6 +230,36 @@ export default function ProductForm({
       </div>
 
       <div className="border border-black/10 rounded-xl p-4 flex flex-col gap-4 bg-black/[0.02]">
+        <p className="text-sm font-semibold">Akcija</p>
+        <p className="text-xs text-black/50 -mt-2">
+          Snižava cijenu za sve kupce: stara cijena se prikazuje prekrižena, uz oznaku &bdquo;AKCIJA&ldquo; i datum
+          kraja (ako ga upišeš). Nakon tog dana akcija se sama ugasi. 0 = nema akcije.
+        </p>
+        <div className="grid grid-cols-2 gap-4">
+          <Field label="Sniženje (%)">
+            <input
+              name="salePercent"
+              type="number"
+              min={0}
+              max={90}
+              value={values.salePercent}
+              onChange={(e) => set("salePercent", e.target.value)}
+              className="admin-input"
+            />
+          </Field>
+          <Field label="Zadnji dan akcije (opcionalno)">
+            <input
+              name="saleEndsAt"
+              type="date"
+              value={values.saleEndsAt}
+              onChange={(e) => set("saleEndsAt", e.target.value)}
+              className="admin-input"
+            />
+          </Field>
+        </div>
+      </div>
+
+      <div className="border border-black/10 rounded-xl p-4 flex flex-col gap-4 bg-black/[0.02]">
         <p className="text-sm font-semibold">Količinski popust</p>
         <p className="text-xs text-black/50 -mt-2">
           Npr. od 3 kom &minus;10 %, od 5 kom &minus;15 %. Kupac odmah vidi uštedu uz odabir količine, a iznos u upitu je već
@@ -306,6 +342,16 @@ export default function ProductForm({
           onChange={(e) => set("featured", e.target.checked)}
         />
         Istaknuto (badge u popisu proizvoda)
+      </label>
+
+      <label className="flex items-center gap-2 text-sm font-medium">
+        <input
+          type="checkbox"
+          name="showNfcPreview"
+          checked={values.showNfcPreview}
+          onChange={(e) => set("showNfcPreview", e.target.checked)}
+        />
+        Prikaži sekciju &bdquo;Stranica koju gosti otvaraju&ldquo; (slike NFC stranice — za NFC pločice)
       </label>
 
       {/* Skriveno polje koje server action očekuje kao string */}
