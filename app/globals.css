@@ -4297,6 +4297,26 @@ a.owner-glass:active,
   .novo-os.novo-os--detail .novo-os-main { padding: 16px 16px 0; }
 }
 .pd { container-type: inline-size; }
+/* Stranica proizvoda se scrolla kao obična stranica (ne unutar okvira):
+   gornja traka ostaje zalijepljena, izbornik i kontakt na desktopu također. */
+.novo-os.novo-os--detail {
+  position: relative; inset: auto; width: auto; height: auto; min-height: 100dvh; overflow: visible;
+  grid-template-rows: 64px auto 36px;
+}
+.novo-os--detail .novo-os-topbar { position: sticky; top: 0; z-index: 60; background: #fff; }
+.novo-os--detail .novo-os-nav,
+.novo-os--detail .novo-os-side { position: sticky; top: 64px; align-self: start; height: calc(100dvh - 100px); }
+.novo-os--detail .novo-os-main { overflow: visible; min-height: calc(100dvh - 100px); }
+.novo-os--detail .novo-os-panel { height: auto; }
+.novo-os--detail .pd-scroll { overflow: visible; flex: none; }
+.novo-os--detail [id] { scroll-margin-top: 80px; }
+@media (prefers-reduced-motion: no-preference) { html:has(.novo-os--detail) { scroll-behavior: smooth; } }
+@media (max-width: 720px) {
+  .novo-os.novo-os--detail { grid-template-rows: 56px auto auto 32px; }
+  .novo-os--detail .novo-os-nav { position: static; height: auto; }
+  .novo-os--detail .novo-os-main { min-height: 0; }
+  .novo-os--detail [id] { scroll-margin-top: 68px; }
+}
 .pd-crumbs { display: flex; align-items: center; gap: 8px; font-size: 10.5px; letter-spacing: 0.12em; color: rgba(0,0,0,0.5); margin-bottom: 14px; flex-shrink: 0; min-width: 0; }
 .pd-crumb-link { color: #000; text-decoration: none; white-space: nowrap; }
 .pd-crumb-link:hover { color: #000; text-decoration: underline; text-decoration-color: var(--novo-orange); text-decoration-thickness: 2px; }
@@ -4627,21 +4647,37 @@ a.owner-glass:active,
 /* ---- proizvod: slike NFC stranice za goste ---- */
 .nfcp-lead { margin: 0 0 18px; max-width: 62ch; font-size: 15.5px; line-height: 1.55; color: #111; }
 .nfcp-shots {
-  display: grid; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); gap: 16px; max-width: 820px;
+  display: flex; gap: 20px; max-width: 100%; overflow-x: auto; scroll-snap-type: x mandatory;
+  padding: 4px 2px 10px; scrollbar-width: thin; overscroll-behavior-x: contain;
 }
-.nfcp-shot { margin: 0; display: flex; flex-direction: column; gap: 10px; min-width: 0; }
-.nfcp-shot img { width: 100%; height: auto; display: block; }
+.nfcp-shot { margin: 0; display: flex; flex-direction: column; gap: 12px; flex: 0 0 auto; scroll-snap-align: start; }
 .nfcp-shot figcaption { font-size: 10px; letter-spacing: 0.1em; color: rgba(0,0,0,0.6); text-align: center; }
+/* Okvir mobitela: unutra je prava stranica za goste u punoj širini (360 px),
+   umanjena na širinu okvira. */
+.nfcp-phone {
+  --nfcp-w: 216px; --nfcp-s: calc(216 / 360);
+  width: calc(var(--nfcp-w) + 16px); padding: 8px; border-radius: 34px; background: #111;
+  box-shadow: 0 18px 40px -24px rgba(0,0,0,0.55); position: relative;
+}
+.nfcp-phone::before {
+  content: ""; position: absolute; top: 14px; left: 50%; width: 56px; height: 14px; margin-left: -28px;
+  border-radius: 999px; background: #111; z-index: 2;
+}
+.nfcp-screen { width: var(--nfcp-w); height: calc(var(--nfcp-w) * 2.05); overflow: hidden; border-radius: 26px; background: #faf6ef; position: relative; }
+.nfcp-screen-in {
+  position: absolute; top: 0; left: 0; width: 360px; padding: 40px 14px 24px;
+  background: #faf6ef; color: #1c1912; font-family: var(--font-karla), system-ui, sans-serif;
+  transform-origin: 0 0; transform: scale(var(--nfcp-s)) translateY(calc(var(--nfcp-offset, 0px) * -1));
+  pointer-events: none; user-select: none;
+}
+.nfcp-screen-in .nfc-card { box-shadow: none; }
+.nfcp-screen-in .nfc-welcome-title { font-size: 1.4rem; }
 .nfcp-note { margin: 14px 0 18px; font-size: 9.5px; letter-spacing: 0.1em; color: rgba(0,0,0,0.45); }
 .nfcp-list { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 10px 24px; max-width: 820px; }
 .nfcp-list li { position: relative; padding-left: 26px; font-size: 14.5px; line-height: 1.45; }
 .nfcp-list li::before {
   content: ""; position: absolute; left: 2px; top: 4px; width: 11px; height: 6px;
   border-left: 2px solid var(--novo-blue); border-bottom: 2px solid var(--novo-blue); transform: rotate(-45deg);
-}
-@media (max-width: 720px) {
-  .nfcp-shots { grid-auto-columns: 62%; overflow-x: auto; scroll-snap-type: x mandatory; padding-bottom: 6px; }
-  .nfcp-shot { scroll-snap-align: start; }
 }
 
 /* ---- proizvod: kamo vodi NFC pločica ---- */
