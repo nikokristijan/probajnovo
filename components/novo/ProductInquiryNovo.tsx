@@ -6,6 +6,7 @@ import { QTY_EVENT } from "@/components/novo/QtyQuickPick";
 import { track } from "@/lib/track";
 import type { QuantityDiscount } from "@/lib/db/schema";
 import { discountFor, eur, lineTotal } from "@/lib/pricing";
+import NfcPageOption, { nfcTargetLabel, useNfcTarget } from "@/components/novo/NfcPageOption";
 
 export type InquiryAddon = { id: number; name: string; priceEur: number | null };
 
@@ -61,6 +62,7 @@ export default function ProductInquiryNovo({
   discounts = [],
   addons = [],
   addonDiscountPercent = 0,
+  nfcMonthlyEur = null,
 }: {
   productId: number;
   productName: string;
@@ -71,6 +73,8 @@ export default function ProductInquiryNovo({
   addons?: InquiryAddon[];
   /** Popust na dodatke kad se uzmu uz ovaj proizvod. */
   addonDiscountPercent?: number;
+  /** NFC pločica: mjesečno održavanje naše stranice — uz to kupac bira i "vlastitu stranicu". Null = bez izbora. */
+  nfcMonthlyEur?: number | null;
 }) {
   const [state, formAction, pending] = useActionState<ActionState, FormData>(createInquiryAction, undefined);
   const [qty, setQty] = useState(1);
@@ -88,6 +92,7 @@ export default function ProductInquiryNovo({
   const [checking, startCheck] = useTransition();
   const [pageUrl, setPageUrl] = useState("");
   const [copied, setCopied] = useState(false);
+  const [nfcTarget] = useNfcTarget();
 
   const applyCode = (raw: string) => {
     const code = raw.trim();
@@ -217,6 +222,7 @@ export default function ProductInquiryNovo({
     ...chosen.map(
       (a) => `Dodatno: ${a.name} × ${addonQty[a.id]}${addonDiscountPercent > 0 ? ` (paket −${addonDiscountPercent} %)` : ""}`
     ),
+    nfcMonthlyEur != null ? `Stranica: ${nfcTargetLabel(nfcTarget, nfcMonthlyEur)}` : null,
     total != null ? `Okvirni iznos: ${eur(total)}${saved > 0 ? ` (ušteda ${eur(saved)})` : ""}` : null,
     place.trim() ? `Objekt: ${place.trim()}` : null,
     note.trim() ? `\n${note.trim()}` : null,
@@ -274,6 +280,9 @@ export default function ProductInquiryNovo({
             <span className="pq-estimate-calc mono">
               {saved > 0 ? `UŠTEDA ${eur(saved)}` : `${qty} × ${priceEur} €`}
             </span>
+            {nfcMonthlyEur != null && nfcTarget === "novo" && (
+              <span className="pq-estimate-calc mono">+ {nfcMonthlyEur} €/MJ ODRŽAVANJE</span>
+            )}
           </div>
         )}
       </div>
@@ -331,6 +340,8 @@ export default function ProductInquiryNovo({
           })}
         </fieldset>
       )}
+
+      {nfcMonthlyEur != null && <NfcPageOption monthlyEur={nfcMonthlyEur} idPrefix="pq" />}
 
       {priceEur != null &&
         (applied ? (

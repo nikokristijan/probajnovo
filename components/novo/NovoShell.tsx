@@ -61,11 +61,14 @@ export default function NovoShell({
 }) {
   const [coords, setCoords] = useState({ x: 0, y: 0 });
 
-  // Bez scrolla stranice: sadržaj se scrolla unutar <main>.
+  // Bez scrolla stranice: sadržaj se scrolla unutar <main>. Iznimka je
+  // stranica proizvoda (variant "detail") — ona je duga pa se scrolla kao
+  // obična web stranica (prirodan scroll na mobitelu, adresna traka se skriva).
   useEffect(() => {
+    if (variant === "detail") return;
     document.documentElement.classList.add("novo-lock-scroll");
     return () => document.documentElement.classList.remove("novo-lock-scroll");
-  }, []);
+  }, [variant]);
 
   useEffect(() => {
     const onMove = (e: MouseEvent) => setCoords({ x: e.clientX, y: e.clientY });

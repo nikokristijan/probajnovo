@@ -17,6 +17,7 @@ import { ContactLink, TrackProductView, WhatsAppIcon } from "@/components/novo/P
 import { telHref, whatsappUrl } from "@/lib/phone";
 import { eur, normalizeDiscounts, saleInfo, shortDate } from "@/lib/pricing";
 import NfcPagePreview from "@/components/novo/NfcPagePreview";
+import NfcPageOption from "@/components/novo/NfcPageOption";
 
 export const revalidate = 0;
 
@@ -130,11 +131,11 @@ export default async function ProductPage({ params }: { params: Promise<Params> 
     : null;
   const phoneHref = contact.phone ? telHref(contact.phone) : null;
   const discounts = normalizeDiscounts(product.quantityDiscounts);
-  const maxDiscount = discounts.length ? discounts[discounts.length - 1] : null;
   const addons = (product.addonProductIds ?? [])
     .map((id) => all.find((p) => p.id === id))
     .filter((p): p is NonNullable<typeof p> => Boolean(p))
     .map((p) => ({ id: p.id, name: p.name, priceEur: saleInfo(p, today).price }));
+  const nfcMonthly = product.showNfcPreview ? product.nfcPageMonthlyEur : null;
   const assurance = [
     { label: "DOSTAVA", text: contact.deliveryText },
     { label: "IZRADA", text: contact.productionText },
@@ -240,7 +241,6 @@ export default async function ProductPage({ params }: { params: Promise<Params> 
             <div className="pd-info pd-head">
               <div className="pd-kicker">
                 <span className="novo-os-kicker mono">{(product.category || "Proizvod").toUpperCase()}</span>
-                {product.featured && <span className="pl-badge pl-badge--static mono">ISTAKNUTO</span>}
               </div>
               <h1 className="pd-title">{product.name}</h1>
               <p className="pd-tagline">{product.tagline}</p>
@@ -256,11 +256,6 @@ export default async function ProductPage({ params }: { params: Promise<Params> 
                     AKCIJA −{sale.percent} %{sale.endsAt ? ` · DO ${shortDate(sale.endsAt)}` : ""}
                   </span>
                 )}
-                {product.priceEur != null && maxDiscount && (
-                  <span className="pd-price-deal mono">
-                    DO −{maxDiscount.percent} % OD {maxDiscount.minQty} KOM
-                  </span>
-                )}
               </div>
               {reviews.length > 0 && (
                 <a href="#recenzije" className="pd-rating mono">
@@ -272,26 +267,7 @@ export default async function ProductPage({ params }: { params: Promise<Params> 
             </div>
 
             <div className="pd-info pd-rest">
-              {included.length > 0 && (
-                <div className="pd-included">
-                  <span className="pq-label mono">UKLJUČENO U CIJENU</span>
-                  <ul>
-                    {included.map((item) => (
-                      <li key={item}>{item}</li>
-                    ))}
-                  </ul>
-                </div>
-              )}
-
-              {included.length === 0 && product.features.length > 0 && (
-                <ul className="pd-features" aria-label="Značajke">
-                  {product.features.map((f) => (
-                    <li key={f} className="novo-os-chip mono">
-                      {f.toUpperCase()}
-                    </li>
-                  ))}
-                </ul>
-              )}
+              {nfcMonthly != null && <NfcPageOption monthlyEur={nfcMonthly} idPrefix="pd" />}
 
               <QtyQuickPick
                 priceEur={unitPrice}
@@ -300,44 +276,22 @@ export default async function ProductPage({ params }: { params: Promise<Params> 
                 discounts={discounts}
               />
 
-              {assurance.length > 0 && (
-                <dl className="pd-assure">
-                  {assurance.map((r) => (
-                    <div key={r.label} className="pd-assure-row">
-                      <dt className="mono">{r.label}</dt>
-                      <dd>{r.text}</dd>
-                    </div>
-                  ))}
-                  <div className="pd-assure-row">
-                    <dt className="mono">POVRAT</dt>
-                    <dd>
-                      <Link href="/povrat" className="link">
-                        Uvjeti povrata i reklamacije
-                      </Link>
-                    </dd>
-                  </div>
-                </dl>
-              )}
-
-              {waHref && (
-                <ContactLink href={waHref} productName={product.name} channel="whatsapp" className="pd-wa mono">
-                  <WhatsAppIcon />
-                  IMATE PITANJE? PITAJTE NA WHATSAPPU
-                </ContactLink>
-              )}
-
-              <div className="pd-meta-row">
-                <ShareProductButton url={url} title={product.name} />
-                {fileVideo && product.images.length > 0 && (
-                  <a href="#fotografije" className="mono link">
-                    FOTOGRAFIJE ({product.images.length}) ↓
-                  </a>
+              <div className="pd-quick mono">
+                {waHref && (
+                  <ContactLink href={waHref} productName={product.name} channel="whatsapp" className="pd-quick-wa">
+                    <WhatsAppIcon />
+                    PITANJE? WHATSAPP
+                  </ContactLink>
                 )}
+                <a href="#detalji" className="link">
+                  DETALJI ↓
+                </a>
+                <ShareProductButton url={url} title={product.name} />
               </div>
             </div>
           </article>
 
-          {product.showNfcPreview && <NfcPagePreview />}
+          {product.showNfcPreview && <NfcPagePreview monthlyEur={nfcMonthly} />}
 
           {reviews.length > 0 && (
             <section className="pd-section" id="recenzije" aria-labelledby="pd-recenzije">
@@ -356,23 +310,64 @@ export default async function ProductPage({ params }: { params: Promise<Params> 
             </section>
           )}
 
-          {fileVideo && product.images.length > 0 && (
-            <section className="pd-section pd-photos" id="fotografije" aria-labelledby="pd-foto">
-              <h2 id="pd-foto" className="section-title">
-                FOTOGRAFIJE
-              </h2>
-              <ProductGalleryNovo images={product.images} name={product.name} />
-            </section>
-          )}
-
-          {product.description.trim() && (
-            <section className="pd-section" aria-labelledby="pd-opis">
-              <h2 id="pd-opis" className="section-title">
-                OPIS
-              </h2>
-              <ProductDescription text={product.description} />
-            </section>
-          )}
+          <section className="pd-section" id="detalji" aria-labelledby="pd-detalji">
+            <h2 id="pd-detalji" className="section-title">
+              DETALJI I ČESTA PITANJA
+            </h2>
+            <div className="pd-faq">
+              {(included.length > 0 || product.features.length > 0) && (
+                <details className="pd-faq-item">
+                  <summary>Što je uključeno u cijenu</summary>
+                  <ul className="pd-acc-list">
+                    {(included.length > 0 ? included : product.features).map((item) => (
+                      <li key={item}>{item}</li>
+                    ))}
+                  </ul>
+                </details>
+              )}
+              <details className="pd-faq-item">
+                <summary>Dostava, izrada i jamstvo</summary>
+                <dl className="pd-assure pd-acc-body">
+                  {assurance.map((r) => (
+                    <div key={r.label} className="pd-assure-row">
+                      <dt className="mono">{r.label}</dt>
+                      <dd>{r.text}</dd>
+                    </div>
+                  ))}
+                  <div className="pd-assure-row">
+                    <dt className="mono">POVRAT</dt>
+                    <dd>
+                      <Link href="/povrat" className="link">
+                        Uvjeti povrata i reklamacije
+                      </Link>
+                    </dd>
+                  </div>
+                </dl>
+              </details>
+              {product.description.trim() && (
+                <details className="pd-faq-item">
+                  <summary>Opis proizvoda</summary>
+                  <div className="pd-acc-body">
+                    <ProductDescription text={product.description} />
+                  </div>
+                </details>
+              )}
+              {fileVideo && product.images.length > 0 && (
+                <details className="pd-faq-item pd-photos">
+                  <summary>Fotografije ({product.images.length})</summary>
+                  <div className="pd-acc-body">
+                    <ProductGalleryNovo images={product.images} name={product.name} />
+                  </div>
+                </details>
+              )}
+              {faq.map((f, i) => (
+                <details key={i} className="pd-faq-item">
+                  <summary>{f.question}</summary>
+                  <p>{f.answer}</p>
+                </details>
+              ))}
+            </div>
+          </section>
 
           {embed && (
             <section className="pd-section" aria-labelledby="pd-video">
@@ -387,22 +382,6 @@ export default async function ProductPage({ params }: { params: Promise<Params> 
                   allow="accelerometer; encrypted-media; gyroscope; picture-in-picture"
                   allowFullScreen
                 />
-              </div>
-            </section>
-          )}
-
-          {faq.length > 0 && (
-            <section className="pd-section" id="pitanja" aria-labelledby="pd-faq">
-              <h2 id="pd-faq" className="section-title">
-                ČESTA PITANJA
-              </h2>
-              <div className="pd-faq">
-                {faq.map((f, i) => (
-                  <details key={i} className="pd-faq-item" open={i === 0}>
-                    <summary>{f.question}</summary>
-                    <p>{f.answer}</p>
-                  </details>
-                ))}
               </div>
             </section>
           )}
@@ -425,14 +404,13 @@ export default async function ProductPage({ params }: { params: Promise<Params> 
                 </li>
               </ol>
               <p className="pd-inquiry-alt mono">
-                ILI PIŠITE NA{" "}
+                ILI:{" "}
                 <a href={`mailto:${contact.contactEmail}?subject=${encodeURIComponent(`Upit — ${product.name}`)}`}>
-                  {contact.contactEmail}
+                  EMAIL
                 </a>
                 {phoneHref && contact.phone && (
                   <>
-                    <br />
-                    ILI NAZOVITE{" "}
+                    {" · "}
                     <ContactLink href={phoneHref} productName={product.name} channel="phone">
                       {contact.phone}
                     </ContactLink>
@@ -440,9 +418,9 @@ export default async function ProductPage({ params }: { params: Promise<Params> 
                 )}
                 {waHref && (
                   <>
-                    <br />
+                    {" · "}
                     <ContactLink href={waHref} productName={product.name} channel="whatsapp">
-                      WHATSAPP →
+                      WHATSAPP
                     </ContactLink>
                   </>
                 )}
@@ -456,6 +434,7 @@ export default async function ProductPage({ params }: { params: Promise<Params> 
               discounts={discounts}
               addons={addons}
               addonDiscountPercent={product.addonDiscountPercent ?? 0}
+              nfcMonthlyEur={nfcMonthly}
             />
           </section>
 
