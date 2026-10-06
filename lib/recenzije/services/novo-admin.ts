@@ -1,9 +1,12 @@
 import "server-only";
-import { asc, desc, eq, sql } from "drizzle-orm";
+import { and, asc, desc, eq, sql } from "drizzle-orm";
 import { db } from "@/lib/recenzije/db";
 import { ensureReviewsDb } from "@/lib/recenzije/db/ensure";
-import { organizations, plans, subscriptions } from "@/lib/recenzije/db/schema";
-import { TRIAL_DAYS, TRIAL_SMS_LIMIT } from "@/lib/recenzije/services/billing";
+import { organizationMembers, organizations, plans, subscriptions, users } from "@/lib/recenzije/db/schema";
+import { TRIAL_DAYS, TRIAL_SMS_LIMIT, startTrial } from "@/lib/recenzije/services/billing";
+import { createOrganizationRecord } from "@/lib/recenzije/services/organizations";
+import { toE164 } from "@/lib/recenzije/phone";
+import { GOOGLE_REVIEW_URL_HINT, GOOGLE_REVIEW_URL_RE } from "@/lib/recenzije/validation";
 
 /**
  * Pregled NOVO Recenzija za NOVO admin (/admin/recenzije): sve tvrtke koje
@@ -163,4 +166,79 @@ export async function deactivate(organizationId: string) {
     .set({ status: "canceled", currentPeriodEnd: new Date(), updatedAt: new Date() })
     .where(eq(subscriptions.organizationId, organizationId));
   return `${name}: pretplata ugašena`;
+}
+
+/**
+ * Korisnik Recenzija za glavnog admina NOVO-a. Ima rezervirani e-mail na
+ * domeni .invalid (ne može se registrirati ni prijaviti Googleom) i nema
+ * lozinku: u aplikaciju ulazi isključivo preko "Otvori" u /admin/recenzije,
+ * što provjerava NOVO admin prijavu.
+ */
+export async function ensureOperatorUser(adminId: number, displayName: string | null) {
+  await ensureReviewsDb();
+  const email = `novo-operater-${adminId}@novo.invalid`;
+  const [existing] = await db
+    .select({ id: users.id, passwordHash: users.passwordHash, googleId: users.googleId })
+    .from(users)
+    .where(eq(users.email, email))
+    .limit(1);
+  if (existing) {
+    if (existing.passwordHash || existing.googleId) throw new Error("Operaterski račun je neispravan. Javi se programeru.");
+    return existing.id;
+  }
+  const [created] = await db
+    .insert(users)
+    .values({ email, name: displayName?.trim() || "NOVO", emailVerified: new Date() })
+    .returning({ id: users.id });
+  return created.id;
+}
+
+/** Dodaje operatera u tvrtku (ako već nije član) da je može voditi iz aplikacije. */
+export async function ensureOperatorMembership(userId: string, organizationId: string) {
+  await orgName(organizationId);
+  const [m] = await db
+    .select({ id: organizationMembers.id })
+    .from(organizationMembers)
+    .where(and(eq(organizationMembers.userId, userId), eq(organizationMembers.organizationId, organizationId)))
+    .limit(1);
+  if (!m) await db.insert(organizationMembers).values({ organizationId, userId, role: "ADMIN" });
+}
+
+export type NewClientBusiness = {
+  name: string;
+  industry: string;
+  phone: string;
+  googleReviewUrl: string;
+  /** "trial" = besplatna proba (14 dana), inače ključ paketa. */
+  planKey: string;
+  months: number;
+};
+
+/** Tvrtku otvara NOVO (bez samostalne registracije). Vraća id i opis za poruku. */
+export async function createBusinessForNovo(operatorUserId: string, input: NewClientBusiness) {
+  await ensureReviewsDb();
+  const name = input.name.trim();
+  if (name.length < 2 || name.length > 80) throw new Error("Upišite naziv tvrtke (2–80 znakova).");
+  const reviewUrl = input.googleReviewUrl.trim();
+  if (reviewUrl && !GOOGLE_REVIEW_URL_RE.test(reviewUrl)) throw new Error(GOOGLE_REVIEW_URL_HINT);
+  const phone = input.phone.trim() ? toE164(input.phone.trim()) : null;
+  if (input.phone.trim() && !phone) throw new Error("Upišite ispravan telefon tvrtke, npr. 091 234 5678.");
+  if (input.planKey !== "trial") {
+    const [plan] = await db.select({ key: plans.key }).from(plans).where(eq(plans.key, input.planKey)).limit(1);
+    if (!plan) throw new Error("Nepoznat paket.");
+  }
+
+  const orgId = await createOrganizationRecord({
+    name,
+    industry: input.industry.trim().slice(0, 60) || null,
+    phone,
+    googleReviewUrl: reviewUrl || null,
+    ownerUserId: operatorUserId,
+  });
+  if (input.planKey === "trial") {
+    await startTrial(orgId);
+    return { orgId, label: `${name}: otvorena, proba ${TRIAL_DAYS} dana` };
+  }
+  const label = await activatePlanManually(orgId, input.planKey, input.months);
+  return { orgId, label: `otvorena tvrtka ${label}` };
 }
