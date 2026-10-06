@@ -40,22 +40,9 @@ async function limited(bucket: string, limit: number, windowMs: number): Promise
   return r.ok ? null : `Previše pokušaja. Pokušajte ponovno za ${Math.ceil(r.retryAfter / 60)} min.`;
 }
 
+/** Samostalna registracija je zatvorena: račune i tvrtke otvara NOVO (vidi /admin/recenzije). */
 export async function signupAction(_: ActionState, fd: FormData): Promise<ActionState> {
-  await ensureReviewsDb();
-  const tooMany = await limited("signup", 5, 15 * 60_000);
-  if (tooMany) return { values: echoValues(fd), error: tooMany };
-  const parsed = z
-    .object({ name: z.string().trim().min(2, "Upišite ime i prezime").max(80), email, password })
-    .safeParse(formObject(fd));
-  if (!parsed.success) return { values: echoValues(fd), fieldErrors: zodErrors(parsed.error) };
-
-  const [existing] = await db.select({ id: users.id }).from(users).where(eq(users.email, parsed.data.email)).limit(1);
-  if (existing) return { values: echoValues(fd), fieldErrors: { email: "Račun s ovim emailom već postoji. Prijavite se." } };
-
-  const passwordHash = await bcrypt.hash(parsed.data.password, 12);
-  const [user] = await db.insert(users).values({ name: parsed.data.name, email: parsed.data.email, passwordHash }).returning();
-  await createSession(user.id);
-  redirect("/recenzije/postavljanje");
+  return { values: echoValues(fd), error: "Registracija je zatvorena. Zatražite ponudu na /recenzije i NOVO će sve postaviti za vas." };
 }
 
 export async function loginAction(_: ActionState, fd: FormData): Promise<ActionState> {
