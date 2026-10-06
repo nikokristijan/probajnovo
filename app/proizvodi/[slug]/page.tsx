@@ -13,7 +13,7 @@ import QtyQuickPick from "@/components/novo/QtyQuickPick";
 import ShareProductButton from "@/components/novo/ShareProductButton";
 import ProductStickyCta from "@/components/novo/ProductStickyCta";
 import ConsentTracking from "@/components/novo/ConsentTracking";
-import { ContactLink, TrackProductView, WhatsAppIcon } from "@/components/novo/ProductContactLinks";
+import { ContactLink, TrackProductView } from "@/components/novo/ProductContactLinks";
 import { telHref, whatsappUrl } from "@/lib/phone";
 import { eur, normalizeDiscounts, saleInfo, shortDate } from "@/lib/pricing";
 import NfcPagePreview from "@/components/novo/NfcPagePreview";
@@ -224,6 +224,9 @@ export default async function ProductPage({ params }: { params: Promise<Params> 
           </Link>
           <span aria-hidden="true">/</span>
           <span className="pd-crumb-current">{product.name.toUpperCase()}</span>
+          <span className="pd-crumbs-share">
+            <ShareProductButton url={url} title={product.name} />
+          </span>
         </div>
 
         <div className="pd-scroll">
@@ -239,54 +242,89 @@ export default async function ProductPage({ params }: { params: Promise<Params> 
             )}
 
             <div className="pd-info pd-head">
-              <div className="pd-kicker">
-                <span className="novo-os-kicker mono">{(product.category || "Proizvod").toUpperCase()}</span>
-              </div>
               <h1 className="pd-title">{product.name}</h1>
-              <p className="pd-tagline">{product.tagline}</p>
-
+              {reviews.length > 0 && (
+                <a href="#recenzije" className="pd-rating">
+                  <Stars rating={avgRating} />
+                  <span>
+                    {avgRating.toLocaleString("hr-HR", { minimumFractionDigits: 1, maximumFractionDigits: 1 })} (
+                    {reviews.length})
+                  </span>
+                </a>
+              )}
               <div className="pd-price">
+                <span className="pd-price-value">{priceLabel(unitPrice)}</span>
                 {sale.active && product.priceEur != null && (
                   <s className="pd-price-was">{eur(product.priceEur)}</s>
                 )}
-                <span className="pd-price-value">{priceLabel(unitPrice)}</span>
-                {product.priceEur != null && <span className="mono muted pd-price-unit">/ KOM</span>}
                 {sale.active && (
-                  <span className="pd-price-sale mono">
-                    AKCIJA −{sale.percent} %{sale.endsAt ? ` · DO ${shortDate(sale.endsAt)}` : ""}
+                  <span className="pd-price-sale">
+                    −{sale.percent} %{sale.endsAt ? ` do ${shortDate(sale.endsAt)}` : ""}
                   </span>
                 )}
               </div>
-              {reviews.length > 0 && (
-                <a href="#recenzije" className="pd-rating mono">
-                  <Stars rating={avgRating} />
-                  {avgRating.toLocaleString("hr-HR", { minimumFractionDigits: 1, maximumFractionDigits: 1 })} ·{" "}
-                  {reviews.length} {reviews.length === 1 ? "RECENZIJA" : reviews.length < 5 ? "RECENZIJE" : "RECENZIJA"} ↓
-                </a>
-              )}
+              {product.tagline && <p className="pd-tagline">{product.tagline}</p>}
             </div>
 
             <div className="pd-info pd-rest">
-              {nfcMonthly != null && <NfcPageOption monthlyEur={nfcMonthly} idPrefix="pd" />}
+              {nfcMonthly != null && (
+                <NfcPageOption monthlyEur={nfcMonthly} idPrefix="pd" previewHref="#stranica" />
+              )}
 
               <QtyQuickPick
                 priceEur={unitPrice}
                 ctaLabel={ctaLabel}
                 productName={product.name}
                 discounts={discounts}
+                whatsappHref={waHref}
               />
 
-              <div className="pd-quick mono">
-                {waHref && (
-                  <ContactLink href={waHref} productName={product.name} channel="whatsapp" className="pd-quick-wa">
-                    <WhatsAppIcon />
-                    PITANJE? WHATSAPP
-                  </ContactLink>
+              <div className="pd-faq pd-acc" id="detalji">
+                {product.description.trim() && (
+                  <details className="pd-faq-item">
+                    <summary>Opis</summary>
+                    <div className="pd-acc-body">
+                      <ProductDescription text={product.description} />
+                    </div>
+                  </details>
                 )}
-                <a href="#detalji" className="link">
-                  DETALJI ↓
-                </a>
-                <ShareProductButton url={url} title={product.name} />
+                {(included.length > 0 || product.features.length > 0) && (
+                  <details className="pd-faq-item">
+                    <summary>Što dobivate</summary>
+                    <ul className="pd-acc-list">
+                      {(included.length > 0 ? included : product.features).map((item) => (
+                        <li key={item}>{item}</li>
+                      ))}
+                    </ul>
+                  </details>
+                )}
+                <details className="pd-faq-item">
+                  <summary>Dostava, jamstvo i povrat</summary>
+                  <dl className="pd-assure pd-acc-body">
+                    {assurance.map((r) => (
+                      <div key={r.label} className="pd-assure-row">
+                        <dt className="mono">{r.label}</dt>
+                        <dd>{r.text}</dd>
+                      </div>
+                    ))}
+                    <div className="pd-assure-row">
+                      <dt className="mono">POVRAT</dt>
+                      <dd>
+                        <Link href="/povrat" className="link">
+                          Uvjeti povrata i reklamacije
+                        </Link>
+                      </dd>
+                    </div>
+                  </dl>
+                </details>
+                {fileVideo && product.images.length > 0 && (
+                  <details className="pd-faq-item pd-photos">
+                    <summary>Fotografije ({product.images.length})</summary>
+                    <div className="pd-acc-body">
+                      <ProductGalleryNovo images={product.images} name={product.name} />
+                    </div>
+                  </details>
+                )}
               </div>
             </div>
           </article>
