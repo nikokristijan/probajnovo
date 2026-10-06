@@ -111,6 +111,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
       { id: "vikendice", label: "Vikendice", href: "/admin/vikendice", group: "Idi na" as const },
       { id: "firme", label: "Firme", href: "/admin#firme", group: "Idi na" as const },
       { id: "agencija", label: "Sadržaj agencije", href: "/admin/agency", group: "Idi na" as const },
+      { id: "popusti", label: "Popusti i kodovi", href: "/admin/popusti", group: "Idi na" as const, keywords: ["kod", "akcija", "preporuka"] },
       ...(sup ? [{ id: "financije", label: "Financije", href: "/admin/financije", group: "Idi na" as const, keywords: ["pretplate", "uplate", "mrr"] }] : []),
       { id: "portal", label: "Portal", href: "/admin/portal", group: "Idi na" as const, keywords: ["zadaci", "poruke", "chat"] },
       { id: "aktivnost", label: "Aktivnost", href: "/admin/aktivnost", group: "Idi na" as const, keywords: ["dnevnik", "log"] },
@@ -288,6 +289,9 @@ export default async function AdminLayout({ children }: { children: React.ReactN
               </AdminNavLink>
               <AdminNavLink href="/admin/agency">
                 Sadržaj agencije
+              </AdminNavLink>
+              <AdminNavLink href="/admin/popusti">
+                Popusti
               </AdminNavLink>
               {admin.isSuperAdmin && (
                 <>
