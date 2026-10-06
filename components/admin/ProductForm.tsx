@@ -37,6 +37,7 @@ type FormValues = {
   salePercent: string;
   saleEndsAt: string;
   showNfcPreview: boolean;
+  nfcPageMonthlyEur: string;
 };
 
 function initialValues(product?: Product): FormValues {
@@ -64,6 +65,7 @@ function initialValues(product?: Product): FormValues {
     salePercent: String(product?.salePercent ?? 0),
     saleEndsAt: product?.saleEndsAt ?? "",
     showNfcPreview: product?.showNfcPreview ?? false,
+    nfcPageMonthlyEur: product ? (product.nfcPageMonthlyEur != null ? String(product.nfcPageMonthlyEur) : "") : "10",
   };
 }
 
@@ -353,6 +355,19 @@ export default function ProductForm({
         />
         Prikaži sekciju &bdquo;Stranica koju gosti otvaraju&ldquo; (slike NFC stranice — za NFC pločice)
       </label>
+      {values.showNfcPreview && (
+        <Field label="Mjesečno održavanje naše stranice za goste (€) — kupac bira našu stranicu ili da pločica vodi na njegovu (besplatno). Prazno = bez izbora.">
+          <input
+            name="nfcPageMonthlyEur"
+            type="number"
+            min={0}
+            value={values.nfcPageMonthlyEur}
+            onChange={(e) => set("nfcPageMonthlyEur", e.target.value)}
+            className="admin-input max-w-[160px]"
+          />
+        </Field>
+      )}
+      {!values.showNfcPreview && <input type="hidden" name="nfcPageMonthlyEur" value={values.nfcPageMonthlyEur} />}
 
       {/* Skriveno polje koje server action očekuje kao string */}
       <input type="hidden" name="images" value={JSON.stringify(values.images)} />
