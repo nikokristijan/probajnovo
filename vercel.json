@@ -19,6 +19,14 @@
     {
       "path": "/api/cron/weekly-backup",
       "schedule": "0 5 * * 0"
+    },
+    {
+      "path": "/api/recenzije/cron/automations",
+      "schedule": "0 10 * * *"
+    },
+    {
+      "path": "/api/recenzije/cron/sync-reviews",
+      "schedule": "0 4 * * *"
     }
   ]
 }
