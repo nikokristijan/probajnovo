@@ -208,3 +208,81 @@ export default async function SettingsPage({ searchParams }: { searchParams: Pro
             </div>
             <p className="text-xs text-muted">
               Bez OAutha: Place ID + <code className="font-mono">GOOGLE_PLACES_API_KEY</code> daju ocjenu i 5 najnovijih recenzija (Googleovo ograničenje).{" "}
+              <Status ok={integrations.googlePlaces()} label={integrations.googlePlaces() ? "Places ključ postoji" : "Nema Places ključa"} />
+            </p>
+          </CardBody>
+        </Card>
+
+        <Card>
+          <CardHeader
+            title={
+              <span className="flex items-center gap-2">
+                <Bot className="size-4" /> AI (Claude)
+              </span>
+            }
+            description="Piše varijante poruka, sažima recenzije, predlaže odgovore i preporuke."
+            action={<Status ok={integrations.ai()} />}
+          />
+          <CardBody>
+            {integrations.ai() ? (
+              <p className="flex items-center gap-2 text-sm">
+                <CheckCircle2 className="size-4 text-success" /> Model <code className="font-mono text-xs">{env.anthropicModel}</code>
+              </p>
+            ) : (
+              <EnvList vars={["ANTHROPIC_API_KEY"]} />
+            )}
+          </CardBody>
+        </Card>
+
+        <Card>
+          <CardHeader
+            title={
+              <span className="flex items-center gap-2">
+                <CreditCard className="size-4" /> Naplata (Stripe)
+              </span>
+            }
+            description="Nije obavezno: pakete možete aktivirati i ručno iz NOVO admina."
+            action={<Status ok={integrations.stripe()} />}
+          />
+          <CardBody className="space-y-3">
+            {!integrations.stripe() && <EnvList vars={["STRIPE_SECRET_KEY", "STRIPE_WEBHOOK_SECRET"]} />}
+            <UrlRow label="Stripe webhook" url={`${env.appUrl}/api/recenzije/webhooks/stripe`} />
+          </CardBody>
+        </Card>
+
+        <Card>
+          <CardHeader
+            title={
+              <span className="flex items-center gap-2">
+                <Mail className="size-4" /> Email
+              </span>
+            }
+            description="Poveznice za novu lozinku (isti Resend kao probajnovo)."
+            action={<Status ok={integrations.email()} />}
+          />
+          <CardBody>
+            {integrations.email() ? <p className="text-sm text-muted">Šalje kao {env.emailFrom}</p> : <EnvList vars={["RESEND_API_KEY", "RESEND_FROM_EMAIL"]} />}
+          </CardBody>
+        </Card>
+
+        <Card>
+          <CardHeader
+            title={
+              <span className="flex items-center gap-2">
+                <Timer className="size-4" /> Pozadinski poslovi
+              </span>
+            }
+            description="Čekanja i podsjetnici napreduju pri svakom otvaranju aplikacije i klika na link. Za točno vrijeme dodajte vanjski cron svakih 5 min."
+          />
+          <CardBody className="space-y-3">
+            <UrlRow label="Automatizacije (npr. cron-job.org, svakih 5 min)" url={`${env.appUrl}/api/recenzije/cron/automations`} />
+            <UrlRow label="Preuzimanje recenzija (svakih 6 h)" url={`${env.appUrl}/api/recenzije/cron/sync-reviews`} />
+            <p className="text-xs text-muted">
+              Zaglavlje: <code className="font-mono">Authorization: Bearer CRON_SECRET</code>. {env.cronSecret ? "CRON_SECRET je postavljen." : "CRON_SECRET nije postavljen pa cron rute sve odbijaju."}
+            </p>
+          </CardBody>
+        </Card>
+      </div>
+    </>
+  );
+}
