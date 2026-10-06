@@ -1563,17 +1563,124 @@ export async function createInquiryAction(
     }
   );
 
+  if (usedCode) {
+    await incrementDiscountCodeUse(usedCode.id).catch((err) =>
+      console.error("[createInquiryAction] brojač koda nije ažuriran:", err)
+    );
+  }
+
+  // Osobni kod za preporuku (samo za upite za proizvode, ako je uključeno u adminu).
+  let referral: { code: string; percent: number } | null = null;
+  let productionText: string | null = null;
+  if (parsed.data.source === "product") {
+    try {
+      const agencyRow = await getAgency();
+      productionText = agencyRow?.productionText ?? null;
+      const pct = agencyRow?.referralPercent ?? 0;
+      if (pct > 0) {
+        const row = await getOrCreateReferralCode(parsed.data.name, parsed.data.email, pct);
+        if (row) referral = { code: row.code, percent: row.percent };
+      }
+    } catch (err) {
+      console.error("[createInquiryAction] kod za preporuku nije napravljen:", err);
+    }
+  }
+
   try {
     await sendGuestConfirmation({
       to: parsed.data.email.trim(),
       sourceName: parsed.data.sourceName.trim(),
       name: parsed.data.name.trim(),
+      ...(parsed.data.source === "product"
+        ? {
+            summary: baseMessage,
+            productionText,
+            referral,
+            pageUrl: String(formData.get("pageUrl") ?? "").slice(0, 300) || null,
+          }
+        : {}),
     });
   } catch (err) {
     console.error("[createInquiryAction] slanje potvrde gostu nije uspjelo:", err);
   }
 
   revalidatePath("/admin/inquiries");
+  return referral
+    ? { success: true, referralCode: referral.code, referralPercent: referral.percent }
+    : { success: true };
+}
+
+/** Provjera koda za popust iz obrasca (prije slanja) — vraća samo postotak. */
+export async function checkDiscountCodeAction(
+  code: string
+): Promise<{ code: string; percent: number } | { error: string }> {
+  const row = await findValidDiscountCode(String(code ?? ""), todayDateStringZagreb()).catch(() => null);
+  if (!row) return { error: "Kod nije važeći ili je istekao." };
+  return { code: row.code, percent: row.percent };
+}
+
+/* ---------------------------------------------------------------- */
+/* Popusti (admin)                                                    */
+/* ---------------------------------------------------------------- */
+
+const DiscountCodeSchema = z.object({
+  code: z
+    .string()
+    .transform((v) => normalizeCode(v))
+    .refine((v) => v.length >= 3, "Kod mora imati barem 3 znaka (slova, brojke, crtica)."),
+  percent: z.coerce.number().int().min(1, "Popust mora biti 1–90 %.").max(90, "Popust mora biti 1–90 %."),
+  expiresAt: z
+    .string()
+    .optional()
+    .refine((v) => !v || /^\d{4}-\d{2}-\d{2}$/.test(v), "Datum isteka nije ispravan."),
+  maxUses: z.string().optional(),
+  note: z.string().max(200).optional(),
+});
+
+export async function createDiscountCodeAction(_prev: ActionState, formData: FormData): Promise<ActionState> {
+  await requireAdmin();
+  const parsed = DiscountCodeSchema.safeParse({
+    code: formData.get("code") ?? "",
+    percent: formData.get("percent") ?? "",
+    expiresAt: formData.get("expiresAt") ?? "",
+    maxUses: formData.get("maxUses") ?? "",
+    note: formData.get("note") ?? "",
+  });
+  if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "Provjeri unesene podatke." };
+  const maxUses = parsed.data.maxUses ? Math.max(1, Math.round(Number(parsed.data.maxUses)) || 1) : null;
+  try {
+    await createDiscountCode({
+      code: parsed.data.code,
+      percent: parsed.data.percent,
+      expiresAt: emptyToNull(parsed.data.expiresAt),
+      maxUses,
+      note: emptyToNull(parsed.data.note),
+    });
+  } catch {
+    return { error: `Kod "${parsed.data.code}" već postoji.` };
+  }
+  revalidatePath("/admin/popusti");
+  return { success: true };
+}
+
+export async function toggleDiscountCodeAction(id: number, active: boolean): Promise<void> {
+  await requireAdmin();
+  await setDiscountCodeActive(id, active);
+  revalidatePath("/admin/popusti");
+}
+
+export async function deleteDiscountCodeAction(id: number): Promise<void> {
+  await requireAdmin();
+  await deleteDiscountCode(id);
+  revalidatePath("/admin/popusti");
+}
+
+export async function updateReferralPercentAction(_prev: ActionState, formData: FormData): Promise<ActionState> {
+  await requireAdmin();
+  const n = Math.round(Number(formData.get("referralPercent") ?? 0));
+  if (!Number.isFinite(n) || n < 0 || n > 50) return { error: "Popust za preporuku mora biti 0–50 %." };
+  await setReferralPercent(n);
+  revalidatePath("/admin/popusti");
   return { success: true };
 }
 
