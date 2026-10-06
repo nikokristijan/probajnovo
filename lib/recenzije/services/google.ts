@@ -234,3 +234,149 @@ export async function syncReviews(organizationId: string): Promise<SyncResult> {
       reviews?: { name: string; rating: number; text?: { text?: string }; authorAttribution?: { displayName?: string }; publishTime: string }[];
       error?: { message?: string };
     };
+    if (!res.ok) throw new Error(data.error?.message || `Places API greška ${res.status}`);
+    rating = data.rating ?? null;
+    total = data.userRatingCount ?? null;
+    incoming = (data.reviews ?? []).map((r) => ({
+      externalId: r.name,
+      reviewerName: r.authorAttribution?.displayName || "Google korisnik",
+      rating: r.rating,
+      comment: r.text?.text ?? null,
+      reviewedAt: new Date(r.publishTime),
+      replyText: null,
+      repliedAt: null,
+    }));
+  } else {
+    throw new Error("Za preuzimanje recenzija povežite Google Business Profile (ili postavite Place ID i GOOGLE_PLACES_API_KEY).");
+  }
+
+  await db
+    .update(organizations)
+    .set({ googleRating: rating, googleReviewCount: total, googleSyncedAt: new Date() })
+    .where(eq(organizations.id, organizationId));
+
+  let added = 0;
+  let matched = 0;
+  for (const r of incoming) {
+    const inserted = await db
+      .insert(reviews)
+      .values({ organizationId, source: "GOOGLE", ...r })
+      .onConflictDoUpdate({
+        target: [reviews.organizationId, reviews.externalId],
+        set: { rating: r.rating, comment: r.comment, replyText: r.replyText, repliedAt: r.repliedAt },
+      })
+      .returning({ id: reviews.id, clientId: reviews.clientId, createdAt: reviews.createdAt });
+    const row = inserted[0];
+    const isNew = row && Date.now() - row.createdAt.getTime() < 60_000;
+    if (isNew) added++;
+    if (row && !row.clientId) {
+      const ok = await attributeReview(organizationId, row.id, r);
+      if (ok) matched++;
+    }
+  }
+  return { source, fetched: incoming.length, added, matched, partial: source === "places", rating, total };
+}
+
+function norm(s: string) {
+  return s
+    .normalize("NFKD")
+    .replace(/[̀-ͯ]/g, "")
+    .toLowerCase()
+    .replace(/[^a-z ]/g, "")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+/**
+ * Ties a review to a client only on an exact (accent-insensitive) full-name match
+ * among clients who were actually sent a request before the review date.
+ * Anything else stays unattributed and can be linked manually in the UI.
+ */
+async function attributeReview(organizationId: string, reviewId: string, r: IncomingReview) {
+  const candidates = await db
+    .select()
+    .from(clients)
+    .where(
+      and(
+        eq(clients.organizationId, organizationId),
+        inArray(clients.reviewStatus, ["REQUEST_SENT", "CLICKED", "FOLLOW_UP_SCHEDULED"])
+      )
+    );
+  const target = norm(r.reviewerName);
+  const hits = candidates.filter(
+    (c) => norm(fullName(c)) === target && c.lastMessageAt && c.lastMessageAt <= r.reviewedAt
+  );
+  if (hits.length !== 1) return false;
+  await markReviewReceived(organizationId, hits[0].id, reviewId, "NAME_MATCH", r.reviewedAt, r.rating);
+  return true;
+}
+
+export async function markReviewReceived(
+  organizationId: string,
+  clientId: string,
+  reviewId: string | null,
+  match: "NAME_MATCH" | "MANUAL",
+  at: Date,
+  rating?: number
+) {
+  const [client] = await db
+    .update(clients)
+    .set({ reviewStatus: "REVIEW_RECEIVED", reviewReceivedAt: at, nextFollowUpAt: null })
+    .where(and(eq(clients.id, clientId), eq(clients.organizationId, organizationId)))
+    .returning();
+  if (!client) return;
+  if (reviewId) {
+    await db.update(reviews).set({ clientId, match }).where(and(eq(reviews.id, reviewId), eq(reviews.organizationId, organizationId)));
+  }
+  await cancelActiveRunsForClient(organizationId, clientId, "Recenzija primljena, tijek završen");
+  await logActivity({
+    organizationId,
+    clientId,
+    type: "review_received",
+    title: rating ? `${rating}★ recenzija od ${fullName(client)}` : `Recenzija od ${fullName(client)}`,
+    meta: { match },
+  });
+}
+
+export async function replyToReview(organizationId: string, externalId: string, comment: string) {
+  const [conn] = await db.select().from(googleConnections).where(eq(googleConnections.organizationId, organizationId)).limit(1);
+  if (!conn?.accountName || !conn.locationName) throw new Error("Za odgovaranje na recenzije povežite Google Business Profile.");
+  await gapi(organizationId, `https://mybusiness.googleapis.com/v4/${conn.accountName}/${conn.locationName}/reviews/${externalId}/reply`, {
+    method: "PUT",
+    body: JSON.stringify({ comment }),
+  });
+  await db
+    .update(reviews)
+    .set({ replyText: comment, repliedAt: new Date() })
+    .where(and(eq(reviews.organizationId, organizationId), eq(reviews.externalId, externalId)));
+}
+
+export async function disconnectGoogle(organizationId: string) {
+  await db.delete(googleConnections).where(eq(googleConnections.organizationId, organizationId));
+}
+
+// ── Prijava Google računom (openid) — odvojeno od Business Profile veze ──
+
+export const LOGIN_REDIRECT_PATH = "/api/recenzije/auth/google/callback";
+
+export function googleLoginUrl(state: string) {
+  const p = new URLSearchParams({
+    client_id: env.googleClientId,
+    redirect_uri: `${env.appUrl}${LOGIN_REDIRECT_PATH}`,
+    response_type: "code",
+    scope: "openid email profile",
+    prompt: "select_account",
+    state,
+  });
+  return `https://accounts.google.com/o/oauth2/v2/auth?${p}`;
+}
+
+/** Zamijeni kod za podatke o korisniku. Vraća samo potvrđene (verified) emailove. */
+export async function googleLoginProfile(code: string) {
+  const tokens = await tokenRequest({ code, grant_type: "authorization_code", redirect_uri: `${env.appUrl}${LOGIN_REDIRECT_PATH}` });
+  const info = (await fetch("https://openidconnect.googleapis.com/v1/userinfo", {
+    headers: { Authorization: `Bearer ${tokens.access_token}` },
+  }).then((r) => r.json())) as { sub?: string; email?: string; email_verified?: boolean; name?: string; picture?: string };
+  if (!info.sub || !info.email || !info.email_verified) throw new Error("Google nije potvrdio email adresu.");
+  return { googleId: info.sub, email: info.email.toLowerCase(), name: info.name ?? null, image: info.picture ?? null };
+}
