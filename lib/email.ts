@@ -68,9 +68,41 @@ export async function sendGuestConfirmation(params: {
   to: string;
   sourceName: string;
   name: string;
+  /** Upit za proizvod: sažetak (proizvod, količina, dodaci, okvirni iznos). */
+  summary?: string | null;
+  /** Rok izrade iz admina (Sadržaj agencije), npr. "2–4 radna dana". */
+  productionText?: string | null;
+  /** Osobni kod za preporuku, ako je uključen u adminu (Popusti). */
+  referral?: { code: string; percent: number } | null;
+  /** Adresa stranice proizvoda s koje je upit poslan (za link s kodom). */
+  pageUrl?: string | null;
 }): Promise<void> {
   const apiKey = process.env.RESEND_API_KEY;
   if (!apiKey) return;
+
+  const summaryHtml = params.summary
+    ? `<p style="white-space: pre-wrap; background: #f4f4f4; padding: 14px 16px; margin: 0 0 16px; font-size: 14px; line-height: 1.55;">${escapeHtml(params.summary)}</p>`
+    : "";
+  const steps = params.summary
+    ? `<ol style="font-size: 14px; line-height: 1.6; color: #333; padding-left: 20px; margin: 0 0 16px;">
+            <li>Najkasnije u roku 24 h javljamo ti se s točnom cijenom i pregledom.</li>
+            <li>Kad potvrdiš, krećemo u izradu${params.productionText ? ` (${escapeHtml(params.productionText)})` : ""}.</li>
+          </ol>`
+    : "";
+  const shareUrl =
+    params.referral && params.pageUrl
+      ? `${params.pageUrl.split("?")[0]}?kod=${encodeURIComponent(params.referral.code)}`
+      : null;
+  const referralHtml = params.referral
+    ? `<div style="border: 2px solid #0000c3; padding: 14px 16px; margin: 0 0 16px;">
+            <p style="margin: 0 0 6px; font-size: 13px; color: #0000c3; letter-spacing: 0.08em;">TVOJ KOD ZA PREPORUKU</p>
+            <p style="margin: 0 0 8px; font-size: 22px; font-weight: 700; letter-spacing: 0.06em;">${escapeHtml(params.referral.code)}</p>
+            <p style="margin: 0; font-size: 14px; line-height: 1.5; color: #333;">
+              Pošalji ga kolegi iznajmljivaču: dobiva −${params.referral.percent} % na narudžbu, a kad ga iskoristi,
+              i ti dobivaš −${params.referral.percent} % na sljedeću.${shareUrl ? ` Link s kodom: <a href="${escapeHtml(shareUrl)}">${escapeHtml(shareUrl)}</a>` : ""}
+            </p>
+          </div>`
+    : "";
 
   try {
     const resend = new Resend(apiKey);
@@ -85,6 +117,9 @@ export async function sendGuestConfirmation(params: {
             Primili smo tvoj upit za <strong>${escapeHtml(params.sourceName)}</strong> i javit ćemo
             ti se najkasnije u roku 24h.
           </p>
+          ${summaryHtml}
+          ${steps}
+          ${referralHtml}
           <p style="font-size: 13px; color: #999; margin: 0;">
             Ovo je automatska potvrda — ne treba odgovarati na ovaj mail.
           </p>
