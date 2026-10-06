@@ -501,7 +501,7 @@ function ProductsView({
   const [category, setCategory] = useState<string | null>(null);
   const sorted = [...products].sort((a, b) => Number(b.featured) - Number(a.featured));
   const visible = category ? sorted.filter((p) => p.category?.trim() === category) : sorted;
-  const total = products.length + 1; // + prostorna slova (/slova)
+  const total = products.length + 2; // + prostorna slova (/slova) + recenzije (/recenzije)
 
   return (
     <div className="novo-os-panel">
@@ -591,6 +591,26 @@ function ProductsView({
                   <span className="pl-card-price mono">od 4 €/slovo</span>
                   <span className="pl-card-go mono" aria-hidden="true">
                     SLOŽI →
+                  </span>
+                </span>
+              </div>
+            </Link>
+          )}
+
+          {/* NOVO Recenzije — SaaS za Google recenzije, zasebna aplikacija na /recenzije. */}
+          {category === null && (
+            <Link href="/recenzije" className="pl-card">
+              <div className="pl-card-img pl-card-img--recenzije" aria-hidden="true">
+                <span className="pl-recenzije-stars">★★★★★</span>
+              </div>
+              <div className="pl-card-body">
+                <span className="pl-card-cat mono">SOFTVER</span>
+                <span className="pl-card-name">Google recenzije na autopilotu</span>
+                <span className="pl-card-tagline">Nakon svake usluge klijent dobije SMS s poveznicom za recenziju, a podsjetnik ide sam.</span>
+                <span className="pl-card-foot">
+                  <span className="pl-card-price mono">14 dana besplatno</span>
+                  <span className="pl-card-go mono" aria-hidden="true">
+                    ISPROBAJ →
                   </span>
                 </span>
               </div>
