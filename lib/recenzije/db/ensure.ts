@@ -260,3 +260,88 @@ CREATE TABLE IF NOT EXISTS "nr_users" (
 	"image" text,
 	"password_hash" text,
 	"google_id" text,
+	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
+	"updated_at" timestamp with time zone DEFAULT now() NOT NULL,
+	CONSTRAINT "nr_users_email_unique" UNIQUE("email"),
+	CONSTRAINT "nr_users_google_id_unique" UNIQUE("google_id")
+);
+DO $$ BEGIN ALTER TABLE "nr_activity_events" ADD CONSTRAINT "nr_activity_events_organization_id_nr_organizations_id_fk" FOREIGN KEY ("organization_id") REFERENCES "public"."nr_organizations"("id") ON DELETE cascade ON UPDATE no action; EXCEPTION WHEN duplicate_object THEN null; END $$;
+DO $$ BEGIN ALTER TABLE "nr_activity_events" ADD CONSTRAINT "nr_activity_events_client_id_nr_clients_id_fk" FOREIGN KEY ("client_id") REFERENCES "public"."nr_clients"("id") ON DELETE cascade ON UPDATE no action; EXCEPTION WHEN duplicate_object THEN null; END $$;
+DO $$ BEGIN ALTER TABLE "nr_automation_runs" ADD CONSTRAINT "nr_automation_runs_organization_id_nr_organizations_id_fk" FOREIGN KEY ("organization_id") REFERENCES "public"."nr_organizations"("id") ON DELETE cascade ON UPDATE no action; EXCEPTION WHEN duplicate_object THEN null; END $$;
+DO $$ BEGIN ALTER TABLE "nr_automation_runs" ADD CONSTRAINT "nr_automation_runs_automation_id_nr_automations_id_fk" FOREIGN KEY ("automation_id") REFERENCES "public"."nr_automations"("id") ON DELETE cascade ON UPDATE no action; EXCEPTION WHEN duplicate_object THEN null; END $$;
+DO $$ BEGIN ALTER TABLE "nr_automation_runs" ADD CONSTRAINT "nr_automation_runs_campaign_id_nr_campaigns_id_fk" FOREIGN KEY ("campaign_id") REFERENCES "public"."nr_campaigns"("id") ON DELETE cascade ON UPDATE no action; EXCEPTION WHEN duplicate_object THEN null; END $$;
+DO $$ BEGIN ALTER TABLE "nr_automation_runs" ADD CONSTRAINT "nr_automation_runs_client_id_nr_clients_id_fk" FOREIGN KEY ("client_id") REFERENCES "public"."nr_clients"("id") ON DELETE cascade ON UPDATE no action; EXCEPTION WHEN duplicate_object THEN null; END $$;
+DO $$ BEGIN ALTER TABLE "nr_automation_runs" ADD CONSTRAINT "nr_automation_runs_service_id_nr_services_id_fk" FOREIGN KEY ("service_id") REFERENCES "public"."nr_services"("id") ON DELETE set null ON UPDATE no action; EXCEPTION WHEN duplicate_object THEN null; END $$;
+DO $$ BEGIN ALTER TABLE "nr_automations" ADD CONSTRAINT "nr_automations_organization_id_nr_organizations_id_fk" FOREIGN KEY ("organization_id") REFERENCES "public"."nr_organizations"("id") ON DELETE cascade ON UPDATE no action; EXCEPTION WHEN duplicate_object THEN null; END $$;
+DO $$ BEGIN ALTER TABLE "nr_campaigns" ADD CONSTRAINT "nr_campaigns_organization_id_nr_organizations_id_fk" FOREIGN KEY ("organization_id") REFERENCES "public"."nr_organizations"("id") ON DELETE cascade ON UPDATE no action; EXCEPTION WHEN duplicate_object THEN null; END $$;
+DO $$ BEGIN ALTER TABLE "nr_clients" ADD CONSTRAINT "nr_clients_organization_id_nr_organizations_id_fk" FOREIGN KEY ("organization_id") REFERENCES "public"."nr_organizations"("id") ON DELETE cascade ON UPDATE no action; EXCEPTION WHEN duplicate_object THEN null; END $$;
+DO $$ BEGIN ALTER TABLE "nr_google_connections" ADD CONSTRAINT "nr_google_connections_organization_id_nr_organizations_id_fk" FOREIGN KEY ("organization_id") REFERENCES "public"."nr_organizations"("id") ON DELETE cascade ON UPDATE no action; EXCEPTION WHEN duplicate_object THEN null; END $$;
+DO $$ BEGIN ALTER TABLE "nr_link_clicks" ADD CONSTRAINT "nr_link_clicks_link_id_nr_tracking_links_id_fk" FOREIGN KEY ("link_id") REFERENCES "public"."nr_tracking_links"("id") ON DELETE cascade ON UPDATE no action; EXCEPTION WHEN duplicate_object THEN null; END $$;
+DO $$ BEGIN ALTER TABLE "nr_message_templates" ADD CONSTRAINT "nr_message_templates_organization_id_nr_organizations_id_fk" FOREIGN KEY ("organization_id") REFERENCES "public"."nr_organizations"("id") ON DELETE cascade ON UPDATE no action; EXCEPTION WHEN duplicate_object THEN null; END $$;
+DO $$ BEGIN ALTER TABLE "nr_messages" ADD CONSTRAINT "nr_messages_organization_id_nr_organizations_id_fk" FOREIGN KEY ("organization_id") REFERENCES "public"."nr_organizations"("id") ON DELETE cascade ON UPDATE no action; EXCEPTION WHEN duplicate_object THEN null; END $$;
+DO $$ BEGIN ALTER TABLE "nr_messages" ADD CONSTRAINT "nr_messages_client_id_nr_clients_id_fk" FOREIGN KEY ("client_id") REFERENCES "public"."nr_clients"("id") ON DELETE set null ON UPDATE no action; EXCEPTION WHEN duplicate_object THEN null; END $$;
+DO $$ BEGIN ALTER TABLE "nr_messages" ADD CONSTRAINT "nr_messages_campaign_id_nr_campaigns_id_fk" FOREIGN KEY ("campaign_id") REFERENCES "public"."nr_campaigns"("id") ON DELETE set null ON UPDATE no action; EXCEPTION WHEN duplicate_object THEN null; END $$;
+DO $$ BEGIN ALTER TABLE "nr_organization_members" ADD CONSTRAINT "nr_organization_members_organization_id_nr_organizations_id_fk" FOREIGN KEY ("organization_id") REFERENCES "public"."nr_organizations"("id") ON DELETE cascade ON UPDATE no action; EXCEPTION WHEN duplicate_object THEN null; END $$;
+DO $$ BEGIN ALTER TABLE "nr_organization_members" ADD CONSTRAINT "nr_organization_members_user_id_nr_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."nr_users"("id") ON DELETE cascade ON UPDATE no action; EXCEPTION WHEN duplicate_object THEN null; END $$;
+DO $$ BEGIN ALTER TABLE "nr_password_reset_tokens" ADD CONSTRAINT "nr_password_reset_tokens_user_id_nr_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."nr_users"("id") ON DELETE cascade ON UPDATE no action; EXCEPTION WHEN duplicate_object THEN null; END $$;
+DO $$ BEGIN ALTER TABLE "nr_reviews" ADD CONSTRAINT "nr_reviews_organization_id_nr_organizations_id_fk" FOREIGN KEY ("organization_id") REFERENCES "public"."nr_organizations"("id") ON DELETE cascade ON UPDATE no action; EXCEPTION WHEN duplicate_object THEN null; END $$;
+DO $$ BEGIN ALTER TABLE "nr_reviews" ADD CONSTRAINT "nr_reviews_client_id_nr_clients_id_fk" FOREIGN KEY ("client_id") REFERENCES "public"."nr_clients"("id") ON DELETE set null ON UPDATE no action; EXCEPTION WHEN duplicate_object THEN null; END $$;
+DO $$ BEGIN ALTER TABLE "nr_services" ADD CONSTRAINT "nr_services_organization_id_nr_organizations_id_fk" FOREIGN KEY ("organization_id") REFERENCES "public"."nr_organizations"("id") ON DELETE cascade ON UPDATE no action; EXCEPTION WHEN duplicate_object THEN null; END $$;
+DO $$ BEGIN ALTER TABLE "nr_services" ADD CONSTRAINT "nr_services_client_id_nr_clients_id_fk" FOREIGN KEY ("client_id") REFERENCES "public"."nr_clients"("id") ON DELETE cascade ON UPDATE no action; EXCEPTION WHEN duplicate_object THEN null; END $$;
+DO $$ BEGIN ALTER TABLE "nr_subscriptions" ADD CONSTRAINT "nr_subscriptions_organization_id_nr_organizations_id_fk" FOREIGN KEY ("organization_id") REFERENCES "public"."nr_organizations"("id") ON DELETE cascade ON UPDATE no action; EXCEPTION WHEN duplicate_object THEN null; END $$;
+DO $$ BEGIN ALTER TABLE "nr_tracking_links" ADD CONSTRAINT "nr_tracking_links_organization_id_nr_organizations_id_fk" FOREIGN KEY ("organization_id") REFERENCES "public"."nr_organizations"("id") ON DELETE cascade ON UPDATE no action; EXCEPTION WHEN duplicate_object THEN null; END $$;
+DO $$ BEGIN ALTER TABLE "nr_tracking_links" ADD CONSTRAINT "nr_tracking_links_client_id_nr_clients_id_fk" FOREIGN KEY ("client_id") REFERENCES "public"."nr_clients"("id") ON DELETE cascade ON UPDATE no action; EXCEPTION WHEN duplicate_object THEN null; END $$;
+CREATE INDEX IF NOT EXISTS "nr_activity_org_created" ON "nr_activity_events" USING btree ("organization_id","created_at");
+CREATE INDEX IF NOT EXISTS "nr_activity_client" ON "nr_activity_events" USING btree ("client_id");
+CREATE INDEX IF NOT EXISTS "nr_run_due" ON "nr_automation_runs" USING btree ("status","next_run_at");
+CREATE INDEX IF NOT EXISTS "nr_run_org_started" ON "nr_automation_runs" USING btree ("organization_id","started_at");
+CREATE INDEX IF NOT EXISTS "nr_automation_org_trigger" ON "nr_automations" USING btree ("organization_id","trigger","enabled");
+CREATE INDEX IF NOT EXISTS "nr_campaign_org" ON "nr_campaigns" USING btree ("organization_id");
+CREATE UNIQUE INDEX IF NOT EXISTS "nr_client_org_phone" ON "nr_clients" USING btree ("organization_id","phone");
+CREATE INDEX IF NOT EXISTS "nr_client_org_status" ON "nr_clients" USING btree ("organization_id","review_status");
+CREATE INDEX IF NOT EXISTS "nr_client_org_created" ON "nr_clients" USING btree ("organization_id","created_at");
+CREATE INDEX IF NOT EXISTS "nr_click_link" ON "nr_link_clicks" USING btree ("link_id");
+CREATE INDEX IF NOT EXISTS "nr_template_org" ON "nr_message_templates" USING btree ("organization_id");
+CREATE INDEX IF NOT EXISTS "nr_message_org_created" ON "nr_messages" USING btree ("organization_id","created_at");
+CREATE INDEX IF NOT EXISTS "nr_message_client" ON "nr_messages" USING btree ("client_id");
+CREATE UNIQUE INDEX IF NOT EXISTS "nr_org_member_unique" ON "nr_organization_members" USING btree ("organization_id","user_id");
+CREATE INDEX IF NOT EXISTS "nr_org_member_user" ON "nr_organization_members" USING btree ("user_id");
+CREATE UNIQUE INDEX IF NOT EXISTS "nr_review_org_external" ON "nr_reviews" USING btree ("organization_id","external_id");
+CREATE INDEX IF NOT EXISTS "nr_review_org_date" ON "nr_reviews" USING btree ("organization_id","reviewed_at");
+CREATE INDEX IF NOT EXISTS "nr_service_org_date" ON "nr_services" USING btree ("organization_id","service_date");
+CREATE INDEX IF NOT EXISTS "nr_service_client" ON "nr_services" USING btree ("client_id");
+CREATE INDEX IF NOT EXISTS "nr_link_org_created" ON "nr_tracking_links" USING btree ("organization_id","created_at");
+`;
+
+let ready: Promise<void> | null = null;
+
+async function run() {
+  const current = await db
+    .execute<{ value: string }>(sql`select value from nr_meta where key = 'schema_version'`)
+    .then((r) => Array.from(r)[0]?.value)
+    .catch(() => undefined);
+  if (current !== String(SCHEMA_VERSION)) {
+    await db.transaction(async (tx) => {
+      await tx.execute(sql`select pg_advisory_xact_lock(7316230)`);
+      await tx.execute(sql.raw(DDL));
+      await tx.execute(
+        sql`insert into nr_meta (key, value) values ('schema_version', ${String(SCHEMA_VERSION)})
+            on conflict (key) do update set value = excluded.value`
+      );
+    });
+  }
+  const { seedPlans, seedDemo } = await import("./seed");
+  await seedPlans();
+  await seedDemo();
+}
+
+/** Pozovi prije prvog upita (stranice, akcije, API rute). Jednom po procesu. */
+export function ensureReviewsDb(): Promise<void> {
+  if (!ready) {
+    ready = run().catch((e) => {
+      ready = null;
+      throw e;
+    });
+  }
+  return ready;
+}
