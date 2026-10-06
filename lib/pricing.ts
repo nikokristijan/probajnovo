@@ -24,3 +24,24 @@ export function eur(n: number): string {
   const cents = Math.round(n * 100) % 100 !== 0;
   return `${n.toLocaleString("hr-HR", { minimumFractionDigits: cents ? 2 : 0, maximumFractionDigits: 2 })} €`;
 }
+
+/** Akcija na proizvodu: je li aktivna danas i koja je cijena po komadu nakon nje. */
+export function saleInfo(
+  p: { priceEur: number | null; salePercent?: number | null; saleEndsAt?: string | null },
+  today: string
+): { active: boolean; percent: number; price: number | null; endsAt: string | null } {
+  const percent = p.salePercent ?? 0;
+  const active = p.priceEur != null && percent > 0 && (!p.saleEndsAt || p.saleEndsAt >= today);
+  return {
+    active,
+    percent: active ? percent : 0,
+    price: active ? lineTotal(p.priceEur!, 1, percent) : p.priceEur,
+    endsAt: active ? (p.saleEndsAt ?? null) : null,
+  };
+}
+
+/** "2026-10-31" → "31. 10." */
+export function shortDate(d: string): string {
+  const [, m, day] = d.split("-");
+  return `${Number(day)}. ${Number(m)}.`;
+}
