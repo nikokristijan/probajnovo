@@ -427,6 +427,7 @@ async function ensureProductColumns(): Promise<void> {
   await db.execute(
     sql`ALTER TABLE products ADD COLUMN IF NOT EXISTS show_nfc_preview BOOLEAN NOT NULL DEFAULT false`
   );
+  await db.execute(sql`ALTER TABLE products ADD COLUMN IF NOT EXISTS nfc_page_monthly_eur INTEGER DEFAULT 10`);
   await db.execute(
     sql`CREATE UNIQUE INDEX IF NOT EXISTS products_slug_key ON products (slug)`
   );
