@@ -16,10 +16,10 @@ export async function GET(req: NextRequest) {
   try {
     await ensureReviewsDb();
     const p = await googleLoginProfile(code);
-    let [user] = await db.select().from(users).where(or(eq(users.googleId, p.googleId), eq(users.email, p.email))).limit(1);
-    if (!user) {
-      [user] = await db.insert(users).values({ email: p.email, name: p.name, image: p.image, googleId: p.googleId, emailVerified: new Date() }).returning();
-    } else if (!user.googleId) {
+    const [user] = await db.select().from(users).where(or(eq(users.googleId, p.googleId), eq(users.email, p.email))).limit(1);
+    // Računi se ne otvaraju sami (uslugu vodi NOVO): Google prijava radi samo za postojeće korisnike.
+    if (!user) return back("no_account");
+    if (!user.googleId) {
       // Google je potvrdio vlasništvo nad emailom, pa je sigurno povezati postojeći račun.
       await db.update(users).set({ googleId: p.googleId, emailVerified: user.emailVerified ?? new Date() }).where(eq(users.id, user.id));
     }
