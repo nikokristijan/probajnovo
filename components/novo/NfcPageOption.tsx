@@ -33,20 +33,21 @@ export function nfcTargetLabel(t: NfcTarget, monthly: number) {
  */
 export default function NfcPageOption({ monthlyEur, idPrefix }: { monthlyEur: number; idPrefix: string }) {
   const [target, choose] = useNfcTarget();
-  const opts: { value: NfcTarget; title: string; text: string; price: string }[] = [
+  const opts: { value: NfcTarget; title: string; price: string; text: string }[] = [
     {
       value: "novo",
-      title: "Naša stranica za goste",
-      text: "WiFi s kopiranjem lozinke, QR kod, Google recenzija, kućni red i preporuke. Izmjene radimo mi.",
-      price: `${monthlyEur} € / mj održavanje`,
+      title: "Naša stranica",
+      price: `${monthlyEur} € / mj`,
+      text: "WiFi, QR kod, recenzije, kućni red i preporuke. Postavljamo i održavamo mi.",
     },
     {
       value: "own",
-      title: "Vaša postojeća stranica",
+      title: "Vaša stranica",
+      price: "bez naknade",
       text: "Pločica otvara vaš web, Booking oglas, Instagram ili bilo koju poveznicu.",
-      price: "bez mjesečne naknade",
     },
   ];
+  const current = opts.find((o) => o.value === target) ?? opts[0];
   return (
     <fieldset className="nfco">
       <legend className="pq-label mono">KAMO VODI PLOČICA?</legend>
@@ -62,11 +63,13 @@ export default function NfcPageOption({ monthlyEur, idPrefix }: { monthlyEur: nu
               onChange={() => choose(o.value)}
             />
             <span className="nfco-title">{o.title}</span>
-            <span className="nfco-text">{o.text}</span>
             <span className="nfco-price mono">{o.price.toUpperCase()}</span>
           </label>
         ))}
       </div>
+      <p className="nfco-text" aria-live="polite">
+        {current.text}
+      </p>
     </fieldset>
   );
 }
