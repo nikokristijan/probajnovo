@@ -52,7 +52,7 @@ const FEATURES = [
  */
 export default function NfcPagePreview({ monthlyEur = null }: { monthlyEur?: number | null }) {
   return (
-    <section className="pd-section nfcp" aria-labelledby="pd-nfcp">
+    <section className="pd-section nfcp" id="stranica" aria-labelledby="pd-nfcp">
       <h2 id="pd-nfcp" className="section-title">
         STRANICA KOJU GOSTI OTVORE
       </h2>
