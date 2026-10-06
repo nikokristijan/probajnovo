@@ -57,10 +57,7 @@ export default function NfcPagePreview({ monthlyEur = null }: { monthlyEur?: num
         STRANICA KOJU GOSTI OTVORE
       </h2>
       <p className="nfcp-lead">
-        Gost prisloni mobitel na pločicu ili skenira QR kod i odmah dobije vašu stranicu: bez aplikacije, bez
-        diktiranja lozinke. Stranicu postavljamo i održavamo mi
-        {monthlyEur != null ? ` (${monthlyEur} € mjesečno)` : ""}. Imate li već svoju stranicu? Pločica može voditi
-        i na nju, bez dodatnih troškova.
+        Gost prisloni mobitel na pločicu i odmah ima WiFi, kućni red i vaše preporuke. Bez aplikacije.
       </p>
       <div className="nfcp-shots">
         {SHOTS.map((s) => (
@@ -80,11 +77,19 @@ export default function NfcPagePreview({ monthlyEur = null }: { monthlyEur?: num
         ))}
       </div>
       <p className="nfcp-note mono">PRIMJER S IZMIŠLJENIM APARTMANOM · VAŠA STRANICA IMA VAŠE PODATKE</p>
-      <ul className="nfcp-list">
-        {FEATURES.map((f) => (
-          <li key={f}>{f}</li>
-        ))}
-      </ul>
+      <details className="nfcp-more">
+        <summary className="mono">SVE ŠTO STRANICA IMA ({FEATURES.length})</summary>
+        <ul className="nfcp-list">
+          {FEATURES.map((f) => (
+            <li key={f}>{f}</li>
+          ))}
+          {monthlyEur != null && (
+            <li>
+              Održavanje {monthlyEur} € mjesečno. Imate svoju stranicu? Pločica može voditi na nju, bez naknade.
+            </li>
+          )}
+        </ul>
+      </details>
     </section>
   );
 }
