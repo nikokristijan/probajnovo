@@ -113,6 +113,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
       { id: "agencija", label: "Sadržaj agencije", href: "/admin/agency", group: "Idi na" as const },
       { id: "popusti", label: "Popusti i kodovi", href: "/admin/popusti", group: "Idi na" as const, keywords: ["kod", "akcija", "preporuka"] },
       ...(sup ? [{ id: "financije", label: "Financije", href: "/admin/financije", group: "Idi na" as const, keywords: ["pretplate", "uplate", "mrr"] }] : []),
+      ...(sup ? [{ id: "recenzije", label: "Recenzije (SMS app)", href: "/admin/recenzije", group: "Idi na" as const, keywords: ["recenzije", "sms", "paket", "tvrtke"] }] : []),
       { id: "portal", label: "Portal", href: "/admin/portal", group: "Idi na" as const, keywords: ["zadaci", "poruke", "chat"] },
       { id: "aktivnost", label: "Aktivnost", href: "/admin/aktivnost", group: "Idi na" as const, keywords: ["dnevnik", "log"] },
       ...(sup ? [{ id: "admini", label: "Admini", href: "/admin/admins", group: "Idi na" as const, keywords: ["tim", "vlasnici"] }] : []),
@@ -298,6 +299,9 @@ export default async function AdminLayout({ children }: { children: React.ReactN
                   <span className="neu-nav-sep" aria-hidden="true" />
                   <AdminNavLink href="/admin/financije">
                     Financije
+                  </AdminNavLink>
+                  <AdminNavLink href="/admin/recenzije">
+                    Recenzije
                   </AdminNavLink>
                 </>
               )}
