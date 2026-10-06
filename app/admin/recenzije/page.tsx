@@ -2,7 +2,13 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getCurrentAdminRecord } from "@/lib/auth";
 import { StatCard } from "@/components/admin/StatCard";
-import { activatePlanAction, deactivateAction, extendTrialAction } from "@/lib/recenzije/actions/novo-admin";
+import {
+  activatePlanAction,
+  createBusinessAction,
+  deactivateAction,
+  extendTrialAction,
+  openWorkspaceAction,
+} from "@/lib/recenzije/actions/novo-admin";
 import {
   listOrganizationsForNovoAdmin,
   listPlansForNovoAdmin,
@@ -73,8 +79,8 @@ export default async function AdminRecenzijePage({
         <div>
           <h1 className="text-xl font-bold">Recenzije</h1>
           <p className="text-xs text-black/50 mt-0.5 max-w-[60ch]">
-            Tvrtke koje koriste NOVO Recenzije, njihov paket i potrošnja. Paket koji plaćaju virmanom aktiviraš ovdje
-            ručno. Vidljivo samo glavnom adminu.
+            Ti vodiš NOVO Recenzije za svoje klijente: ovdje otvaraš tvrtke, ulaziš u njihov radni prostor (klijenti, poruke,
+            rezultati) i upravljaš paketom. Tvrtke se ne mogu same registrirati. Vidljivo samo glavnom adminu.
           </p>
         </div>
         <div className="flex gap-2 shrink-0">
@@ -85,13 +91,12 @@ export default async function AdminRecenzijePage({
           >
             Stranica proizvoda ↗
           </Link>
-          <Link
-            href="/recenzije/prijava"
-            target="_blank"
+          <a
+            href="#nova-tvrtka"
             className="text-xs font-semibold px-3 py-1.5 rounded-full bg-black text-white"
           >
-            Prijava u aplikaciju ↗
-          </Link>
+            + Nova tvrtka
+          </a>
         </div>
       </div>
 
@@ -117,11 +122,7 @@ export default async function AdminRecenzijePage({
 
       {rows.length === 0 ? (
         <div className="neu-card px-5 py-8 text-center text-sm text-black/60">
-          Još se nijedna tvrtka nije registrirala. Kad se netko prijavi na{" "}
-          <Link href="/recenzije/registracija" className="underline" target="_blank">
-            /recenzije/registracija
-          </Link>
-          , pojavit će se ovdje.
+          Još nema tvrtki. Otvori prvu obrascem ispod, a zatim klikni „Otvori” da uđeš u njezin radni prostor.
         </div>
       ) : (
         <section className="flex flex-col gap-3">
@@ -202,7 +203,13 @@ export default async function AdminRecenzijePage({
                   </div>
                 </div>
 
-                <div className="flex flex-wrap gap-1.5">
+                <div className="flex flex-wrap items-center gap-1.5">
+                  <form action={openWorkspaceAction} className="mr-1">
+                    <input type="hidden" name="orgId" value={r.id} />
+                    <button type="submit" className="rounded-full bg-[#0000c3] text-white text-xs font-semibold px-4 py-1.5">
+                      Otvori radni prostor →
+                    </button>
+                  </form>
                   <Check ok={r.hasReviewUrl} label="Google link" />
                   <Check ok={r.hasGateway} label="Mobitel za SMS" />
                   <Check ok={r.googleConnected} label="Google profil povezan" />
@@ -279,6 +286,60 @@ export default async function AdminRecenzijePage({
           })}
         </section>
       )}
+
+      <section id="nova-tvrtka" className="neu-card px-4 py-5 flex flex-col gap-4 scroll-mt-24">
+        <div>
+          <h2 className="font-semibold">Nova tvrtka</h2>
+          <p className="text-xs text-black/50 mt-0.5">
+            Otvori tvrtku kad klijent pristane. Odmah se uključuje automatizacija „zahtjev za recenziju nakon usluge”. Mobitel
+            za SMS povežeš kasnije u njezinim Postavkama.
+          </p>
+        </div>
+        <form action={createBusinessAction} className="grid gap-3 sm:grid-cols-2">
+          <label className="flex flex-col gap-1 text-xs text-black/60">
+            Naziv tvrtke ili obrta *
+            <input name="name" required minLength={2} maxLength={80} className="admin-input text-sm" placeholder="npr. Klima Servis Horvat" />
+          </label>
+          <label className="flex flex-col gap-1 text-xs text-black/60">
+            Djelatnost
+            <input name="industry" maxLength={60} className="admin-input text-sm" placeholder="npr. Klimatizacija i grijanje" />
+          </label>
+          <label className="flex flex-col gap-1 text-xs text-black/60">
+            Telefon tvrtke
+            <input name="phone" type="tel" maxLength={30} className="admin-input text-sm" placeholder="091 234 5678" />
+          </label>
+          <label className="flex flex-col gap-1 text-xs text-black/60">
+            Google link za recenzije
+            <input name="googleReviewUrl" type="url" maxLength={500} className="admin-input text-sm" placeholder="https://g.page/r/…/review" />
+          </label>
+          <label className="flex flex-col gap-1 text-xs text-black/60">
+            Paket
+            <select name="planKey" defaultValue="trial" className="admin-input text-sm">
+              <option value="trial">Besplatna proba (14 dana)</option>
+              {plans.map((p) => (
+                <option key={p.key} value={p.key}>
+                  {p.name} · {eur(p.priceMonthlyCents)} € · {p.smsMonthlyLimit} SMS
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="flex flex-col gap-1 text-xs text-black/60">
+            Mjeseci (za plaćeni paket)
+            <select name="months" defaultValue="1" className="admin-input text-sm">
+              {[1, 3, 6, 12].map((m) => (
+                <option key={m} value={m}>
+                  {m}
+                </option>
+              ))}
+            </select>
+          </label>
+          <div className="sm:col-span-2">
+            <button type="submit" className="rounded-full bg-black text-white text-sm font-semibold px-5 py-2">
+              Otvori tvrtku
+            </button>
+          </div>
+        </form>
+      </section>
     </div>
   );
 }
