@@ -34,6 +34,8 @@ export type ProductCard = {
   tagline: string;
   description: string;
   priceEur: number | null;
+  /** Aktivna akcija (%), 0 = nema — cijena u priceEur je već snižena. */
+  salePercent?: number;
   images: string[];
   features: string[];
   /** Adresa vlastite stranice (probajnovo.com/proizvodi/<slug>) — null =
@@ -543,6 +545,7 @@ function ProductsView({
                 <div className="pl-card-img">
                   <ProjectImage src={p.images[0]} alt={p.name} className="pl-card-thumb" />
                   {p.featured && <span className="pl-badge mono">ISTAKNUTO</span>}
+                  {p.salePercent ? <span className="pl-badge pl-badge--sale mono">AKCIJA −{p.salePercent} %</span> : null}
                 </div>
                 <div className="pl-card-body">
                   <span className="pl-card-cat mono">{(p.category || "Proizvod").toUpperCase()}</span>
