@@ -131,7 +131,6 @@ export default async function ProductPage({ params }: { params: Promise<Params> 
     : null;
   const phoneHref = contact.phone ? telHref(contact.phone) : null;
   const discounts = normalizeDiscounts(product.quantityDiscounts);
-  const maxDiscount = discounts.length ? discounts[discounts.length - 1] : null;
   const addons = (product.addonProductIds ?? [])
     .map((id) => all.find((p) => p.id === id))
     .filter((p): p is NonNullable<typeof p> => Boolean(p))
@@ -242,7 +241,6 @@ export default async function ProductPage({ params }: { params: Promise<Params> 
             <div className="pd-info pd-head">
               <div className="pd-kicker">
                 <span className="novo-os-kicker mono">{(product.category || "Proizvod").toUpperCase()}</span>
-                {product.featured && <span className="pl-badge pl-badge--static mono">ISTAKNUTO</span>}
               </div>
               <h1 className="pd-title">{product.name}</h1>
               <p className="pd-tagline">{product.tagline}</p>
@@ -258,11 +256,6 @@ export default async function ProductPage({ params }: { params: Promise<Params> 
                     AKCIJA −{sale.percent} %{sale.endsAt ? ` · DO ${shortDate(sale.endsAt)}` : ""}
                   </span>
                 )}
-                {product.priceEur != null && maxDiscount && (
-                  <span className="pd-price-deal mono">
-                    DO −{maxDiscount.percent} % OD {maxDiscount.minQty} KOM
-                  </span>
-                )}
               </div>
               {reviews.length > 0 && (
                 <a href="#recenzije" className="pd-rating mono">
@@ -274,27 +267,6 @@ export default async function ProductPage({ params }: { params: Promise<Params> 
             </div>
 
             <div className="pd-info pd-rest">
-              {included.length > 0 && (
-                <div className="pd-included">
-                  <span className="pq-label mono">UKLJUČENO U CIJENU</span>
-                  <ul>
-                    {included.map((item) => (
-                      <li key={item}>{item}</li>
-                    ))}
-                  </ul>
-                </div>
-              )}
-
-              {included.length === 0 && product.features.length > 0 && (
-                <ul className="pd-features" aria-label="Značajke">
-                  {product.features.map((f) => (
-                    <li key={f} className="novo-os-chip mono">
-                      {f.toUpperCase()}
-                    </li>
-                  ))}
-                </ul>
-              )}
-
               {nfcMonthly != null && <NfcPageOption monthlyEur={nfcMonthly} idPrefix="pd" />}
 
               <QtyQuickPick
@@ -304,39 +276,17 @@ export default async function ProductPage({ params }: { params: Promise<Params> 
                 discounts={discounts}
               />
 
-              {assurance.length > 0 && (
-                <dl className="pd-assure">
-                  {assurance.map((r) => (
-                    <div key={r.label} className="pd-assure-row">
-                      <dt className="mono">{r.label}</dt>
-                      <dd>{r.text}</dd>
-                    </div>
-                  ))}
-                  <div className="pd-assure-row">
-                    <dt className="mono">POVRAT</dt>
-                    <dd>
-                      <Link href="/povrat" className="link">
-                        Uvjeti povrata i reklamacije
-                      </Link>
-                    </dd>
-                  </div>
-                </dl>
-              )}
-
-              {waHref && (
-                <ContactLink href={waHref} productName={product.name} channel="whatsapp" className="pd-wa mono">
-                  <WhatsAppIcon />
-                  IMATE PITANJE? PITAJTE NA WHATSAPPU
-                </ContactLink>
-              )}
-
-              <div className="pd-meta-row">
-                <ShareProductButton url={url} title={product.name} />
-                {fileVideo && product.images.length > 0 && (
-                  <a href="#fotografije" className="mono link">
-                    FOTOGRAFIJE ({product.images.length}) ↓
-                  </a>
+              <div className="pd-quick mono">
+                {waHref && (
+                  <ContactLink href={waHref} productName={product.name} channel="whatsapp" className="pd-quick-wa">
+                    <WhatsAppIcon />
+                    PITANJE? WHATSAPP
+                  </ContactLink>
                 )}
+                <a href="#detalji" className="link">
+                  DETALJI ↓
+                </a>
+                <ShareProductButton url={url} title={product.name} />
               </div>
             </div>
           </article>
