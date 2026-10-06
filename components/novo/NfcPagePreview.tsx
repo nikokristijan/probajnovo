@@ -22,7 +22,7 @@ const FEATURES = [
  * izmišljenog apartmana + popis svega što stranica ima. Uključuje se po
  * proizvodu u adminu (showNfcPreview). Slike su public/nfc-primjer-*.png.
  */
-export default function NfcPagePreview() {
+export default function NfcPagePreview({ monthlyEur = null }: { monthlyEur?: number | null }) {
   return (
     <section className="pd-section nfcp" aria-labelledby="pd-nfcp">
       <h2 id="pd-nfcp" className="section-title">
@@ -30,7 +30,9 @@ export default function NfcPagePreview() {
       </h2>
       <p className="nfcp-lead">
         Gost prisloni mobitel na pločicu ili skenira QR kod i odmah dobije vašu stranicu: bez aplikacije, bez
-        diktiranja lozinke. Stranicu postavljamo mi, uključena je u cijenu.
+        diktiranja lozinke. Stranicu postavljamo i održavamo mi
+        {monthlyEur != null ? ` (${monthlyEur} € mjesečno)` : ""}. Imate li već svoju stranicu? Pločica može voditi
+        i na nju, bez dodatnih troškova.
       </p>
       <div className="nfcp-shots">
         {SHOTS.map((s) => (
