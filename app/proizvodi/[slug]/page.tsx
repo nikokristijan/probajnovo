@@ -348,64 +348,21 @@ export default async function ProductPage({ params }: { params: Promise<Params> 
             </section>
           )}
 
-          <section className="pd-section" id="detalji" aria-labelledby="pd-detalji">
-            <h2 id="pd-detalji" className="section-title">
-              DETALJI I ČESTA PITANJA
-            </h2>
-            <div className="pd-faq">
-              {(included.length > 0 || product.features.length > 0) && (
-                <details className="pd-faq-item">
-                  <summary>Što je uključeno u cijenu</summary>
-                  <ul className="pd-acc-list">
-                    {(included.length > 0 ? included : product.features).map((item) => (
-                      <li key={item}>{item}</li>
-                    ))}
-                  </ul>
-                </details>
-              )}
-              <details className="pd-faq-item">
-                <summary>Dostava, izrada i jamstvo</summary>
-                <dl className="pd-assure pd-acc-body">
-                  {assurance.map((r) => (
-                    <div key={r.label} className="pd-assure-row">
-                      <dt className="mono">{r.label}</dt>
-                      <dd>{r.text}</dd>
-                    </div>
-                  ))}
-                  <div className="pd-assure-row">
-                    <dt className="mono">POVRAT</dt>
-                    <dd>
-                      <Link href="/povrat" className="link">
-                        Uvjeti povrata i reklamacije
-                      </Link>
-                    </dd>
-                  </div>
-                </dl>
-              </details>
-              {product.description.trim() && (
-                <details className="pd-faq-item">
-                  <summary>Opis proizvoda</summary>
-                  <div className="pd-acc-body">
-                    <ProductDescription text={product.description} />
-                  </div>
-                </details>
-              )}
-              {fileVideo && product.images.length > 0 && (
-                <details className="pd-faq-item pd-photos">
-                  <summary>Fotografije ({product.images.length})</summary>
-                  <div className="pd-acc-body">
-                    <ProductGalleryNovo images={product.images} name={product.name} />
-                  </div>
-                </details>
-              )}
-              {faq.map((f, i) => (
-                <details key={i} className="pd-faq-item">
-                  <summary>{f.question}</summary>
-                  <p>{f.answer}</p>
-                </details>
-              ))}
-            </div>
-          </section>
+          {faq.length > 0 && (
+            <section className="pd-section" id="pitanja" aria-labelledby="pd-faq">
+              <h2 id="pd-faq" className="section-title">
+                ČESTA PITANJA
+              </h2>
+              <div className="pd-faq">
+                {faq.map((f, i) => (
+                  <details key={i} className="pd-faq-item">
+                    <summary>{f.question}</summary>
+                    <p>{f.answer}</p>
+                  </details>
+                ))}
+              </div>
+            </section>
+          )}
 
           {embed && (
             <section className="pd-section" aria-labelledby="pd-video">
