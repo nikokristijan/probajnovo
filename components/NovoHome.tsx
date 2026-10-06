@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
+import { eur } from "@/lib/pricing";
 import NovoShell, { VIEW_HREF } from "@/components/novo/NovoShell";
 
 /* ------------------------------------------------------------------ */
@@ -363,7 +364,7 @@ function ProductContent({ product, contactEmail }: { product: ProductCard; conta
           </div>
         )}
         <div className="proj-meta">
-          <span className="mono muted">{product.priceEur != null ? `od ${product.priceEur} €` : "na upit"}</span>
+          <span className="mono muted">{product.priceEur != null ? `od ${eur(product.priceEur)}` : "na upit"}</span>
           <span className="mono muted">
             {i + 1}/{total}
           </span>
@@ -461,7 +462,7 @@ function ProductFullscreenPage({
             )}
             <div className="product-full-actions">
               <span className="product-full-price mono">
-                {product.priceEur != null ? `od ${product.priceEur} €` : "Cijena na upit"}
+                {product.priceEur != null ? `od ${eur(product.priceEur)}` : "Cijena na upit"}
               </span>
               <a href={mailHref} className="novo-os-cta mono">
                 POŠALJI UPIT ↗
@@ -485,7 +486,7 @@ function ProductFullscreenPage({
 /* ------------------------------------------------------------------ */
 
 function priceLabel(priceEur: number | null) {
-  return priceEur != null ? `od ${priceEur} €` : "Cijena na upit";
+  return priceEur != null ? `od ${eur(priceEur)}` : "Cijena na upit";
 }
 
 function ProductsView({
@@ -544,8 +545,12 @@ function ProductsView({
               <>
                 <div className="pl-card-img">
                   <ProjectImage src={p.images[0]} alt={p.name} className="pl-card-thumb" />
-                  {p.featured && <span className="pl-badge mono">ISTAKNUTO</span>}
-                  {p.salePercent ? <span className="pl-badge pl-badge--sale mono">AKCIJA −{p.salePercent} %</span> : null}
+                  {/* Najviše jedna oznaka: akcija ima prednost pred "istaknuto". */}
+                  {p.salePercent ? (
+                    <span className="pl-badge pl-badge--sale mono">−{p.salePercent} %</span>
+                  ) : p.featured ? (
+                    <span className="pl-badge mono">ISTAKNUTO</span>
+                  ) : null}
                 </div>
                 <div className="pl-card-body">
                   <span className="pl-card-cat mono">{(p.category || "Proizvod").toUpperCase()}</span>
