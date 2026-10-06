@@ -62,8 +62,12 @@ export async function usage(organizationId: string) {
     .from(messages)
     .where(and(eq(messages.organizationId, organizationId), eq(messages.direction, "OUTBOUND"), gte(messages.createdAt, monthStart)));
   const limit = plan?.smsMonthlyLimit ?? TRIAL_SMS_LIMIT;
-  const trialExpired = sub?.status === "trialing" && sub.trialEndsAt != null && sub.trialEndsAt < new Date();
-  const active = sub ? ["active", "trialing"].includes(sub.status) && !trialExpired : false;
+  const now = new Date();
+  const trialExpired = sub?.status === "trialing" && sub.trialEndsAt != null && sub.trialEndsAt < now;
+  // Paket aktiviran ručno iz NOVO admina (bez Stripea) vrijedi do currentPeriodEnd.
+  const manualExpired =
+    sub?.status === "active" && !sub.stripeSubscriptionId && sub.currentPeriodEnd != null && sub.currentPeriodEnd < now;
+  const active = sub ? ["active", "trialing"].includes(sub.status) && !trialExpired && !manualExpired : false;
   return { subscription: sub, plan: plan ?? null, smsUsed: n, smsLimit: limit, active, trialExpired };
 }
 
