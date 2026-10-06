@@ -1,0 +1,121 @@
+/*
+ * NOVO Recenzije — vizualni sustav u NOVO stilu (probajnovo.com):
+ * bijela podloga, crni tekst, tanki rubovi, oštri kutovi, Space Grotesk za
+ * naslove, JetBrains Mono za oznake (VELIKA SLOVA, razmak), NOVO plava za
+ * brojeve i poveznice, narančasta za aktivno stanje i male oznake.
+ * Učitava se samo na /recenzije rutama; skenira samo datoteke Recenzija.
+ */
+@import "tailwindcss" source(none);
+@source "./";
+@source "../../components/recenzije";
+@source "../../lib/recenzije";
+
+@theme {
+  --font-sans: var(--font-space-grotesk), "Arial", sans-serif;
+  --font-mono: var(--font-jetbrains-mono), ui-monospace, monospace;
+
+  --color-background: #ffffff;
+  --color-surface: #ffffff;
+  --color-surface-2: #f7f7f7;
+  --color-surface-3: #ededed;
+  --color-border: #e6e6e6;
+  --color-border-strong: #cfcfcf;
+  --color-foreground: #000000;
+  --color-muted: #6b6b6b;
+  --color-subtle: #9a9a9a;
+
+  --color-accent: #0000c3;
+  --color-accent-hover: #0000a3;
+  --color-accent-foreground: #ffffff;
+  --color-accent-soft: rgb(0 0 195 / 0.07);
+  --color-orange: #ff7f00;
+  --color-orange-soft: rgb(255 127 0 / 0.1);
+
+  --color-success: #0b7a3e;
+  --color-success-soft: rgb(11 122 62 / 0.08);
+  --color-danger: #d11a1a;
+  --color-danger-soft: rgb(209 26 26 / 0.07);
+  --color-warning: #b85c00;
+  --color-warning-soft: rgb(255 127 0 / 0.1);
+  --color-info: #0000c3;
+  --color-info-soft: rgb(0 0 195 / 0.07);
+  --color-violet: #5b21b6;
+  --color-violet-soft: rgb(91 33 182 / 0.08);
+  --color-star: #f2a100;
+
+  /* NOVO je oštar: bez zaobljenja osim "pilula" (rounded-full). */
+  --radius-xs: 0px;
+  --radius-sm: 0px;
+  --radius-md: 0px;
+  --radius-lg: 0px;
+  --radius-xl: 0px;
+  --radius-2xl: 0px;
+  --radius-3xl: 0px;
+
+  --animate-fade-in: nr-fade-in 0.18s ease-out;
+  --animate-slide-in: nr-slide-in 0.2s ease-out;
+}
+
+@keyframes nr-fade-in {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: none; }
+}
+@keyframes nr-slide-in {
+  from { transform: translateX(-100%); }
+  to { transform: none; }
+}
+
+@layer base {
+  .nr {
+    min-height: 100dvh;
+    background: var(--color-background);
+    color: var(--color-foreground);
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+  }
+  .nr * {
+    border-color: var(--color-border);
+  }
+  .nr :focus-visible {
+    outline: 2px solid var(--color-accent);
+    outline-offset: 2px;
+  }
+  .nr ::selection {
+    background: rgb(255 127 0 / 0.25);
+  }
+  .nr h1,
+  .nr h2,
+  .nr h3 {
+    text-wrap: balance;
+    letter-spacing: -0.02em;
+  }
+  .nr dialog::backdrop {
+    background: rgb(0 0 0 / 0.45);
+  }
+}
+
+@layer utilities {
+  .tabular {
+    font-variant-numeric: tabular-nums;
+  }
+  /* NOVO oznaka: mono, velika slova, razmak između slova. */
+  .label {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+  }
+  .scrollbar-none {
+    scrollbar-width: none;
+  }
+  .scrollbar-none::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .nr *, .nr *::before, .nr *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}
