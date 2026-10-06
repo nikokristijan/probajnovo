@@ -240,3 +240,116 @@ export default async function ClientPage({
                     </div>
                     {r.comment && <p className="mt-2 text-sm text-foreground/85">“{r.comment}”</p>}
                     <p className="mt-2 text-[11px] text-subtle">
+                      {r.match === "NAME_MATCH" ? "Povezano po točnom imenu recenzenta" : "Povezano ručno"}
+                    </p>
+                  </div>
+                ))
+              ) : reviewed ? (
+                <p className="text-[13px] text-muted">
+                  Označeno kao recenzirano {formatDate(client.reviewReceivedAt)}. Sama recenzija nije povezana: Google ne otkriva tko je napisao recenziju, pa povezujemo samo točna podudaranja imena.
+                </p>
+              ) : (
+                <p className="flex items-start gap-2 text-[13px] text-muted">
+                  <Star className="mt-0.5 size-4 shrink-0 text-subtle" />
+                  Recenzija još nije povezana. Kad se ime na preuzetoj Google recenziji točno podudara s ovim klijentom, povezuje se automatski.
+                </p>
+              )}
+            </CardBody>
+          </Card>
+
+          {/* Review link */}
+          <Card>
+            <CardHeader title="Link za recenziju" />
+            <CardBody className="space-y-3 text-sm">
+              {latestLink ? (
+                <>
+                  <div>
+                    <p className="label text-muted">Praćeni link poslan klijentu</p>
+                    <div className="mt-1 flex items-center gap-1 rounded-lg bg-surface-2 py-1 pl-3 pr-1">
+                      <Link2 className="size-3.5 shrink-0 text-subtle" />
+                      <code className="min-w-0 flex-1 truncate text-xs">{trackingUrl(latestLink.token)}</code>
+                      <CopyButton value={trackingUrl(latestLink.token)} />
+                    </div>
+                    <p className="mt-1 text-xs text-subtle">
+                      {latestLink.firstClickedAt ? `Prvi klik ${timeAgo(latestLink.firstClickedAt)}` : "Još nije kliknut"}
+                    </p>
+                  </div>
+                </>
+              ) : (
+                <p className="text-[13px] text-muted">Jedinstveni praćeni link nastaje kad se pošalje prvi zahtjev za recenziju.</p>
+              )}
+              {ctx.org.googleReviewUrl ? (
+                <a href={ctx.org.googleReviewUrl} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1.5 text-[13px] text-accent hover:underline">
+                  Otvori Google stranicu za recenziju <ExternalLink className="size-3.5" />
+                </a>
+              ) : (
+                <Link href="/recenzije/postavke" className="text-[13px] text-warning hover:underline">
+                  Dodajte Google link u Postavkama →
+                </Link>
+              )}
+            </CardBody>
+          </Card>
+
+          {/* Automations */}
+          <Card>
+            <CardHeader title="Status automatizacije" />
+            <CardBody className="pt-3">
+              {d.runs.length === 0 ? (
+                <p className="flex items-start gap-2 text-[13px] text-muted">
+                  <Workflow className="mt-0.5 size-4 shrink-0 text-subtle" /> Za ovog klijenta još se nije pokrenula nijedna automatizacija. Označite uslugu završenom da je pokrenete.
+                </p>
+              ) : (
+                <ul className="space-y-3">
+                  {d.runs.map(({ run, automationName, automationSteps, campaignName }) => {
+                    const steps = automationSteps ?? [];
+                    return (
+                      <li key={run.id} className="rounded-xl border border-border p-3">
+                        <div className="flex items-start justify-between gap-2">
+                          <p className="text-sm font-medium">{automationName ?? (campaignName ? `Kampanja: ${campaignName}` : "Automatizacija")}</p>
+                          <Badge tone={RUN_TONE[run.status]}>{RUN_LABEL[run.status]}</Badge>
+                        </div>
+                        {steps.length > 0 && (
+                          <ol className="mt-3 space-y-1.5">
+                            {steps.map((s, i) => {
+                              const done = i < run.stepIndex || run.status === "COMPLETED";
+                              const current = i === run.stepIndex && (run.status === "WAITING" || run.status === "RUNNING");
+                              return (
+                                <li key={s.id} className="flex items-center gap-2 text-xs">
+                                  <span
+                                    className={
+                                      "size-1.5 rounded-full " + (done ? "bg-foreground" : current ? "bg-orange" : "bg-surface-3")
+                                    }
+                                  />
+                                  <span className={done ? "text-foreground/80" : current ? "text-warning" : "text-subtle"}>
+                                    {STEP_LABELS[s.type]}
+                                    {s.type === "wait" ? ` ${formatWait(s.minutes)}` : ""}
+                                  </span>
+                                </li>
+                              );
+                            })}
+                          </ol>
+                        )}
+                        {run.status === "WAITING" && (
+                          <p className="mt-2 text-xs text-muted">Sljedeći korak {timeAgo(run.nextRunAt)}</p>
+                        )}
+                        {run.error && <p className="mt-2 text-xs text-danger">{run.error}</p>}
+                      </li>
+                    );
+                  })}
+                </ul>
+              )}
+            </CardBody>
+          </Card>
+
+          {/* Timeline */}
+          <Card>
+            <CardHeader title="Vremenska crta" />
+            <CardBody className="pt-3">
+              <ActivityFeed items={d.activity} linkClients={false} absolute timeZone={ctx.org.timezone} />
+            </CardBody>
+          </Card>
+        </div>
+      </div>
+    </>
+  );
+}
