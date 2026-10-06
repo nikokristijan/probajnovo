@@ -236,3 +236,36 @@ export const byTechnician = (orgId: string) => clientOutcomesBy(orgId, "technici
 export const byService = (orgId: string) => clientOutcomesBy(orgId, "service");
 
 export async function byCampaign(organizationId: string) {
+  const list = await db.select().from(campaigns).where(eq(campaigns.organizationId, organizationId)).orderBy(desc(campaigns.createdAt));
+  if (list.length === 0) return [];
+  const ids = list.map((c) => c.id);
+  const stats = await db
+    .select({
+      campaignId: messages.campaignId,
+      sent: sql<number>`count(*) filter (where ${messages.status} in ('SENT','DELIVERED'))::int`,
+      failed: sql<number>`count(*) filter (where ${messages.status} in ('FAILED','UNDELIVERED'))::int`,
+      clicked: sql<number>`count(distinct ${messages.clientId}) filter (where exists (select 1 from nr_tracking_links t where t.id = "nr_messages"."tracking_link_id" and t.first_clicked_at is not null))::int`,
+      reviewed: sql<number>`count(distinct ${messages.clientId}) filter (where exists (select 1 from nr_clients c where c.id = "nr_messages"."client_id" and c.review_status in ('REVIEW_RECEIVED','COMPLETED')))::int`,
+      recipients: sql<number>`count(distinct ${messages.clientId})::int`,
+    })
+    .from(messages)
+    .where(and(eq(messages.organizationId, organizationId), inArray(messages.campaignId, ids)))
+    .groupBy(messages.campaignId);
+  const m = new Map(stats.map((s) => [s.campaignId, s]));
+  return list.map((c) => {
+    const s = m.get(c.id);
+    return {
+      id: c.id,
+      name: c.name,
+      status: c.status,
+      recipients: s?.recipients ?? 0,
+      sent: s?.sent ?? 0,
+      failed: s?.failed ?? 0,
+      clicked: s?.clicked ?? 0,
+      reviewed: s?.reviewed ?? 0,
+      conversion: pct(s?.reviewed ?? 0, s?.recipients ?? 0),
+    };
+  });
+}
+
+export { REVIEWED };
