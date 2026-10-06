@@ -27,6 +27,12 @@ export const agency = pgTable("agency", {
   metaPixelId: text("meta_pixel_id"),
   /** Google Analytics 4 ID (G-XXXXXXX), isto samo uz pristanak. Null = isključeno. */
   gaMeasurementId: text("ga_measurement_id"),
+  /** Blok uz cijenu na stranici proizvoda (kratki tekstovi). Null = redak se ne prikazuje. */
+  deliveryText: text("delivery_text"),
+  productionText: text("production_text"),
+  guaranteeText: text("guarantee_text"),
+  /** Popust (%) za kod preporuke koji kupac dobije nakon upita. 0 = preporuke isključene. */
+  referralPercent: integer("referral_percent").notNull().default(0),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
 
@@ -263,6 +269,12 @@ export const products = pgTable("products", {
   addonProductIds: jsonb("addon_product_ids").$type<number[]>().notNull().default([]),
   /** Postotak popusta na dodatke kad se uzmu uz ovaj proizvod (paket). 0 = bez popusta. */
   addonDiscountPercent: integer("addon_discount_percent").notNull().default(0),
+  /** Akcija: postotak sniženja cijene. 0 = nema akcije. */
+  salePercent: integer("sale_percent").notNull().default(0),
+  /** Zadnji dan akcije (YYYY-MM-DD, uključivo). Null = traje dok se ne isključi. */
+  saleEndsAt: text("sale_ends_at"),
+  /** Prikaži sekciju "Stranica koju gosti otvaraju" (slike NFC stranice). */
+  showNfcPreview: boolean("show_nfc_preview").notNull().default(false),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
@@ -497,6 +509,30 @@ export type NewCompany = typeof companies.$inferInsert;
 export type Study = typeof studies.$inferSelect;
 export type NewStudy = typeof studies.$inferInsert;
 export type Product = typeof products.$inferSelect;
+
+/**
+ * Kodovi za popust koje kupac upiše u obrazac za upit (npr. "LJETO10") i
+ * osobni kodovi za preporuku (referrerEmail != null) koji se kupcu automatski
+ * naprave nakon upita. Tablica se sama kreira (ensureDiscountCodesTable).
+ */
+export const discountCodes = pgTable("discount_codes", {
+  id: serial("id").primaryKey(),
+  code: text("code").notNull().unique(),
+  percent: integer("percent").notNull(),
+  active: boolean("active").notNull().default(true),
+  /** Zadnji dan valjanosti (YYYY-MM-DD). Null = bez isteka. */
+  expiresAt: text("expires_at"),
+  /** Najviše korištenja. Null = neograničeno. */
+  maxUses: integer("max_uses"),
+  uses: integer("uses").notNull().default(0),
+  note: text("note"),
+  /** Za kod preporuke: tko ga je dobio (njemu ide nagrada kad ga netko iskoristi). */
+  referrerName: text("referrer_name"),
+  referrerEmail: text("referrer_email"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export type DiscountCode = typeof discountCodes.$inferSelect;
 export type NewProduct = typeof products.$inferInsert;
 export type AdminUser = typeof adminUsers.$inferSelect;
 export type AdminAccess = typeof adminAccess.$inferSelect;
