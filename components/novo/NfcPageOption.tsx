@@ -31,29 +31,42 @@ export function nfcTargetLabel(t: NfcTarget, monthly: number) {
  * održavanje) ili kupčeva postojeća stranica (bez naknade). Isti izbor se
  * prikazuje uz cijenu i u obrascu za upit.
  */
-export default function NfcPageOption({ monthlyEur, idPrefix }: { monthlyEur: number; idPrefix: string }) {
+export default function NfcPageOption({
+  monthlyEur,
+  idPrefix,
+  previewHref,
+}: {
+  monthlyEur: number;
+  idPrefix: string;
+  /** Poveznica na prikaz stranice za goste (npr. "#stranica"), ako postoji na stranici. */
+  previewHref?: string;
+}) {
   const [target, choose] = useNfcTarget();
-  const opts: { value: NfcTarget; title: string; price: string; text: string }[] = [
+  const opts: { value: NfcTarget; title: string; price: string; hint: string }[] = [
     {
       value: "novo",
       title: "Naša stranica",
-      price: `${monthlyEur} € / mj`,
-      text: "WiFi, QR kod, recenzije, kućni red i preporuke. Postavljamo i održavamo mi.",
+      price: `+${monthlyEur} €/mj`,
+      hint: "WiFi, QR kod, recenzije, kućni red i preporuke. Postavljamo i održavamo mi.",
     },
     {
       value: "own",
       title: "Vaša stranica",
       price: "bez naknade",
-      text: "Pločica otvara vaš web, Booking oglas, Instagram ili bilo koju poveznicu.",
+      hint: "Pločica otvara vaš web, Booking oglas, Instagram ili bilo koju poveznicu.",
     },
   ];
-  const current = opts.find((o) => o.value === target) ?? opts[0];
   return (
     <fieldset className="nfco">
       <legend className="pq-label mono">KAMO VODI PLOČICA?</legend>
       <div className="nfco-row">
         {opts.map((o) => (
-          <label key={o.value} className={target === o.value ? "nfco-opt is-on" : "nfco-opt"} htmlFor={`${idPrefix}-${o.value}`}>
+          <label
+            key={o.value}
+            className={target === o.value ? "nfco-opt is-on" : "nfco-opt"}
+            htmlFor={`${idPrefix}-${o.value}`}
+            title={o.hint}
+          >
             <input
               id={`${idPrefix}-${o.value}`}
               type="radio"
@@ -61,15 +74,21 @@ export default function NfcPageOption({ monthlyEur, idPrefix }: { monthlyEur: nu
               value={o.value}
               checked={target === o.value}
               onChange={() => choose(o.value)}
+              aria-describedby={`${idPrefix}-${o.value}-hint`}
             />
             <span className="nfco-title">{o.title}</span>
-            <span className="nfco-price mono">{o.price.toUpperCase()}</span>
+            <span className="nfco-price">{o.price}</span>
+            <span id={`${idPrefix}-${o.value}-hint`} className="sr-only">
+              {o.hint}
+            </span>
           </label>
         ))}
       </div>
-      <p className="nfco-text" aria-live="polite">
-        {current.text}
-      </p>
+      {previewHref && (
+        <a href={previewHref} className="nfco-more">
+          Kako izgleda naša stranica? ↓
+        </a>
+      )}
     </fieldset>
   );
 }

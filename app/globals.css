@@ -4456,9 +4456,9 @@ a.owner-glass:active,
 }
 
 /* ---- proizvod: video kao glavni sadržaj + odabir količine ---- */
-/* Naslov i cijena (pd-head) na mobitelu idu IZNAD videa/galerije, na
-   desktopu desno od njih — isti HTML, samo raspored mreže. */
-.pd-split { grid-template-areas: "head" "media" "rest"; }
+/* Kao u webshopovima: na mobitelu prvo video/galerija, pa naslov i cijena;
+   na desktopu naslov i kupnja desno od njih — isti HTML, samo raspored mreže. */
+.pd-split { grid-template-areas: "media" "head" "rest"; }
 .pd-split .pd-head { grid-area: head; }
 .pd-split .pd-media { grid-area: media; min-width: 0; }
 .pd-split .pd-rest { grid-area: rest; gap: 18px; }
@@ -4631,7 +4631,7 @@ a.owner-glass:active,
 /* ---- proizvod: akcija, dostava/izrada/jamstvo, kod za popust, preporuka ---- */
 .pd-price-was { font-size: 16px; color: rgba(0,0,0,0.45); font-variant-numeric: tabular-nums; }
 .pd-price-sale { font-size: 10px; letter-spacing: 0.1em; padding: 4px 8px; background: #000; color: #fff; align-self: center; }
-.pl-badge--sale { left: auto; right: 10px; background: #000; color: #fff; }
+.pl-badge--sale { background: #000; color: #fff; }
 
 .pd-assure { margin: 0; display: flex; flex-direction: column; border-top: 1px solid rgba(0,0,0,0.1); }
 .pd-assure-row { display: grid; grid-template-columns: 76px 1fr; gap: 12px; padding: 9px 0; border-bottom: 1px solid rgba(0,0,0,0.1); align-items: baseline; }
@@ -4714,3 +4714,53 @@ a.owner-glass:active,
 .nfco-price { font-size: 11px; color: var(--novo-blue); }
 .nfco-text { margin: 0; font-size: 12.5px; line-height: 1.45; color: rgba(0,0,0,0.6); }
 .nfco-opt:focus-within { outline: 2px solid var(--novo-blue); outline-offset: 2px; }
+
+/* ---- proizvod: kupovni blok u stilu webshopa (manje teksta, jedan glavni gumb) ---- */
+.pd-crumbs-share { margin-left: auto; flex-shrink: 0; }
+.pd-head { gap: 8px; }
+.pd-head .pd-title { font-size: clamp(26px, 5cqi, 40px); }
+.pd-head .pd-price { padding-top: 2px; border-top: 0; gap: 10px; align-items: center; }
+.pd-head .pd-price-value { font-size: 24px; }
+.pd-head .pd-price-was { font-size: 15px; }
+.pd-head .pd-price-sale {
+  font-family: inherit; font-size: 12px; font-weight: 600; letter-spacing: 0; padding: 3px 7px;
+  background: var(--novo-orange); color: #000;
+}
+.pd-head .pd-rating { font-size: 13px; letter-spacing: 0; gap: 6px; color: rgba(0,0,0,0.6); }
+.pd-head .pd-tagline { font-size: 15px; max-width: 48ch; }
+.pd-split .pd-rest { gap: 20px; }
+
+.nfco-row { gap: 8px; }
+.nfco-opt { padding: 10px 10px 10px 32px; }
+.nfco-price { font-size: 12.5px; color: rgba(0,0,0,0.55); }
+.nfco-opt.is-on .nfco-price { color: var(--novo-blue); }
+.nfco-more { font-size: 12.5px; color: rgba(0,0,0,0.6); text-decoration: underline; text-underline-offset: 3px; align-self: flex-start; }
+.nfco-more:hover { color: #000; }
+
+.pq-pick { gap: 10px; }
+.pq-pick-row { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; }
+.pq-pick-opt {
+  position: relative; align-items: center; justify-content: center; height: 46px; padding: 0 6px;
+  font-size: 16px; font-weight: 600; text-align: center;
+}
+.pq-pick-opt .pq-pick-badge {
+  top: -9px; right: 50%; transform: translateX(50%); font-family: inherit; font-size: 10.5px; font-weight: 600;
+  letter-spacing: 0; padding: 1px 5px; white-space: nowrap;
+}
+.pq-pick-actions { display: flex; gap: 8px; align-items: stretch; margin-top: 4px; }
+.novo-os .pq-pick-actions .pq-pick-cta { flex: 1; margin-top: 0; padding: 16px 14px; font-size: 12px; }
+.pq-pick-total s { opacity: 0.55; font-weight: 400; }
+.pq-pick-wa {
+  display: inline-flex; align-items: center; justify-content: center; width: 52px; flex-shrink: 0;
+  border: 1px solid rgba(0,0,0,0.18); color: #1f9d55; background: #fff;
+}
+.pq-pick-wa:hover { border-color: #000; }
+.pq-trust { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; justify-content: center; gap: 4px 14px; font-size: 12.5px; color: rgba(0,0,0,0.6); }
+.pq-trust li { display: inline-flex; align-items: center; gap: 5px; }
+.pq-trust li::before { content: "✓"; color: var(--novo-blue); font-weight: 700; }
+
+.pd-acc { border-top: 1px solid rgba(0,0,0,0.12); max-width: none; }
+.pd-acc .pd-faq-item summary { font-size: 15px; padding: 13px 32px 13px 0; }
+
+/* Traka "VIDEO / BEZ ZVUKA" iznad videa je suvišna — kontrole su već na videu. */
+.pd-media .pv-bar { display: none; }
