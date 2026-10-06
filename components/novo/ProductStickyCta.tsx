@@ -3,7 +3,11 @@
 import { useEffect, useState } from "react";
 import { ContactLink, WhatsAppIcon } from "@/components/novo/ProductContactLinks";
 
-/** Mobitel: cijena i "Pošalji upit" pri dnu ekrana, skriveno dok je obrazac za upit na ekranu. */
+/**
+ * Mobitel: cijena i glavni gumb pri dnu ekrana. Pojavi se tek kad korisnik
+ * odskrola ispod glavnog gumba, a skrije se kad je obrazac za upit na ekranu,
+ * da se isti gumb nikad ne vidi dvaput.
+ */
 export default function ProductStickyCta({
   price,
   label = "POŠALJI UPIT",
@@ -15,18 +19,32 @@ export default function ProductStickyCta({
   whatsappHref?: string | null;
   productName?: string;
 }) {
-  const [formVisible, setFormVisible] = useState(false);
+  const [hidden, setHidden] = useState(true);
 
   useEffect(() => {
-    const target = document.getElementById("upit");
-    if (!target || typeof IntersectionObserver === "undefined") return;
-    const io = new IntersectionObserver(([entry]) => setFormVisible(entry.isIntersecting), { threshold: 0.05 });
-    io.observe(target);
+    const cta = document.querySelector(".pq-pick-actions");
+    const form = document.getElementById("upit");
+    if (typeof IntersectionObserver === "undefined" || (!cta && !form)) return;
+    // Glavni gumb drži traku skrivenom dok je vidljiv ili još ispod ekrana.
+    let ctaHides = cta != null;
+    let formHides = false;
+    const io = new IntersectionObserver(
+      (entries) => {
+        for (const e of entries) {
+          if (e.target === cta) ctaHides = e.isIntersecting || e.boundingClientRect.top > 0;
+          if (e.target === form) formHides = e.isIntersecting;
+        }
+        setHidden(ctaHides || formHides);
+      },
+      { threshold: 0 }
+    );
+    if (cta) io.observe(cta);
+    if (form) io.observe(form);
     return () => io.disconnect();
   }, []);
 
   return (
-    <div className={formVisible ? "pd-sticky is-hidden" : "pd-sticky"} aria-hidden={formVisible}>
+    <div className={hidden ? "pd-sticky is-hidden" : "pd-sticky"} aria-hidden={hidden}>
       <span className="pd-sticky-price">{price}</span>
       <span className="pd-sticky-actions">
         {whatsappHref && (
@@ -36,12 +54,12 @@ export default function ProductStickyCta({
             channel="whatsapp"
             className="pd-sticky-wa"
             ariaLabel="Pitajte na WhatsAppu"
-            tabIndex={formVisible ? -1 : undefined}
+            tabIndex={hidden ? -1 : undefined}
           >
             <WhatsAppIcon size={20} />
           </ContactLink>
         )}
-        <a href="#upit" className="novo-os-cta mono" tabIndex={formVisible ? -1 : undefined}>
+        <a href="#upit" className="novo-os-cta mono" tabIndex={hidden ? -1 : undefined}>
           {label} ↓
         </a>
       </span>
