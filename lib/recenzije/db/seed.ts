@@ -218,3 +218,157 @@ export async function seedDemo() {
     const [service] = await db
       .insert(s.services)
       .values({ organizationId: org.id, clientId: client.id, name: c.service, technician: c.tech, serviceDate: serviceAt, completedAt: serviceAt })
+      .returning();
+    activity.push(
+      { organizationId: org.id, clientId: client.id, type: "client_created", title: `Dodan klijent ${name}`, createdAt: new Date(serviceAt.getTime() - 2 * H) },
+      { organizationId: org.id, clientId: client.id, type: "service_completed", title: `${c.service} završena za ${name}`, meta: { technician: c.tech }, createdAt: serviceAt }
+    );
+    if (c.status === "NOT_CONTACTED" && !c.failed) continue;
+
+    const sentAt = new Date(serviceAt.getTime() + 10 * 60_000);
+    const isCampaign = i % 4 === 1;
+    const waiting = c.status === "FOLLOW_UP_SCHEDULED";
+    const err = "Twilio 21211: broj +38591111011 nije ispravan.";
+    const [run] = await db
+      .insert(s.automationRuns)
+      .values({
+        organizationId: org.id,
+        automationId: isCampaign ? null : postAuto.id,
+        campaignId: isCampaign ? campaign.id : null,
+        clientId: client.id,
+        serviceId: service.id,
+        status: c.failed ? "FAILED" : waiting ? "WAITING" : "COMPLETED",
+        stepIndex: waiting ? 3 : 5,
+        nextRunAt: waiting ? new Date(now + (6 + i) * H) : sentAt,
+        startedAt: serviceAt,
+        finishedAt: waiting ? null : sentAt,
+        error: c.failed ? err : null,
+        log: [
+          { at: serviceAt.toISOString(), stepIndex: 0, type: "trigger", message: "Pokrenuto završetkom usluge" },
+          { at: sentAt.toISOString(), stepIndex: 1, type: "send_review_request", message: c.failed ? `Neuspjelo: ${err}` : "Poruka poslana" },
+        ],
+      })
+      .returning();
+
+    if (c.failed) {
+      await db.insert(s.messages).values({
+        organizationId: org.id,
+        clientId: client.id,
+        kind: "REVIEW_REQUEST",
+        toNumber: c.phone,
+        body: requestBody(c.first, `${base}/r/${createToken(10)}`),
+        status: "FAILED",
+        errorMessage: err,
+        automationRunId: run.id,
+        createdAt: sentAt,
+      });
+      activity.push({ organizationId: org.id, clientId: client.id, type: "message_failed", title: `Poruka za ${name} nije poslana`, meta: { error: "Neispravan broj telefona" }, createdAt: sentAt });
+      continue;
+    }
+
+    const token = createToken(10);
+    const clicked = ["CLICKED", "REVIEW_RECEIVED", "COMPLETED"].includes(c.status);
+    const clickAt = new Date(Math.min(sentAt.getTime() + (1 + (i % 5)) * H, now - 20 * 60_000));
+    const [link] = await db
+      .insert(s.trackingLinks)
+      .values({
+        organizationId: org.id,
+        clientId: client.id,
+        token,
+        destinationUrl: org.googleReviewUrl!,
+        clickCount: clicked ? 1 + (i % 2) : 0,
+        firstClickedAt: clicked ? clickAt : null,
+        lastClickedAt: clicked ? clickAt : null,
+        createdAt: sentAt,
+      })
+      .returning();
+    if (clicked) await db.insert(s.linkClicks).values({ linkId: link.id, userAgent: "Mozilla/5.0 (iPhone)", createdAt: clickAt });
+
+    await db.insert(s.messages).values({
+      organizationId: org.id,
+      clientId: client.id,
+      kind: isCampaign ? "CAMPAIGN" : "REVIEW_REQUEST",
+      toNumber: c.phone,
+      body: requestBody(c.first, `${base}/r/${token}`),
+      status: "DELIVERED",
+      providerSid: `demo-${createToken(20)}`,
+      campaignId: isCampaign ? campaign.id : null,
+      automationRunId: run.id,
+      trackingLinkId: link.id,
+      sentAt,
+      deliveredAt: new Date(sentAt.getTime() + 8_000),
+      createdAt: sentAt,
+    });
+    activity.push({ organizationId: org.id, clientId: client.id, type: "request_sent", title: `Zahtjev za recenziju poslan: ${name}`, createdAt: sentAt });
+    if (clicked) activity.push({ organizationId: org.id, clientId: client.id, type: "link_clicked", title: `${name} je kliknuo/la link za recenziju`, createdAt: clickAt });
+
+    let lastMsg = sentAt;
+    const fuAt = new Date(sentAt.getTime() + D);
+    if (c.followUp && fuAt.getTime() < now) {
+      await db.insert(s.messages).values({
+        organizationId: org.id,
+        clientId: client.id,
+        kind: "FOLLOW_UP",
+        toNumber: c.phone,
+        body: `Bok ${c.first}, samo kratki podsjetnik od Donald's Cooling: ako ste bili zadovoljni, podijelite iskustvo u par rijeci ${base}/r/${token} Za odjavu odgovorite STOP.`,
+        status: "DELIVERED",
+        providerSid: `demo-${createToken(20)}`,
+        automationRunId: run.id,
+        trackingLinkId: link.id,
+        sentAt: fuAt,
+        deliveredAt: new Date(fuAt.getTime() + 6_000),
+        createdAt: fuAt,
+      });
+      activity.push({ organizationId: org.id, clientId: client.id, type: "follow_up_sent", title: `Podsjetnik poslan: ${name}`, createdAt: fuAt });
+      lastMsg = fuAt;
+    }
+    if (waiting) {
+      const next = new Date(now + (6 + i) * H);
+      await db.update(s.clients).set({ nextFollowUpAt: next }).where(eq(s.clients.id, client.id));
+      activity.push({ organizationId: org.id, clientId: client.id, type: "follow_up_scheduled", title: `Zakazan podsjetnik: ${name}`, meta: { at: next.toISOString() }, createdAt: new Date(sentAt.getTime() + 60_000) });
+    }
+    await db.update(s.clients).set({ lastMessageAt: lastMsg }).where(eq(s.clients.id, client.id));
+
+    if (c.rating) {
+      const reviewedAt = new Date(Math.min(clickAt.getTime() + 20 * 60_000 + (c.followUp ? D : 0), now - 15 * 60_000));
+      const [review] = await db
+        .insert(s.reviews)
+        .values({
+          organizationId: org.id,
+          source: "MANUAL",
+          externalId: `demo-${client.id}`,
+          reviewerName: name,
+          rating: c.rating,
+          comment: c.comment ?? null,
+          reviewedAt,
+          clientId: client.id,
+          match: "MANUAL",
+          replyText: i % 2 === 0 ? `Hvala ${c.first}! Bilo nam je drago pomoći. — Donald` : null,
+          repliedAt: i % 2 === 0 ? new Date(reviewedAt.getTime() + 3 * H) : null,
+        })
+        .returning();
+      await db.update(s.clients).set({ reviewReceivedAt: reviewedAt }).where(eq(s.clients.id, client.id));
+      activity.push({ organizationId: org.id, clientId: client.id, type: "review_received", title: `${c.rating}★ recenzija od ${name}`, meta: { reviewId: review.id, match: "MANUAL" }, createdAt: reviewedAt });
+    }
+  }
+
+  for (const h of HISTORY) {
+    await db.insert(s.reviews).values({
+      organizationId: org.id,
+      source: "MANUAL",
+      externalId: `demo-history-${createToken(8)}`,
+      reviewerName: h.name,
+      rating: h.rating,
+      comment: h.comment ?? null,
+      reviewedAt: at(h.days, 15),
+    });
+  }
+  await db.insert(s.activityEvents).values(activity);
+
+  const all = await db.select({ rating: s.reviews.rating }).from(s.reviews).where(eq(s.reviews.organizationId, org.id));
+  const avg = all.reduce((a, r) => a + r.rating, 0) / all.length;
+  await db
+    .update(s.organizations)
+    .set({ googleRating: Math.round(avg * 10) / 10, googleReviewCount: all.length })
+    .where(eq(s.organizations.id, org.id));
+}
