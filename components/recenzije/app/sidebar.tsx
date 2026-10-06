@@ -16,6 +16,7 @@ const MAIN = [
   { href: "/recenzije/automatizacije", label: "Automatizacije" },
   { href: "/recenzije/poruke", label: "Poruke" },
   { href: "/recenzije/analitika", label: "Analitika" },
+  { href: "/recenzije/izvjestaj", label: "Izvještaj" },
   { href: "/recenzije/postavke", label: "Postavke", exact: true },
 ];
 const BOTTOM = [
