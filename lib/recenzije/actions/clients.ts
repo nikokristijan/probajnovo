@@ -231,3 +231,61 @@ export async function sendBulkRequestsAction(ids: string[]): Promise<ActionState
   const rows = await db
     .select({ id: clients.id })
     .from(clients)
+    .where(and(eq(clients.organizationId, ctx.org.id), inArray(clients.id, clean.data)));
+  let sent = 0;
+  let firstError = "";
+  for (const r of rows) {
+    const out = await sendClientMessage({ organizationId: ctx.org.id, clientId: r.id, template, kind: "REVIEW_REQUEST" });
+    if (out.ok) sent++;
+    else if (!firstError) firstError = out.error;
+    // Stop early on account-level problems; every other client would fail the same way.
+    if (!out.ok && ["NOT_CONFIGURED", "NO_REVIEW_URL", "DEMO", "LIMIT"].includes(out.code)) break;
+  }
+  revalidatePath("/recenzije/klijenti");
+  revalidatePath("/recenzije/pregled");
+  if (sent === 0) return { error: firstError || "Nijedna poruka nije poslana" };
+  return { ok: true, message: `Poslano ${sent} od ${rows.length} zahtjeva${firstError ? `. Neki nisu uspjeli: ${firstError}` : ""}` };
+}
+
+export async function markReviewedAction(clientId: string): Promise<ActionState> {
+  const { ctx, locked } = await requireWritableOrg();
+  if (locked) return locked;
+  const [c] = await db
+    .select({ id: clients.id })
+    .from(clients)
+    .where(and(eq(clients.id, clientId), eq(clients.organizationId, ctx.org.id)))
+    .limit(1);
+  if (!c) return { error: "Klijent nije pronađen" };
+  await markReviewReceived(ctx.org.id, clientId, null, "MANUAL", new Date());
+  revalidatePath(`/recenzije/klijenti/${clientId}`);
+  revalidatePath("/recenzije/klijenti");
+  return { ok: true, message: "Označeno kao recenzirano. Zakazani podsjetnici su otkazani." };
+}
+
+export async function setClientStatusAction(clientId: string, status: "COMPLETED" | "NOT_CONTACTED"): Promise<ActionState> {
+  const { ctx, locked } = await requireWritableOrg();
+  if (locked) return locked;
+  const [row] = await db
+    .update(clients)
+    .set({ reviewStatus: status, nextFollowUpAt: null })
+    .where(and(eq(clients.id, clientId), eq(clients.organizationId, ctx.org.id)))
+    .returning();
+  if (!row) return { error: "Klijent nije pronađen" };
+  if (status === "COMPLETED") await cancelActiveRunsForClient(ctx.org.id, clientId, "Označeno završenim");
+  revalidatePath(`/recenzije/klijenti/${clientId}`);
+  return { ok: true, message: status === "COMPLETED" ? "Označeno završenim" : "Status vraćen" };
+}
+
+export async function toggleOptOutAction(clientId: string, optOut: boolean): Promise<ActionState> {
+  const { ctx, locked } = await requireWritableOrg();
+  if (locked) return locked;
+  const [row] = await db
+    .update(clients)
+    .set({ smsOptOut: optOut })
+    .where(and(eq(clients.id, clientId), eq(clients.organizationId, ctx.org.id)))
+    .returning();
+  if (!row) return { error: "Klijent nije pronađen" };
+  if (optOut) await cancelActiveRunsForClient(ctx.org.id, clientId, "Klijent se odjavio");
+  revalidatePath(`/recenzije/klijenti/${clientId}`);
+  return { ok: true, message: optOut ? "SMS je isključen za ovog klijenta" : "SMS je ponovno uključen" };
+}
