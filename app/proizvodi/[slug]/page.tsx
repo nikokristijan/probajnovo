@@ -499,14 +499,14 @@ export default async function ProductPage({ params }: { params: Promise<Params> 
 
           {/* Mobitel: cijena i upit uvijek pri dnu ekrana. */}
           <ProductStickyCta
-            price={priceLabel(product.priceEur)}
+            price={priceLabel(unitPrice)}
             label={ctaLabel}
             whatsappHref={waHref}
             productName={product.name}
           />
         </div>
       </div>
-      <TrackProductView name={product.name} slug={product.slug} priceEur={product.priceEur} />
+      <TrackProductView name={product.name} slug={product.slug} priceEur={unitPrice} />
       <ConsentTracking metaPixelId={contact.metaPixelId} gaMeasurementId={contact.gaMeasurementId} />
     </NovoShell>
   );
