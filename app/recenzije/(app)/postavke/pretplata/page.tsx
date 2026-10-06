@@ -51,7 +51,7 @@ export default async function SubscriptionPage({ searchParams }: { searchParams:
           title={u.plan ? `Paket ${u.plan.name}` : ctx.org.isDemo ? "Demo" : u.trialExpired ? "Proba je istekla" : "Besplatna proba"}
           description={
             sub?.currentPeriodEnd
-              ? `${sub.cancelAtPeriodEnd ? "Završava" : "Obnavlja se"} ${formatDate(sub.currentPeriodEnd)}`
+              ? `${!sub.stripeSubscriptionId ? (u.active ? "Vrijedi do" : "Isteklo") : sub.cancelAtPeriodEnd ? "Završava" : "Obnavlja se"} ${formatDate(sub.currentPeriodEnd)}`
               : sub?.trialEndsAt
                 ? `Proba ${u.trialExpired ? "je istekla" : "traje do"} ${formatDate(sub.trialEndsAt)}`
                 : undefined

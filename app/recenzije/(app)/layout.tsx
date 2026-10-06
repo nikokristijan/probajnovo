@@ -21,7 +21,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   const planLabel = ctx.org.isDemo
     ? "Demo"
     : u.plan
-      ? `Paket ${u.plan.name}`
+      ? `Paket ${u.plan.name}${u.active ? "" : " · neaktivan"}`
       : u.trialExpired
         ? "Proba je istekla"
         : `Besplatna proba${daysLeft != null ? ` · još ${daysLeft} d` : ""}`;
@@ -39,9 +39,10 @@ export default async function AppLayout({ children }: { children: React.ReactNod
             </Link>
           </div>
         )}
-        {!ctx.org.isDemo && u.trialExpired && !u.plan && (
+        {!ctx.org.isDemo && !u.active && (
           <div className="bg-orange px-4 py-2 text-center text-[13px] text-black">
-            Besplatna proba je istekla, pa je slanje poruka pauzirano.{" "}
+            {u.plan ? "Pretplata je istekla" : u.trialExpired ? "Besplatna proba je istekla" : "Pretplata nije aktivna"}, pa je slanje poruka
+            pauzirano.{" "}
             <Link href="/recenzije/postavke/pretplata" className="font-bold underline underline-offset-2">
               Odaberite paket
             </Link>

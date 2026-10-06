@@ -14,7 +14,7 @@ import { getAgencyContact } from "@/lib/novoHomeData";
 export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
-  title: "Google recenzije na autopilotu – NOVO",
+  title: { absolute: "Google recenzije na autopilotu – NOVO" },
   description:
     "Nakon svakog posla klijent dobije SMS s linkom za Google recenziju. Praćenje klikova, podsjetnici i pregled svih recenzija na jednom mjestu. 14 dana besplatno.",
   alternates: { canonical: "https://www.probajnovo.com/recenzije" },
