@@ -1133,6 +1133,7 @@ const ProductSchema = z.object({
     .optional()
     .refine((v) => !v || /^\d{4}-\d{2}-\d{2}$/.test(v), "Datum kraja akcije nije ispravan."),
   showNfcPreview: z.coerce.boolean(),
+  nfcPageMonthlyEur: z.string().optional(),
 });
 
 function parseQuantityDiscounts(raw?: string): { minQty: number; percent: number }[] {
@@ -1185,6 +1186,7 @@ function readProductFormData(formData: FormData) {
     salePercent: formData.get("salePercent") || "0",
     saleEndsAt: formData.get("saleEndsAt") ?? "",
     showNfcPreview: formData.get("showNfcPreview") === "on",
+    nfcPageMonthlyEur: formData.get("nfcPageMonthlyEur") ?? "",
   };
 }
 
@@ -1228,6 +1230,7 @@ export async function createProductAction(
     quantityDiscounts: parseQuantityDiscounts(parsed.data.quantityDiscounts),
     addonProductIds: parseIdList(parsed.data.addonProductIds),
     saleEndsAt: emptyToNull(parsed.data.saleEndsAt),
+    nfcPageMonthlyEur: parsePriceEur(parsed.data.nfcPageMonthlyEur),
   });
   revalidatePath("/");
   revalidatePath("/admin");
@@ -1270,6 +1273,7 @@ export async function updateProductAction(
     quantityDiscounts: parseQuantityDiscounts(parsed.data.quantityDiscounts),
     addonProductIds: parseIdList(parsed.data.addonProductIds, id),
     saleEndsAt: emptyToNull(parsed.data.saleEndsAt),
+    nfcPageMonthlyEur: parsePriceEur(parsed.data.nfcPageMonthlyEur),
   });
   revalidatePath("/");
   revalidatePath("/admin");
