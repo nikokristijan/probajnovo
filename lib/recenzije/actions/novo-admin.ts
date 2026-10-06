@@ -1,0 +1,53 @@
+"use server";
+
+import { revalidatePath } from "next/cache";
+import { redirect } from "next/navigation";
+import { getCurrentAdminRecord } from "@/lib/auth";
+import { logActivity } from "@/lib/db/queries";
+import { activatePlanManually, deactivate, extendTrial } from "@/lib/recenzije/services/novo-admin";
+
+/**
+ * Radnje s /admin/recenzije. Smije ih samo glavni admin NOVO-a (isti uvjet
+ * kao Financije), jer mijenjaju naplatu tvrtki koje koriste Recenzije.
+ */
+async function requireSuperAdmin() {
+  const admin = await getCurrentAdminRecord();
+  if (!admin) redirect("/admin/login");
+  if (!admin.isSuperAdmin) redirect("/admin");
+  return admin;
+}
+
+async function run(fn: () => Promise<string>, adminEmail: string, action: string) {
+  let target = "/admin/recenzije";
+  try {
+    const label = await fn();
+    await logActivity({ adminEmail, action, targetLabel: label, propertyId: null }).catch(() => undefined);
+    target += `?ok=${encodeURIComponent(label)}`;
+  } catch (e) {
+    target += `?greska=${encodeURIComponent(e instanceof Error ? e.message : "Nije uspjelo.")}`;
+  }
+  revalidatePath("/admin/recenzije");
+  revalidatePath("/recenzije", "layout");
+  redirect(target);
+}
+
+export async function activatePlanAction(formData: FormData) {
+  const admin = await requireSuperAdmin();
+  const orgId = String(formData.get("orgId") ?? "");
+  const planKey = String(formData.get("planKey") ?? "");
+  const months = Number(formData.get("months") ?? 1) || 1;
+  await run(() => activatePlanManually(orgId, planKey, months), admin.email, "Recenzije: aktiviran paket");
+}
+
+export async function extendTrialAction(formData: FormData) {
+  const admin = await requireSuperAdmin();
+  const orgId = String(formData.get("orgId") ?? "");
+  const days = Number(formData.get("days") ?? 14) || 14;
+  await run(() => extendTrial(orgId, days), admin.email, "Recenzije: produžena proba");
+}
+
+export async function deactivateAction(formData: FormData) {
+  const admin = await requireSuperAdmin();
+  const orgId = String(formData.get("orgId") ?? "");
+  await run(() => deactivate(orgId), admin.email, "Recenzije: ugašena pretplata");
+}
