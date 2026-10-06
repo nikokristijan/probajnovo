@@ -608,7 +608,7 @@ function ProductsView({
                 <span className="pl-card-name">Google recenzije na autopilotu</span>
                 <span className="pl-card-tagline">Nakon svake usluge klijent dobije SMS s poveznicom za recenziju, a podsjetnik ide sam.</span>
                 <span className="pl-card-foot">
-                  <span className="pl-card-price mono">14 dana besplatno</span>
+                  <span className="pl-card-price mono">Mi vodimo sve</span>
                   <span className="pl-card-go mono" aria-hidden="true">
                     ISPROBAJ →
                   </span>
