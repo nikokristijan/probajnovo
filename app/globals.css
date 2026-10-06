@@ -4764,3 +4764,6 @@ a.owner-glass:active,
 
 /* Traka "VIDEO / BEZ ZVUKA" iznad videa je suvišna — kontrole su već na videu. */
 .pd-media .pv-bar { display: none; }
+/* Obrazac za upit: izbor stranice kao jedan red (izbor se radi gore uz cijenu). */
+.pq-target { margin: 0; font-size: 13.5px; line-height: 1.5; color: rgba(0,0,0,0.7); }
+.pq-target .link-btn { font-size: inherit; text-decoration: underline; text-underline-offset: 3px; }

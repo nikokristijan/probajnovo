@@ -6,7 +6,7 @@ import { QTY_EVENT } from "@/components/novo/QtyQuickPick";
 import { track } from "@/lib/track";
 import type { QuantityDiscount } from "@/lib/db/schema";
 import { discountFor, eur, lineTotal } from "@/lib/pricing";
-import NfcPageOption, { nfcTargetLabel, useNfcTarget } from "@/components/novo/NfcPageOption";
+import { nfcTargetLabel, useNfcTarget } from "@/components/novo/NfcPageOption";
 
 export type InquiryAddon = { id: number; name: string; priceEur: number | null };
 
@@ -92,7 +92,7 @@ export default function ProductInquiryNovo({
   const [checking, startCheck] = useTransition();
   const [pageUrl, setPageUrl] = useState("");
   const [copied, setCopied] = useState(false);
-  const [nfcTarget] = useNfcTarget();
+  const [nfcTarget, chooseNfcTarget] = useNfcTarget();
 
   const applyCode = (raw: string) => {
     const code = raw.trim();
@@ -341,7 +341,20 @@ export default function ProductInquiryNovo({
         </fieldset>
       )}
 
-      {nfcMonthlyEur != null && <NfcPageOption monthlyEur={nfcMonthlyEur} idPrefix="pq" />}
+      {nfcMonthlyEur != null && (
+        <p className="pq-target">
+          {nfcTarget === "novo"
+            ? `Pločica vodi na našu stranicu za goste (+${nfcMonthlyEur} €/mj).`
+            : "Pločica vodi na vašu stranicu, bez mjesečne naknade."}{" "}
+          <button
+            type="button"
+            className="link link-btn"
+            onClick={() => chooseNfcTarget(nfcTarget === "novo" ? "own" : "novo")}
+          >
+            Promijeni
+          </button>
+        </p>
+      )}
 
       {priceEur != null &&
         (applied ? (
