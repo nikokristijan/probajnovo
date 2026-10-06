@@ -156,25 +156,68 @@ export default function ProductInquiryNovo({
     track("Lead", {
       content_name: productName,
       num_items: qty,
-      ...(priceEur != null ? { value: qty * priceEur, currency: "EUR" } : {}),
+      ...(total != null ? { value: total, currency: "EUR" } : {}),
     });
     (window as AdWindow).dataLayer?.push({ event: "product_inquiry", product: productName, quantity: qty });
-  }, [state?.success, productName, qty, priceEur]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [state?.success]);
 
   if (state?.success) {
+    const refCode = state.referralCode;
+    const shareLink = refCode && pageUrl ? `${pageUrl}?kod=${encodeURIComponent(refCode)}` : "";
+    const shareText = refCode
+      ? `Pozdrav! Za goste koristim ${productName} od NOVO-a. S mojim kodom ${refCode} dobivaš −${state.referralPercent} %: ${shareLink}`
+      : "";
     return (
       <div className="pq-done" role="status">
         <span className="novo-os-kicker mono">UPIT JE POSLAN</span>
         <p>
-          Hvala! Javljamo se{email ? ` na ${email}` : ""} unutar 24 sata s točnom cijenom za {qty} kom.
+          Hvala! Javljamo se{email ? ` na ${email}` : ""} unutar 24 sata s točnom cijenom za {qty} kom
+          {chosen.length > 0 ? " i odabrane dodatke" : ""}. Potvrdu smo poslali i mailom.
         </p>
+        {refCode && (
+          <div className="pq-ref">
+            <span className="pq-label mono">VAŠ KOD ZA PREPORUKU</span>
+            <span className="pq-ref-code mono">{refCode}</span>
+            <p>
+              Pošaljite ga kolegi iznajmljivaču: dobiva −{state.referralPercent} % na narudžbu, a kad ga iskoristi, i vi
+              dobivate −{state.referralPercent} % na sljedeću.
+            </p>
+            <div className="pq-ref-actions">
+              <a
+                href={`https://wa.me/?text=${encodeURIComponent(shareText)}`}
+                target="_blank"
+                rel="noreferrer"
+                className="novo-os-cta mono"
+              >
+                POŠALJI NA WHATSAPP
+              </a>
+              <button
+                type="button"
+                className="mono link link-btn"
+                onClick={async () => {
+                  try {
+                    await navigator.clipboard.writeText(shareLink || refCode);
+                    setCopied(true);
+                  } catch {}
+                }}
+              >
+                {copied ? "KOPIRANO ✓" : "KOPIRAJ LINK"}
+              </button>
+            </div>
+          </div>
+        )}
       </div>
     );
   }
 
   const message = [
     `Proizvod: ${productName}`,
-    `Količina: ${qty}`,
+    `Količina: ${qty}${pct > 0 ? ` (količinski popust −${pct} %)` : ""}`,
+    ...chosen.map(
+      (a) => `Dodatno: ${a.name} × ${addonQty[a.id]}${addonDiscountPercent > 0 ? ` (paket −${addonDiscountPercent} %)` : ""}`
+    ),
+    total != null ? `Okvirni iznos: ${eur(total)}${saved > 0 ? ` (ušteda ${eur(saved)})` : ""}` : null,
     place.trim() ? `Objekt: ${place.trim()}` : null,
     note.trim() ? `\n${note.trim()}` : null,
   ]
@@ -190,6 +233,8 @@ export default function ProductInquiryNovo({
       <input type="hidden" name="sourceName" value={productName} />
       <input type="hidden" name="message" value={message} />
       <input type="hidden" name="attribution" value={attribution} />
+      <input type="hidden" name="discountCode" value={applied?.code ?? ""} />
+      <input type="hidden" name="pageUrl" value={pageUrl} />
 
       <div className="stay-inquiry-hp" aria-hidden="true">
         <label>
