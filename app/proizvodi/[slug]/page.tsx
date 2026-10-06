@@ -70,13 +70,19 @@ export async function generateMetadata({ params }: { params: Promise<Params> }):
     return { title: "Proizvod", robots: { index: false, follow: false } };
   }
   const url = `${BASE_URL}/proizvodi/${product.slug}`;
-  const description = product.seoDescription || product.tagline;
+  // Bez SEO opisa: slogan + početak opisa proizvoda (do ~155 znakova, koliko Google prikazuje).
+  const firstPara = product.description.split(/\n\s*\n/)[0]?.replace(/\s+/g, " ").trim() ?? "";
+  const fallbackDesc = [product.tagline, firstPara].filter(Boolean).join(". ").replace(/\.\.+/g, ".");
+  const description =
+    product.seoDescription || (fallbackDesc.length > 155 ? `${fallbackDesc.slice(0, 152).trimEnd()}…` : fallbackDesc);
   // Layout dodaje " — NOVO"; ako je SEO naslov već sadrži, ne ponavljamo.
   const title = product.seoTitle
     ? /novo/i.test(product.seoTitle)
       ? { absolute: product.seoTitle }
       : product.seoTitle
-    : product.name;
+    : product.tagline
+      ? `${product.name} – ${product.tagline}`
+      : product.name;
   const ogTitle = typeof title === "string" ? `${title} — NOVO` : title.absolute;
   return {
     title,
