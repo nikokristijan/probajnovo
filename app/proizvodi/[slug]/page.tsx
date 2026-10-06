@@ -15,6 +15,8 @@ import ProductStickyCta from "@/components/novo/ProductStickyCta";
 import ConsentTracking from "@/components/novo/ConsentTracking";
 import { ContactLink, TrackProductView, WhatsAppIcon } from "@/components/novo/ProductContactLinks";
 import { telHref, whatsappUrl } from "@/lib/phone";
+import { eur, normalizeDiscounts, saleInfo, shortDate } from "@/lib/pricing";
+import NfcPagePreview from "@/components/novo/NfcPagePreview";
 
 export const revalidate = 0;
 
@@ -23,7 +25,7 @@ const BASE_URL = "https://www.probajnovo.com";
 type Params = { slug: string };
 
 function priceLabel(priceEur: number | null) {
-  return priceEur != null ? `od ${priceEur} €` : "Cijena na upit";
+  return priceEur != null ? `od ${eur(priceEur)}` : "Cijena na upit";
 }
 
 /** YouTube/Vimeo poveznica → embed adresa; datoteka (.mp4, Vercel Blob) → null (koristi <video>). */
@@ -110,6 +112,9 @@ export default async function ProductPage({ params }: { params: Promise<Params> 
     console.error("[ProductPage] recordPageView nije uspio:", err)
   );
 
+  const today = todayDateStringZagreb();
+  const sale = saleInfo(product, today);
+  const unitPrice = sale.price;
   const url = `${BASE_URL}/proizvodi/${product.slug}`;
   const others = all.filter((p) => p.id !== product.id && p.slug).slice(0, 3);
   const embed = product.videoUrl ? videoEmbed(product.videoUrl) : null;
@@ -124,6 +129,17 @@ export default async function ProductPage({ params }: { params: Promise<Params> 
     ? whatsappUrl(contact.phone, `Pozdrav! Zanima me ${product.name} (${url})`)
     : null;
   const phoneHref = contact.phone ? telHref(contact.phone) : null;
+  const discounts = normalizeDiscounts(product.quantityDiscounts);
+  const maxDiscount = discounts.length ? discounts[discounts.length - 1] : null;
+  const addons = (product.addonProductIds ?? [])
+    .map((id) => all.find((p) => p.id === id))
+    .filter((p): p is NonNullable<typeof p> => Boolean(p))
+    .map((p) => ({ id: p.id, name: p.name, priceEur: saleInfo(p, today).price }));
+  const assurance = [
+    { label: "DOSTAVA", text: contact.deliveryText },
+    { label: "IZRADA", text: contact.productionText },
+    { label: "JAMSTVO", text: contact.guaranteeText },
+  ].filter((r): r is { label: string; text: string } => Boolean(r.text));
 
   const jsonLd = [
     {
@@ -155,8 +171,9 @@ export default async function ProductPage({ params }: { params: Promise<Params> 
             offers: {
               "@type": "Offer",
               url,
-              price: product.priceEur,
+              price: unitPrice,
               priceCurrency: "EUR",
+              ...(sale.endsAt ? { priceValidUntil: sale.endsAt } : {}),
               availability: "https://schema.org/MadeToOrder",
               seller: { "@type": "Organization", name: "NOVO" },
             },
@@ -229,8 +246,21 @@ export default async function ProductPage({ params }: { params: Promise<Params> 
               <p className="pd-tagline">{product.tagline}</p>
 
               <div className="pd-price">
-                <span className="pd-price-value">{priceLabel(product.priceEur)}</span>
+                {sale.active && product.priceEur != null && (
+                  <s className="pd-price-was">{eur(product.priceEur)}</s>
+                )}
+                <span className="pd-price-value">{priceLabel(unitPrice)}</span>
                 {product.priceEur != null && <span className="mono muted pd-price-unit">/ KOM</span>}
+                {sale.active && (
+                  <span className="pd-price-sale mono">
+                    AKCIJA −{sale.percent} %{sale.endsAt ? ` · DO ${shortDate(sale.endsAt)}` : ""}
+                  </span>
+                )}
+                {product.priceEur != null && maxDiscount && (
+                  <span className="pd-price-deal mono">
+                    DO −{maxDiscount.percent} % OD {maxDiscount.minQty} KOM
+                  </span>
+                )}
               </div>
               {reviews.length > 0 && (
                 <a href="#recenzije" className="pd-rating mono">
@@ -263,7 +293,31 @@ export default async function ProductPage({ params }: { params: Promise<Params> 
                 </ul>
               )}
 
-              <QtyQuickPick priceEur={product.priceEur} ctaLabel={ctaLabel} productName={product.name} />
+              <QtyQuickPick
+                priceEur={unitPrice}
+                ctaLabel={ctaLabel}
+                productName={product.name}
+                discounts={discounts}
+              />
+
+              {assurance.length > 0 && (
+                <dl className="pd-assure">
+                  {assurance.map((r) => (
+                    <div key={r.label} className="pd-assure-row">
+                      <dt className="mono">{r.label}</dt>
+                      <dd>{r.text}</dd>
+                    </div>
+                  ))}
+                  <div className="pd-assure-row">
+                    <dt className="mono">POVRAT</dt>
+                    <dd>
+                      <Link href="/povrat" className="link">
+                        Uvjeti povrata i reklamacije
+                      </Link>
+                    </dd>
+                  </div>
+                </dl>
+              )}
 
               {waHref && (
                 <ContactLink href={waHref} productName={product.name} channel="whatsapp" className="pd-wa mono">
@@ -282,6 +336,8 @@ export default async function ProductPage({ params }: { params: Promise<Params> 
               </div>
             </div>
           </article>
+
+          {product.showNfcPreview && <NfcPagePreview />}
 
           {reviews.length > 0 && (
             <section className="pd-section" id="recenzije" aria-labelledby="pd-recenzije">
@@ -395,8 +451,11 @@ export default async function ProductPage({ params }: { params: Promise<Params> 
             <ProductInquiryNovo
               productId={product.id}
               productName={product.name}
-              priceEur={product.priceEur}
+              priceEur={unitPrice}
               ctaLabel={product.ctaButtonText}
+              discounts={discounts}
+              addons={addons}
+              addonDiscountPercent={product.addonDiscountPercent ?? 0}
             />
           </section>
 
@@ -419,7 +478,7 @@ export default async function ProductPage({ params }: { params: Promise<Params> 
                       <span className="pl-card-name">{p.name}</span>
                       <span className="pl-card-tagline">{p.tagline}</span>
                       <span className="pl-card-foot">
-                        <span className="pl-card-price mono">{priceLabel(p.priceEur)}</span>
+                        <span className="pl-card-price mono">{priceLabel(saleInfo(p, today).price)}</span>
                         <span className="pl-card-go mono" aria-hidden="true">
                           DETALJI →
                         </span>
