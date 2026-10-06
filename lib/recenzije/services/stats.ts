@@ -269,3 +269,61 @@ export async function byCampaign(organizationId: string) {
 }
 
 export { REVIEWED };
+
+/**
+ * Mjesečni izvještaj za tvrtku (NOVO ga šalje klijentu kao PDF): sve brojke
+ * su za kalendarski mjesec u vremenskoj zoni tvrtke, ništa nije procijenjeno.
+ */
+export async function monthlyReport(organizationId: string, year: number, month: number, timeZone: string) {
+  const range = sql`(make_timestamptz(${year}, ${month}, 1, 0, 0, 0, ${timeZone}))`;
+  const rangeEnd = sql`(make_timestamptz(${year}, ${month}, 1, 0, 0, 0, ${timeZone}) + interval '1 month')`;
+  const inMonth = (col: unknown) => sql`${col} >= ${range} and ${col} < ${rangeEnd}`;
+
+  const [msgRows, [clicked], [newClients], [rev], topReviews, [optOuts]] = await Promise.all([
+    db
+      .select({ kind: messages.kind, status: messages.status, n: count() })
+      .from(messages)
+      .where(and(eq(messages.organizationId, organizationId), eq(messages.direction, "OUTBOUND"), inMonth(messages.createdAt)))
+      .groupBy(messages.kind, messages.status),
+    db
+      .select({ n: count() })
+      .from(trackingLinks)
+      .where(and(eq(trackingLinks.organizationId, organizationId), inMonth(trackingLinks.firstClickedAt))),
+    db.select({ n: count() }).from(clients).where(and(eq(clients.organizationId, organizationId), inMonth(clients.createdAt))),
+    db
+      .select({ n: count(), avg: sql<number | null>`avg(${reviews.rating})::float`, five: sql<number>`count(*) filter (where ${reviews.rating} = 5)::int` })
+      .from(reviews)
+      .where(and(eq(reviews.organizationId, organizationId), inMonth(reviews.reviewedAt))),
+    db
+      .select({ name: reviews.reviewerName, rating: reviews.rating, comment: reviews.comment, at: reviews.reviewedAt })
+      .from(reviews)
+      .where(and(eq(reviews.organizationId, organizationId), inMonth(reviews.reviewedAt), isNotNull(reviews.comment), gte(reviews.rating, 4)))
+      .orderBy(desc(reviews.rating), desc(reviews.reviewedAt))
+      .limit(3),
+    db
+      .select({ n: count() })
+      .from(activityEvents)
+      .where(and(eq(activityEvents.organizationId, organizationId), eq(activityEvents.type, "opt_out"), inMonth(activityEvents.createdAt))),
+  ]);
+
+  const delivered = (kinds: readonly string[]) =>
+    msgRows.filter((r) => kinds.includes(r.kind) && r.status !== "FAILED" && r.status !== "QUEUED" && r.status !== "UNDELIVERED").reduce((a, r) => a + r.n, 0);
+  const requests = delivered(["REVIEW_REQUEST", "CAMPAIGN"]);
+  const followUps = delivered(["FOLLOW_UP"]);
+  const failed = msgRows.filter((r) => r.status === "FAILED" || r.status === "UNDELIVERED").reduce((a, r) => a + r.n, 0);
+  return {
+    year,
+    month,
+    newClients: newClients.n,
+    requests,
+    followUps,
+    failed,
+    clicked: clicked.n,
+    clickRate: pct(clicked.n, requests),
+    reviews: rev.n,
+    fiveStar: rev.five,
+    averageRating: rev.avg,
+    optOuts: optOuts.n,
+    topReviews,
+  };
+}
