@@ -1,6 +1,8 @@
 import { getAgency, listProperties, listStudies, listProducts } from "@/lib/db/queries";
 import type { StudyProject, ProductCard } from "@/components/NovoHome";
 import type { Product } from "@/lib/db/schema";
+import { saleInfo } from "@/lib/pricing";
+import { todayDateStringZagreb } from "@/lib/date";
 
 export type AgencyContact = { contactEmail: string; instagramHandle: string; city: string };
 
@@ -8,7 +10,15 @@ export type AgencyContact = { contactEmail: string; instagramHandle: string; cit
 export type AgencyTracking = { metaPixelId: string | null; gaMeasurementId: string | null };
 
 export async function getAgencyContact(): Promise<
-  AgencyContact & AgencyTracking & { heroTitle: string; officeText: string; phone: string | null }
+  AgencyContact &
+    AgencyTracking & {
+      heroTitle: string;
+      officeText: string;
+      phone: string | null;
+      deliveryText: string | null;
+      productionText: string | null;
+      guaranteeText: string | null;
+    }
 > {
   const agencyData = await getAgency();
   return {
@@ -21,16 +31,21 @@ export async function getAgencyContact(): Promise<
     phone: agencyData?.phone?.trim() || null,
     metaPixelId: agencyData?.metaPixelId?.trim() || null,
     gaMeasurementId: agencyData?.gaMeasurementId?.trim() || null,
+    deliveryText: agencyData?.deliveryText?.trim() || null,
+    productionText: agencyData?.productionText?.trim() || null,
+    guaranteeText: agencyData?.guaranteeText?.trim() || null,
   };
 }
 
 export function toProductCard(p: Product): ProductCard {
+  const sale = saleInfo(p, todayDateStringZagreb());
   return {
+    salePercent: sale.percent,
     id: p.id,
     name: p.name,
     tagline: p.tagline,
     description: p.description,
-    priceEur: p.priceEur,
+    priceEur: sale.price,
     images: p.images,
     features: p.features,
     slug: p.slug,
