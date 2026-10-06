@@ -1,13 +1,18 @@
 "use client";
 
-import { useActionState, useEffect, useState } from "react";
-import { createInquiryAction, type ActionState } from "@/lib/actions";
+import { useActionState, useEffect, useState, useTransition } from "react";
+import { checkDiscountCodeAction, createInquiryAction, type ActionState } from "@/lib/actions";
 import { QTY_EVENT } from "@/components/novo/QtyQuickPick";
 import { track } from "@/lib/track";
+import type { QuantityDiscount } from "@/lib/db/schema";
+import { discountFor, eur, lineTotal } from "@/lib/pricing";
+
+export type InquiryAddon = { id: number; name: string; priceEur: number | null };
 
 const APEX_HOST = process.env.NEXT_PUBLIC_APEX_HOST || "";
 const PRIVACY_POLICY_URL = APEX_HOST ? `https://${APEX_HOST}/privatnost` : "/privatnost";
 const ATTR_KEY = "novo-attribution";
+const CODE_KEY = "novo-discount-code";
 
 type AdWindow = Window & { dataLayer?: unknown[] };
 
@@ -53,11 +58,19 @@ export default function ProductInquiryNovo({
   productName,
   priceEur,
   ctaLabel,
+  discounts = [],
+  addons = [],
+  addonDiscountPercent = 0,
 }: {
   productId: number;
   productName: string;
   priceEur: number | null;
   ctaLabel?: string | null;
+  discounts?: QuantityDiscount[];
+  /** Proizvodi koje kupac može dodati u isti upit (paket). */
+  addons?: InquiryAddon[];
+  /** Popust na dodatke kad se uzmu uz ovaj proizvod. */
+  addonDiscountPercent?: number;
 }) {
   const [state, formAction, pending] = useActionState<ActionState, FormData>(createInquiryAction, undefined);
   const [qty, setQty] = useState(1);
@@ -66,6 +79,50 @@ export default function ProductInquiryNovo({
   const [email, setEmail] = useState("");
   const [attribution, setAttribution] = useState("");
   const [showMore, setShowMore] = useState(false);
+  // Dodaci: id → količina (0 = nije odabran). Odabrani dodatak prati glavnu količinu dok ga kupac ne promijeni.
+  const [addonQty, setAddonQty] = useState<Record<number, number>>({});
+  const [codeOpen, setCodeOpen] = useState(false);
+  const [codeInput, setCodeInput] = useState("");
+  const [codeError, setCodeError] = useState<string | null>(null);
+  const [applied, setApplied] = useState<{ code: string; percent: number } | null>(null);
+  const [checking, startCheck] = useTransition();
+  const [pageUrl, setPageUrl] = useState("");
+  const [copied, setCopied] = useState(false);
+
+  const applyCode = (raw: string) => {
+    const code = raw.trim();
+    if (!code) return;
+    setCodeError(null);
+    startCheck(async () => {
+      const res = await checkDiscountCodeAction(code);
+      if ("error" in res) {
+        setApplied(null);
+        setCodeError(res.error);
+        setCodeOpen(true);
+        return;
+      }
+      setApplied(res);
+      setCodeInput(res.code);
+      try {
+        sessionStorage.setItem(CODE_KEY, res.code);
+      } catch {}
+    });
+  };
+
+  const pct = discountFor(qty, discounts);
+  const mainTotal = priceEur != null ? lineTotal(priceEur, qty, pct) : null;
+  const chosen = addons.filter((a) => (addonQty[a.id] ?? 0) > 0);
+  const addonsTotal = chosen.reduce(
+    (sum, a) => sum + (a.priceEur != null ? lineTotal(a.priceEur, addonQty[a.id], addonDiscountPercent) : 0),
+    0
+  );
+  const subtotal = mainTotal != null ? Math.round((mainTotal + addonsTotal) * 100) / 100 : null;
+  const total = subtotal != null && applied ? lineTotal(subtotal, 1, applied.percent) : subtotal;
+  const fullPrice =
+    priceEur != null
+      ? qty * priceEur + chosen.reduce((sum, a) => sum + (a.priceEur ?? 0) * addonQty[a.id], 0)
+      : null;
+  const saved = total != null && fullPrice != null ? Math.round((fullPrice - total) * 100) / 100 : 0;
 
   // Količina odabrana gore uz cijenu (QtyQuickPick) dolazi ovamo.
   useEffect(() => {
@@ -82,6 +139,15 @@ export default function ProductInquiryNovo({
     // sessionStorage/URL postoje tek u pregledniku.
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setAttribution(readAttribution());
+    setPageUrl(window.location.origin + window.location.pathname);
+    // Kod iz linka (?kod=...) ili ranije primijenjen u ovoj sesiji.
+    let initial = new URLSearchParams(window.location.search).get("kod") || "";
+    if (!initial) {
+      try {
+        initial = sessionStorage.getItem(CODE_KEY) || "";
+      } catch {}
+    }
+    if (initial) applyCode(initial);
   }, []);
 
   // Konverzija za oglase (Meta Pixel / Google, samo uz pristanak — vidi lib/track).
