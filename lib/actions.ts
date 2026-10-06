@@ -7,7 +7,7 @@ import bcrypt from "bcryptjs";
 import { z } from "zod";
 import { Secret, TOTP } from "otpauth";
 import QRCode from "qrcode";
-import { dateStringOffsetFromTodayZagreb } from "@/lib/date";
+import { dateStringOffsetFromTodayZagreb, todayDateStringZagreb } from "@/lib/date";
 import {
   createSessionToken,
   setSessionCookie,
@@ -18,6 +18,16 @@ import {
   clearPendingTwoFactorCookie,
   getPendingTwoFactorAdminId,
 } from "@/lib/auth";
+import {
+  createDiscountCode,
+  setDiscountCodeActive,
+  deleteDiscountCode,
+  findValidDiscountCode,
+  incrementDiscountCodeUse,
+  getOrCreateReferralCode,
+  setReferralPercent,
+  normalizeCode,
+} from "@/lib/db/queries";
 import {
   findAdminByEmail,
   getReservationById,
@@ -108,7 +118,7 @@ import { sendPushToAdmins, sendPushToAllDevices } from "@/lib/push";
 import type { AdminUser, Inquiry } from "@/lib/db/schema";
 
 export type ActionState =
-  | { error?: string; success?: boolean; warning?: string }
+  | { error?: string; success?: boolean; warning?: string; referralCode?: string; referralPercent?: number }
   | undefined;
 
 const RESERVED_SLUGS = new Set([
@@ -339,6 +349,9 @@ const AgencySchema = z.object({
     .trim()
     .toUpperCase()
     .refine((v) => v === "" || /^G-[A-Z0-9]{4,15}$/.test(v), "Google Analytics ID izgleda kao G-ABC123XYZ."),
+  deliveryText: z.string().trim().max(200),
+  productionText: z.string().trim().max(200),
+  guaranteeText: z.string().trim().max(200),
 });
 
 export async function updateAgencyAction(
@@ -355,6 +368,9 @@ export async function updateAgencyAction(
     phone: formData.get("phone") ?? "",
     metaPixelId: formData.get("metaPixelId") ?? "",
     gaMeasurementId: formData.get("gaMeasurementId") ?? "",
+    deliveryText: formData.get("deliveryText") ?? "",
+    productionText: formData.get("productionText") ?? "",
+    guaranteeText: formData.get("guaranteeText") ?? "",
   });
   if (!parsed.success) {
     return { error: parsed.error.issues[0]?.message ?? "Provjeri unesene podatke." };
@@ -364,6 +380,9 @@ export async function updateAgencyAction(
     phone: emptyToNull(parsed.data.phone),
     metaPixelId: emptyToNull(parsed.data.metaPixelId),
     gaMeasurementId: emptyToNull(parsed.data.gaMeasurementId),
+    deliveryText: emptyToNull(parsed.data.deliveryText),
+    productionText: emptyToNull(parsed.data.productionText),
+    guaranteeText: emptyToNull(parsed.data.guaranteeText),
   });
   revalidatePath("/");
   revalidatePath("/proizvodi", "layout");
@@ -1105,7 +1124,41 @@ const ProductSchema = z.object({
   seoDescription: z.string().optional(),
   faq: z.string().optional(), // JSON niz {question, answer}
   testimonials: z.string().optional(), // JSON niz {author, text, rating}
+  quantityDiscounts: z.string().optional(), // JSON niz {minQty, percent}
+  addonProductIds: z.string().optional(), // JSON niz id-jeva
+  addonDiscountPercent: z.coerce.number().int().min(0).max(90).default(0),
+  salePercent: z.coerce.number().int().min(0, "Akcija mora biti 0–90 %.").max(90, "Akcija mora biti 0–90 %.").default(0),
+  saleEndsAt: z
+    .string()
+    .optional()
+    .refine((v) => !v || /^\d{4}-\d{2}-\d{2}$/.test(v), "Datum kraja akcije nije ispravan."),
+  showNfcPreview: z.coerce.boolean(),
 });
+
+function parseQuantityDiscounts(raw?: string): { minQty: number; percent: number }[] {
+  try {
+    const arr = JSON.parse(raw ?? "[]");
+    if (!Array.isArray(arr)) return [];
+    const seen = new Set<number>();
+    return arr
+      .map((t) => ({ minQty: Math.round(Number(t?.minQty)), percent: Math.round(Number(t?.percent)) }))
+      .filter((t) => t.minQty >= 2 && t.minQty <= 999 && t.percent > 0 && t.percent <= 90)
+      .filter((t) => (seen.has(t.minQty) ? false : (seen.add(t.minQty), true)))
+      .sort((a, b) => a.minQty - b.minQty);
+  } catch {
+    return [];
+  }
+}
+
+function parseIdList(raw?: string, excludeId?: number): number[] {
+  try {
+    const arr = JSON.parse(raw ?? "[]");
+    if (!Array.isArray(arr)) return [];
+    return [...new Set(arr.map(Number).filter((n) => Number.isInteger(n) && n > 0 && n !== excludeId))].slice(0, 6);
+  } catch {
+    return [];
+  }
+}
 
 function readProductFormData(formData: FormData) {
   return {
@@ -1126,6 +1179,12 @@ function readProductFormData(formData: FormData) {
     seoDescription: formData.get("seoDescription") ?? "",
     faq: formData.get("faq") ?? "[]",
     testimonials: formData.get("testimonials") ?? "[]",
+    quantityDiscounts: formData.get("quantityDiscounts") ?? "[]",
+    addonProductIds: formData.get("addonProductIds") ?? "[]",
+    addonDiscountPercent: formData.get("addonDiscountPercent") || "0",
+    salePercent: formData.get("salePercent") || "0",
+    saleEndsAt: formData.get("saleEndsAt") ?? "",
+    showNfcPreview: formData.get("showNfcPreview") === "on",
   };
 }
 
@@ -1166,6 +1225,9 @@ export async function createProductAction(
     seoDescription: emptyToNull(parsed.data.seoDescription),
     faq: parseFaq(parsed.data.faq),
     testimonials: parseTestimonials(parsed.data.testimonials),
+    quantityDiscounts: parseQuantityDiscounts(parsed.data.quantityDiscounts),
+    addonProductIds: parseIdList(parsed.data.addonProductIds),
+    saleEndsAt: emptyToNull(parsed.data.saleEndsAt),
   });
   revalidatePath("/");
   revalidatePath("/admin");
@@ -1205,6 +1267,9 @@ export async function updateProductAction(
     seoDescription: emptyToNull(parsed.data.seoDescription),
     faq: parseFaq(parsed.data.faq),
     testimonials: parseTestimonials(parsed.data.testimonials),
+    quantityDiscounts: parseQuantityDiscounts(parsed.data.quantityDiscounts),
+    addonProductIds: parseIdList(parsed.data.addonProductIds, id),
+    saleEndsAt: emptyToNull(parsed.data.saleEndsAt),
   });
   revalidatePath("/");
   revalidatePath("/admin");
@@ -1421,9 +1486,17 @@ export async function createInquiryAction(
     .replace(/[\r\n]+/g, " ")
     .trim()
     .slice(0, 300);
-  const message = attribution
-    ? `${parsed.data.message.trim()}\n\n— Izvor: ${attribution}`
-    : parsed.data.message.trim();
+  // Kod za popust — provjerava se ovdje na serveru (ne vjerujemo pregledniku).
+  const rawCode = String(formData.get("discountCode") ?? "");
+  const usedCode = rawCode ? await findValidDiscountCode(rawCode, todayDateStringZagreb()).catch(() => null) : null;
+  const codeLine = usedCode
+    ? `Kod za popust: ${usedCode.code} (−${usedCode.percent} %)` +
+      (usedCode.referrerEmail ? ` — preporuka od ${usedCode.referrerName || ""} <${usedCode.referrerEmail}>` : "")
+    : rawCode.trim()
+      ? `Kod za popust: ${normalizeCode(rawCode)} (NIJE VAŽEĆI)`
+      : "";
+  const baseMessage = [parsed.data.message.trim(), codeLine].filter(Boolean).join("\n");
+  const message = attribution ? `${baseMessage}\n\n— Izvor: ${attribution}` : baseMessage;
 
   if (ip) {
     const since = new Date(Date.now() - INQUIRY_RATE_LIMIT_WINDOW_MINUTES * 60 * 1000);
@@ -1490,17 +1563,124 @@ export async function createInquiryAction(
     }
   );
 
+  if (usedCode) {
+    await incrementDiscountCodeUse(usedCode.id).catch((err) =>
+      console.error("[createInquiryAction] brojač koda nije ažuriran:", err)
+    );
+  }
+
+  // Osobni kod za preporuku (samo za upite za proizvode, ako je uključeno u adminu).
+  let referral: { code: string; percent: number } | null = null;
+  let productionText: string | null = null;
+  if (parsed.data.source === "product") {
+    try {
+      const agencyRow = await getAgency();
+      productionText = agencyRow?.productionText ?? null;
+      const pct = agencyRow?.referralPercent ?? 0;
+      if (pct > 0) {
+        const row = await getOrCreateReferralCode(parsed.data.name, parsed.data.email, pct);
+        if (row) referral = { code: row.code, percent: row.percent };
+      }
+    } catch (err) {
+      console.error("[createInquiryAction] kod za preporuku nije napravljen:", err);
+    }
+  }
+
   try {
     await sendGuestConfirmation({
       to: parsed.data.email.trim(),
       sourceName: parsed.data.sourceName.trim(),
       name: parsed.data.name.trim(),
+      ...(parsed.data.source === "product"
+        ? {
+            summary: baseMessage,
+            productionText,
+            referral,
+            pageUrl: String(formData.get("pageUrl") ?? "").slice(0, 300) || null,
+          }
+        : {}),
     });
   } catch (err) {
     console.error("[createInquiryAction] slanje potvrde gostu nije uspjelo:", err);
   }
 
   revalidatePath("/admin/inquiries");
+  return referral
+    ? { success: true, referralCode: referral.code, referralPercent: referral.percent }
+    : { success: true };
+}
+
+/** Provjera koda za popust iz obrasca (prije slanja) — vraća samo postotak. */
+export async function checkDiscountCodeAction(
+  code: string
+): Promise<{ code: string; percent: number } | { error: string }> {
+  const row = await findValidDiscountCode(String(code ?? ""), todayDateStringZagreb()).catch(() => null);
+  if (!row) return { error: "Kod nije važeći ili je istekao." };
+  return { code: row.code, percent: row.percent };
+}
+
+/* ---------------------------------------------------------------- */
+/* Popusti (admin)                                                    */
+/* ---------------------------------------------------------------- */
+
+const DiscountCodeSchema = z.object({
+  code: z
+    .string()
+    .transform((v) => normalizeCode(v))
+    .refine((v) => v.length >= 3, "Kod mora imati barem 3 znaka (slova, brojke, crtica)."),
+  percent: z.coerce.number().int().min(1, "Popust mora biti 1–90 %.").max(90, "Popust mora biti 1–90 %."),
+  expiresAt: z
+    .string()
+    .optional()
+    .refine((v) => !v || /^\d{4}-\d{2}-\d{2}$/.test(v), "Datum isteka nije ispravan."),
+  maxUses: z.string().optional(),
+  note: z.string().max(200).optional(),
+});
+
+export async function createDiscountCodeAction(_prev: ActionState, formData: FormData): Promise<ActionState> {
+  await requireAdmin();
+  const parsed = DiscountCodeSchema.safeParse({
+    code: formData.get("code") ?? "",
+    percent: formData.get("percent") ?? "",
+    expiresAt: formData.get("expiresAt") ?? "",
+    maxUses: formData.get("maxUses") ?? "",
+    note: formData.get("note") ?? "",
+  });
+  if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "Provjeri unesene podatke." };
+  const maxUses = parsed.data.maxUses ? Math.max(1, Math.round(Number(parsed.data.maxUses)) || 1) : null;
+  try {
+    await createDiscountCode({
+      code: parsed.data.code,
+      percent: parsed.data.percent,
+      expiresAt: emptyToNull(parsed.data.expiresAt),
+      maxUses,
+      note: emptyToNull(parsed.data.note),
+    });
+  } catch {
+    return { error: `Kod "${parsed.data.code}" već postoji.` };
+  }
+  revalidatePath("/admin/popusti");
+  return { success: true };
+}
+
+export async function toggleDiscountCodeAction(id: number, active: boolean): Promise<void> {
+  await requireAdmin();
+  await setDiscountCodeActive(id, active);
+  revalidatePath("/admin/popusti");
+}
+
+export async function deleteDiscountCodeAction(id: number): Promise<void> {
+  await requireAdmin();
+  await deleteDiscountCode(id);
+  revalidatePath("/admin/popusti");
+}
+
+export async function updateReferralPercentAction(_prev: ActionState, formData: FormData): Promise<ActionState> {
+  await requireAdmin();
+  const n = Math.round(Number(formData.get("referralPercent") ?? 0));
+  if (!Number.isFinite(n) || n < 0 || n > 50) return { error: "Popust za preporuku mora biti 0–50 %." };
+  await setReferralPercent(n);
+  revalidatePath("/admin/popusti");
   return { success: true };
 }
 

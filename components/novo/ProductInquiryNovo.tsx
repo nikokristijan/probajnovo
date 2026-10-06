@@ -1,13 +1,18 @@
 "use client";
 
-import { useActionState, useEffect, useState } from "react";
-import { createInquiryAction, type ActionState } from "@/lib/actions";
+import { useActionState, useEffect, useState, useTransition } from "react";
+import { checkDiscountCodeAction, createInquiryAction, type ActionState } from "@/lib/actions";
 import { QTY_EVENT } from "@/components/novo/QtyQuickPick";
 import { track } from "@/lib/track";
+import type { QuantityDiscount } from "@/lib/db/schema";
+import { discountFor, eur, lineTotal } from "@/lib/pricing";
+
+export type InquiryAddon = { id: number; name: string; priceEur: number | null };
 
 const APEX_HOST = process.env.NEXT_PUBLIC_APEX_HOST || "";
 const PRIVACY_POLICY_URL = APEX_HOST ? `https://${APEX_HOST}/privatnost` : "/privatnost";
 const ATTR_KEY = "novo-attribution";
+const CODE_KEY = "novo-discount-code";
 
 type AdWindow = Window & { dataLayer?: unknown[] };
 
@@ -53,11 +58,19 @@ export default function ProductInquiryNovo({
   productName,
   priceEur,
   ctaLabel,
+  discounts = [],
+  addons = [],
+  addonDiscountPercent = 0,
 }: {
   productId: number;
   productName: string;
   priceEur: number | null;
   ctaLabel?: string | null;
+  discounts?: QuantityDiscount[];
+  /** Proizvodi koje kupac može dodati u isti upit (paket). */
+  addons?: InquiryAddon[];
+  /** Popust na dodatke kad se uzmu uz ovaj proizvod. */
+  addonDiscountPercent?: number;
 }) {
   const [state, formAction, pending] = useActionState<ActionState, FormData>(createInquiryAction, undefined);
   const [qty, setQty] = useState(1);
@@ -66,6 +79,50 @@ export default function ProductInquiryNovo({
   const [email, setEmail] = useState("");
   const [attribution, setAttribution] = useState("");
   const [showMore, setShowMore] = useState(false);
+  // Dodaci: id → količina (0 = nije odabran). Odabrani dodatak prati glavnu količinu dok ga kupac ne promijeni.
+  const [addonQty, setAddonQty] = useState<Record<number, number>>({});
+  const [codeOpen, setCodeOpen] = useState(false);
+  const [codeInput, setCodeInput] = useState("");
+  const [codeError, setCodeError] = useState<string | null>(null);
+  const [applied, setApplied] = useState<{ code: string; percent: number } | null>(null);
+  const [checking, startCheck] = useTransition();
+  const [pageUrl, setPageUrl] = useState("");
+  const [copied, setCopied] = useState(false);
+
+  const applyCode = (raw: string) => {
+    const code = raw.trim();
+    if (!code) return;
+    setCodeError(null);
+    startCheck(async () => {
+      const res = await checkDiscountCodeAction(code);
+      if ("error" in res) {
+        setApplied(null);
+        setCodeError(res.error);
+        setCodeOpen(true);
+        return;
+      }
+      setApplied(res);
+      setCodeInput(res.code);
+      try {
+        sessionStorage.setItem(CODE_KEY, res.code);
+      } catch {}
+    });
+  };
+
+  const pct = discountFor(qty, discounts);
+  const mainTotal = priceEur != null ? lineTotal(priceEur, qty, pct) : null;
+  const chosen = addons.filter((a) => (addonQty[a.id] ?? 0) > 0);
+  const addonsTotal = chosen.reduce(
+    (sum, a) => sum + (a.priceEur != null ? lineTotal(a.priceEur, addonQty[a.id], addonDiscountPercent) : 0),
+    0
+  );
+  const subtotal = mainTotal != null ? Math.round((mainTotal + addonsTotal) * 100) / 100 : null;
+  const total = subtotal != null && applied ? lineTotal(subtotal, 1, applied.percent) : subtotal;
+  const fullPrice =
+    priceEur != null
+      ? qty * priceEur + chosen.reduce((sum, a) => sum + (a.priceEur ?? 0) * addonQty[a.id], 0)
+      : null;
+  const saved = total != null && fullPrice != null ? Math.round((fullPrice - total) * 100) / 100 : 0;
 
   // Količina odabrana gore uz cijenu (QtyQuickPick) dolazi ovamo.
   useEffect(() => {
@@ -82,6 +139,15 @@ export default function ProductInquiryNovo({
     // sessionStorage/URL postoje tek u pregledniku.
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setAttribution(readAttribution());
+    setPageUrl(window.location.origin + window.location.pathname);
+    // Kod iz linka (?kod=...) ili ranije primijenjen u ovoj sesiji.
+    let initial = new URLSearchParams(window.location.search).get("kod") || "";
+    if (!initial) {
+      try {
+        initial = sessionStorage.getItem(CODE_KEY) || "";
+      } catch {}
+    }
+    if (initial) applyCode(initial);
   }, []);
 
   // Konverzija za oglase (Meta Pixel / Google, samo uz pristanak — vidi lib/track).
@@ -90,25 +156,68 @@ export default function ProductInquiryNovo({
     track("Lead", {
       content_name: productName,
       num_items: qty,
-      ...(priceEur != null ? { value: qty * priceEur, currency: "EUR" } : {}),
+      ...(total != null ? { value: total, currency: "EUR" } : {}),
     });
     (window as AdWindow).dataLayer?.push({ event: "product_inquiry", product: productName, quantity: qty });
-  }, [state?.success, productName, qty, priceEur]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [state?.success]);
 
   if (state?.success) {
+    const refCode = state.referralCode;
+    const shareLink = refCode && pageUrl ? `${pageUrl}?kod=${encodeURIComponent(refCode)}` : "";
+    const shareText = refCode
+      ? `Pozdrav! Za goste koristim ${productName} od NOVO-a. S mojim kodom ${refCode} dobivaš −${state.referralPercent} %: ${shareLink}`
+      : "";
     return (
       <div className="pq-done" role="status">
         <span className="novo-os-kicker mono">UPIT JE POSLAN</span>
         <p>
-          Hvala! Javljamo se{email ? ` na ${email}` : ""} unutar 24 sata s točnom cijenom za {qty} kom.
+          Hvala! Javljamo se{email ? ` na ${email}` : ""} unutar 24 sata s točnom cijenom za {qty} kom
+          {chosen.length > 0 ? " i odabrane dodatke" : ""}. Potvrdu smo poslali i mailom.
         </p>
+        {refCode && (
+          <div className="pq-ref">
+            <span className="pq-label mono">VAŠ KOD ZA PREPORUKU</span>
+            <span className="pq-ref-code mono">{refCode}</span>
+            <p>
+              Pošaljite ga kolegi iznajmljivaču: dobiva −{state.referralPercent} % na narudžbu, a kad ga iskoristi, i vi
+              dobivate −{state.referralPercent} % na sljedeću.
+            </p>
+            <div className="pq-ref-actions">
+              <a
+                href={`https://wa.me/?text=${encodeURIComponent(shareText)}`}
+                target="_blank"
+                rel="noreferrer"
+                className="novo-os-cta mono"
+              >
+                POŠALJI NA WHATSAPP
+              </a>
+              <button
+                type="button"
+                className="mono link link-btn"
+                onClick={async () => {
+                  try {
+                    await navigator.clipboard.writeText(shareLink || refCode);
+                    setCopied(true);
+                  } catch {}
+                }}
+              >
+                {copied ? "KOPIRANO ✓" : "KOPIRAJ LINK"}
+              </button>
+            </div>
+          </div>
+        )}
       </div>
     );
   }
 
   const message = [
     `Proizvod: ${productName}`,
-    `Količina: ${qty}`,
+    `Količina: ${qty}${pct > 0 ? ` (količinski popust −${pct} %)` : ""}`,
+    ...chosen.map(
+      (a) => `Dodatno: ${a.name} × ${addonQty[a.id]}${addonDiscountPercent > 0 ? ` (paket −${addonDiscountPercent} %)` : ""}`
+    ),
+    total != null ? `Okvirni iznos: ${eur(total)}${saved > 0 ? ` (ušteda ${eur(saved)})` : ""}` : null,
     place.trim() ? `Objekt: ${place.trim()}` : null,
     note.trim() ? `\n${note.trim()}` : null,
   ]
@@ -124,6 +233,8 @@ export default function ProductInquiryNovo({
       <input type="hidden" name="sourceName" value={productName} />
       <input type="hidden" name="message" value={message} />
       <input type="hidden" name="attribution" value={attribution} />
+      <input type="hidden" name="discountCode" value={applied?.code ?? ""} />
+      <input type="hidden" name="pageUrl" value={pageUrl} />
 
       <div className="stay-inquiry-hp" aria-hidden="true">
         <label>
@@ -156,18 +267,125 @@ export default function ProductInquiryNovo({
             </button>
           </div>
         </div>
-        {priceEur != null && (
+        {priceEur != null && total != null && (
           <div className="pq-estimate" aria-live="polite">
             <span className="pq-label mono">OKVIRNO</span>
-            <span className="pq-estimate-sum">{(qty * priceEur).toLocaleString("hr-HR")} €</span>
+            <span className="pq-estimate-sum">{eur(total)}</span>
             <span className="pq-estimate-calc mono">
-              {qty} × {priceEur} €
+              {saved > 0 ? `UŠTEDA ${eur(saved)}` : `${qty} × ${priceEur} €`}
             </span>
           </div>
         )}
       </div>
+      {priceEur != null && pct === 0 && discounts[0] && (
+        <p className="pq-tip mono">
+          OD {discounts[0].minQty} KOM −{discounts[0].percent} % NA SVAKI KOMAD
+        </p>
+      )}
+
+      {addons.length > 0 && (
+        <fieldset className="pq-addons">
+          <legend className="pq-label mono">
+            DODAJTE UZ NARUDŽBU{addonDiscountPercent > 0 ? ` · −${addonDiscountPercent} % U PAKETU` : ""}
+          </legend>
+          {addons.map((a) => {
+            const n = addonQty[a.id] ?? 0;
+            const on = n > 0;
+            return (
+              <div key={a.id} className={on ? "pq-addon is-on" : "pq-addon"}>
+                <label className="pq-addon-main">
+                  <input
+                    type="checkbox"
+                    checked={on}
+                    onChange={(e) => setAddonQty((m) => ({ ...m, [a.id]: e.target.checked ? qty : 0 }))}
+                  />
+                  <span className="pq-addon-name">{a.name}</span>
+                  {a.priceEur != null && (
+                    <span className="pq-addon-price mono">
+                      {addonDiscountPercent > 0 && <s>{eur(a.priceEur)}</s>}{" "}
+                      {eur(lineTotal(a.priceEur, 1, addonDiscountPercent))} / KOM
+                    </span>
+                  )}
+                </label>
+                {on && (
+                  <div className="pq-stepper pq-stepper--sm" role="group" aria-label={`Količina: ${a.name}`}>
+                    <button
+                      type="button"
+                      onClick={() => setAddonQty((m) => ({ ...m, [a.id]: Math.max(0, n - 1) }))}
+                      aria-label="Manje"
+                    >
+                      −
+                    </button>
+                    <span className="pq-stepper-val mono">{n}</span>
+                    <button
+                      type="button"
+                      onClick={() => setAddonQty((m) => ({ ...m, [a.id]: Math.min(999, n + 1) }))}
+                      aria-label="Više"
+                    >
+                      +
+                    </button>
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </fieldset>
+      )}
+
+      {priceEur != null &&
+        (applied ? (
+          <p className="pq-code-on mono">
+            KOD {applied.code} · −{applied.percent} % PRIMIJENJEN
+            <button
+              type="button"
+              className="link-btn"
+              aria-label="Ukloni kod"
+              onClick={() => {
+                setApplied(null);
+                setCodeInput("");
+                try {
+                  sessionStorage.removeItem(CODE_KEY);
+                } catch {}
+              }}
+            >
+              ✕
+            </button>
+          </p>
+        ) : codeOpen ? (
+          <div className="pq-code">
+            <input
+              id="pq-code"
+              type="text"
+              value={codeInput}
+              onChange={(e) => setCodeInput(e.target.value.toUpperCase())}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  e.preventDefault();
+                  applyCode(codeInput);
+                }
+              }}
+              placeholder="KOD ZA POPUST"
+              aria-label="Kod za popust"
+              maxLength={32}
+              autoComplete="off"
+            />
+            <button type="button" className="mono" onClick={() => applyCode(codeInput)} disabled={checking}>
+              {checking ? "…" : "PRIMIJENI"}
+            </button>
+            {codeError && (
+              <span className="pq-code-err" role="alert">
+                {codeError}
+              </span>
+            )}
+          </div>
+        ) : (
+          <button type="button" className="mono link link-btn pq-more" onClick={() => setCodeOpen(true)}>
+            IMATE KOD ZA POPUST?
+          </button>
+        ))}
+
       {priceEur != null && (
-        <p className="pq-hint">Cijena može varirati ovisno o količini. Točan iznos potvrđujemo u odgovoru.</p>
+        <p className="pq-hint">Točan iznos potvrđujemo u odgovoru, prije bilo kakvog plaćanja.</p>
       )}
 
       <div className="pq-grid">

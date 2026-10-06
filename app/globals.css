@@ -4564,3 +4564,82 @@ a.owner-glass:active,
   .cc-actions { padding: 0 10px 10px; }
   .cc-btn { padding: 10px 8px; }
 }
+
+/* ---- proizvod: količinski popust i paketi ---- */
+.pd-price-deal {
+  font-size: 10px; letter-spacing: 0.1em; padding: 4px 8px; background: var(--novo-orange); color: #000;
+  align-self: center;
+}
+.pq-pick-opt { position: relative; }
+.pq-pick-badge {
+  position: absolute; top: -8px; right: 6px; font-size: 9.5px; letter-spacing: 0.06em; padding: 2px 5px;
+  background: var(--novo-orange); color: #000; line-height: 1.3;
+}
+.pq-pick-sum { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0 5px; }
+.pq-pick-was { color: rgba(0,0,0,0.4); font-size: 10px; }
+.pq-pick-save { margin: 0; font-size: 10.5px; letter-spacing: 0.08em; color: rgba(0,0,0,0.65); }
+.pq-pick-save.is-on { color: #137a3f; }
+.pq-tip { margin: -4px 0 0; font-size: 10.5px; letter-spacing: 0.08em; color: #137a3f; }
+
+.pq-addons { border: 0; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+.pq-addons legend { padding: 0; margin-bottom: 8px; }
+.pq-addon {
+  display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap;
+  padding: 10px 12px; border: 1px solid rgba(0,0,0,0.14); background: #fff; transition: border-color 0.15s ease;
+}
+.pq-addon.is-on { border-color: var(--novo-blue); box-shadow: inset 0 0 0 1px var(--novo-blue); }
+.pq-addon-main { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; cursor: pointer; flex: 1 1 220px; min-width: 0; }
+.pq-addon-main input { width: 17px; height: 17px; accent-color: var(--novo-blue); flex-shrink: 0; }
+.pq-addon-name { font-size: 14.5px; font-weight: 600; }
+.pq-addon-price { font-size: 10.5px; color: var(--novo-blue); }
+.pq-addon-price s { color: rgba(0,0,0,0.4); }
+.pq-stepper--sm button { width: 34px; height: 34px; font-size: 16px; }
+.pq-stepper-val { min-width: 36px; display: inline-flex; align-items: center; justify-content: center; font-size: 14px; border-left: 1px solid rgba(0,0,0,0.12); border-right: 1px solid rgba(0,0,0,0.12); }
+
+/* ---- proizvod: akcija, dostava/izrada/jamstvo, kod za popust, preporuka ---- */
+.pd-price-was { font-size: 16px; color: rgba(0,0,0,0.45); font-variant-numeric: tabular-nums; }
+.pd-price-sale { font-size: 10px; letter-spacing: 0.1em; padding: 4px 8px; background: #000; color: #fff; align-self: center; }
+.pl-badge--sale { left: auto; right: 10px; background: #000; color: #fff; }
+
+.pd-assure { margin: 0; display: flex; flex-direction: column; border-top: 1px solid rgba(0,0,0,0.1); }
+.pd-assure-row { display: grid; grid-template-columns: 76px 1fr; gap: 12px; padding: 9px 0; border-bottom: 1px solid rgba(0,0,0,0.1); align-items: baseline; }
+.pd-assure-row dt { font-size: 9.5px; letter-spacing: 0.12em; color: var(--novo-blue); }
+.pd-assure-row dd { margin: 0; font-size: 14px; line-height: 1.45; color: #111; }
+
+.pq-code { display: flex; flex-wrap: wrap; gap: 6px; align-items: stretch; }
+.pq-code input {
+  flex: 1 1 160px; min-width: 0; border: 1px solid rgba(0,0,0,0.2); padding: 10px 12px; font: inherit;
+  font-family: var(--font-jetbrains-mono), monospace; font-size: 13px; letter-spacing: 0.08em; background: #fff;
+}
+.pq-code input:focus { outline: 2px solid var(--novo-blue); outline-offset: -2px; }
+.pq-code button { border: 1px solid #000; background: #000; color: #fff; padding: 0 16px; font-size: 10.5px; letter-spacing: 0.1em; cursor: pointer; }
+.pq-code button:hover { background: var(--novo-orange); border-color: var(--novo-orange); }
+.pq-code-err { flex-basis: 100%; font-size: 12.5px; color: #b42318; }
+.pq-code-on { margin: 0; display: flex; align-items: center; gap: 10px; font-size: 10.5px; letter-spacing: 0.08em; color: #137a3f; }
+.pq-code-on button { font-size: 13px; color: rgba(0,0,0,0.5); }
+
+.pq-ref { margin-top: 16px; padding: 16px; border: 2px solid var(--novo-blue); display: flex; flex-direction: column; gap: 8px; }
+.pq-ref-code { font-size: 22px; font-weight: 600; letter-spacing: 0.08em; color: #000; }
+.pq-ref p { margin: 0; font-size: 14px; line-height: 1.5; }
+.pq-ref-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 14px; margin-top: 4px; }
+.novo-os .pq-ref-actions a.novo-os-cta { display: inline-block; text-decoration: none; }
+
+/* ---- proizvod: slike NFC stranice za goste ---- */
+.nfcp-lead { margin: 0 0 18px; max-width: 62ch; font-size: 15.5px; line-height: 1.55; color: #111; }
+.nfcp-shots {
+  display: grid; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); gap: 16px; max-width: 820px;
+}
+.nfcp-shot { margin: 0; display: flex; flex-direction: column; gap: 10px; min-width: 0; }
+.nfcp-shot img { width: 100%; height: auto; display: block; }
+.nfcp-shot figcaption { font-size: 10px; letter-spacing: 0.1em; color: rgba(0,0,0,0.6); text-align: center; }
+.nfcp-note { margin: 14px 0 18px; font-size: 9.5px; letter-spacing: 0.1em; color: rgba(0,0,0,0.45); }
+.nfcp-list { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 10px 24px; max-width: 820px; }
+.nfcp-list li { position: relative; padding-left: 26px; font-size: 14.5px; line-height: 1.45; }
+.nfcp-list li::before {
+  content: ""; position: absolute; left: 2px; top: 4px; width: 11px; height: 6px;
+  border-left: 2px solid var(--novo-blue); border-bottom: 2px solid var(--novo-blue); transform: rotate(-45deg);
+}
+@media (max-width: 720px) {
+  .nfcp-shots { grid-auto-columns: 62%; overflow-x: auto; scroll-snap-type: x mandatory; padding-bottom: 6px; }
+  .nfcp-shot { scroll-snap-align: start; }
+}

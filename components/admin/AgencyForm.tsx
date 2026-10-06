@@ -14,6 +14,9 @@ city: string;
 phone: string;
 metaPixelId: string;
 gaMeasurementId: string;
+deliveryText: string;
+productionText: string;
+guaranteeText: string;
 };
 
 export default function AgencyForm({ agency }: { agency: Agency }) {
@@ -30,6 +33,9 @@ heroTitle: agency.heroTitle,
   phone: agency.phone ?? "",
   metaPixelId: agency.metaPixelId ?? "",
   gaMeasurementId: agency.gaMeasurementId ?? "",
+  deliveryText: agency.deliveryText ?? "",
+  productionText: agency.productionText ?? "",
+  guaranteeText: agency.guaranteeText ?? "",
   });
 
 function set<K extends keyof FormValues>(key: K, value: FormValues[K]) {
@@ -100,6 +106,40 @@ className="admin-input"
 <p className="text-xs text-black/50 -mt-3">
   Kad je upisan, stranice proizvoda dobiju gumbe &bdquo;Pitajte na WhatsAppu&ldquo; i &bdquo;Nazovite&ldquo;. Prazno = gumbi se ne prikazuju.
 </p>
+
+<div className="border border-black/10 rounded-xl p-4 flex flex-col gap-4 bg-black/[0.02]">
+  <p className="text-sm font-semibold">Uz cijenu proizvoda: dostava, izrada, jamstvo</p>
+  <p className="text-xs text-black/50">
+    Kratko i konkretno — prikazuje se ispod gumba &bdquo;Zatraži ponudu&ldquo; na svakom proizvodu. Prazno polje = redak se ne prikazuje.
+  </p>
+  <Field label="Dostava (npr. BOX NOW paketomat ili GLS na adresu · 3,50 €)">
+    <input
+    name="deliveryText"
+    maxLength={200}
+    value={values.deliveryText}
+  onChange={(e) => set("deliveryText", e.target.value)}
+  className="admin-input"
+  />
+  </Field>
+  <Field label="Rok izrade (npr. 2–4 radna dana od potvrde)">
+    <input
+    name="productionText"
+    maxLength={200}
+    value={values.productionText}
+  onChange={(e) => set("productionText", e.target.value)}
+  className="admin-input"
+  />
+  </Field>
+  <Field label="Jamstvo (npr. Ne radi? Šaljemo novu pločicu besplatno)">
+    <input
+    name="guaranteeText"
+    maxLength={200}
+    value={values.guaranteeText}
+  onChange={(e) => set("guaranteeText", e.target.value)}
+  className="admin-input"
+  />
+  </Field>
+</div>
 
 <div className="border border-black/10 rounded-xl p-4 flex flex-col gap-4 bg-black/[0.02]">
   <p className="text-sm font-semibold">Mjerenje oglasa</p>
