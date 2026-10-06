@@ -275,6 +275,10 @@ export const products = pgTable("products", {
   saleEndsAt: text("sale_ends_at"),
   /** Prikaži sekciju "Stranica koju gosti otvaraju" (slike NFC stranice). */
   showNfcPreview: boolean("show_nfc_preview").notNull().default(false),
+  /** Mjesečno održavanje NOVO stranice za goste (€). Uz showNfcPreview kupac bira:
+      naša stranica (ova naknada) ili pločica vodi na njegovu stranicu (bez naknade).
+      Null = izbor se ne prikazuje. */
+  nfcPageMonthlyEur: integer("nfc_page_monthly_eur").default(10),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
