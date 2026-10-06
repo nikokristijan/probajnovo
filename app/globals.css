@@ -4461,7 +4461,7 @@ a.owner-glass:active,
 .pd-split { grid-template-areas: "head" "media" "rest"; }
 .pd-split .pd-head { grid-area: head; }
 .pd-split .pd-media { grid-area: media; min-width: 0; }
-.pd-split .pd-rest { grid-area: rest; }
+.pd-split .pd-rest { grid-area: rest; gap: 18px; }
 @container (min-width: 700px) {
   .pd-split { grid-template-areas: "media head" "media rest"; grid-template-rows: auto 1fr; row-gap: 14px; }
   .pd-top--video { grid-template-columns: minmax(0, 0.85fr) minmax(0, 1fr); column-gap: 40px; }
@@ -4514,6 +4514,18 @@ a.owner-glass:active,
 .novo-os .pq-pick-cta { align-self: stretch; text-align: center; padding: 15px 22px; font-size: 12px; margin-top: 4px; }
 .pq-pick-note { font-size: 10px; letter-spacing: 0.1em; color: rgba(0,0,0,0.6); margin: 0; text-align: center; }
 .pd-meta-row { display: flex; align-items: center; justify-content: space-between; gap: 14px; flex-wrap: wrap; }
+.pd-quick { display: flex; align-items: center; justify-content: space-between; gap: 10px 16px; flex-wrap: wrap; font-size: 10.5px; letter-spacing: 0.08em; padding-top: 4px; }
+.pd-quick a, .pd-quick button { font-size: 10.5px; letter-spacing: 0.08em; }
+.pd-quick-wa { display: inline-flex; align-items: center; gap: 6px; color: #000; text-decoration: none; }
+.pd-quick-wa svg { color: #1f9d55; width: 16px; height: 16px; }
+.pd-quick-wa:hover { text-decoration: underline; }
+.pd-acc-body { margin: 0 0 16px; }
+.pd-acc-list { list-style: none; margin: 0 0 16px; padding: 0; display: grid; gap: 6px; }
+.pd-acc-list li { position: relative; padding-left: 22px; font-size: 14.5px; line-height: 1.45; }
+.pd-acc-list li::before {
+  content: ""; position: absolute; left: 2px; top: 0.3em; width: 11px; height: 6px;
+  border-left: 2px solid var(--novo-blue); border-bottom: 2px solid var(--novo-blue); transform: rotate(-45deg);
+}
 .pd-photos .pg { max-width: 620px; }
 .pq-more { font-size: 10.5px; letter-spacing: 0.08em; color: rgba(0,0,0,0.7); align-self: flex-start; }
 @media (max-width: 720px) {
@@ -4672,7 +4684,13 @@ a.owner-glass:active,
 }
 .nfcp-screen-in .nfc-card { box-shadow: none; }
 .nfcp-screen-in .nfc-welcome-title { font-size: 1.4rem; }
-.nfcp-note { margin: 14px 0 18px; font-size: 9.5px; letter-spacing: 0.1em; color: rgba(0,0,0,0.45); }
+.nfcp-more { margin-top: 2px; }
+.nfcp-more summary { cursor: pointer; list-style: none; font-size: 10.5px; letter-spacing: 0.1em; color: #000; text-decoration: underline; text-underline-offset: 3px; text-decoration-color: var(--novo-orange); width: fit-content; }
+.nfcp-more summary::-webkit-details-marker { display: none; }
+.nfcp-more summary::after { content: " +"; color: var(--novo-orange); }
+.nfcp-more[open] summary::after { content: " −"; }
+.nfcp-more .nfcp-list { margin-top: 14px; }
+.nfcp-note { margin: 12px 0 14px; font-size: 9.5px; letter-spacing: 0.1em; color: rgba(0,0,0,0.45); }
 .nfcp-list { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 10px 24px; max-width: 820px; }
 .nfcp-list li { position: relative; padding-left: 26px; font-size: 14.5px; line-height: 1.45; }
 .nfcp-list li::before {
@@ -4683,16 +4701,16 @@ a.owner-glass:active,
 /* ---- proizvod: kamo vodi NFC pločica ---- */
 .nfco { border: 0; margin: 0; padding: 0; min-width: 0; display: flex; flex-direction: column; gap: 8px; }
 .nfco legend { padding: 0; margin-bottom: 8px; }
+.nfco-row + .nfco-text { margin-top: -2px; }
 .nfco-row { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
 .nfco-opt {
-  position: relative; display: flex; flex-direction: column; gap: 5px; padding: 12px 12px 12px 36px; cursor: pointer;
-  border: 1px solid rgba(0,0,0,0.14); background: #fff; transition: border-color 0.15s ease;
+  position: relative; display: flex; flex-direction: column; gap: 2px; padding: 9px 10px 9px 32px; cursor: pointer;
+  border: 1px solid rgba(0,0,0,0.16); background: #fff; transition: border-color 0.15s ease;
 }
 .nfco-opt:hover { border-color: #000; }
-.nfco-opt.is-on { border-color: var(--novo-blue); box-shadow: inset 0 0 0 1px var(--novo-blue); background: rgba(0,0,195,0.03); }
-.nfco-opt input { position: absolute; left: 12px; top: 14px; width: 16px; height: 16px; margin: 0; accent-color: var(--novo-blue); }
-.nfco-title { font-size: 14.5px; font-weight: 600; line-height: 1.25; }
-.nfco-text { font-size: 12.5px; line-height: 1.45; color: rgba(0,0,0,0.65); }
-.nfco-price { margin-top: auto; font-size: 10px; letter-spacing: 0.08em; color: var(--novo-blue); }
+.nfco-opt.is-on { border-color: var(--novo-blue); box-shadow: inset 0 0 0 1px var(--novo-blue); background: rgba(0,0,195,0.05); }
+.nfco-opt input { position: absolute; left: 10px; top: 11px; width: 15px; height: 15px; margin: 0; accent-color: var(--novo-blue); }
+.nfco-title { font-size: 14px; font-weight: 600; line-height: 1.25; }
+.nfco-price { font-size: 11px; color: var(--novo-blue); }
+.nfco-text { margin: 0; font-size: 12.5px; line-height: 1.45; color: rgba(0,0,0,0.6); }
 .nfco-opt:focus-within { outline: 2px solid var(--novo-blue); outline-offset: 2px; }
-@media (max-width: 480px) { .nfco-row { grid-template-columns: 1fr; } }
