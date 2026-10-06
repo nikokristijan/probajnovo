@@ -275,3 +275,100 @@ export function AutomationBuilder({
       <aside className="space-y-4 lg:sticky lg:top-20 lg:self-start">
         <Card className="space-y-4 p-5">
           <Field label="Naziv" htmlFor="a-name">
+            <Input id="a-name" value={name} onChange={(e) => setName(e.target.value)} />
+          </Field>
+          <Field label="Opis" htmlFor="a-desc">
+            <Textarea id="a-desc" value={description} onChange={(e) => setDescription(e.target.value)} rows={2} className="min-h-16 text-[13px]" />
+          </Field>
+          <div className="flex items-center justify-between gap-3 rounded-xl bg-surface-2 p-3">
+            <div>
+              <p className="text-sm font-medium">{enabled ? "Uključeno" : "Isključeno"}</p>
+              <p className="text-xs text-muted">{enabled ? "Radi za svaki novi okidač" : "Ništa se ne šalje"}</p>
+            </div>
+            <Switch checked={enabled} onCheckedChange={setEnabled} label="Automatizacija uključena" />
+          </div>
+          <Button className="w-full" loading={saving} onClick={save}>
+            {!saving && <Save />} Spremi automatizaciju
+          </Button>
+          {trigger === "MANUAL" && (
+            <Button className="w-full" variant="secondary" onClick={() => setRunOpen(true)} disabled={!automation.enabled}>
+              <Play /> Pokreni za klijente
+            </Button>
+          )}
+          {trigger === "MANUAL" && !automation.enabled && <p className="text-xs text-muted">Uključite i spremite da je pokrenete.</p>}
+        </Card>
+        <Card className="p-5">
+          <p className="label">Pokretanja</p>
+          <div className="mt-3 flex flex-wrap gap-2">
+            <Badge tone="amber">{stats.active} u tijeku</Badge>
+            <Badge tone="green">{stats.completed} gotovo</Badge>
+            <Badge tone={stats.failed ? "red" : "neutral"}>{stats.failed} neuspjelo</Badge>
+          </div>
+          <button type="button" onClick={() => setConfirmDelete(true)} className="mt-5 inline-flex items-center gap-1.5 text-xs text-muted hover:text-danger">
+            <Trash2 className="size-3.5" /> Obriši automatizaciju
+          </button>
+        </Card>
+      </aside>
+
+      <Dialog open={runOpen} onOpenChange={setRunOpen}>
+        <DialogContent title="Pokreni za klijente" description="Odmah pokreće ovaj tijek za svakog odabranog klijenta.">
+          <ul className="max-h-72 divide-y divide-border overflow-y-auto rounded-xl border border-border">
+            {clients.map((c) => (
+              <li key={c.id}>
+                <label className="flex cursor-pointer items-center gap-3 px-3 py-2.5 text-sm hover:bg-surface-2">
+                  <input
+                    type="checkbox"
+                    className="size-4 accent-black"
+                    checked={picked.has(c.id)}
+                    onChange={() =>
+                      setPicked((s) => {
+                        const n = new Set(s);
+                        if (n.has(c.id)) n.delete(c.id);
+                        else n.add(c.id);
+                        return n;
+                      })
+                    }
+                  />
+                  {c.name}
+                </label>
+              </li>
+            ))}
+          </ul>
+          <div className="mt-4 flex justify-end gap-2">
+            <Button variant="ghost" onClick={() => setRunOpen(false)}>
+              Odustani
+            </Button>
+            <Button
+              loading={running}
+              disabled={picked.size === 0}
+              onClick={() =>
+                startRun(async () => {
+                  const r = await runAutomationForClientsAction(automation.id, [...picked]);
+                  if (r.ok) {
+                    toast.success(r.message);
+                    setRunOpen(false);
+                    setPicked(new Set());
+                  } else toast.error(r.error);
+                })
+              }
+            >
+              <Play /> Pokreni ({picked.size})
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+      <Dialog open={confirmDelete} onOpenChange={setConfirmDelete}>
+        <DialogContent title="Obrisati automatizaciju?" description="Zakazani koraci se otkazuju. Već poslane poruke ostaju u popisu.">
+          <form action={deleteAutomationAction.bind(null, automation.id)} className="flex justify-end gap-2">
+            <Button type="button" variant="ghost" onClick={() => setConfirmDelete(false)}>
+              Odustani
+            </Button>
+            <Button type="submit" variant="danger">
+              Obriši
+            </Button>
+          </form>
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
+}
