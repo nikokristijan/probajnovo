@@ -267,18 +267,125 @@ export default function ProductInquiryNovo({
             </button>
           </div>
         </div>
-        {priceEur != null && (
+        {priceEur != null && total != null && (
           <div className="pq-estimate" aria-live="polite">
             <span className="pq-label mono">OKVIRNO</span>
-            <span className="pq-estimate-sum">{(qty * priceEur).toLocaleString("hr-HR")} €</span>
+            <span className="pq-estimate-sum">{eur(total)}</span>
             <span className="pq-estimate-calc mono">
-              {qty} × {priceEur} €
+              {saved > 0 ? `UŠTEDA ${eur(saved)}` : `${qty} × ${priceEur} €`}
             </span>
           </div>
         )}
       </div>
+      {priceEur != null && pct === 0 && discounts[0] && (
+        <p className="pq-tip mono">
+          OD {discounts[0].minQty} KOM −{discounts[0].percent} % NA SVAKI KOMAD
+        </p>
+      )}
+
+      {addons.length > 0 && (
+        <fieldset className="pq-addons">
+          <legend className="pq-label mono">
+            DODAJTE UZ NARUDŽBU{addonDiscountPercent > 0 ? ` · −${addonDiscountPercent} % U PAKETU` : ""}
+          </legend>
+          {addons.map((a) => {
+            const n = addonQty[a.id] ?? 0;
+            const on = n > 0;
+            return (
+              <div key={a.id} className={on ? "pq-addon is-on" : "pq-addon"}>
+                <label className="pq-addon-main">
+                  <input
+                    type="checkbox"
+                    checked={on}
+                    onChange={(e) => setAddonQty((m) => ({ ...m, [a.id]: e.target.checked ? qty : 0 }))}
+                  />
+                  <span className="pq-addon-name">{a.name}</span>
+                  {a.priceEur != null && (
+                    <span className="pq-addon-price mono">
+                      {addonDiscountPercent > 0 && <s>{eur(a.priceEur)}</s>}{" "}
+                      {eur(lineTotal(a.priceEur, 1, addonDiscountPercent))} / KOM
+                    </span>
+                  )}
+                </label>
+                {on && (
+                  <div className="pq-stepper pq-stepper--sm" role="group" aria-label={`Količina: ${a.name}`}>
+                    <button
+                      type="button"
+                      onClick={() => setAddonQty((m) => ({ ...m, [a.id]: Math.max(0, n - 1) }))}
+                      aria-label="Manje"
+                    >
+                      −
+                    </button>
+                    <span className="pq-stepper-val mono">{n}</span>
+                    <button
+                      type="button"
+                      onClick={() => setAddonQty((m) => ({ ...m, [a.id]: Math.min(999, n + 1) }))}
+                      aria-label="Više"
+                    >
+                      +
+                    </button>
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </fieldset>
+      )}
+
+      {priceEur != null &&
+        (applied ? (
+          <p className="pq-code-on mono">
+            KOD {applied.code} · −{applied.percent} % PRIMIJENJEN
+            <button
+              type="button"
+              className="link-btn"
+              aria-label="Ukloni kod"
+              onClick={() => {
+                setApplied(null);
+                setCodeInput("");
+                try {
+                  sessionStorage.removeItem(CODE_KEY);
+                } catch {}
+              }}
+            >
+              ✕
+            </button>
+          </p>
+        ) : codeOpen ? (
+          <div className="pq-code">
+            <input
+              id="pq-code"
+              type="text"
+              value={codeInput}
+              onChange={(e) => setCodeInput(e.target.value.toUpperCase())}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  e.preventDefault();
+                  applyCode(codeInput);
+                }
+              }}
+              placeholder="KOD ZA POPUST"
+              aria-label="Kod za popust"
+              maxLength={32}
+              autoComplete="off"
+            />
+            <button type="button" className="mono" onClick={() => applyCode(codeInput)} disabled={checking}>
+              {checking ? "…" : "PRIMIJENI"}
+            </button>
+            {codeError && (
+              <span className="pq-code-err" role="alert">
+                {codeError}
+              </span>
+            )}
+          </div>
+        ) : (
+          <button type="button" className="mono link link-btn pq-more" onClick={() => setCodeOpen(true)}>
+            IMATE KOD ZA POPUST?
+          </button>
+        ))}
+
       {priceEur != null && (
-        <p className="pq-hint">Cijena može varirati ovisno o količini. Točan iznos potvrđujemo u odgovoru.</p>
+        <p className="pq-hint">Točan iznos potvrđujemo u odgovoru, prije bilo kakvog plaćanja.</p>
       )}
 
       <div className="pq-grid">
