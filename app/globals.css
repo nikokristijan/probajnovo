@@ -4278,6 +4278,14 @@ a.owner-glass:active,
   letter-spacing: -0.03em; color: #fff; text-shadow: 3px 3px 0 var(--novo-orange); transition: text-shadow 0.25s ease;
 }
 .pl-card:hover .pl-slova-word { text-shadow: 6px 6px 0 var(--novo-orange); }
+.pl-card-img--recenzije { background: #0000c3; display: grid; place-items: center; }
+.pl-recenzije-stars {
+  color: #fff;
+  font-size: clamp(28px, 4vw, 44px);
+  letter-spacing: 0.08em;
+  transition: color 0.2s ease;
+}
+.pl-card:hover .pl-recenzije-stars { color: var(--novo-orange); }
 @media (max-width: 480px) {
   .pl-card-body { padding: 10px 10px 12px; }
   .pl-card-name { font-size: 14px; }
