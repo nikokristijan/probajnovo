@@ -211,3 +211,73 @@ export default async function RecenzijeLanding() {
               return (
                 <div key={p.id} className={"flex flex-col border bg-white p-6 " + (featured ? "border-foreground" : "border-border")}>
                   <div className="flex items-center justify-between">
+                    <h3 className="label">{p.name}</h3>
+                    {featured && <span className="label rounded-full bg-orange px-2.5 py-1 text-black">Najpopularniji</span>}
+                  </div>
+                  <p className="mt-4">
+                    <span className="tabular text-4xl font-bold text-accent">{formatEur(p.priceMonthlyCents)}</span>
+                    <span className="text-muted"> / mj</span>
+                  </p>
+                  <p className="mt-2 text-sm text-muted">{p.description}</p>
+                  <ul className="mt-6 flex-1 space-y-2.5 text-sm">
+                    {p.features.map((f) => (
+                      <li key={f} className="flex gap-2">
+                        <Check className="mt-0.5 size-4 shrink-0 text-orange" /> {f}
+                      </li>
+                    ))}
+                  </ul>
+                  <Button asChild className="mt-6" variant={featured ? "primary" : "secondary"}>
+                    <Link href="/recenzije/registracija">Probaj 14 dana</Link>
+                  </Button>
+                </div>
+              );
+            })}
+          </div>
+          <p className="mt-6 text-sm">
+            Imate i fizičku pločicu?{" "}
+            <Link href="/proizvodi" className="font-bold underline underline-offset-4">
+              NFC pločica za Google recenzije
+            </Link>{" "}
+            savršeno ide uz ovo: klijent prisloni mobitel na pultu, a SMS pokrije sve ostale.
+          </p>
+        </section>
+
+        {/* FAQ */}
+        <section className="border-t border-border py-12" aria-labelledby="faq">
+          <h2 id="faq" className="label flex items-center gap-2 text-muted">
+            <span className="size-1.5 bg-orange" /> Česta pitanja
+          </h2>
+          <div className="mt-6 border-t border-border">
+            {FAQ.map((f) => (
+              <details key={f.q} className="group border-b border-border py-4">
+                <summary className="flex cursor-pointer list-none items-center justify-between gap-4 font-bold">
+                  {f.q}
+                  <span className="text-xl text-orange transition-transform group-open:rotate-45">+</span>
+                </summary>
+                <p className="mt-3 max-w-2xl text-[15px] leading-relaxed text-muted">{f.a}</p>
+              </details>
+            ))}
+          </div>
+        </section>
+
+        <section className="border-t border-border py-14 text-center">
+          <h2 className="mx-auto max-w-2xl text-3xl font-bold leading-tight">Vaš sljedeći posao može biti vaša sljedeća recenzija s 5 zvjezdica.</h2>
+          <div className="mt-8 flex flex-wrap justify-center gap-2">
+            <Button size="lg" asChild>
+              <Link href="/recenzije/registracija">
+                Započni besplatno <ArrowRight />
+              </Link>
+            </Button>
+            {demo}
+          </div>
+          <p className="mt-6 text-sm text-muted">
+            Pitanja?{" "}
+            <a href={`mailto:${contact.contactEmail}?subject=${encodeURIComponent("NOVO Recenzije")}`} className="underline underline-offset-4">
+              {contact.contactEmail}
+            </a>
+          </p>
+        </section>
+      </div>
+    </NovoShell>
+  );
+}
