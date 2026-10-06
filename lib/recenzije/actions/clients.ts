@@ -289,3 +289,114 @@ export async function toggleOptOutAction(clientId: string, optOut: boolean): Pro
   revalidatePath(`/recenzije/klijenti/${clientId}`);
   return { ok: true, message: optOut ? "SMS je isključen za ovog klijenta" : "SMS je ponovno uključen" };
 }
+
+const MAX_IMPORT_LINES = 300;
+
+function parseImportDate(v: string): Date | null {
+  const t = v.trim().replace(/\.$/, "");
+  let m = /^(\d{1,2})\.\s?(\d{1,2})\.\s?(\d{4})$/.exec(t);
+  if (m) return new Date(Number(m[3]), Number(m[2]) - 1, Number(m[1]), 12);
+  m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(t);
+  if (m) return new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]), 12);
+  return null;
+}
+
+/**
+ * Uvoz popisa klijenata (zalijepljen iz Excela, WhatsAppa ili e-maila):
+ * svaki redak "Ime Prezime; broj; usluga; datum" (usluga i datum nisu
+ * obavezni; razdvajač može biti tab, ; ili ,). Ako je posao označen kao
+ * završen, svakom novom klijentu kreće automatizacija zahtjeva za recenziju.
+ */
+export async function importClientsAction(_: ActionState, fd: FormData): Promise<ActionState> {
+  const { ctx, locked } = await requireWritableOrg();
+  if (locked) return locked;
+  const raw = String(fd.get("lines") ?? "");
+  const completed = fd.get("completed") === "on";
+  const defaultService = String(fd.get("service") ?? "").trim().slice(0, 80);
+  const lines = raw
+    .split(/\r?\n/)
+    .map((l) => l.trim())
+    .filter(Boolean);
+  if (lines.length === 0) return { values: echoValues(fd), fieldErrors: { lines: "Zalijepite barem jedan redak." } };
+  if (lines.length > MAX_IMPORT_LINES) {
+    return { values: echoValues(fd), fieldErrors: { lines: `Najviše ${MAX_IMPORT_LINES} redaka odjednom.` } };
+  }
+  const cc = defaultCountryCode(ctx.org.timezone);
+  const existing = new Set(
+    (await db.select({ phone: clients.phone }).from(clients).where(eq(clients.organizationId, ctx.org.id))).map((r) => r.phone)
+  );
+
+  let added = 0;
+  let started = 0;
+  const skipped: string[] = [];
+  for (const [i, line] of lines.entries()) {
+    const parts = (/[\t;]/.test(line) ? line.split(/[\t;]/) : line.split(",")).map((p) => p.trim()).filter(Boolean);
+    let phone: string | null = null;
+    let date: Date | null = null;
+    const text: string[] = [];
+    for (const p of parts) {
+      const d = parseImportDate(p);
+      if (d && !date) {
+        date = d;
+        continue;
+      }
+      const digits = p.replace(/\D/g, "");
+      const asPhone: string | null = !phone && digits.length >= 6 && /^[+\d\s()/.-]+$/.test(p) ? toE164(p, cc) : null;
+      if (asPhone) {
+        phone = asPhone;
+        continue;
+      }
+      text.push(p);
+    }
+    const name = text[0] ?? "";
+    if (!phone) {
+      // Zaglavlje tablice ("Ime; Broj; ...") preskačemo bez greške.
+      if (i === 0 && /ime|broj|mobitel|telefon|name|phone/i.test(line)) continue;
+      skipped.push(`${i + 1}. redak: nema ispravnog broja`);
+      continue;
+    }
+    if (!name) {
+      skipped.push(`${i + 1}. redak: nema imena`);
+      continue;
+    }
+    if (existing.has(phone)) {
+      skipped.push(`${i + 1}. redak: ${name} već postoji`);
+      continue;
+    }
+    existing.add(phone);
+    const [firstName, ...rest] = name.split(/\s+/);
+    const [client] = await db
+      .insert(clients)
+      .values({
+        organizationId: ctx.org.id,
+        firstName: firstName.slice(0, 60),
+        lastName: rest.join(" ").slice(0, 60),
+        phone,
+      })
+      .returning();
+    added++;
+    const full = fullName(client);
+    await logActivity({ organizationId: ctx.org.id, clientId: client.id, type: "client_created", title: `Dodan klijent ${full} (uvoz)` });
+    const serviceName = (text[1] ?? defaultService).slice(0, 80) || (completed ? "Usluga" : "");
+    if (serviceName) {
+      const [svc] = await db
+        .insert(services)
+        .values({ organizationId: ctx.org.id, clientId: client.id, name: serviceName, serviceDate: date ?? new Date() })
+        .returning();
+      if (completed) {
+        const runs = await completeService(ctx.org.id, client.id, svc.id, full, serviceName);
+        if (runs.length) started++;
+      }
+    }
+    await triggerAutomations({ organizationId: ctx.org.id, trigger: "CLIENT_CREATED", clientId: client.id });
+  }
+
+  revalidatePath("/recenzije/klijenti");
+  revalidatePath("/recenzije/pregled");
+  const parts = [`Dodano klijenata: ${added}.`];
+  if (completed) parts.push(`Automatizacija pokrenuta za ${started}.`);
+  if (skipped.length) parts.push(`Preskočeno ${skipped.length}: ${skipped.slice(0, 6).join("; ")}${skipped.length > 6 ? " …" : ""}`);
+  return added === 0 && skipped.length > 0
+    ? { values: echoValues(fd), error: parts.join(" ") }
+    : { ok: true, message: parts.join(" ") };
+}
