@@ -17,6 +17,7 @@ import { ContactLink, TrackProductView, WhatsAppIcon } from "@/components/novo/P
 import { telHref, whatsappUrl } from "@/lib/phone";
 import { eur, normalizeDiscounts, saleInfo, shortDate } from "@/lib/pricing";
 import NfcPagePreview from "@/components/novo/NfcPagePreview";
+import NfcPageOption from "@/components/novo/NfcPageOption";
 
 export const revalidate = 0;
 
@@ -135,6 +136,7 @@ export default async function ProductPage({ params }: { params: Promise<Params> 
     .map((id) => all.find((p) => p.id === id))
     .filter((p): p is NonNullable<typeof p> => Boolean(p))
     .map((p) => ({ id: p.id, name: p.name, priceEur: saleInfo(p, today).price }));
+  const nfcMonthly = product.showNfcPreview ? product.nfcPageMonthlyEur : null;
   const assurance = [
     { label: "DOSTAVA", text: contact.deliveryText },
     { label: "IZRADA", text: contact.productionText },
@@ -293,6 +295,8 @@ export default async function ProductPage({ params }: { params: Promise<Params> 
                 </ul>
               )}
 
+              {nfcMonthly != null && <NfcPageOption monthlyEur={nfcMonthly} idPrefix="pd" />}
+
               <QtyQuickPick
                 priceEur={unitPrice}
                 ctaLabel={ctaLabel}
@@ -337,7 +341,7 @@ export default async function ProductPage({ params }: { params: Promise<Params> 
             </div>
           </article>
 
-          {product.showNfcPreview && <NfcPagePreview />}
+          {product.showNfcPreview && <NfcPagePreview monthlyEur={nfcMonthly} />}
 
           {reviews.length > 0 && (
             <section className="pd-section" id="recenzije" aria-labelledby="pd-recenzije">
@@ -456,6 +460,7 @@ export default async function ProductPage({ params }: { params: Promise<Params> 
               discounts={discounts}
               addons={addons}
               addonDiscountPercent={product.addonDiscountPercent ?? 0}
+              nfcMonthlyEur={nfcMonthly}
             />
           </section>
 
