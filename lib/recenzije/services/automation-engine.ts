@@ -287,3 +287,63 @@ export async function processRun(runId: string): Promise<void> {
     index++;
   }
 
+  // Safety valve against malformed step lists.
+  await db
+    .update(automationRuns)
+    .set({ status: "WAITING", stepIndex: index, nextRunAt: new Date(Date.now() + 60_000), log })
+    .where(eq(automationRuns.id, run.id));
+}
+
+/** Called by /api/recenzije/cron/automations. Processes runs whose wait has elapsed. */
+export async function processDueRuns(limit = 50) {
+  const due = await db
+    .select({ id: automationRuns.id })
+    .from(automationRuns)
+    .where(
+      and(
+        inArray(automationRuns.status, ["RUNNING", "WAITING"]),
+        lte(automationRuns.nextRunAt, new Date()),
+        // Demo workspaces never send; their sample runs stay as seeded.
+        sql`not exists (select 1 from nr_organizations o where o.id = "nr_automation_runs"."organization_id" and o.is_demo)`
+      )
+    )
+    .orderBy(asc(automationRuns.nextRunAt))
+    .limit(limit);
+  let processed = 0;
+  for (const r of due) {
+    try {
+      await processRun(r.id);
+      processed++;
+    } catch (e) {
+      await db
+        .update(automationRuns)
+        .set({ status: "FAILED", error: e instanceof Error ? e.message : String(e), finishedAt: new Date() })
+        .where(eq(automationRuns.id, r.id));
+    }
+  }
+  return { due: due.length, processed };
+}
+
+/** Stops every active run for a client (used when a review arrives). */
+export async function cancelActiveRunsForClient(organizationId: string, clientId: string, reason: string) {
+  const active = await db
+    .select()
+    .from(automationRuns)
+    .where(
+      and(
+        eq(automationRuns.organizationId, organizationId),
+        eq(automationRuns.clientId, clientId),
+        inArray(automationRuns.status, ["RUNNING", "WAITING"])
+      )
+    );
+  for (const r of active) {
+    await db
+      .update(automationRuns)
+      .set({
+        status: "COMPLETED",
+        finishedAt: new Date(),
+        log: sql`${automationRuns.log} || ${JSON.stringify([entry(r.stepIndex, "end", reason)])}::jsonb`,
+      })
+      .where(eq(automationRuns.id, r.id));
+  }
+}
