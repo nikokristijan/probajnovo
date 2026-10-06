@@ -235,3 +235,50 @@ export default async function AdminRecenzijePage({
                         <label className="flex flex-col gap-1 text-xs text-black/60">
                           Mjeseci
                           <select name="months" defaultValue="1" className="admin-input text-sm">
+                            {[1, 3, 6, 12].map((m) => (
+                              <option key={m} value={m}>
+                                {m}
+                              </option>
+                            ))}
+                          </select>
+                        </label>
+                        <button type="submit" className="rounded-full bg-black text-white text-xs font-semibold px-4 py-2">
+                          Aktiviraj paket
+                        </button>
+                      </form>
+                      <form action={extendTrialAction} className="flex items-end gap-2">
+                        <input type="hidden" name="orgId" value={r.id} />
+                        <input type="hidden" name="days" value="14" />
+                        <button
+                          type="submit"
+                          className="text-xs font-semibold px-4 py-2 rounded-full border border-black/15 hover:border-black/40"
+                        >
+                          Proba +14 dana
+                        </button>
+                      </form>
+                      {r.active && (
+                        <form action={deactivateAction} className="flex items-end gap-2">
+                          <input type="hidden" name="orgId" value={r.id} />
+                          <button
+                            type="submit"
+                            className="text-xs font-semibold px-4 py-2 rounded-full border border-[#d70015]/30 text-[#b80012] hover:border-[#d70015]/60"
+                          >
+                            Ugasi
+                          </button>
+                        </form>
+                      )}
+                    </div>
+                    <p className="mt-2 text-[11px] text-black/45">
+                      Aktivacija vrijedi od danas. Nakon isteka slanje SMS-a staje samo od sebe. Gašenje zaustavlja slanje odmah,
+                      a podaci tvrtke ostaju.
+                    </p>
+                  </details>
+                )}
+              </article>
+            );
+          })}
+        </section>
+      )}
+    </div>
+  );
+}
