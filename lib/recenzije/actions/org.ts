@@ -7,23 +7,20 @@ import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 import { db } from "@/lib/recenzije/db";
-import { automations, organizationMembers, organizations, users } from "@/lib/recenzije/db/schema";
+import { organizations, users } from "@/lib/recenzije/db/schema";
 import { type ActionState, echoValues, formObject, zodErrors } from "@/lib/recenzije/action";
-import { AUTOMATION_TEMPLATES } from "@/lib/recenzije/automation/templates";
-import { createId } from "@/lib/recenzije/id";
 import { toE164 } from "@/lib/recenzije/phone";
 import { ACTIVE_ORG_COOKIE, DEMO_LOCKED, assertMember, requireRole, requireUser, requireWritableOrg } from "@/lib/recenzije/session";
 import { DEMO_EMAIL } from "@/lib/recenzije/db/seed";
-import { slugify } from "@/lib/recenzije/utils";
-import { startTrial } from "@/lib/recenzije/services/billing";
+import { GOOGLE_REVIEW_URL_HINT, GOOGLE_REVIEW_URL_RE } from "@/lib/recenzije/validation";
 
 const reviewUrl = z
   .string()
   .trim()
   .max(500)
   .refine(
-    (v) => v === "" || /^https:\/\/(g\.page|search\.google\.com|www\.google\.[a-z.]+|maps\.app\.goo\.gl|goo\.gl|maps\.google\.[a-z.]+)\//.test(v),
-    "Upišite Google link za recenzije (https://g.page/r/… ili https://search.google.com/local/writereview?placeid=…)"
+    (v) => v === "" || GOOGLE_REVIEW_URL_RE.test(v),
+    GOOGLE_REVIEW_URL_HINT
   );
 
 const orgSchema = z.object({
@@ -36,42 +33,13 @@ const orgSchema = z.object({
 
 const cookieOpts = { httpOnly: true, sameSite: "lax" as const, secure: process.env.NODE_ENV === "production", path: "/", maxAge: 60 * 60 * 24 * 365 };
 
+/**
+ * NOVO Recenzije vodi NOVO: tvrtke otvara glavni admin u /admin/recenzije,
+ * pa korisnici više ne mogu sami otvarati tvrtke (ni beskonačne probe).
+ */
 export async function createOrganizationAction(_: ActionState, fd: FormData): Promise<ActionState> {
-  const user = await requireUser();
-  if (user.email === DEMO_EMAIL) return DEMO_LOCKED;
-  const parsed = orgSchema.safeParse(formObject(fd));
-  if (!parsed.success) return { values: echoValues(fd), fieldErrors: zodErrors(parsed.error) };
-  const d = parsed.data;
-  const phone = d.phone ? toE164(d.phone) : null;
-  if (d.phone && !phone) return { values: echoValues(fd), fieldErrors: { phone: "Upišite ispravan broj telefona" } };
-
-  const orgId = createId();
-  await db.transaction(async (tx) => {
-    await tx.insert(organizations).values({
-      id: orgId,
-      name: d.name,
-      slug: `${slugify(d.name) || "business"}-${orgId.slice(-6)}`,
-      industry: d.industry || null,
-      phone,
-      timezone: d.timezone || "Europe/Zagreb",
-      googleReviewUrl: d.googleReviewUrl || null,
-    });
-    await tx.insert(organizationMembers).values({ organizationId: orgId, userId: user.id, role: "OWNER" });
-    // Start with the core workflow enabled: review request after a job, one follow-up.
-    const t = AUTOMATION_TEMPLATES.find((a) => a.key === "post_service_review")!;
-    await tx.insert(automations).values({
-      organizationId: orgId,
-      name: t.name,
-      description: t.description,
-      trigger: t.trigger,
-      templateKey: t.key,
-      enabled: true,
-      steps: t.steps.map((s) => ({ ...s, id: createId() })) as never,
-    });
-  });
-  await startTrial(orgId);
-  (await cookies()).set(ACTIVE_ORG_COOKIE, orgId, cookieOpts);
-  redirect("/recenzije/pregled?welcome=1");
+  await requireUser();
+  return { values: echoValues(fd), error: "Tvrtke otvara NOVO. Javite nam se na /recenzije i sve postavimo za vas." };
 }
 
 export async function switchOrganizationAction(orgId: string) {
@@ -129,6 +97,9 @@ export async function updateAccountAction(_: ActionState, fd: FormData): Promise
   if (!parsed.success) return { values: echoValues(fd), fieldErrors: zodErrors(parsed.error) };
   const d = parsed.data;
   const update: { name: string; passwordHash?: string } = { name: d.name };
+  if (d.newPassword && user.email.endsWith("@novo.invalid")) {
+    return { values: echoValues(fd), fieldErrors: { newPassword: "Operaterski račun NOVO-a ulazi preko NOVO admina i nema lozinku." } };
+  }
   if (d.newPassword) {
     if (d.newPassword.length < 8 || !/\d/.test(d.newPassword)) {
       return { values: echoValues(fd), fieldErrors: { newPassword: "Najmanje 8 znakova i barem jedan broj" } };
