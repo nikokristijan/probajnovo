@@ -1,6 +1,6 @@
 import { notFound } from "next/navigation";
 import { requireFullAdmin } from "@/lib/auth";
-import { getProductById, getProductPromoStats } from "@/lib/db/queries";
+import { getProductById, getProductPromoStats, listProducts } from "@/lib/db/queries";
 import { dateStringOffsetFromTodayZagreb } from "@/lib/date";
 import { updateProductAction } from "@/lib/actions";
 import ProductForm from "@/components/admin/ProductForm";
@@ -18,8 +18,11 @@ export default async function EditProductPage({
   const numericId = Number(id);
   if (!Number.isInteger(numericId)) notFound();
 
-  const product = await getProductById(numericId);
+  const [product, all] = await Promise.all([getProductById(numericId), listProducts()]);
   if (!product) notFound();
+  const otherProducts = all
+    .filter((p) => p.id !== product.id)
+    .map((p) => ({ id: p.id, name: p.name, priceEur: p.priceEur }));
 
   const boundAction = updateProductAction.bind(null, numericId);
   const stats = product.slug ? await getProductPromoStats(product.id, dateStringOffsetFromTodayZagreb(-30)) : null;
@@ -55,7 +58,7 @@ export default async function EditProductPage({
           <ProductAdLinks url={publicUrl} slug={product.slug} />
         </section>
       )}
-      <ProductForm product={product} action={boundAction} submitLabel="Spremi izmjene" />
+      <ProductForm product={product} action={boundAction} submitLabel="Spremi izmjene" otherProducts={otherProducts} />
     </div>
   );
 }
