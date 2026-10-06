@@ -7,6 +7,7 @@ import {
 } from "@/lib/date";
 import {
   agency,
+  discountCodes,
   properties,
   companies,
   studies,
@@ -52,6 +53,10 @@ async function ensureAgencyColumns(): Promise<void> {
   await db.execute(sql`ALTER TABLE agency ADD COLUMN IF NOT EXISTS phone TEXT`);
   await db.execute(sql`ALTER TABLE agency ADD COLUMN IF NOT EXISTS meta_pixel_id TEXT`);
   await db.execute(sql`ALTER TABLE agency ADD COLUMN IF NOT EXISTS ga_measurement_id TEXT`);
+  await db.execute(sql`ALTER TABLE agency ADD COLUMN IF NOT EXISTS delivery_text TEXT`);
+  await db.execute(sql`ALTER TABLE agency ADD COLUMN IF NOT EXISTS production_text TEXT`);
+  await db.execute(sql`ALTER TABLE agency ADD COLUMN IF NOT EXISTS guarantee_text TEXT`);
+  await db.execute(sql`ALTER TABLE agency ADD COLUMN IF NOT EXISTS referral_percent INTEGER NOT NULL DEFAULT 0`);
 }
 
 let agencyColumnsPromise: Promise<void> | null = null;
@@ -80,6 +85,9 @@ city: string;
 phone: string | null;
 metaPixelId: string | null;
 gaMeasurementId: string | null;
+deliveryText: string | null;
+productionText: string | null;
+guaranteeText: string | null;
 }) {
 await ensureAgencyColumnsOnce();
 const [row] = await db
@@ -413,6 +421,11 @@ async function ensureProductColumns(): Promise<void> {
   );
   await db.execute(
     sql`ALTER TABLE products ADD COLUMN IF NOT EXISTS addon_discount_percent INTEGER NOT NULL DEFAULT 0`
+  );
+  await db.execute(sql`ALTER TABLE products ADD COLUMN IF NOT EXISTS sale_percent INTEGER NOT NULL DEFAULT 0`);
+  await db.execute(sql`ALTER TABLE products ADD COLUMN IF NOT EXISTS sale_ends_at TEXT`);
+  await db.execute(
+    sql`ALTER TABLE products ADD COLUMN IF NOT EXISTS show_nfc_preview BOOLEAN NOT NULL DEFAULT false`
   );
   await db.execute(
     sql`CREATE UNIQUE INDEX IF NOT EXISTS products_slug_key ON products (slug)`
@@ -3265,4 +3278,139 @@ export async function getProductPromoStats(productId: number, sinceDate: string)
     inquiriesTotal: Number(inq[0]?.total ?? 0),
     inquiries30d: Number(inq[0]?.recent ?? 0),
   };
+}
+
+
+/* ---------------------------------------------------------------- */
+/* Kodovi za popust i preporuke (vidi schema.ts discountCodes)        */
+/* ---------------------------------------------------------------- */
+
+async function ensureDiscountCodesTable(): Promise<void> {
+  await db.execute(sql`
+    CREATE TABLE IF NOT EXISTS discount_codes (
+      id SERIAL PRIMARY KEY,
+      code TEXT NOT NULL UNIQUE,
+      percent INTEGER NOT NULL,
+      active BOOLEAN NOT NULL DEFAULT true,
+      expires_at TEXT,
+      max_uses INTEGER,
+      uses INTEGER NOT NULL DEFAULT 0,
+      note TEXT,
+      referrer_name TEXT,
+      referrer_email TEXT,
+      created_at TIMESTAMP NOT NULL DEFAULT now()
+    )
+  `);
+}
+
+let discountCodesPromise: Promise<void> | null = null;
+function ensureDiscountCodesOnce(): Promise<void> {
+  if (!discountCodesPromise) {
+    discountCodesPromise = ensureDiscountCodesTable().catch((err) => {
+      discountCodesPromise = null;
+      throw err;
+    });
+  }
+  return discountCodesPromise;
+}
+
+export function normalizeCode(raw: string): string {
+  return raw.trim().toUpperCase().replace(/[^A-Z0-9-]/g, "").slice(0, 32);
+}
+
+export async function listDiscountCodes() {
+  await ensureDiscountCodesOnce();
+  return db.select().from(discountCodes).orderBy(desc(discountCodes.createdAt));
+}
+
+export async function createDiscountCode(data: {
+  code: string;
+  percent: number;
+  expiresAt: string | null;
+  maxUses: number | null;
+  note: string | null;
+  referrerName?: string | null;
+  referrerEmail?: string | null;
+}) {
+  await ensureDiscountCodesOnce();
+  const [row] = await db
+    .insert(discountCodes)
+    .values({ ...data, code: normalizeCode(data.code) })
+    .returning();
+  return row;
+}
+
+export async function setDiscountCodeActive(id: number, active: boolean) {
+  await ensureDiscountCodesOnce();
+  await db.update(discountCodes).set({ active }).where(eq(discountCodes.id, id));
+}
+
+export async function deleteDiscountCode(id: number) {
+  await ensureDiscountCodesOnce();
+  await db.delete(discountCodes).where(eq(discountCodes.id, id));
+}
+
+/** Važeći kod (aktivan, nije istekao, nije potrošen) ili null. `today` = YYYY-MM-DD (Zagreb). */
+export async function findValidDiscountCode(raw: string, today: string) {
+  const code = normalizeCode(raw);
+  if (!code) return null;
+  await ensureDiscountCodesOnce();
+  const rows = await db.select().from(discountCodes).where(eq(discountCodes.code, code)).limit(1);
+  const row = rows[0];
+  if (!row || !row.active) return null;
+  if (row.expiresAt && row.expiresAt < today) return null;
+  if (row.maxUses != null && row.uses >= row.maxUses) return null;
+  return row;
+}
+
+export async function incrementDiscountCodeUse(id: number) {
+  await ensureDiscountCodesOnce();
+  await db
+    .update(discountCodes)
+    .set({ uses: sql`${discountCodes.uses} + 1` })
+    .where(eq(discountCodes.id, id));
+}
+
+/** Osobni kod za preporuku za ovaj email — postojeći ili novi (npr. "ANA-7K3Q"). */
+export async function getOrCreateReferralCode(name: string, email: string, percent: number) {
+  await ensureDiscountCodesOnce();
+  const mail = email.trim().toLowerCase();
+  const existing = await db
+    .select()
+    .from(discountCodes)
+    .where(eq(discountCodes.referrerEmail, mail))
+    .limit(1);
+  if (existing[0]) return existing[0];
+  const base =
+    name
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .replace(/đ/gi, "D")
+      .toUpperCase()
+      .replace(/[^A-Z]/g, "")
+      .slice(0, 6) || "NOVO";
+  for (let i = 0; i < 5; i++) {
+    const suffix = Math.random().toString(36).slice(2, 6).toUpperCase();
+    try {
+      const [row] = await db
+        .insert(discountCodes)
+        .values({
+          code: `${base}-${suffix}`,
+          percent,
+          note: "Preporuka",
+          referrerName: name.trim().slice(0, 120),
+          referrerEmail: mail,
+        })
+        .returning();
+      return row;
+    } catch {
+      // kolizija koda — probaj drugi sufiks
+    }
+  }
+  return null;
+}
+
+export async function setReferralPercent(percent: number) {
+  await ensureAgencyColumnsOnce();
+  await db.update(agency).set({ referralPercent: percent, updatedAt: new Date() }).where(eq(agency.id, AGENCY_ROW_ID));
 }
