@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import LegalPage from "@/components/LegalPage";
 
 export const metadata: Metadata = {
@@ -10,16 +11,7 @@ export const metadata: Metadata = {
 
 export default function TermsPage() {
   return (
-    <LegalPage title="Uvjeti korištenja" updated="21. rujna 2026.">
-      <p>
-        <strong>
-          Ovo je predložak uvjeta korištenja prilagođen uslugama koje NOVO stvarno nudi. Nije
-          zamjena za pravni savjet — preporučujemo pregled odvjetnika prije objave, posebno dijelove
-          o plaćanju, rokovima izrade i ograničenju odgovornosti koje trebate uskladiti sa stvarnom
-          poslovnom praksom.
-        </strong>
-      </p>
-
+    <LegalPage title="Uvjeti korištenja" updated="7. listopada 2026.">
       <h2>1. Prihvaćanje uvjeta</h2>
       <p>
         Korištenjem probajnovo.com i slanjem upita prihvaćate ove uvjete. Ako se s njima ne slažete,
@@ -44,8 +36,7 @@ export default function TermsPage() {
       <h2>4. Plaćanje</h2>
       <p>
         Način i dinamika plaćanja (predujam, plaćanje po ispostavljenom računu i sl.) dogovaraju se
-        pojedinačno za svaku narudžbu i navode se u ponudi/računu.{" "}
-        <strong>[ovdje dopuni konkretne uvjete plaćanja koje stvarno koristiš]</strong>.
+        pojedinačno za svaku narudžbu i navode se u ponudi/računu. Rok plaćanja naveden je na računu.
       </p>
 
       <h2>5. Izrada i isporuka fizičkih proizvoda</h2>
@@ -72,19 +63,30 @@ export default function TermsPage() {
         posrednik u rezervaciji.
       </p>
 
-      <h2>8. Vanjske poveznice</h2>
+      <h2>8. NOVO Recenzije</h2>
+      <p>
+        NOVO Recenzije je usluga za slanje zahtjeva za Google recenzije vašim klijentima (SMS i
+        email). Pristup je moguć samo uz pozivni kod. Odgovorni ste da poruke šaljete samo osobama
+        koje su vam dale kontakt u vezi s uslugom, da im ne šaljete neželjene poruke te da poštujete
+        odjavu (odgovor „STOP”). Recenzije objavljuje Google i ne možemo jamčiti njihov broj, ocjenu
+        niti da će ih Google prikazati ili zadržati. Cijene paketa i njihova ograničenja (broj
+        poruka, lokacija) navedeni su u aplikaciji. Obradu osobnih podataka opisuje{" "}
+        <Link href="/privatnost">politika privatnosti</Link>.
+      </p>
+
+      <h2>9. Vanjske poveznice</h2>
       <p>
         Stranica može sadržavati poveznice na vanjske servise (Instagram, Google karte, YouTube/Vimeo
         video). Ne odgovaramo za sadržaj ili politike privatnosti tih vanjskih stranica.
       </p>
 
-      <h2>9. Mjerodavno pravo</h2>
+      <h2>10. Mjerodavno pravo</h2>
       <p>Na ove uvjete primjenjuje se pravo Republike Hrvatske.</p>
 
-      <h2>10. Izmjene uvjeta</h2>
+      <h2>11. Izmjene uvjeta</h2>
       <p>Uvjete možemo povremeno ažurirati — datum zadnje izmjene naveden je na vrhu stranice.</p>
 
-      <h2>11. Kontakt</h2>
+      <h2>12. Kontakt</h2>
       <p>
         Pitanja o ovim uvjetima šaljite na <a href="mailto:hello@novo.studio">hello@novo.studio</a>.
       </p>
