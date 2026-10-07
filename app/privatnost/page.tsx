@@ -13,19 +13,14 @@ export default function PrivacyPolicyPage() {
   return (
     <LegalPage title="Politika privatnosti" updated="7. listopada 2026.">
       <p>
-        <strong>
-          Ovo je predložak politike privatnosti prilagođen uslugama i podacima koje NOVO stvarno
-          prikuplja, izrađen na temelju pregleda koda stranice. Nije zamjena za pravni savjet —
-          preporučujemo da ga prije objave pregleda odvjetnik ili DPO, posebno dio o pravnoj
-          osnovi obrade i rokovima čuvanja podataka.
-        </strong>
+        Vaša privatnost nam je važna. Ova politika objašnjava koje osobne podatke prikupljamo kad
+        koristite stranicu probajnovo.com i naše usluge, zašto ih obrađujemo i koja prava imate.
       </p>
 
       <h2>1. Tko smo mi</h2>
       <p>
-        Voditelj obrade podataka je <strong>[ovdje upiši puni pravni naziv obrta/tvrtke i OIB]</strong>,
-        koji posluje pod nazivom NOVO, sa sjedištem u Slavonskom Brodu, Hrvatska. Za sva pitanja o
-        obradi osobnih podataka možete nas kontaktirati na{" "}
+        Voditelj obrade podataka je <strong>NOVO</strong>, kreativna agencija sa sjedištem u Slavonskom
+        Brodu, Hrvatska. Za sva pitanja o obradi osobnih podataka možete nas kontaktirati na{" "}
         <a href="mailto:hello@novo.studio">hello@novo.studio</a>.
       </p>
 
