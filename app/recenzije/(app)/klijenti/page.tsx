@@ -1,6 +1,7 @@
 import { Suspense } from "react";
 import { SearchX, Users } from "lucide-react";
 import { AddClientDialog } from "@/components/recenzije/app/clients/add-client-dialog";
+import { ImportClientsDialog } from "@/components/recenzije/app/clients/import-clients-dialog";
 import { ClientFilters } from "@/components/recenzije/app/clients/client-filters";
 import { ClientsTable } from "@/components/recenzije/app/clients/clients-table";
 import { Pagination } from "@/components/recenzije/app/pagination";
@@ -33,15 +34,25 @@ export default async function ClientsPage({ searchParams }: { searchParams: Prom
         kicker="Klijenti"
         title="Klijenti"
         description="Svi za koje ste radili i gdje su na putu do recenzije."
-        actions={<AddClientDialog services={data.serviceOptions} technicians={data.technicianOptions} openToClient />}
+        actions={
+          <>
+            <ImportClientsDialog />
+            <AddClientDialog services={data.serviceOptions} technicians={data.technicianOptions} openToClient />
+          </>
+        }
       />
       <Card className="overflow-hidden">
         {data.total === 0 && !filtered ? (
           <EmptyState
             icon={Users}
             title="Dodajte prvog klijenta"
-            description="Dodajte klijenta nakon posla, a NOVO umjesto vas šalje zahtjev za recenziju."
-            action={<AddClientDialog services={data.serviceOptions} technicians={data.technicianOptions} openToClient />}
+            description="Dodajte klijenta nakon posla ili uvezite popis koji je tvrtka poslala. Zahtjev za recenziju šalje se sam."
+            action={
+              <div className="flex flex-wrap justify-center gap-2">
+                <ImportClientsDialog />
+                <AddClientDialog services={data.serviceOptions} technicians={data.technicianOptions} openToClient />
+              </div>
+            }
           />
         ) : (
           <>
