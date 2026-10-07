@@ -1,5 +1,5 @@
 import "server-only";
-import { and, count, desc, eq, gte, inArray, isNotNull, lt, sql } from "drizzle-orm";
+import { and, count, desc, eq, gte, inArray, isNotNull, lt, notInArray, sql } from "drizzle-orm";
 import { db } from "@/lib/recenzije/db";
 import {
   activityEvents,
@@ -11,6 +11,7 @@ import {
   trackingLinks,
 } from "@/lib/recenzije/db/schema";
 import { pct } from "@/lib/recenzije/utils";
+import type { WeeklyReportStats } from "@/lib/recenzije/services/weekly-report-email";
 
 /**
  * Every number here is computed from stored events — nothing is estimated.
@@ -85,6 +86,60 @@ export async function dashboardStats(organizationId: string, days = 30) {
     followUpsScheduled: byStatus.FOLLOW_UP_SCHEDULED ?? 0,
     failedMessages: failed,
     byStatus,
+  };
+}
+
+/**
+ * Brojke za tjedni izvještaj vlasniku (zadnjih `days` dana do sada). Iste definicije kao
+ * dashboardStats: "poslano" su izlazne poruke za zahtjev/kampanju/podsjetnik koje nisu
+ * neuspjele ni u redu, "klikovi" su prvi klikovi na praćene linkove, "nove recenzije" su
+ * recenzije s datumom u razdoblju, a "podsjetnici na čekanju" klijenti sa zakazanim
+ * podsjetnikom (trenutno stanje, ne razdoblje). Lakši je od dashboardStats jer cron
+ * prolazi kroz sve tvrtke.
+ */
+export async function periodReportStats(organizationId: string, days = 7): Promise<WeeklyReportStats> {
+  const to = new Date();
+  const from = since(days);
+  const [[sent], [clicked], [reviewAgg], [pending], [overall]] = await Promise.all([
+    db
+      .select({ n: count() })
+      .from(messages)
+      .where(
+        and(
+          eq(messages.organizationId, organizationId),
+          eq(messages.direction, "OUTBOUND"),
+          inArray(messages.kind, [...REQUEST_KINDS]),
+          notInArray(messages.status, ["FAILED", "QUEUED"]),
+          gte(messages.createdAt, from)
+        )
+      ),
+    db
+      .select({ n: count() })
+      .from(trackingLinks)
+      .where(and(eq(trackingLinks.organizationId, organizationId), gte(trackingLinks.firstClickedAt, from))),
+    db
+      .select({ n: count(), avg: sql<number | null>`avg(${reviews.rating})::float` })
+      .from(reviews)
+      .where(and(eq(reviews.organizationId, organizationId), gte(reviews.reviewedAt, from))),
+    db
+      .select({ n: count() })
+      .from(clients)
+      .where(and(eq(clients.organizationId, organizationId), eq(clients.reviewStatus, "FOLLOW_UP_SCHEDULED"))),
+    db
+      .select({ n: count(), avg: sql<number | null>`avg(${reviews.rating})::float` })
+      .from(reviews)
+      .where(eq(reviews.organizationId, organizationId)),
+  ]);
+  return {
+    from,
+    to,
+    requestsSent: sent.n,
+    linksClicked: clicked.n,
+    newReviews: reviewAgg.n,
+    averageRating: reviewAgg.n > 0 ? reviewAgg.avg : null,
+    pendingFollowUps: pending.n,
+    totalReviews: overall.n,
+    overallAverage: overall.n > 0 ? overall.avg : null,
   };
 }
 

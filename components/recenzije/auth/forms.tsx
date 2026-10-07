@@ -57,7 +57,17 @@ export function SignupForm() {
         <Input id="password" name="password" type="password" autoComplete="new-password" required aria-invalid={!!state.fieldErrors?.password} />
       </Field>
       <Field label="Pozivni kod" htmlFor="invite" error={state.fieldErrors?.invite} hint="Dobivate ga od NOVO tima.">
-        <Input id="invite" name="invite" autoComplete="off" required aria-invalid={!!state.fieldErrors?.invite} defaultValue={state.values?.invite} />
+        <Input
+          id="invite"
+          name="invite"
+          autoComplete="off"
+          autoCapitalize="characters"
+          spellCheck={false}
+          placeholder="NOVO-XXXX-XXXX"
+          required
+          aria-invalid={!!state.fieldErrors?.invite}
+          defaultValue={state.values?.invite}
+        />
       </Field>
       <Button type="submit" className="w-full" size="lg" loading={pending}>
         Otvori račun →

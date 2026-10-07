@@ -12,6 +12,7 @@ const MAIN = [
   { href: "/recenzije/pregled", label: "Pregled" },
   { href: "/recenzije/klijenti", label: "Klijenti" },
   { href: "/recenzije/ocjene", label: "Recenzije" },
+  { href: "/recenzije/plakat", label: "QR plakat" },
   { href: "/recenzije/kampanje", label: "Kampanje" },
   { href: "/recenzije/automatizacije", label: "Automatizacije" },
   { href: "/recenzije/poruke", label: "Poruke" },

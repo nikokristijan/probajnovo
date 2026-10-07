@@ -7,7 +7,6 @@ import {
   linkReviewAction,
   postReplyAction,
   suggestReplyAction,
-  summarizeReviewsAction,
   syncReviewsAction,
 } from "@/lib/recenzije/actions/reviews";
 import { Button } from "@/components/recenzije/ui/button";
@@ -30,40 +29,6 @@ export function SyncReviewsButton({ disabled }: { disabled?: boolean }) {
     >
       {!pending && <RefreshCw />} Preuzmi s Googlea
     </Button>
-  );
-}
-
-export function AiSummary() {
-  const [pending, start] = useTransition();
-  const [text, setText] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  return (
-    <div>
-      {text ? (
-        <div className="whitespace-pre-wrap text-sm leading-relaxed text-foreground/90">{text}</div>
-      ) : (
-        <p className="text-sm text-muted">
-          Kratki sažetak onoga što klijenti hvale i što treba poboljšati, napisan iz vaših najnovijih recenzija.
-        </p>
-      )}
-      {error && <p className="mt-3 border-l-[3px] border-orange bg-orange-soft px-3 py-2 text-[13px] text-warning">{error}</p>}
-      <Button
-        className="mt-4"
-        size="sm"
-        variant="secondary"
-        loading={pending}
-        onClick={() =>
-          start(async () => {
-            setError(null);
-            const r = await summarizeReviewsAction();
-            if (r.ok) setText(String(r.data?.text ?? ""));
-            else setError(r.error ?? "AI zahtjev nije uspio");
-          })
-        }
-      >
-        {!pending && <Sparkles />} {text ? "Ponovno" : "Sažmi pomoću AI"}
-      </Button>
-    </div>
   );
 }
 

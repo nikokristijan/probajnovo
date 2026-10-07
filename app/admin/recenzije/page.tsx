@@ -1,8 +1,10 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getCurrentAdminRecord } from "@/lib/auth";
+import RecenzijeInviteCodes, { type InviteCodeView } from "@/components/admin/RecenzijeInviteCodes";
 import { StatCard } from "@/components/admin/StatCard";
 import { activatePlanAction, deactivateAction, extendTrialAction } from "@/lib/recenzije/actions/novo-admin";
+import { envInviteCodeCount, listInviteCodes } from "@/lib/recenzije/services/invites";
 import {
   listOrganizationsForNovoAdmin,
   listPlansForNovoAdmin,
@@ -30,6 +32,11 @@ const STATE: Record<AdminOrgRow["state"], { label: string; cls: string }> = {
 function date(d: Date | string | null | undefined) {
   if (!d) return "—";
   return new Date(d).toLocaleDateString("hr-HR");
+}
+
+/** Datum za pozivne kodove: fiksna vremenska zona da prikaz ne ovisi o poslužitelju. */
+function inviteDate(d: Date | null) {
+  return d ? d.toLocaleDateString("hr-HR", { timeZone: "Europe/Zagreb" }) : null;
 }
 
 function daysFrom(d: Date | string | null | undefined) {
@@ -64,8 +71,24 @@ export default async function AdminRecenzijePage({
   if (!admin.isSuperAdmin) redirect("/admin");
 
   const sp = await searchParams;
-  const [rows, plans] = await Promise.all([listOrganizationsForNovoAdmin(), listPlansForNovoAdmin()]);
+  const [rows, plans, invites] = await Promise.all([
+    listOrganizationsForNovoAdmin(),
+    listPlansForNovoAdmin(),
+    listInviteCodes(),
+  ]);
   const sum = summarize(rows);
+  const inviteViews: InviteCodeView[] = invites.map((c) => ({
+    id: c.id,
+    code: c.code,
+    label: c.label,
+    status: c.status,
+    uses: c.uses,
+    maxUses: c.maxUses,
+    expiresLabel: inviteDate(c.expiresAt),
+    createdLabel: inviteDate(c.createdAt) ?? "",
+    lastUsedBy: c.lastUsedBy,
+    lastUsedLabel: inviteDate(c.lastUsedAt),
+  }));
 
   return (
     <div className="flex flex-col gap-6">
@@ -74,7 +97,7 @@ export default async function AdminRecenzijePage({
           <h1 className="text-xl font-bold">Recenzije</h1>
           <p className="text-xs text-black/50 mt-0.5 max-w-[60ch]">
             Tvrtke koje koriste NOVO Recenzije, njihov paket i potrošnja. Paket koji plaćaju virmanom aktiviraš ovdje
-            ručno. Vidljivo samo glavnom adminu.
+            ručno, a pozivnim kodovima određuješ tko smije otvoriti račun. Vidljivo samo glavnom adminu.
           </p>
         </div>
         <div className="flex gap-2 shrink-0">
@@ -114,6 +137,8 @@ export default async function AdminRecenzijePage({
         <StatCard label="MRR (bez PDV-a)" value={Math.round(sum.mrrCents / 100)} suffix=" €" />
         <StatCard label="SMS u 30 dana" value={sum.sms30d} />
       </section>
+
+      <RecenzijeInviteCodes codes={inviteViews} envCount={envInviteCodeCount()} />
 
       {rows.length === 0 ? (
         <div className="neu-card px-5 py-8 text-center text-sm text-black/60">

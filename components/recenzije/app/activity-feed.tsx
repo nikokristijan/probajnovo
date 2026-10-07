@@ -4,6 +4,7 @@ import {
   Ban,
   CalendarClock,
   CheckCircle2,
+  Mail,
   MessageCircle,
   MousePointerClick,
   Send,
@@ -20,6 +21,7 @@ import { Avatar } from "@/components/recenzije/ui/primitives";
 
 const ICONS: Record<ActivityType, { icon: LucideIcon; cls: string }> = {
   client_created: { icon: UserPlus, cls: "text-muted bg-surface-3" },
+  weekly_report_sent: { icon: Mail, cls: "text-muted bg-surface-3" },
   service_completed: { icon: Wrench, cls: "text-muted bg-surface-3" },
   request_sent: { icon: Send, cls: "text-info bg-info-soft" },
   link_clicked: { icon: MousePointerClick, cls: "text-violet bg-violet-soft" },

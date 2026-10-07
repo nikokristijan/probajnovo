@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { eq } from "drizzle-orm";
-import { Bot, CheckCircle2, CircleAlert, CreditCard, Mail, MessageSquare, Smartphone, Timer } from "lucide-react";
+import { Bot, CheckCircle2, CircleAlert, CreditCard, Mail, MessageSquare, QrCode, Smartphone, Timer } from "lucide-react";
 import { GoogleIcon } from "@/components/recenzije/auth/oauth";
 import { GoogleActions, SmsGatewayForm } from "@/components/recenzije/app/settings/forms";
 import { CopyButton } from "@/components/recenzije/app/clients/client-actions";
@@ -76,9 +76,16 @@ export default async function SettingsPage({ searchParams }: { searchParams: Pro
         title="Povezivanje"
         description="Google, SMS, AI i naplata. Ništa se ne glumi: usluga piše „Povezano” tek kad stvarno radi."
         actions={
-          <Button variant="secondary" asChild>
-            <Link href="/recenzije/postavke/tvrtka">Profil tvrtke</Link>
-          </Button>
+          <>
+            <Button variant="secondary" asChild>
+              <Link href="/recenzije/plakat">
+                <QrCode /> QR plakat
+              </Link>
+            </Button>
+            <Button variant="secondary" asChild>
+              <Link href="/recenzije/postavke/tvrtka">Profil tvrtke</Link>
+            </Button>
+          </>
         }
       />
       {msg && <Alert tone={msg.tone} title={msg.text} className="mb-4" />}

@@ -11,12 +11,13 @@ import { ensureReviewsDb } from "@/lib/recenzije/db/ensure";
 import { DEMO_EMAIL, DEMO_SLUG } from "@/lib/recenzije/db/seed";
 import { organizationMembers, organizations, passwordResetTokens, users } from "@/lib/recenzije/db/schema";
 import { type ActionState, echoValues, formObject, zodErrors } from "@/lib/recenzije/action";
-import { isValidInviteCode, randomToken, sha256 } from "@/lib/recenzije/crypto";
+import { randomToken, sha256 } from "@/lib/recenzije/crypto";
 import { env } from "@/lib/recenzije/env";
 import { rateLimit } from "@/lib/recenzije/rate-limit";
 import { clientIp } from "@/lib/recenzije/request";
 import { ACTIVE_ORG_COOKIE } from "@/lib/recenzije/session";
 import { sendEmail } from "@/lib/recenzije/services/email";
+import { consumeInviteCode, isInviteCodeUsable } from "@/lib/recenzije/services/invites";
 import { escapeHtml } from "@/lib/recenzije/utils";
 
 const email = z.string().trim().toLowerCase().email("Upišite ispravnu email adresu").max(200);
@@ -40,6 +41,17 @@ async function limited(bucket: string, limit: number, windowMs: number): Promise
   return r.ok ? null : `Previše pokušaja. Pokušajte ponovno za ${Math.ceil(r.retryAfter / 60)} min.`;
 }
 
+/** Isti tekst za svaki razlog odbijanja (nepoznat, istekao, opozvan, iskorišten): ne otkrivamo koji kodovi postoje. */
+const INVITE_ERROR = "Pozivni kod nije ispravan ili više ne vrijedi. Javite nam se na " + env.salesEmail;
+const EMAIL_TAKEN_ERROR = "Račun s ovim emailom već postoji. Prijavite se.";
+
+/** Baca se unutar transakcije registracije da se poništi i upotreba pozivnog koda. */
+class SignupConflict extends Error {
+  constructor(readonly field: "invite" | "email") {
+    super(field);
+  }
+}
+
 export async function signupAction(_: ActionState, fd: FormData): Promise<ActionState> {
   await ensureReviewsDb();
   const tooMany = await limited("signup", 5, 15 * 60_000);
@@ -49,15 +61,38 @@ export async function signupAction(_: ActionState, fd: FormData): Promise<Action
     .safeParse(formObject(fd));
   if (!parsed.success) return { values: echoValues(fd), fieldErrors: zodErrors(parsed.error) };
 
-  if (!isValidInviteCode(parsed.data.invite)) {
-    return { values: echoValues(fd), fieldErrors: { invite: "Pozivni kod nije ispravan. Javite nam se na " + env.salesEmail } };
+  // Prvo samo provjera (bez trošenja): neispravan kod ne smije otkriti postoji li email.
+  if (!(await isInviteCodeUsable(parsed.data.invite))) {
+    return { values: echoValues(fd), fieldErrors: { invite: INVITE_ERROR } };
   }
   const [existing] = await db.select({ id: users.id }).from(users).where(eq(users.email, parsed.data.email)).limit(1);
-  if (existing) return { values: echoValues(fd), fieldErrors: { email: "Račun s ovim emailom već postoji. Prijavite se." } };
+  if (existing) return { values: echoValues(fd), fieldErrors: { email: EMAIL_TAKEN_ERROR } };
 
   const passwordHash = await bcrypt.hash(parsed.data.password, 12);
-  const [user] = await db.insert(users).values({ name: parsed.data.name, email: parsed.data.email, passwordHash }).returning();
-  await createSession(user.id);
+  let userId: string;
+  try {
+    // Potrošnja koda i upis korisnika u jednoj transakciji: ako upis padne, upotreba se vraća sama.
+    userId = await db.transaction(async (tx) => {
+      const used = await consumeInviteCode(tx, parsed.data.invite, parsed.data.email);
+      if (!used) throw new SignupConflict("invite"); // netko ga je u međuvremenu iskoristio ili opozvao
+      const [user] = await tx
+        .insert(users)
+        .values({ name: parsed.data.name, email: parsed.data.email, passwordHash })
+        .onConflictDoNothing({ target: users.email })
+        .returning({ id: users.id });
+      if (!user) throw new SignupConflict("email"); // istovremena registracija s istim emailom
+      return user.id;
+    });
+  } catch (e) {
+    if (e instanceof SignupConflict) {
+      return {
+        values: echoValues(fd),
+        fieldErrors: e.field === "invite" ? { invite: INVITE_ERROR } : { email: EMAIL_TAKEN_ERROR },
+      };
+    }
+    throw e;
+  }
+  await createSession(userId);
   redirect("/recenzije/postavljanje");
 }
 

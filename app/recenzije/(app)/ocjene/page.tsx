@@ -4,7 +4,8 @@ import { CalendarDays, Info, Plug, Reply as Link2, Star, StarHalf } from "lucide
 import { RatingLineChart, ReviewsBarChart } from "@/components/recenzije/app/charts";
 import { KpiCard } from "@/components/recenzije/app/kpi";
 import { Pagination } from "@/components/recenzije/app/pagination";
-import { AiSummary, LinkClientSelect, ReplyBox, SyncReviewsButton } from "@/components/recenzije/app/reviews/review-tools";
+import { LinkClientSelect, ReplyBox, SyncReviewsButton } from "@/components/recenzije/app/reviews/review-tools";
+import { AiSummaryCard } from "@/components/recenzije/reviews/ai-summary-card";
 import { Button } from "@/components/recenzije/ui/button";
 import { Alert, Avatar, Badge, Card, CardBody, CardHeader, EmptyState, PageHeader, Stars } from "@/components/recenzije/ui/primitives";
 import { db } from "@/lib/recenzije/db";
@@ -16,6 +17,8 @@ import { cn } from "@/lib/recenzije/utils";
 import { reviewSeries, reviewStats } from "@/lib/recenzije/services/stats";
 
 export const metadata = { title: "Recenzije" };
+/** Server action AI sažetka izvršava se pod ovom rutom; Claude poziv ima do 45 s, pa zadana granica (10-15 s) ne smije biti kraća. */
+export const maxDuration = 60;
 
 const FILTERS = [
   { key: "", label: "Sve" },
@@ -146,9 +149,10 @@ export default async function ReviewsPage({ searchParams }: { searchParams: Prom
           </CardBody>
         </Card>
         <Card className="lg:col-span-2">
-          <CardHeader title="AI sažetak recenzija" description="Claude čita vaše spremljene recenzije" />
+          <CardHeader title="AI sažetak recenzija" description="Claude čita vaše spremljene recenzije, bez imena recenzenata" />
           <CardBody>
-            <AiSummary />
+            {/* key po tvrtki: pri promjeni tvrtke stari sažetak ne smije ostati prikazan uz podatke druge tvrtke */}
+            <AiSummaryCard key={orgId} aiConfigured={integrations.ai()} reviewCount={stats.total} />
           </CardBody>
         </Card>
       </div>

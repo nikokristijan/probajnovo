@@ -8,6 +8,7 @@
 import { relations, sql } from "drizzle-orm";
 import {
   boolean,
+  check,
   doublePrecision,
   index,
   integer,
@@ -95,6 +96,37 @@ export const passwordResetTokens = pgTable("nr_password_reset_tokens", {
   usedAt: timestamp("used_at", { withTimezone: true }),
   createdAt: createdAt(),
 });
+
+/**
+ * Pozivni kodovi za registraciju (upravlja ih glavni admin u /admin/recenzije).
+ * Iskorištavanje je jedan atomski UPDATE (services/invites.ts), a CHECK ispod
+ * je zadnja ograda: čak ni greška u kodu ne može potrošiti više od `max_uses`.
+ */
+export const inviteCodes = pgTable(
+  "nr_invite_codes",
+  {
+    id: id(),
+    /** Kanonski oblik NOVO-XXXX-XXXX (velika slova, bez dvosmislenih znakova). */
+    code: text("code").notNull().unique(),
+    /** Interna bilješka za kome je kod namijenjen. */
+    label: text("label"),
+    maxUses: integer("max_uses").notNull().default(1),
+    uses: integer("uses").notNull().default(0),
+    expiresAt: timestamp("expires_at", { withTimezone: true }),
+    revokedAt: timestamp("revoked_at", { withTimezone: true }),
+    /** Email admina koji je kod napravio. */
+    createdBy: text("created_by"),
+    /** Tko je zadnji iskoristio kod (email iz registracije). */
+    lastUsedBy: text("last_used_by"),
+    lastUsedAt: timestamp("last_used_at", { withTimezone: true }),
+    createdAt: createdAt(),
+  },
+  (t) => [
+    check("nr_invite_codes_uses_range", sql`${t.uses} >= 0 and ${t.uses} <= ${t.maxUses}`),
+    check("nr_invite_codes_max_uses_min", sql`${t.maxUses} >= 1`),
+    index("nr_invite_created").on(t.createdAt),
+  ]
+);
 
 // --- Tenancy ---
 
@@ -426,9 +458,11 @@ export type ActivityType =
   | "message_failed"
   | "reply_received"
   | "opt_out"
-  | "automation_completed";
+  | "automation_completed"
+  | "weekly_report_sent";
 
 export type User = typeof users.$inferSelect;
+export type InviteCode = typeof inviteCodes.$inferSelect;
 export type Organization = typeof organizations.$inferSelect;
 export type Client = typeof clients.$inferSelect;
 export type Service = typeof services.$inferSelect;

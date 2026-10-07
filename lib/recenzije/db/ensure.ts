@@ -9,7 +9,7 @@ import { db } from "./index";
  * da se dva serverless pokretanja ne sudare. Kad se shema promijeni:
  * dodaj ALTER TABLE ... ADD COLUMN IF NOT EXISTS na kraj i povećaj SCHEMA_VERSION.
  */
-export const SCHEMA_VERSION = 1;
+export const SCHEMA_VERSION = 2;
 
 const DDL = `
 CREATE TABLE IF NOT EXISTS "nr_meta" ("key" text PRIMARY KEY NOT NULL, "value" text NOT NULL);
@@ -108,6 +108,22 @@ CREATE TABLE IF NOT EXISTS "nr_google_connections" (
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
 	"updated_at" timestamp with time zone DEFAULT now() NOT NULL,
 	CONSTRAINT "nr_google_connections_organization_id_unique" UNIQUE("organization_id")
+);
+CREATE TABLE IF NOT EXISTS "nr_invite_codes" (
+	"id" text PRIMARY KEY NOT NULL,
+	"code" text NOT NULL,
+	"label" text,
+	"max_uses" integer DEFAULT 1 NOT NULL,
+	"uses" integer DEFAULT 0 NOT NULL,
+	"expires_at" timestamp with time zone,
+	"revoked_at" timestamp with time zone,
+	"created_by" text,
+	"last_used_by" text,
+	"last_used_at" timestamp with time zone,
+	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
+	CONSTRAINT "nr_invite_codes_code_unique" UNIQUE("code"),
+	CONSTRAINT "nr_invite_codes_uses_range" CHECK ("uses" >= 0 AND "uses" <= "max_uses"),
+	CONSTRAINT "nr_invite_codes_max_uses_min" CHECK ("max_uses" >= 1)
 );
 CREATE TABLE IF NOT EXISTS "nr_link_clicks" (
 	"id" text PRIMARY KEY NOT NULL,
@@ -300,6 +316,7 @@ CREATE INDEX IF NOT EXISTS "nr_campaign_org" ON "nr_campaigns" USING btree ("org
 CREATE UNIQUE INDEX IF NOT EXISTS "nr_client_org_phone" ON "nr_clients" USING btree ("organization_id","phone");
 CREATE INDEX IF NOT EXISTS "nr_client_org_status" ON "nr_clients" USING btree ("organization_id","review_status");
 CREATE INDEX IF NOT EXISTS "nr_client_org_created" ON "nr_clients" USING btree ("organization_id","created_at");
+CREATE INDEX IF NOT EXISTS "nr_invite_created" ON "nr_invite_codes" USING btree ("created_at");
 CREATE INDEX IF NOT EXISTS "nr_click_link" ON "nr_link_clicks" USING btree ("link_id");
 CREATE INDEX IF NOT EXISTS "nr_template_org" ON "nr_message_templates" USING btree ("organization_id");
 CREATE INDEX IF NOT EXISTS "nr_message_org_created" ON "nr_messages" USING btree ("organization_id","created_at");
