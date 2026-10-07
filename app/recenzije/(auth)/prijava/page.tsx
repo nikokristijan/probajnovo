@@ -13,6 +13,7 @@ const ERRORS: Record<string, string> = {
   rate: "Previše pokušaja. Pokušajte ponovno za nekoliko minuta.",
   google: "Prijava Googleom nije uspjela. Pokušajte ponovno.",
   google_off: "Prijava Googleom još nije uključena.",
+  no_account: "Za ovaj Google račun ne postoji pristup. Pristup otvara NOVO.",
 };
 
 export default async function LoginPage({ searchParams }: { searchParams: Promise<Record<string, string | undefined>> }) {
@@ -41,9 +42,9 @@ export default async function LoginPage({ searchParams }: { searchParams: Promis
         <LoginForm next={sp.next} />
       </div>
       <p className="mt-8 text-sm text-muted">
-        Nemate račun?{" "}
-        <Link href="/recenzije/registracija" className="font-bold text-foreground underline underline-offset-4">
-          Probajte 14 dana besplatno
+        Nemate pristup?{" "}
+        <Link href="/recenzije#ponuda" className="font-bold text-foreground underline underline-offset-4">
+          Zatražite ponudu
         </Link>
       </p>
     </div>
