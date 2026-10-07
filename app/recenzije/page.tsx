@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { ArrowRight, Check } from "lucide-react";
 import NovoShell from "@/components/novo/NovoShell";
+import { OfferForm } from "@/components/recenzije/offer-form";
 import { PhoneMockup } from "@/components/recenzije/phone";
 import { Button } from "@/components/recenzije/ui/button";
 import { demoLoginAction } from "@/lib/recenzije/actions/auth";
@@ -16,12 +17,12 @@ export const dynamic = "force-dynamic";
 export const metadata: Metadata = {
   title: { absolute: "Google recenzije na autopilotu – NOVO" },
   description:
-    "Nakon svakog posla klijent dobije SMS s linkom za Google recenziju. Praćenje klikova, podsjetnici i pregled svih recenzija na jednom mjestu. 14 dana besplatno.",
+    "Nakon svakog posla klijent dobije SMS s linkom za Google recenziju. Praćenje klikova, podsjetnici i izvještaj svaki mjesec. NOVO sve postavlja i vodi umjesto vas.",
   alternates: { canonical: "https://www.probajnovo.com/recenzije" },
 };
 
 const STEPS = [
-  { title: "Završite posao", text: "Označite uslugu završenom ili dodajte klijenta u 10 sekundi. To je sve što vi radite." },
+  { title: "Pošaljete nam popis", text: "Nakon posla pošaljete ime i broj klijenta (WhatsApp, e-mail ili tablica). To je sve što vi radite." },
   { title: "Mi šaljemo zahtjev", text: "Klijent dobije osobni SMS s vašeg broja i linkom. Ako ne klikne, sutra stiže nenametljiv podsjetnik." },
   { title: "Klijent ostavlja recenziju", text: "Jedan dodir otvara vašu Google stranicu za recenziju. Vi vidite tko je kliknuo i tko je ocijenio." },
 ];
@@ -29,7 +30,7 @@ const STEPS = [
 const FEATURES = [
   { title: "Praćeni linkovi", text: "Svaki klijent dobije svoj kratki link, pa točno znate tko je kliknuo i kada." },
   { title: "Automatski podsjetnici", text: "Čekaj, provjeri, podsjeti. Tijek staje čim stigne recenzija." },
-  { title: "SMS s vašeg broja", text: "Spojite stari Android mobitel i poruke idu s vašeg broja, po cijeni vaše tarife." },
+  { title: "SMS s vašeg broja", text: "Poruke idu s vašeg broja preko starog Android mobitela, po cijeni vaše tarife. Postavimo ga mi." },
   { title: "AI piše poruke", text: "Claude piše tople, kratke poruke na hrvatskom, prilagođene poslu i serviseru." },
   { title: "Analitika", text: "Lijevak, klikovi i konverzija po kampanji, serviseru i usluzi. Bez nagađanja." },
   { title: "Pošteno", text: "Ne lažiramo recenzije ni podatke, i ne skrivamo loše ocjene. Odjava STOP poštuje se automatski." },
@@ -37,8 +38,12 @@ const FEATURES = [
 
 const FAQ = [
   {
+    q: "Što ja moram raditi?",
+    a: "Samo nam poslati ime i broj klijenta nakon posla, kako vam je lakše: WhatsAppom, e-mailom ili tablicom jednom tjedno. Poruke, podsjetnike i praćenje radimo mi, a vi svaki mjesec dobijete izvještaj.",
+  },
+  {
     q: "Trebam li nešto instalirati?",
-    a: "Ne nužno. Najjeftinije je spojiti stari Android mobitel s vašim SIM-om (besplatna aplikacija), pa poruke idu s vašeg broja. Bez mobitela šaljemo preko Twilija.",
+    a: "Ne. Najjeftinije je da poruke idu s vašeg broja preko starog Android mobitela s vašim SIM-om, koji postavimo mi. Bez mobitela šaljemo preko Twilija, uz trošak po poruci.",
   },
   {
     q: "Kako znate da je klijent ostavio recenziju?",
@@ -109,14 +114,14 @@ export default async function RecenzijeLanding() {
             )}
             <div className="mt-6 flex flex-wrap gap-2">
               <Button size="lg" asChild>
-                <Link href="/recenzije/registracija">
-                  Započni besplatno <ArrowRight />
-                </Link>
+                <a href="#ponuda">
+                  Zatraži ponudu <ArrowRight />
+                </a>
               </Button>
               {demo}
             </div>
             <p className="mt-4 flex flex-wrap gap-x-4 gap-y-1 text-[13px] text-muted">
-              {["14 dana besplatno", "Bez kartice", "SMS s vašeg broja"].map((t) => (
+              {["Mi sve postavimo i vodimo", "SMS s vašeg broja", "Bez ugovorne obveze"].map((t) => (
                 <span key={t} className="inline-flex items-center gap-1.5">
                   <Check className="size-3.5 text-accent" /> {t}
                 </span>
@@ -204,7 +209,7 @@ export default async function RecenzijeLanding() {
           <h2 id="cijene" className="label flex items-center gap-2 text-muted">
             <span className="size-1.5 bg-orange" /> Cijene
           </h2>
-          <p className="mt-4 text-[15px] text-muted">14 dana besplatno. Paket birate kad ste spremni. Cijene su bez PDV-a.</p>
+          <p className="mt-4 text-[15px] text-muted">Postavljanje radimo mi. Plaća se mjesečno, bez ugovorne obveze. Cijene su bez PDV-a.</p>
           <div className="mt-8 grid gap-4 md:grid-cols-3">
             {plans.map((p) => {
               const featured = p.key === "growth";
@@ -227,7 +232,7 @@ export default async function RecenzijeLanding() {
                     ))}
                   </ul>
                   <Button asChild className="mt-6" variant={featured ? "primary" : "secondary"}>
-                    <Link href="/recenzije/registracija">Probaj 14 dana</Link>
+                    <a href="#ponuda">Zatraži ponudu</a>
                   </Button>
                 </div>
               );
@@ -240,6 +245,17 @@ export default async function RecenzijeLanding() {
             </Link>{" "}
             savršeno ide uz ovo: klijent prisloni mobitel na pultu, a SMS pokrije sve ostale.
           </p>
+        </section>
+
+        {/* Ponuda */}
+        <section className="scroll-mt-24 border-t border-border py-12" aria-labelledby="ponuda-naslov" id="ponuda">
+          <h2 id="ponuda-naslov" className="label flex items-center gap-2 text-muted">
+            <span className="size-1.5 bg-orange" /> Zatraži ponudu
+          </h2>
+          <p className="mt-4 max-w-2xl text-2xl font-bold leading-tight sm:text-3xl">Recite nam koliko poslova radite, a mi predložimo paket i prvu poruku.</p>
+          <div className="mt-8">
+            <OfferForm />
+          </div>
         </section>
 
         {/* FAQ */}
@@ -264,9 +280,9 @@ export default async function RecenzijeLanding() {
           <h2 className="mx-auto max-w-2xl text-3xl font-bold leading-tight">Vaš sljedeći posao može biti vaša sljedeća recenzija s 5 zvjezdica.</h2>
           <div className="mt-8 flex flex-wrap justify-center gap-2">
             <Button size="lg" asChild>
-              <Link href="/recenzije/registracija">
-                Započni besplatno <ArrowRight />
-              </Link>
+              <a href="#ponuda">
+                Zatraži ponudu <ArrowRight />
+              </a>
             </Button>
             {demo}
           </div>
