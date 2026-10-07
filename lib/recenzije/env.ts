@@ -48,6 +48,9 @@ export const env = {
   resendKey: process.env.RESEND_API_KEY || "",
   emailFrom: process.env.RESEND_FROM_EMAIL || process.env.EMAIL_FROM || "NOVO <hello@probajnovo.com>",
 
+  /** Registracija je samo uz pozivni kod (vlasnik ih upisuje ovdje, odvojene zarezom). Bez kodova nitko novi ne može otvoriti račun. */
+  inviteCodes: (process.env.NR_INVITE_CODES || "").split(",").map((c) => c.trim()).filter(Boolean),
+
   demoEnabled: process.env.NR_DEMO !== "false",
   /** Kontakt za aktivaciju paketa kad Stripe nije uključen. */
   salesEmail: process.env.NR_SALES_EMAIL || "hello@probajnovo.com",

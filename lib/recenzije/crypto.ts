@@ -1,6 +1,6 @@
 import "server-only";
-import { createCipheriv, createDecipheriv, createHash, randomBytes } from "crypto";
-import { derivedKey } from "./env";
+import { createCipheriv, createDecipheriv, createHash, randomBytes, timingSafeEqual } from "crypto";
+import { derivedKey, env } from "./env";
 
 /** AES-256-GCM za tajne u bazi (Google tokeni, SMS gateway lozinke). Ključ je izveden iz SESSION_SECRET. */
 function key(): Buffer {
@@ -27,4 +27,12 @@ export function sha256(value: string): string {
 
 export function randomToken(bytes = 32): string {
   return randomBytes(bytes).toString("base64url");
+}
+
+/** Pozivni kod za registraciju: usporedba bez curenja vremena; bez postavljenih kodova nijedan ne vrijedi. */
+export function isValidInviteCode(code: string): boolean {
+  const given = sha256(code.trim());
+  let ok = false;
+  for (const c of env.inviteCodes) if (timingSafeEqual(Buffer.from(sha256(c)), Buffer.from(given))) ok = true;
+  return ok;
 }

@@ -56,6 +56,9 @@ export function SignupForm() {
       <Field label="Lozinka" htmlFor="password" error={state.fieldErrors?.password} hint="Najmanje 8 znakova, s barem jednim brojem.">
         <Input id="password" name="password" type="password" autoComplete="new-password" required aria-invalid={!!state.fieldErrors?.password} />
       </Field>
+      <Field label="Pozivni kod" htmlFor="invite" error={state.fieldErrors?.invite} hint="Dobivate ga od NOVO tima.">
+        <Input id="invite" name="invite" autoComplete="off" required aria-invalid={!!state.fieldErrors?.invite} defaultValue={state.values?.invite} />
+      </Field>
       <Button type="submit" className="w-full" size="lg" loading={pending}>
         Otvori račun →
       </Button>

@@ -11,7 +11,7 @@ import { ensureReviewsDb } from "@/lib/recenzije/db/ensure";
 import { DEMO_EMAIL, DEMO_SLUG } from "@/lib/recenzije/db/seed";
 import { organizationMembers, organizations, passwordResetTokens, users } from "@/lib/recenzije/db/schema";
 import { type ActionState, echoValues, formObject, zodErrors } from "@/lib/recenzije/action";
-import { randomToken, sha256 } from "@/lib/recenzije/crypto";
+import { isValidInviteCode, randomToken, sha256 } from "@/lib/recenzije/crypto";
 import { env } from "@/lib/recenzije/env";
 import { rateLimit } from "@/lib/recenzije/rate-limit";
 import { clientIp } from "@/lib/recenzije/request";
@@ -45,10 +45,13 @@ export async function signupAction(_: ActionState, fd: FormData): Promise<Action
   const tooMany = await limited("signup", 5, 15 * 60_000);
   if (tooMany) return { values: echoValues(fd), error: tooMany };
   const parsed = z
-    .object({ name: z.string().trim().min(2, "Upišite ime i prezime").max(80), email, password })
+    .object({ name: z.string().trim().min(2, "Upišite ime i prezime").max(80), email, password, invite: z.string().trim().max(100).default("") })
     .safeParse(formObject(fd));
   if (!parsed.success) return { values: echoValues(fd), fieldErrors: zodErrors(parsed.error) };
 
+  if (!isValidInviteCode(parsed.data.invite)) {
+    return { values: echoValues(fd), fieldErrors: { invite: "Pozivni kod nije ispravan. Javite nam se na " + env.salesEmail } };
+  }
   const [existing] = await db.select({ id: users.id }).from(users).where(eq(users.email, parsed.data.email)).limit(1);
   if (existing) return { values: echoValues(fd), fieldErrors: { email: "Račun s ovim emailom već postoji. Prijavite se." } };
 

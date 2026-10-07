@@ -12,6 +12,7 @@ const ERRORS: Record<string, string> = {
   demo: "Demo trenutno nije dostupan. Pokušajte za minutu.",
   rate: "Previše pokušaja. Pokušajte ponovno za nekoliko minuta.",
   google: "Prijava Googleom nije uspjela. Pokušajte ponovno.",
+  invite: "Za ovaj Google račun ne postoji profil. Registracija je samo uz pozivni kod.",
   google_off: "Prijava Googleom još nije uključena.",
 };
 
