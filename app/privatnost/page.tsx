@@ -4,107 +4,150 @@ import LegalPage from "@/components/LegalPage";
 
 export const metadata: Metadata = {
   title: "Politika privatnosti",
-  description: "Kako NOVO prikuplja, koristi i štiti osobne podatke posjetitelja i klijenata.",
+  description: "Kako NOVO prikuplja, koristi i štiti osobne podatke posjetitelja, gostiju i klijenata.",
   robots: { index: true, follow: true },
   alternates: { canonical: "https://www.probajnovo.com/privatnost" },
 };
 
+const EMAIL = "hello@probajnovo.com";
+
+/**
+ * Privremena politika privatnosti (vrijedi dok se ne izradi konačna verzija
+ * uz pravni pregled). Opisuje samo obrade koje kod probajnova stvarno radi:
+ * upiti, stranice vikendica/firmi, NFC stranice za goste, admin te NOVO
+ * Recenzije (SMS zahtjevi za recenziju u ime tvrtki).
+ */
 export default function PrivacyPolicyPage() {
   return (
-    <LegalPage title="Politika privatnosti" updated="5. listopada 2026.">
+    <LegalPage title="Politika privatnosti" updated="7. listopada 2026.">
       <p>
-        <strong>
-          Ovo je predložak politike privatnosti prilagođen uslugama i podacima koje NOVO stvarno
-          prikuplja, izrađen na temelju pregleda koda stranice. Nije zamjena za pravni savjet —
-          preporučujemo da ga prije objave pregleda odvjetnik ili DPO, posebno dio o pravnoj
-          osnovi obrade i rokovima čuvanja podataka.
-        </strong>
+        Ovo je privremena verzija politike privatnosti. Opisuje kako NOVO danas obrađuje osobne podatke i vrijedi dok ne
+        objavimo konačnu verziju. Svaku izmjenu označit ćemo datumom na vrhu ove stranice.
       </p>
 
-      <h2>1. Tko smo mi</h2>
+      <h2>1. Tko smo i kako nas kontaktirati</h2>
       <p>
-        Voditelj obrade podataka je <strong>[ovdje upiši puni pravni naziv obrta/tvrtke i OIB]</strong>,
-        koji posluje pod nazivom NOVO, sa sjedištem u Slavonskom Brodu, Hrvatska. Za sva pitanja o
-        obradi osobnih podataka možete nas kontaktirati na{" "}
-        <a href="mailto:hello@novo.studio">hello@novo.studio</a>.
+        Stranicu probajnovo.com i povezane usluge vodi NOVO, kreativni studio iz Slavonskog Broda, Hrvatska. Za sva pitanja o
+        osobnim podacima pišite na <a href={`mailto:${EMAIL}`}>{EMAIL}</a> ili nazovite +385 97 653 7001.
       </p>
 
-      <h2>2. Koje podatke prikupljamo</h2>
-      <p>Kroz kontakt/upit obrasce na stranici prikupljamo samo podatke koje nam sami pošaljete:</p>
+      <h2>2. Koje podatke obrađujemo i zašto</h2>
+      <h3>Upiti i kontakt</h3>
+      <p>
+        Kad nam pošaljete upit (za web stranicu, NFC pločicu, prostorna slova, NOVO Recenzije ili drugu uslugu), obrađujemo ime
+        i prezime, e-mail, telefon ako ga upišete i sadržaj poruke. Koristimo ih da vam odgovorimo i pripremimo ponudu. Pravna
+        osnova je poduzimanje koraka na vaš zahtjev prije sklapanja ugovora (čl. 6. st. 1. t. b GDPR-a).
+      </p>
+      <p>
+        Radi zaštite od spama kratko bilježimo IP adresu pošiljatelja upita, samo da ograničimo broj upita s iste adrese. Ako
+        ste upit poslali s oglasa, uz poruku spremamo i oznaku oglasa (npr. kampanju), da znamo koji oglasi rade.
+      </p>
+
+      <h3>Stranice vikendica, apartmana i firmi</h3>
+      <p>
+        Na stranicama koje izrađujemo za naše klijente (npr. vikendice na poddomenama probajnovo.com) gosti mogu poslati upit za
+        smještaj ili uslugu. Te podatke obrađujemo u ime vlasnika objekta ili firme, koji je voditelj obrade, i prosljeđujemo
+        ih njemu. Vlasnik ih koristi za odgovor na vaš upit i rezervaciju.
+      </p>
+
+      <h3>NFC pločice i stranice za goste</h3>
+      <p>
+        Stranica koja se otvori prislanjanjem mobitela na NFC pločicu prikazuje podatke za goste (npr. WiFi). Na njoj ne tražimo
+        nikakve osobne podatke i ne pratimo pojedine goste.
+      </p>
+
+      <h3>NOVO Recenzije</h3>
+      <p>
+        NOVO Recenzije je usluga koju NOVO vodi za obrte i tvrtke: nakon obavljene usluge njihovim klijentima šaljemo SMS s
+        poveznicom za Google recenziju. Za tu uslugu obrađujemo podatke koje nam tvrtka dostavi o svojim klijentima: ime,
+        broj mobitela, po želji e-mail, vrstu i datum usluge. Pri tome je tvrtka voditelj obrade, a NOVO izvršitelj obrade koji
+        podatke koristi isključivo po uputi tvrtke i samo za tu svrhu.
+      </p>
       <ul>
-        <li>ime i prezime,</li>
-        <li>email adresu,</li>
-        <li>telefon (opcionalno polje),</li>
-        <li>sadržaj poruke koju upišete.</li>
+        <li>
+          Poveznica u SMS-u je osobna. Kad je otvorite, bilježimo da je kliknuta, vrijeme klika, vrstu preglednika i skraćeni
+          (hashirani) zapis IP adrese, pa vas preusmjeravamo na Google.
+        </li>
+        <li>
+          Ako odgovorite <strong>STOP</strong>, više vam ne šaljemo poruke za tu tvrtku.
+        </li>
+        <li>
+          Javne Google recenzije tvrtke preuzimamo da bi tvrtka vidjela koliko recenzija stiže. Povezujemo ih s klijentom samo
+          kad se ime na recenziji točno podudara ili kad to ručno označi tvrtka.
+        </li>
       </ul>
       <p>
-        Dodatno, radi zaštite od zlouporabe (spam/botovi) privremeno bilježimo IP adresu pošiljatelja
-        upita — koristi se isključivo za ograničavanje broja upita s iste adrese u kratkom razdoblju,
-        ne za praćenje ili profiliranje.
+        Ako ste dobili takav SMS i želite znati koji su podaci o vama spremljeni ili ih želite obrisati, javite se tvrtki koja
+        vam je pružila uslugu ili izravno nama na <a href={`mailto:${EMAIL}`}>{EMAIL}</a>.
       </p>
 
-      <h2>3. Svrha i pravna osnova obrade</h2>
+      <h3>Prijave u admin i aplikacije</h3>
       <p>
-        Podatke iz upita obrađujemo radi odgovaranja na vaš upit i eventualnog sklapanja ugovora o
-        usluzi (izrada web stranice, NFC pločice, prostorna slova i sl.) — pravna osnova je poduzimanje
-        koraka na vaš zahtjev prije sklapanja ugovora, odnosno naš legitimni interes da odgovorimo na
-        upit koji ste nam sami uputili.
+        Za korisnike s pristupom (naš tim, vlasnici objekata, tvrtke) spremamo e-mail, ime, šifriranu lozinku i podatke o
+        prijavi. Kolačić za prijavu je nužan da biste ostali prijavljeni.
       </p>
 
-      <h2>4. Analitika</h2>
+      <h2>3. Analitika i kolačići</h2>
       <p>
-        Za mjerenje posjećenosti koristimo Vercel Analytics, koji prema dokumentaciji pružatelja ne
-        koristi kolačiće niti prikuplja podatke koji identificiraju pojedinog posjetitelja — prikazuje
-        samo zbirne, anonimizirane statistike (broj posjeta, popularne stranice i sl.).
+        Posjećenost mjerimo alatom Vercel Analytics, koji ne koristi kolačiće i prikazuje samo zbirne statistike. Ako na
+        baneru za kolačiće prihvatite mjerenje, Meta (Pixel) i Google (Analytics) primaju podatke o posjetu radi mjerenja
+        učinka oglasa. Podatke iz obrazaca tim pružateljima ne šaljemo. Detalji i promjena izbora:{" "}
+        <Link href="/kolacici">Politika kolačića</Link>.
       </p>
 
-      <h2>5. Dijeljenje podataka s trećim stranama</h2>
-      <p>
-        Ne prodajemo i ne iznajmljujemo vaše podatke. Podaci se dijele isključivo s pružateljima usluga
-        nužnima za rad stranice — hosting i baza podataka (Vercel) — koji podatke obrađuju u naše ime,
-        pod istim standardima zaštite.
-      </p>
-      <p>
-        Ako na baneru za kolačiće prihvatite mjerenje, Meta (Pixel) i Google (Analytics) primaju
-        podatke o posjetu (npr. koju ste stranicu i proizvod pogledali te jeste li poslali upit) radi
-        mjerenja učinka naših oglasa. Podatke koje upišete u obrazac tim pružateljima ne šaljemo.
-        Detalji i promjena izbora: <Link href="/kolacici">Politika kolačića</Link>.
-      </p>
-
-      <h2>6. Koliko dugo čuvamo podatke</h2>
-      <p>
-        Podatke iz upita čuvamo dok su relevantni za naš poslovni odnos s vama, a najdulje 3 godine od
-        zadnjeg kontakta, osim ako zakon zahtijeva dulje čuvanje (npr. računovodstvena dokumentacija) ili
-        ako prije toga zatražite brisanje.
-      </p>
-
-      <h2>7. Vaša prava</h2>
-      <p>Sukladno GDPR-u, u svakom trenutku imate pravo:</p>
+      <h2>4. S kim dijelimo podatke</h2>
+      <p>Podatke ne prodajemo. Dijelimo ih samo s pružateljima usluga koji ih obrađuju u naše ime:</p>
       <ul>
-        <li>zatražiti uvid u podatke koje o vama imamo,</li>
-        <li>zatražiti ispravak netočnih podataka,</li>
-        <li>zatražiti brisanje podataka,</li>
-        <li>uložiti prigovor na obradu,</li>
-        <li>zatražiti prenosivost podataka.</li>
+        <li>Vercel (hosting, baza podataka i spremanje slika),</li>
+        <li>Resend (slanje e-mail obavijesti i poveznica za lozinku),</li>
+        <li>
+          za NOVO Recenzije: mobitel tvrtke s aplikacijom SMS Gateway for Android ili Twilio (slanje SMS-a), Google (Business
+          Profile, recenzije), po potrebi Anthropic (AI prijedlozi teksta poruka; pritom se može poslati najviše ime klijenta, nikad broj mobitela) i Stripe
+          (naplata pretplate tvrtkama).
+        </li>
       </ul>
       <p>
-        Zahtjev možete poslati na <a href="mailto:hello@novo.studio">hello@novo.studio</a> — odgovaramo
-        u najkraćem mogućem roku, a najkasnije u zakonskom roku od mjesec dana.
+        Neki od tih pružatelja imaju sjedište izvan EU-a. U tim slučajevima prijenos se oslanja na standardne ugovorne klauzule
+        ili druge zaštitne mjere koje pružatelj nudi u skladu s GDPR-om.
       </p>
 
-      <h2>8. Sigurnost podataka</h2>
+      <h2>5. Koliko dugo čuvamo podatke</h2>
+      <ul>
+        <li>Upiti: dok su potrebni za naš poslovni odnos, a najdulje 3 godine od zadnjeg kontakta.</li>
+        <li>
+          Podaci klijenata u NOVO Recenzijama: dok tvrtka koristi uslugu. Nakon prestanka suradnje brišemo ih u roku od 90 dana,
+          osim ako tvrtka ranije zatraži brisanje.
+        </li>
+        <li>Računovodstvena dokumentacija: koliko propisuje zakon.</li>
+      </ul>
+
+      <h2>6. Vaša prava</h2>
+      <p>U skladu s GDPR-om imate pravo:</p>
+      <ul>
+        <li>na uvid u podatke koje o vama imamo,</li>
+        <li>na ispravak netočnih podataka,</li>
+        <li>na brisanje podataka,</li>
+        <li>na ograničenje obrade i prigovor na obradu,</li>
+        <li>na prenosivost podataka.</li>
+      </ul>
       <p>
-        Sav promet prema stranici ide preko HTTPS enkripcije. Pristup admin sučelju gdje se upiti
-        pregledavaju zaštićen je lozinkom i, opcionalno, dvofaktorskom autentifikacijom.
+        Zahtjev pošaljite na <a href={`mailto:${EMAIL}`}>{EMAIL}</a>. Odgovaramo najkasnije u roku od mjesec dana. Ako smatrate
+        da vaše podatke obrađujemo protivno propisima, možete podnijeti prigovor Agenciji za zaštitu osobnih podataka (AZOP,
+        azop.hr).
       </p>
 
-      <h2>9. Maloljetnici</h2>
-      <p>Stranica nije namijenjena osobama mlađim od 16 godina i svjesno ne prikupljamo njihove podatke.</p>
-
-      <h2>10. Izmjene ove politike</h2>
+      <h2>7. Sigurnost</h2>
       <p>
-        Ovu politiku možemo povremeno ažurirati — datum zadnje izmjene naveden je na vrhu stranice.
-        Veće izmjene ćemo istaknuti na stranici.
+        Sav promet ide preko HTTPS-a. Lozinke spremamo samo u šifriranom obliku, pristupni podaci za Google i SMS uslugu su
+        šifrirani, a admin je zaštićen lozinkom i po želji dvofaktorskom autentifikacijom.
+      </p>
+
+      <h2>8. Maloljetnici</h2>
+      <p>Usluge nisu namijenjene osobama mlađim od 16 godina i svjesno ne prikupljamo njihove podatke.</p>
+
+      <h2>9. Izmjene</h2>
+      <p>
+        Ovu privremenu politiku zamijenit ćemo konačnom verzijom. Datum zadnje izmjene uvijek je naveden na vrhu stranice.
       </p>
     </LegalPage>
   );
