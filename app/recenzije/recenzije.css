@@ -119,3 +119,24 @@
     transition-duration: 0.01ms !important;
   }
 }
+
+/* Mjesečni izvještaj: ispis/PDF bez izbornika, zaglavlja i traka. */
+@media print {
+  .nr aside,
+  .nr header.sticky,
+  .nr [data-noprint],
+  .nr [data-sonner-toaster] {
+    display: none !important;
+  }
+  .nr .lg\:pl-60 {
+    padding-left: 0 !important;
+  }
+  .nr main {
+    padding: 0 !important;
+    max-width: none !important;
+  }
+  .nr .report {
+    border: none !important;
+    padding: 0 !important;
+  }
+}
