@@ -9,7 +9,7 @@ import { db } from "./index";
  * da se dva serverless pokretanja ne sudare. Kad se shema promijeni:
  * dodaj ALTER TABLE ... ADD COLUMN IF NOT EXISTS na kraj i povećaj SCHEMA_VERSION.
  */
-export const SCHEMA_VERSION = 2;
+export const SCHEMA_VERSION = 3;
 
 const DDL = `
 CREATE TABLE IF NOT EXISTS "nr_meta" ("key" text PRIMARY KEY NOT NULL, "value" text NOT NULL);
@@ -328,6 +328,11 @@ CREATE INDEX IF NOT EXISTS "nr_review_org_date" ON "nr_reviews" USING btree ("or
 CREATE INDEX IF NOT EXISTS "nr_service_org_date" ON "nr_services" USING btree ("organization_id","service_date");
 CREATE INDEX IF NOT EXISTS "nr_service_client" ON "nr_services" USING btree ("client_id");
 CREATE INDEX IF NOT EXISTS "nr_link_org_created" ON "nr_tracking_links" USING btree ("organization_id","created_at");
+ALTER TABLE "nr_organizations" ADD COLUMN IF NOT EXISTS "contact_name" text;
+ALTER TABLE "nr_organizations" ADD COLUMN IF NOT EXISTS "contact_email" text;
+ALTER TABLE "nr_organizations" ADD COLUMN IF NOT EXISTS "contact_phone" text;
+ALTER TABLE "nr_organizations" ADD COLUMN IF NOT EXISTS "internal_note" text;
+ALTER TABLE "nr_subscriptions" ADD COLUMN IF NOT EXISTS "free_period_ends_at" timestamp with time zone;
 `;
 
 let ready: Promise<void> | null = null;

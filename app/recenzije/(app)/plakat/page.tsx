@@ -30,10 +30,10 @@ export default async function PosterPage() {
       <PageHeader
         kicker="QR plakat"
         title="Plakat za Google recenziju"
-        description="Ispišite plakat ili stolnu karticu. Gost skenira kod mobitelom i odmah dođe na vašu Google stranicu za recenziju, bez traženja i bez aplikacije."
+        description="Ispišite plakat ili stolnu karticu. Gost skenira kod mobitelom i odmah dođe na Google stranicu za recenziju, bez traženja i bez aplikacije."
         actions={
           <Button variant="secondary" asChild>
-            <Link href="/recenzije/postavke/tvrtka">Uredi link za recenzije</Link>
+            <Link href="/recenzije/postavke">Uredi link za recenzije</Link>
           </Button>
         }
       />
@@ -47,21 +47,21 @@ export default async function PosterPage() {
           title="QR kod se nije mogao napraviti"
           action={
             <Button size="sm" variant="secondary" asChild>
-              <Link href="/recenzije/postavke/tvrtka">Provjeri link</Link>
+              <Link href="/recenzije/postavke">Provjeri link</Link>
             </Button>
           }
         >
-          Vaš link za recenzije je predug ili neispravan za QR kod. Zamijenite ga kraćim Google linkom (https://g.page/r/… ili https://search.google.com/local/writereview?placeid=…).
+          Link za recenzije je predug ili neispravan za QR kod. Zamijenite ga kraćim Google linkom (https://g.page/r/… ili https://search.google.com/local/writereview?placeid=…).
         </Alert>
       ) : (
         <Card>
           <EmptyState
             icon={Plug}
-            title={raw ? "Link za recenzije nije ispravan" : "Najprije povežite Google"}
+            title={raw ? "Link za recenzije nije ispravan" : "Najprije dodajte Google link"}
             description={
               raw
                 ? "Spremljeni link nije ispravna http(s) adresa ili je predug (najviše 500 znakova) pa se QR kod ne može napraviti. Zamijenite ga Googleovim linkom za recenzije."
-                : "Plakat vodi na vašu Google stranicu za recenziju. Povežite Google Business Profile ili zalijepite link za recenzije u profilu tvrtke."
+                : "Plakat vodi na Google stranicu za recenziju. Povežite Google Business Profile ili zalijepite link za recenzije u Postavkama."
             }
             action={
               <div className="flex flex-wrap items-center justify-center gap-2">
@@ -69,7 +69,7 @@ export default async function PosterPage() {
                   <Link href="/recenzije/postavke#google">Poveži Google</Link>
                 </Button>
                 <Button variant="secondary" asChild>
-                  <Link href="/recenzije/postavke/tvrtka">Zalijepi link</Link>
+                  <Link href="/recenzije/postavke">Zalijepi link</Link>
                 </Button>
               </div>
             }

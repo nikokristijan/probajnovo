@@ -2,7 +2,7 @@ import { Skeleton } from "@/components/recenzije/ui/primitives";
 
 export default function Loading() {
   return (
-    <div aria-busy="true" aria-label="Loading">
+    <div aria-busy="true" aria-label="Učitavanje">
       <Skeleton className="h-8 w-56" />
       <Skeleton className="mt-3 h-4 w-80 max-w-full" />
       <div className="mt-8 grid grid-cols-2 gap-4 xl:grid-cols-4">

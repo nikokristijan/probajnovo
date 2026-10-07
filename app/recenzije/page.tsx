@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { ArrowRight, Check } from "lucide-react";
 import NovoShell from "@/components/novo/NovoShell";
+import { RecenzijeInquiryForm } from "@/components/recenzije/inquiry-form";
 import { PhoneMockup } from "@/components/recenzije/phone";
 import { Button } from "@/components/recenzije/ui/button";
 import { demoLoginAction } from "@/lib/recenzije/actions/auth";
@@ -10,70 +11,148 @@ import { env } from "@/lib/recenzije/env";
 import { formatEur } from "@/lib/recenzije/status";
 import { listPlans } from "@/lib/recenzije/services/billing";
 import { getAgencyContact } from "@/lib/novoHomeData";
+import { telHref, whatsappUrl } from "@/lib/phone";
 
 export const dynamic = "force-dynamic";
 
+const BASE_URL = "https://www.probajnovo.com";
+
 export const metadata: Metadata = {
-  title: { absolute: "Google recenzije na autopilotu – NOVO" },
+  title: { absolute: "Google recenzije za vašu tvrtku – NOVO" },
   description:
-    "Nakon svakog posla klijent dobije SMS s linkom za Google recenziju. Praćenje klikova, podsjetnici i pregled svih recenzija na jednom mjestu. 14 dana besplatno.",
-  alternates: { canonical: "https://www.probajnovo.com/recenzije" },
+    "Mi vam skupljamo Google recenzije, vi ne radite ništa. Nakon svakog posla klijent dobije SMS potpisan imenom vaše tvrtke, mi pratimo klikove i šaljemo podsjetnike, a vi tjedno dobivate izvještaj emailom.",
+  alternates: { canonical: `${BASE_URL}/recenzije` },
 };
 
 const STEPS = [
-  { title: "Završite posao", text: "Označite uslugu završenom ili dodajte klijenta u 10 sekundi. To je sve što vi radite." },
-  { title: "Mi šaljemo zahtjev", text: "Klijent dobije osobni SMS s vašeg broja i linkom. Ako ne klikne, sutra stiže nenametljiv podsjetnik." },
-  { title: "Klijent ostavlja recenziju", text: "Jedan dodir otvara vašu Google stranicu za recenziju. Vi vidite tko je kliknuo i tko je ocijenio." },
+  {
+    title: "Javite nam se",
+    text: "Pošaljite jedan kratak upit s nazivom tvrtke. Javljamo se unutar 24 sata, dogovaramo detalje i preuzimamo sve ostalo.",
+  },
+  {
+    title: "Mi sve postavimo i šaljemo",
+    text: "Postavljamo SMS-ove potpisane imenom vaše tvrtke, praćenje klikova i podsjetnike. Vi ne instalirate ništa i nigdje se ne prijavljujete.",
+  },
+  {
+    title: "Recenzije stižu, vi dobivate izvještaj",
+    text: "Klijent jednim dodirom otvara vašu Google stranicu za recenziju. Jednom tjedno vam emailom šaljemo izvještaj: poruke, klikovi i nove recenzije.",
+  },
+];
+
+const HOW_YOU_REPORT = [
+  {
+    title: "Pošaljite poruku",
+    text: "Kad završite posao, pošaljite nam WhatsApp ili email: ime klijenta, njegov broj mobitela i što ste radili. Dovoljna su dva retka.",
+  },
+  {
+    title: "Ili pošaljite popis",
+    text: "Možete nam i jednom tjedno poslati popis odrađenih poslova. Excel, tablica ili fotografija bloka, što god vam je najlakše.",
+  },
+  {
+    title: "Mi to unesemo",
+    text: "Mi upišemo klijente u svoj sustav i on pošalje poruku u pravo vrijeme. Vi ne otvarate nikakav program.",
+  },
 ];
 
 const FEATURES = [
-  { title: "Praćeni linkovi", text: "Svaki klijent dobije svoj kratki link, pa točno znate tko je kliknuo i kada." },
-  { title: "Automatski podsjetnici", text: "Čekaj, provjeri, podsjeti. Tijek staje čim stigne recenzija." },
-  { title: "SMS s vašeg broja", text: "Spojite stari Android mobitel i poruke idu s vašeg broja, po cijeni vaše tarife." },
-  { title: "AI piše poruke", text: "Claude piše tople, kratke poruke na hrvatskom, prilagođene poslu i serviseru." },
-  { title: "Analitika", text: "Lijevak, klikovi i konverzija po kampanji, serviseru i usluzi. Bez nagađanja." },
-  { title: "Pošteno", text: "Ne lažiramo recenzije ni podatke, i ne skrivamo loše ocjene. Odjava STOP poštuje se automatski." },
+  { title: "Potpisano vašim imenom", text: "Svaka poruka spominje vašu tvrtku i vodi izravno na vašu Google stranicu za recenziju." },
+  { title: "Praćeni linkovi", text: "Svaki klijent dobije svoj kratki link, pa točno znamo tko je kliknuo i kada." },
+  { title: "Automatski podsjetnici", text: "Ako klijent ne klikne, sutradan stiže jedan nenametljiv podsjetnik. Tijek staje čim stigne recenzija." },
+  { title: "Tjedni izvještaj", text: "Jednom tjedno dobivate email s brojkama: koliko je poruka poslano, koliko klikova i novih recenzija." },
+  { title: "Sve vodimo mi", text: "Postavljanje, tekstove poruka, slanje i praćenje. Vi nemate ni račun, ni aplikaciju, ni postavke." },
+  { title: "Pošteno", text: "Ne lažiramo recenzije ni podatke i ne skrivamo loše ocjene. Odjava odgovorom STOP poštuje se automatski." },
 ];
 
 const FAQ = [
   {
-    q: "Trebam li nešto instalirati?",
-    a: "Ne nužno. Najjeftinije je spojiti stari Android mobitel s vašim SIM-om (besplatna aplikacija), pa poruke idu s vašeg broja. Bez mobitela šaljemo preko Twilija.",
+    q: "Moram li nešto instalirati ili postavljati?",
+    a: "Ne. Nema aplikacije, prijave ni postavljanja. Sve radimo mi, a vi nam samo javite kad je posao završen.",
+  },
+  {
+    q: "Kako vam javljam završene poslove?",
+    a: "Pošaljete nam poruku na WhatsApp ili email s imenom i brojem klijenta, ili jednom tjedno popis odrađenih poslova. Mi to upišemo i klijentu šaljemo poruku.",
+  },
+  {
+    q: "S kojeg broja idu SMS-ovi?",
+    a: "S našeg NOVO broja, ne s vašeg. Svaka poruka sadrži ime vaše tvrtke, pa klijent odmah zna od koga je. Ako se klijent odjavi odgovorom STOP, više mu ne šaljemo.",
   },
   {
     q: "Kako znate da je klijent ostavio recenziju?",
-    a: "Klik na link pratimo točno. Recenziju povezujemo s klijentom kad se ime na Googleu poklapa, ili je vi označite jednim klikom. Google ne otkriva tko je napisao recenziju, pa ništa ne izmišljamo.",
+    a: "Klik na link pratimo točno, a nove recenzije prepoznajemo na vašoj Google stranici. Google ne otkriva tko je napisao recenziju, pa je s klijentom povezujemo samo kad se ime poklapa, inače je brojimo kao novu recenziju bez imena. Ništa ne izmišljamo.",
   },
   {
     q: "Šaljete li link samo zadovoljnim klijentima?",
     a: "Ne. Googleova pravila zabranjuju filtriranje samo na pozitivne recenzije, pa svi klijenti dobiju isti link. Dobra usluga i redovito pitanje rade ostalo.",
   },
+  {
+    q: "Kome smijemo slati poruke?",
+    a: "Samo osobama kojima ste upravo pružili uslugu i koje su vam dale kontakt zbog nje. Ne šaljemo poruke nepoznatim brojevima ni kupljenim bazama.",
+  },
   { q: "Mogu li otkazati?", a: "Da, bilo kad. Plaća se mjesečno, bez ugovorne obveze." },
 ];
 
+/** Što paket uključuje, iz stvarnih ograničenja paketa (ne iz zapisa u bazi koji su pisani za samostalno korištenje). */
+function planPoints(p: { smsMonthlyLimit: number; locationLimit: number }) {
+  return [
+    `${p.smsMonthlyLimit.toLocaleString("hr-HR")} SMS-ova mjesečno`,
+    p.locationLimit > 1 ? `Do ${p.locationLimit} ${p.locationLimit % 10 >= 2 && p.locationLimit % 10 <= 4 && (p.locationLimit < 12 || p.locationLimit > 14) ? "lokacije" : "lokacija"}` : "Jedna lokacija",
+    "Zahtjev za recenziju nakon svakog posla",
+    "Podsjetnik ako klijent ne klikne",
+    "Praćenje klikova i novih recenzija",
+    "Tjedni izvještaj emailom",
+    "Postavljanje i vođenje radimo mi",
+  ];
+}
+
 const INDUSTRIES = ["Klime i grijanje", "Vodoinstalateri", "Električari", "Stomatolozi", "Frizeri i saloni", "Autoservisi", "Čišćenje", "Restorani", "Apartmani"];
 
-export default async function RecenzijeLanding() {
-  await ensureReviewsDb();
-  const [plans, contact] = await Promise.all([listPlans(), getAgencyContact()]);
-  const cheapest = plans[0]?.priceMonthlyCents;
+const FLOW = ["Posao gotov", "Vi nam javite", "Čekamo 10 min", "SMS zahtjev", "Čekamo 1 dan", "Podsjetnik", "Recenzija"];
 
+export default async function RecenzijeLanding({ searchParams }: { searchParams: Promise<Record<string, string | undefined>> }) {
+  await ensureReviewsDb();
+  const [plans, contact, sp] = await Promise.all([listPlans(), getAgencyContact(), searchParams]);
+  const cheapest = plans[0]?.priceMonthlyCents;
+  const defaultPlan = plans.find((p) => p.key === sp.paket)?.key;
+
+  const waHref = contact.phone ? whatsappUrl(contact.phone, "Pozdrav! Zanima me NOVO Recenzije.") : null;
+  const phoneHref = contact.phone ? telHref(contact.phone) : null;
+  const mailHref = `mailto:${contact.contactEmail}?subject=${encodeURIComponent("NOVO Recenzije")}`;
+
+  /** Mali sekundarni link: pregled primjera u samo-čitaj demo radnom prostoru. */
   const demo = env.demoEnabled ? (
     <form action={demoLoginAction}>
-      <Button type="submit" size="lg" variant="secondary">
-        Pogledaj demo
+      <Button type="submit" variant="link" className="h-auto px-0 py-2">
+        Pogledaj primjer pregleda
       </Button>
     </form>
   ) : null;
 
-  const jsonLd = {
-    "@context": "https://schema.org",
-    "@type": "SoftwareApplication",
-    name: "NOVO Recenzije",
-    applicationCategory: "BusinessApplication",
-    operatingSystem: "Web",
-    offers: plans.map((p) => ({ "@type": "Offer", name: p.name, price: (p.priceMonthlyCents / 100).toFixed(2), priceCurrency: "EUR" })),
-  };
+  const jsonLd = [
+    {
+      "@context": "https://schema.org",
+      "@type": "Service",
+      name: "NOVO Recenzije",
+      serviceType: "Prikupljanje Google recenzija",
+      description: "NOVO za vašu tvrtku šalje zahtjeve za Google recenzije klijentima, prati klikove i šalje tjedni izvještaj emailom.",
+      provider: { "@type": "Organization", name: "NOVO", url: BASE_URL },
+      areaServed: { "@type": "Country", name: "Hrvatska" },
+      offers: plans.map((p) => {
+        const price = (p.priceMonthlyCents / 100).toFixed(2);
+        return {
+          "@type": "Offer",
+          name: p.name,
+          price,
+          priceCurrency: "EUR",
+          priceSpecification: { "@type": "UnitPriceSpecification", price, priceCurrency: "EUR", unitCode: "MON", valueAddedTaxIncluded: false },
+        };
+      }),
+    },
+    {
+      "@context": "https://schema.org",
+      "@type": "FAQPage",
+      mainEntity: FAQ.map((f) => ({ "@type": "Question", name: f.q, acceptedAnswer: { "@type": "Answer", text: f.a } })),
+    },
+  ];
 
   return (
     <NovoShell active="products" variant="detail" contactEmail={contact.contactEmail} instagramHandle={contact.instagramHandle} city={contact.city}>
@@ -85,38 +164,35 @@ export default async function RecenzijeLanding() {
           </Link>
           <span>/</span>
           <span>Google recenzije</span>
-          <Link href="/recenzije/prijava" className="ml-auto text-foreground underline underline-offset-4">
-            Prijava ↗
-          </Link>
         </div>
 
         {/* Hero */}
         <section className="grid items-center gap-10 py-10 lg:grid-cols-[1.15fr_0.85fr] lg:py-14">
           <div className="min-w-0">
             <p className="label flex items-center gap-2 text-accent">
-              <span className="size-1.5 bg-orange" /> Novo · softver za obrte i tvrtke
+              <span className="size-1.5 bg-orange" /> Novo · usluga za obrte i tvrtke
             </p>
             <h1 className="mt-5 text-[38px] font-bold leading-[1.02] tracking-[-0.03em] sm:text-[54px]">
-              Svaki zadovoljan klijent postaje Google recenzija.
+              Mi vam skupljamo Google recenzije. Vi ne radite ništa.
             </h1>
             <p className="mt-5 max-w-xl text-[17px] leading-relaxed text-muted">
-              Automatski zahtjev za recenziju nakon svakog posla, podsjetnik kad klijent zaboravi i rast ugleda, bez dodatnog posla za vas.
+              Nakon svakog vašeg posla klijent dobije SMS potpisan imenom vaše tvrtke, mi pratimo klikove i šaljemo podsjetnike, a vi jednom tjedno dobijete izvještaj emailom.
             </p>
             {cheapest != null && (
               <p className="mt-6 text-2xl font-bold text-accent">
-                od {formatEur(cheapest)} <span className="text-base font-normal text-muted">/ mjesec</span>
+                od {formatEur(cheapest)} <span className="text-base font-normal text-muted">/ mjesec, bez PDV-a</span>
               </p>
             )}
-            <div className="mt-6 flex flex-wrap gap-2">
+            <div className="mt-6 flex flex-wrap items-center gap-x-6 gap-y-1">
               <Button size="lg" asChild>
-                <Link href="/recenzije/registracija">
-                  Započni besplatno <ArrowRight />
-                </Link>
+                <a href="#upit">
+                  Pošaljite upit <ArrowRight />
+                </a>
               </Button>
               {demo}
             </div>
             <p className="mt-4 flex flex-wrap gap-x-4 gap-y-1 text-[13px] text-muted">
-              {["14 dana besplatno", "Bez kartice", "SMS s vašeg broja"].map((t) => (
+              {["Ništa za instalirati", "Bez prijave i postavljanja", "Otkaz bilo kad"].map((t) => (
                 <span key={t} className="inline-flex items-center gap-1.5">
                   <Check className="size-3.5 text-accent" /> {t}
                 </span>
@@ -125,10 +201,10 @@ export default async function RecenzijeLanding() {
           </div>
           <div className="relative mx-auto w-full max-w-[320px]">
             <PhoneMockup
-              sender="Klima Servis Horvat"
+              sender="NOVO"
               messages={[
                 { text: "Bok Ivana! Hvala sto ste odabrali Klima Servis Horvat. Ako imate minutu, kratka Google recenzija bi nam puno znacila: probajnovo.com/r/k3Fq9xLm2a", time: "Danas 14:32" },
-                { text: "Ostavila sam 5 zvjezdica 👍", from: "client" },
+                { text: "Ostavila sam 5 zvjezdica, hvala!", from: "client" },
               ]}
             />
             <div className="absolute -left-3 top-24 hidden border border-foreground bg-white px-3 py-2 sm:block lg:-left-10">
@@ -140,6 +216,7 @@ export default async function RecenzijeLanding() {
                 ★★★★★
               </p>
             </div>
+            <p className="mt-8 text-center text-[13px] leading-relaxed text-muted">Poruka stiže s NOVO broja, a potpisana je imenom vaše tvrtke.</p>
           </div>
         </section>
 
@@ -158,8 +235,8 @@ export default async function RecenzijeLanding() {
             ))}
           </ol>
           <div className="mt-6 border border-border p-4">
-            <ol className="flex flex-wrap items-center gap-2" aria-label="Tijek automatizacije">
-              {["Usluga završena", "Čekaj 10 min", "SMS zahtjev", "Kliknuo?", "Čekaj 1 dan", "Podsjetnik", "Recenzija"].map((s, i, a) => (
+            <ol className="flex flex-wrap items-center gap-2" aria-label="Tijek jedne recenzije">
+              {FLOW.map((s, i, a) => (
                 <li key={s} className="flex items-center gap-2">
                   <span
                     className={
@@ -174,6 +251,26 @@ export default async function RecenzijeLanding() {
               ))}
             </ol>
           </div>
+        </section>
+
+        {/* Što radite vi */}
+        <section className="border-t border-border py-12" aria-labelledby="vi">
+          <h2 id="vi" className="label flex items-center gap-2 text-muted">
+            <span className="size-1.5 bg-orange" /> Što radite vi
+          </h2>
+          <p className="mt-4 max-w-2xl text-2xl font-bold leading-tight sm:text-3xl">Samo nam javite kad je posao gotov. Bez aplikacije.</p>
+          <div className="mt-8 grid gap-px border border-border bg-border md:grid-cols-3">
+            {HOW_YOU_REPORT.map((s) => (
+              <div key={s.title} className="bg-white p-6">
+                <h3 className="font-bold">{s.title}</h3>
+                <p className="mt-2 text-[15px] leading-relaxed text-muted">{s.text}</p>
+              </div>
+            ))}
+          </div>
+          <p className="mt-6 max-w-3xl border-l-[3px] border-orange bg-orange-soft p-4 text-[15px] leading-relaxed">
+            <strong>Pošteno o SMS-ovima:</strong> poruke šaljemo s našeg NOVO broja, ne s vašeg. U svakoj piše ime vaše tvrtke i potpisana je njome, pa klijent odmah zna
+            od koga je. Odjava odgovorom STOP poštuje se automatski.
+          </p>
         </section>
 
         {/* Mogućnosti */}
@@ -200,11 +297,11 @@ export default async function RecenzijeLanding() {
         </section>
 
         {/* Cijene */}
-        <section className="border-t border-border py-12" aria-labelledby="cijene" id="cijene">
-          <h2 id="cijene" className="label flex items-center gap-2 text-muted">
+        <section className="border-t border-border py-12" aria-labelledby="cijene-naslov" id="cijene">
+          <h2 id="cijene-naslov" className="label flex items-center gap-2 text-muted">
             <span className="size-1.5 bg-orange" /> Cijene
           </h2>
-          <p className="mt-4 text-[15px] text-muted">14 dana besplatno. Paket birate kad ste spremni. Cijene su bez PDV-a.</p>
+          <p className="mt-4 text-[15px] text-muted">Cijene su mjesečne i bez PDV-a. Otkaz bilo kad, bez ugovorne obveze.</p>
           <div className="mt-8 grid gap-4 md:grid-cols-3">
             {plans.map((p) => {
               const featured = p.key === "growth";
@@ -220,14 +317,14 @@ export default async function RecenzijeLanding() {
                   </p>
                   <p className="mt-2 text-sm text-muted">{p.description}</p>
                   <ul className="mt-6 flex-1 space-y-2.5 text-sm">
-                    {p.features.map((f) => (
+                    {planPoints(p).map((f) => (
                       <li key={f} className="flex gap-2">
                         <Check className="mt-0.5 size-4 shrink-0 text-orange" /> {f}
                       </li>
                     ))}
                   </ul>
                   <Button asChild className="mt-6" variant={featured ? "primary" : "secondary"}>
-                    <Link href="/recenzije/registracija">Probaj 14 dana</Link>
+                    <Link href={`/recenzije?paket=${p.key}#upit`}>Pošaljite upit</Link>
                   </Button>
                 </div>
               );
@@ -260,22 +357,57 @@ export default async function RecenzijeLanding() {
           </div>
         </section>
 
-        <section className="border-t border-border py-14 text-center">
-          <h2 className="mx-auto max-w-2xl text-3xl font-bold leading-tight">Vaš sljedeći posao može biti vaša sljedeća recenzija s 5 zvjezdica.</h2>
-          <div className="mt-8 flex flex-wrap justify-center gap-2">
-            <Button size="lg" asChild>
-              <Link href="/recenzije/registracija">
-                Započni besplatno <ArrowRight />
-              </Link>
-            </Button>
-            {demo}
+        {/* Upit */}
+        <section className="scroll-mt-6 border-t border-border py-14" aria-labelledby="upit-naslov" id="upit">
+          <div className="grid gap-10 lg:grid-cols-[1.2fr_0.8fr]">
+            <div className="min-w-0">
+              <h2 id="upit-naslov" className="label flex items-center gap-2 text-muted">
+                <span className="size-1.5 bg-orange" /> Upit
+              </h2>
+              <p className="mt-4 max-w-xl text-2xl font-bold leading-tight sm:text-3xl">Vaš sljedeći posao može biti vaša sljedeća recenzija s 5 zvjezdica.</p>
+              <p className="mt-3 max-w-xl text-[15px] leading-relaxed text-muted">
+                Ostavite kontakt i naziv tvrtke. Javljamo se unutar 24 sata, a sve ostalo preuzimamo mi.
+              </p>
+              <div className="mt-8 max-w-xl">
+                <RecenzijeInquiryForm
+                  key={defaultPlan ?? "none"}
+                  plans={plans.map((p) => ({ key: p.key, label: `${p.name} · ${formatEur(p.priceMonthlyCents)} / mj bez PDV-a` }))}
+                  defaultPlan={defaultPlan}
+                />
+              </div>
+            </div>
+            <aside className="min-w-0 self-start border border-border p-6">
+              <p className="label text-muted">Radije razgovor?</p>
+              <p className="mt-3 text-[15px] leading-relaxed text-muted">Javite nam se izravno, odgovaramo brzo.</p>
+              <ul className="mt-5 space-y-3 text-[15px]">
+                <li>
+                  <a href={mailHref} className="break-all font-bold underline underline-offset-4">
+                    {contact.contactEmail}
+                  </a>
+                </li>
+                {waHref && (
+                  <li>
+                    <a href={waHref} target="_blank" rel="noreferrer" className="font-bold underline underline-offset-4">
+                      Pišite na WhatsApp
+                    </a>
+                  </li>
+                )}
+                {phoneHref && contact.phone && (
+                  <li>
+                    <a href={phoneHref} className="font-bold underline underline-offset-4">
+                      {contact.phone}
+                    </a>
+                  </li>
+                )}
+              </ul>
+              {demo && (
+                <div className="mt-6 border-t border-border pt-4">
+                  <p className="text-[13px] text-muted">Želite vidjeti kako izgleda pregled recenzija?</p>
+                  {demo}
+                </div>
+              )}
+            </aside>
           </div>
-          <p className="mt-6 text-sm text-muted">
-            Pitanja?{" "}
-            <a href={`mailto:${contact.contactEmail}?subject=${encodeURIComponent("NOVO Recenzije")}`} className="underline underline-offset-4">
-              {contact.contactEmail}
-            </a>
-          </p>
         </section>
       </div>
     </NovoShell>

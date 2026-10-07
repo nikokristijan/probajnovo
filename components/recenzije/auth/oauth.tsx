@@ -25,7 +25,7 @@ export function OAuthButtons({ googleEnabled, demoEnabled }: { googleEnabled: bo
       {demoEnabled && (
         <form action={demoLoginAction}>
           <Button type="submit" variant="secondary" size="lg" className="w-full">
-            Isprobaj demo bez registracije
+            Pogledaj primjer pregleda
           </Button>
         </form>
       )}

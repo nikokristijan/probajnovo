@@ -5,6 +5,7 @@ import { db } from "@/lib/recenzije/db";
 import { ensureReviewsDb } from "@/lib/recenzije/db/ensure";
 import { users } from "@/lib/recenzije/db/schema";
 import { env } from "@/lib/recenzije/env";
+import { OPERATOR_EMAIL } from "@/lib/recenzije/operator";
 import { googleLoginProfile } from "@/lib/recenzije/services/google";
 
 export async function GET(req: NextRequest) {
@@ -17,9 +18,9 @@ export async function GET(req: NextRequest) {
     await ensureReviewsDb();
     const p = await googleLoginProfile(code);
     const [user] = await db.select().from(users).where(or(eq(users.googleId, p.googleId), eq(users.email, p.email))).limit(1);
-    if (!user) {
-      // Novi računi samo uz poziv: Google prijava ne zaobilazi pozivni kod.
-      return back("invite");
+    if (!user || user.email === OPERATOR_EMAIL) {
+      // Nema samoregistracije: Google prijava samo prepoznaje postojeće račune.
+      return back("nopristup");
     }
     if (!user.googleId) {
       // Google je potvrdio vlasništvo nad emailom, pa je sigurno povezati postojeći račun.

@@ -76,7 +76,7 @@ export default async function ReviewsPage({ searchParams }: { searchParams: Prom
         description={
           ctx.org.googleSyncedAt
             ? `Zadnje preuzimanje s Googlea ${timeAgo(ctx.org.googleSyncedAt)}`
-            : "Vaše Google recenzije i od kojih klijenata su stigle."
+            : "Google recenzije i od kojih klijenata su stigle."
         }
         actions={<SyncReviewsButton disabled={!canSync} />}
       />
@@ -84,24 +84,24 @@ export default async function ReviewsPage({ searchParams }: { searchParams: Prom
       <div className="mb-6 space-y-3">
         {ctx.org.isDemo ? (
           <Alert tone="blue" icon={Info} title="Primjeri recenzija">
-            Ovo su demo podaci za Donald&apos;s Cooling. U vašem računu recenzije dolaze izravno s Googlea.
+            Ovo su primjeri podataka za Donald&apos;s Cooling. Kod stvarnih tvrtki recenzije dolaze izravno s Googlea.
           </Alert>
         ) : !connected && !canSync ? (
           <Alert
             tone="amber"
             icon={Plug}
-            title="Povežite Google Business Profile"
+            title="Google nije povezan"
             action={
               <Button size="sm" variant="secondary" asChild>
-                <Link href="/recenzije/postavke">Poveži</Link>
+                <Link href="/recenzije/postavke#google">Postavke</Link>
               </Button>
             }
           >
-            Dok Google nije povezan, recenzije se ne mogu automatski provjeriti. Ovdje ništa nije procijenjeno: vidite samo ono što Google vrati.
+            Dok Google nije povezan (ili nije upisan Place ID), recenzije se ne mogu automatski preuzimati. Ovdje ništa nije procijenjeno: vidite samo ono što Google vrati.
           </Alert>
         ) : !connected ? (
           <Alert tone="blue" icon={Info} title="Djelomični podaci">
-            Bez Business Profile veze Googleov Places API vraća samo 5 najnovijih recenzija. Povežite Business Profile da preuzmete sve.
+            Bez Business Profile veze Googleov Places API vraća samo 5 najnovijih recenzija. Povežite Business Profile u Postavkama da se preuzmu sve.
           </Alert>
         ) : null}
       </div>
@@ -149,10 +149,15 @@ export default async function ReviewsPage({ searchParams }: { searchParams: Prom
           </CardBody>
         </Card>
         <Card className="lg:col-span-2">
-          <CardHeader title="AI sažetak recenzija" description="Claude čita vaše spremljene recenzije, bez imena recenzenata" />
+          <CardHeader title="AI sažetak recenzija" description="Claude čita spremljene recenzije, bez imena recenzenata" />
           <CardBody>
-            {/* key po tvrtki: pri promjeni tvrtke stari sažetak ne smije ostati prikazan uz podatke druge tvrtke */}
-            <AiSummaryCard key={orgId} aiConfigured={integrations.ai()} reviewCount={stats.total} />
+            {integrations.ai() ? (
+              /* key po tvrtki: pri promjeni tvrtke stari sažetak ne smije ostati prikazan uz podatke druge tvrtke */
+              <AiSummaryCard key={orgId} aiConfigured reviewCount={stats.total} />
+            ) : (
+              // Bez AI ključa nema upute za postavljanje (env varijable nisu stvar klijenta ni ovog zaslona).
+              <p className="text-sm text-muted">AI sažetak trenutno nije dostupan.</p>
+            )}
           </CardBody>
         </Card>
       </div>

@@ -19,13 +19,11 @@ const MAIN = [
   { href: "/recenzije/analitika", label: "Analitika" },
   { href: "/recenzije/postavke", label: "Postavke", exact: true },
 ];
-const BOTTOM = [
-  { href: "/recenzije/postavke/tvrtka", label: "Profil tvrtke" },
-  { href: "/recenzije/postavke/racun", label: "Račun" },
-  { href: "/recenzije/postavke/pretplata", label: "Pretplata" },
-];
+/* Klijenti nemaju prijavu: "Račun" je samo za stare korisnike s lozinkom, a NOVO tim ga ne vidi. */
+const BOTTOM = [{ href: "/recenzije/postavke/pretplata", label: "Paket i razdoblje" }];
+const ACCOUNT = { href: "/recenzije/postavke/racun", label: "Račun" };
 
-function NavList({ onNavigate, orgName, plan }: { onNavigate?: () => void; orgName: string; plan: string }) {
+function NavList({ onNavigate, orgName, plan, showAccount }: { onNavigate?: () => void; orgName: string; plan: string; showAccount: boolean }) {
   const path = usePathname();
   const isActive = (href: string, exact?: boolean) => (exact ? path === href : path === href || path.startsWith(href + "/"));
   const item = (n: { href: string; label: string; exact?: boolean }) => {
@@ -54,27 +52,27 @@ function NavList({ onNavigate, orgName, plan }: { onNavigate?: () => void; orgNa
       </div>
       <div className="border-b border-border px-5 py-4">
         <p className="truncate text-sm font-bold">{orgName}</p>
-        <p className="label mt-1 text-accent">{plan}</p>
+        <p className="label mt-1 truncate text-accent">{plan}</p>
       </div>
       <nav aria-label="Glavni izbornik" className="flex-1 overflow-y-auto px-3 py-4">
         <ul className="space-y-0.5">{MAIN.map(item)}</ul>
       </nav>
-      <nav aria-label="Račun" className="border-t border-border px-3 py-4">
-        <ul className="space-y-0.5">{BOTTOM.map(item)}</ul>
+      <nav aria-label="Paket i račun" className="border-t border-border px-3 py-4">
+        <ul className="space-y-0.5">{(showAccount ? [...BOTTOM, ACCOUNT] : BOTTOM).map(item)}</ul>
       </nav>
     </div>
   );
 }
 
-export function Sidebar({ orgName, plan }: { orgName: string; plan: string }) {
+export function Sidebar({ orgName, plan, showAccount = false }: { orgName: string; plan: string; showAccount?: boolean }) {
   return (
     <aside className="fixed inset-y-0 left-0 z-30 hidden w-60 border-r border-border bg-white lg:block">
-      <NavList orgName={orgName} plan={plan} />
+      <NavList orgName={orgName} plan={plan} showAccount={showAccount} />
     </aside>
   );
 }
 
-export function MobileNav({ orgName, plan }: { orgName: string; plan: string }) {
+export function MobileNav({ orgName, plan, showAccount = false }: { orgName: string; plan: string; showAccount?: boolean }) {
   const [open, setOpen] = useState(false);
   useEffect(() => {
     document.body.style.overflow = open ? "hidden" : "";
@@ -110,7 +108,7 @@ export function MobileNav({ orgName, plan }: { orgName: string; plan: string }) 
             >
               <X className="size-5" />
             </button>
-            <NavList onNavigate={() => setOpen(false)} orgName={orgName} plan={plan} />
+            <NavList onNavigate={() => setOpen(false)} orgName={orgName} plan={plan} showAccount={showAccount} />
           </div>
         </div>
       )}

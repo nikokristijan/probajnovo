@@ -98,9 +98,10 @@ export const passwordResetTokens = pgTable("nr_password_reset_tokens", {
 });
 
 /**
- * Pozivni kodovi za registraciju (upravlja ih glavni admin u /admin/recenzije).
- * Iskorištavanje je jedan atomski UPDATE (services/invites.ts), a CHECK ispod
- * je zadnja ograda: čak ni greška u kodu ne može potrošiti više od `max_uses`.
+ * ZASTARJELO: pozivni kodovi za registraciju. NOVO Recenzije su usluga koju vodi
+ * NOVO tim (klijenti nemaju registraciju), pa se kodovi više ne koriste ni ne
+ * prikazuju. Tablica ostaje u shemi i DDL-u (bez destruktivnih migracija) da se
+ * postojeći redovi ne gube.
  */
 export const inviteCodes = pgTable(
   "nr_invite_codes",
@@ -137,6 +138,14 @@ export const organizations = pgTable("nr_organizations", {
   industry: text("industry"),
   timezone: text("timezone").notNull().default("Europe/Zagreb"),
   phone: text("phone"),
+  /**
+   * Kontakt klijenta kojeg NOVO vodi kao uslugu (klijent nema prijavu). Tjedni izvještaj
+   * ide na contactEmail; internalNote vidi samo NOVO tim u /admin/recenzije.
+   */
+  contactName: text("contact_name"),
+  contactEmail: text("contact_email"),
+  contactPhone: text("contact_phone"),
+  internalNote: text("internal_note"),
   isDemo: boolean("is_demo").notNull().default(false),
   /** Where tracking links redirect. Set manually or from the Google connection. */
   googleReviewUrl: text("google_review_url"),
@@ -436,6 +445,12 @@ export const subscriptions = pgTable("nr_subscriptions", {
   currentPeriodEnd: timestamp("current_period_end", { withTimezone: true }),
   cancelAtPeriodEnd: boolean("cancel_at_period_end").notNull().default(false),
   trialEndsAt: timestamp("trial_ends_at", { withTimezone: true }),
+  /**
+   * Besplatno razdoblje koje je NOVO tim odobrio iz admina. Kad je postavljeno, pretplata je
+   * "active" na odabranom paketu do ove točke (isto kao currentPeriodEnd), a slanje je
+   * ograničeno SMS limitom tog paketa. Plaćena aktivacija ga briše (null).
+   */
+  freePeriodEndsAt: timestamp("free_period_ends_at", { withTimezone: true }),
   createdAt: createdAt(),
   updatedAt: updatedAt(),
 });

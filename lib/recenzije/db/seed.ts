@@ -123,7 +123,7 @@ export async function seedDemo() {
 
   let [user] = await db.select().from(s.users).where(eq(s.users.email, DEMO_EMAIL));
   if (!user) {
-    // Bez lozinke: u demo se ulazi samo gumbom "Isprobaj demo".
+    // Bez lozinke: u demo se ulazi samo gumbom "Pogledaj primjer pregleda".
     [user] = await db.insert(s.users).values({ email: DEMO_EMAIL, name: "Donald Parker" }).returning();
   }
 
@@ -228,7 +228,7 @@ export async function seedDemo() {
     const sentAt = new Date(serviceAt.getTime() + 10 * 60_000);
     const isCampaign = i % 4 === 1;
     const waiting = c.status === "FOLLOW_UP_SCHEDULED";
-    const err = "Twilio 21211: broj +38591111011 nije ispravan.";
+    const err = "Broj +38591111011 nije ispravan.";
     const [run] = await db
       .insert(s.automationRuns)
       .values({

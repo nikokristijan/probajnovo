@@ -1,7 +1,7 @@
 import { escapeHtml } from "@/lib/recenzije/utils";
 
 /**
- * Čiste funkcije za tjedni izvještaj vlasniku: izbor primatelja i sastavljanje emaila.
+ * Čiste funkcije za tjedni izvještaj klijentu: izbor primatelja i sastavljanje emaila.
  * Namjerno bez "server-only" i bez baze, da se mogu provjeriti jediničnim testom.
  * Sve dinamične vrijednosti u HTML-u prolaze kroz escapeHtml.
  */
@@ -76,9 +76,7 @@ export function buildWeeklyReportEmail(input: {
   recipientName: string | null;
   timezone: string;
   stats: WeeklyReportStats;
-  /** Puna adresa pregleda, npr. https://www.probajnovo.com/recenzije/pregled */
-  dashboardUrl: string;
-  /** Kontakt za one koji ne žele primati izvještaj. */
+  /** Kontakt za pitanja i za one koji ne žele primati izvještaj. */
   contactEmail: string;
 }): { subject: string; html: string; text: string } {
   const { stats } = input;
@@ -93,7 +91,7 @@ export function buildWeeklyReportEmail(input: {
     : `U zadnjih 7 dana (${range}) nije bilo aktivnosti: nije poslan nijedan zahtjev za recenziju, nitko nije kliknuo na link i nema novih recenzija.`;
   const hint = active
     ? ""
-    : "Kad dodate klijenta i označite posao završenim, ovdje ćete vidjeti kako zahtjevi napreduju.";
+    : "Ako ste nedavno završili poslove, javite nam ih (poruka ili email s imenom i brojem klijenta) pa šaljemo zahtjeve za recenziju.";
   const pendingNote =
     stats.pendingFollowUps > 0
       ? `Trenutno čeka ${formatInt(stats.pendingFollowUps)} ${scheduledFollowUps(stats.pendingFollowUps)}.`
@@ -113,7 +111,7 @@ export function buildWeeklyReportEmail(input: {
 
   const subject = oneLine(`Tjedni izvještaj: ${orgName}`);
   const greeting = firstName ? `Bok ${firstName},` : "Bok,";
-  const footer = `Ovaj izvještaj šaljemo jednom tjedno vlasniku računa „${orgName}” na NOVO Recenzije. Ako ga ne želite primati, javite nam se na ${input.contactEmail}.`;
+  const footer = `Ovaj izvještaj jednom tjedno šaljemo kontaktu tvrtke „${orgName}” u sklopu usluge NOVO Recenzije. Pitanja ili odjava s izvještaja: ${input.contactEmail}.`;
 
   const font = "font-family:Helvetica,Arial,sans-serif";
   const mono = "font-family:'Courier New',Courier,monospace";
@@ -139,7 +137,7 @@ ${hint ? `<p style="margin:0 0 ${pendingNote ? "8" : "16"}px;font-size:15px;line
 </td></tr>
 <tr><td style="padding:0 28px"><table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border-top:2px solid #000000">${tableRows}</table></td></tr>
 <tr><td style="padding:14px 28px 4px;${font};font-size:13px;line-height:1.5;color:#666666">${escapeHtml(overallNote)}</td></tr>
-<tr><td style="padding:20px 28px 28px"><a href="${escapeHtml(input.dashboardUrl)}" style="display:inline-block;background:#000000;color:#ffffff;padding:13px 22px;${mono};font-size:12px;letter-spacing:1.4px;text-transform:uppercase;text-decoration:none">Otvori pregled</a></td></tr>
+<tr><td style="padding:0 28px 20px"></td></tr>
 <tr><td style="padding:16px 28px;border-top:1px solid #e5e5e5;${font};font-size:12px;line-height:1.5;color:#888888">${escapeHtml(footer)}</td></tr>
 </table></td></tr></table>
 </body></html>`;
@@ -156,8 +154,6 @@ ${hint ? `<p style="margin:0 0 ${pendingNote ? "8" : "16"}px;font-size:15px;line
     ...rows.map(([label, value]) => `${label}: ${value}`),
     "",
     overallNote,
-    "",
-    `Otvori pregled: ${input.dashboardUrl}`,
     "",
     footer,
   ].join("\n");

@@ -1,5 +1,9 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { Logo } from "@/components/recenzije/brand";
+
+/** Prijava nije javno oglašena (služi NOVO timu i postojećim računima), pa je ne indeksiramo. */
+export const metadata: Metadata = { robots: { index: false, follow: false } };
 
 export default function AuthLayout({ children }: { children: React.ReactNode }) {
   return (
@@ -7,7 +11,7 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
       <header className="flex h-16 items-center justify-between border-b border-border px-4 sm:px-6">
         <Logo />
         <Link href="/recenzije" className="label text-muted hover:text-foreground">
-          ← O proizvodu
+          ← O usluzi
         </Link>
       </header>
       <main className="mx-auto w-full max-w-[420px] flex-1 px-4 py-12 sm:px-0">{children}</main>

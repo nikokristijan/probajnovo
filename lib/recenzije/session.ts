@@ -6,7 +6,9 @@ import { cache } from "react";
 import { db } from "@/lib/recenzije/db";
 import { ensureReviewsDb } from "@/lib/recenzije/db/ensure";
 import { organizationMembers, organizations, users, type Organization } from "@/lib/recenzije/db/schema";
+import { getCurrentAdminRecord } from "@/lib/auth";
 import { sessionUserId } from "@/lib/recenzije/auth";
+import { OPERATOR_EMAIL } from "@/lib/recenzije/operator";
 import type { ActionState } from "@/lib/recenzije/action";
 
 export const ACTIVE_ORG_COOKIE = "nr_org";
@@ -16,7 +18,14 @@ export const getCurrentUser = cache(async () => {
   const uid = await sessionUserId();
   if (!uid) return null;
   const [user] = await db.select().from(users).where(eq(users.id, uid)).limit(1);
-  return user ?? null;
+  if (!user) return null;
+  // Operater (NOVO tim) vrijedi samo dok traje prijava glavnog admina: odjava iz admina (ili ukinuta
+  // ovlast) odmah gasi i radni prostor klijenta, a ne tek kad istekne 30-dnevni kolačić.
+  if (user.email === OPERATOR_EMAIL) {
+    const admin = await getCurrentAdminRecord().catch(() => null);
+    if (!admin?.isSuperAdmin) return null;
+  }
+  return user;
 });
 
 export async function requireUser() {
@@ -45,10 +54,15 @@ export const requireOrg = cache(async (): Promise<OrgContext> => {
     .where(eq(organizationMembers.userId, user.id))
     .orderBy(asc(organizationMembers.createdAt));
 
-  if (rows.length === 0) redirect("/recenzije/postavljanje");
+  // Klijenti nemaju vlastiti račun; račun bez tvrtke nema što otvoriti (nema više samostalnog postavljanja).
+  if (rows.length === 0) redirect("/recenzije/nema-pristupa");
 
   const wanted = (await cookies()).get(ACTIVE_ORG_COOKIE)?.value;
-  const active = rows.find((r) => r.org.id === wanted) ?? rows[0];
+  const picked = rows.find((r) => r.org.id === wanted);
+  // NOVO tim ima članstvo u svim otvaranim klijentima: bez izbora iz admina ne pogađamo "prvog",
+  // da se slučajno ne radi (i šalje SMS) u tuđem radnom prostoru.
+  if (!picked && user.email === OPERATOR_EMAIL) redirect("/admin/recenzije");
+  const active = picked ?? rows[0];
   return {
     user,
     org: active.org,
@@ -80,7 +94,7 @@ export function requireRole(ctx: OrgContext, roles: OrgContext["role"][]) {
 }
 
 export const DEMO_LOCKED: ActionState = {
-  error: "Ovo je demo za razgledavanje, izmjene su isključene. Napravite svoj besplatni račun da sve isprobate.",
+  error: "Ovo je primjer za razgledavanje, izmjene su isključene.",
 };
 
 /** Za akcije koje mijenjaju podatke: demo radni prostor je samo za čitanje. */

@@ -51,8 +51,8 @@ export function AiSummaryCard({ aiConfigured, reviewCount }: { aiConfigured: boo
   if (!aiConfigured) {
     return (
       <div className="space-y-4">
-        <Alert tone="amber" icon={Plug} title="AI nije postavljen">
-          Dodajte <code className="font-mono text-[12px]">ANTHROPIC_API_KEY</code> u Vercel env varijable i ponovno objavite aplikaciju. Dok ključa nema, sažetak se ne može napraviti i ovdje se ništa ne prikazuje umjesto njega.
+        <Alert tone="amber" icon={Plug} title="AI sažetak trenutno nije dostupan">
+          Sažetak recenzija se ne može napraviti dok NOVO tim ne uključi AI. Ovdje se ništa ne prikazuje umjesto njega.
         </Alert>
         <Button size="sm" variant="secondary" disabled>
           <Sparkles /> Sažmi recenzije s AI-jem

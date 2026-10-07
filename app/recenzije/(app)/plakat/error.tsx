@@ -11,12 +11,12 @@ export default function PosterError({ error, reset }: { error: Error & { digest?
       <EmptyState
         icon={QrCode}
         title="Plakat se nije učitao"
-        description={error.digest ? `Oznaka greške: ${error.digest}` : "Pokušajte ponovno. Ako se ponavlja, provjerite link za recenzije u profilu tvrtke."}
+        description={error.digest ? `Oznaka greške: ${error.digest}` : "Pokušajte ponovno. Ako se ponavlja, provjerite link za recenzije u Postavkama."}
         action={
           <div className="flex flex-wrap items-center justify-center gap-2">
             <Button onClick={reset}>Pokušaj ponovno</Button>
             <Button variant="secondary" asChild>
-              <Link href="/recenzije/postavke/tvrtka">Profil tvrtke</Link>
+              <Link href="/recenzije/postavke">Postavke</Link>
             </Button>
           </div>
         }

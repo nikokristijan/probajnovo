@@ -65,13 +65,25 @@ export default function TermsPage() {
 
       <h2>8. NOVO Recenzije</h2>
       <p>
-        NOVO Recenzije je usluga za slanje zahtjeva za Google recenzije vašim klijentima (SMS i
-        email). Pristup je moguć samo uz pozivni kod. Odgovorni ste da poruke šaljete samo osobama
-        koje su vam dale kontakt u vezi s uslugom, da im ne šaljete neželjene poruke te da poštujete
-        odjavu (odgovor „STOP”). Recenzije objavljuje Google i ne možemo jamčiti njihov broj, ocjenu
-        niti da će ih Google prikazati ili zadržati. Cijene paketa i njihova ograničenja (broj
-        poruka, lokacija) navedeni su u aplikaciji. Obradu osobnih podataka opisuje{" "}
+        NOVO Recenzije je usluga koju za vas vodi NOVO: u vaše ime šaljemo zahtjeve za Google
+        recenzije vašim klijentima (SMS i, po dogovoru, email). Vi nemate račun niti obveze oko
+        postavljanja; završene poslove nam javljate porukom ili popisom, a mi ih unosimo i šaljemo
+        poruke.
+      </p>
+      <p>
+        Poruke se šalju s NOVO telefonskog broja, u vaše ime, i potpisane su nazivom vaše tvrtke.
+        Predajom kontakata svojih klijenata potvrđujete da imate pravo kontaktirati te osobe (riječ
+        je o klijentima kojima ste pružili uslugu i koji su vam zbog nje dali kontakt) i da nam ne
+        predajete kontakte osoba koje to ne žele. Ne šaljemo neželjene poruke, a svaka odjava
+        (odgovor „STOP”) poštuje se i toj osobi više ne šaljemo poruke. Za osobne podatke tih osoba
+        NOVO je izvršitelj obrade, a vi ste voditelj obrade; detalje opisuje{" "}
         <Link href="/privatnost">politika privatnosti</Link>.
+      </p>
+      <p>
+        Recenzije objavljuje Google i ne možemo jamčiti njihov broj, ocjenu niti da će ih Google
+        prikazati ili zadržati. Ne lažiramo recenzije i ne skrivamo loše ocjene. Opseg paketa (npr.
+        broj poruka mjesečno) i cijena dogovaraju se u ponudi; cijene su bez PDV-a, naplata je
+        mjesečna, a uslugu možete otkazati u bilo kojem trenutku, bez ugovorne obveze.
       </p>
 
       <h2>9. Vanjske poveznice</h2>

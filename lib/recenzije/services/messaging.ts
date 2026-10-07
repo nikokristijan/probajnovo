@@ -14,8 +14,27 @@ export type SendOutcome =
   | { ok: true; messageId: string; body: string }
   | { ok: false; messageId?: string; error: string; code: "NOT_CONFIGURED" | "NO_REVIEW_URL" | "OPTED_OUT" | "SEND_FAILED" | "NOT_FOUND" | "DEMO" | "LIMIT" };
 
-export const DEMO_ERROR =
-  "Ovo je demo, pa se pravi SMS ne šalje. Napravite svoj račun za slanje poruka.";
+export const DEMO_ERROR = "Ovo je demo za razgledavanje, pa se pravi SMS ne šalje.";
+
+/** Bez dijakritika i velikih slova, da "Žabac d.o.o." i "zabac d.o.o." budu isto. */
+function plain(text: string) {
+  return text
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/đ/gi, "d")
+    .toLowerCase();
+}
+
+/**
+ * Sve poruke svih klijenata odlaze s istog NOVO broja, pa primatelj samo iz teksta zna tko mu piše.
+ * Predlošci imenuju tvrtku ({business_name}); ako poruka koju je netko ručno napisao ne sadrži naziv
+ * tvrtke, dodaje se na početak.
+ */
+export function withBusinessName(body: string, businessName: string) {
+  const name = businessName.trim();
+  if (!name || plain(body).includes(plain(name))) return body;
+  return `${name}: ${body}`;
+}
 
 /** Builds the template context for a client: latest service + business name. */
 export async function messageContext(organizationId: string, clientId: string) {
@@ -37,8 +56,9 @@ export async function messageContext(organizationId: string, clientId: string) {
 
 /**
  * Sends one SMS to a client of an organization. Creates a tracking link when the
- * template contains {review_link}. Never pretends success: if Twilio is not
- * configured or the send fails, the message is stored as FAILED with the reason.
+ * template contains {review_link}. Never pretends success: if no SMS provider is
+ * configured (NOVO phone, see sms.ts) or the send fails, the message is stored as
+ * FAILED with the reason.
  */
 export async function sendClientMessage(input: {
   organizationId: string;
@@ -58,10 +78,18 @@ export async function sendClientMessage(input: {
 
   const plan = await usage(org.id);
   if (!plan.active) {
-    return { ok: false, error: "Probno razdoblje ili pretplata je istekla. Odaberite paket u Postavke → Pretplata.", code: "LIMIT" };
+    return {
+      ok: false,
+      error: "Pretplata ovog klijenta nije aktivna (razdoblje je isteklo ili paket nije aktiviran). Aktivirajte paket ili besplatno razdoblje u NOVO adminu.",
+      code: "LIMIT",
+    };
   }
   if (plan.smsUsed >= plan.smsLimit) {
-    return { ok: false, error: `Dosegnut je mjesečni limit SMS-ova (${plan.smsLimit}). Za nastavak odaberite veći paket.`, code: "LIMIT" };
+    return {
+      ok: false,
+      error: `Dosegnut je mjesečni limit SMS-ova (${plan.smsLimit}). Za nastavak promijenite paket klijenta u NOVO adminu.`,
+      code: "LIMIT",
+    };
   }
 
   if (client.smsOptOut) {
@@ -74,7 +102,7 @@ export async function sendClientMessage(input: {
     if (!org.googleReviewUrl) {
       return {
         ok: false,
-        error: "Prije slanja dodajte link za Google recenzije u Postavke → Profil tvrtke.",
+        error: "Prije slanja dodajte link za Google recenzije u Postavke → Podaci tvrtke.",
         code: "NO_REVIEW_URL",
       };
     }
@@ -83,15 +111,18 @@ export async function sendClientMessage(input: {
     trackingLinkId = link.id;
   }
 
-  const body = renderTemplate(input.template, {
-    firstName: client.firstName,
-    lastName: client.lastName,
-    businessName: org.name,
-    service: service?.name,
-    technician: service?.technician,
-    serviceDate: service?.serviceDate,
-    reviewLink,
-  });
+  const body = withBusinessName(
+    renderTemplate(input.template, {
+      firstName: client.firstName,
+      lastName: client.lastName,
+      businessName: org.name,
+      service: service?.name,
+      technician: service?.technician,
+      serviceDate: service?.serviceDate,
+      reviewLink,
+    }),
+    org.name
+  );
 
   const [msg] = await db
     .insert(messages)

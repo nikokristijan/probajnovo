@@ -99,13 +99,16 @@ export default function PrivacyPolicyPage() {
       <h2>10. NOVO Recenzije (usluga za naše klijente)</h2>
       <p>
         Uz web stranicu nudimo i uslugu NOVO Recenzije (<Link href="/recenzije">probajnovo.com/recenzije</Link>).
-        U toj usluzi NOVO je <strong>izvršitelj obrade</strong>, a voditelj obrade je poduzeće koje
-        usluzu koristi (naš klijent) i koje odlučuje kome šalje poruke.
+        Uslugu vodimo mi: klijent nam javlja završene poslove, a mi u njegovo ime šaljemo poruke s
+        NOVO telefonskog broja, potpisane nazivom klijentove tvrtke. U toj usluzi NOVO je{" "}
+        <strong>izvršitelj obrade</strong>, a voditelj obrade je poduzeće koje nam je predalo kontakte
+        (naš klijent) i koje odlučuje kome se šalje. Klijent potvrđuje da ima pravo kontaktirati osobe
+        čije nam kontakte predaje (postojeći odnos, usluga koju im je pružio).
       </p>
       <p>Za rad usluge obrađujemo:</p>
       <ul>
-        <li>podatke o računu poduzeća (ime, email, hashirana lozinka),</li>
-        <li>podatke o klijentima poduzeća koje ono samo unese (ime, broj telefona, email, usluga i datum usluge),</li>
+        <li>kontakt podatke poduzeća (naziv, kontakt osoba, email na koji šaljemo tjedni izvještaj),</li>
+        <li>podatke o primateljima poruka koje nam poduzeće preda (ime, broj telefona, email, usluga i datum usluge),</li>
         <li>tekst i status poslanih SMS poruka te bilježe klikova na poveznicu za recenziju (vrijeme klika),</li>
         <li>javno dostupne Google recenzije poduzeća (ime autora, ocjena, tekst, datum).</li>
       </ul>
@@ -115,11 +118,13 @@ export default function PrivacyPolicyPage() {
         oglašavanje. Podaci jednog poduzeća logički su odvojeni od podataka drugih poduzeća.
       </p>
       <p>
-        Za slanje i obradu koristimo podizvršitelje: Vercel i Neon (hosting i baza), pružatelja SMS-a
-        (SMS Gateway for Android ili Twilio), Anthropic (AI pisanje poruka — šalje se samo ime, usluga i
-        naziv poduzeća, bez broja telefona), Resend (email) i Stripe (naplata, ako je uključena). Primatelj
-        poruke zahtjeve za pristup ili brisanje može poslati na{" "}
-        <a href="mailto:hello@novo.studio">hello@novo.studio</a> ili poduzeću koje mu je poslalo poruku.
+        Za slanje i obradu koristimo podizvršitelje: Vercel i Neon (hosting i baza), SMS Gateway for
+        Android (aplikacija na NOVO telefonu kojom šaljemo SMS; kao rezervu, kad telefon nije dostupan,
+        Twilio), Anthropic (AI pisanje poruka — šalje
+        se samo ime, usluga i naziv poduzeća, bez broja telefona), Resend (email) i Stripe (naplata,
+        ako je uključena). Primatelj poruke zahtjeve za pristup ili brisanje može poslati na{" "}
+        <a href="mailto:hello@novo.studio">hello@novo.studio</a> ili poduzeću u čije je ime poruka
+        poslana.
       </p>
 
       <h2>11. Izmjene ove politike</h2>

@@ -9,6 +9,7 @@ import { Button } from "@/components/recenzije/ui/button";
 import { Alert, Card, CardBody, CardHeader, PageHeader } from "@/components/recenzije/ui/primitives";
 import { db } from "@/lib/recenzije/db";
 import { googleConnections } from "@/lib/recenzije/db/schema";
+import { OPERATOR_EMAIL } from "@/lib/recenzije/operator";
 import { requireOrg } from "@/lib/recenzije/session";
 import { smsProvider } from "@/lib/recenzije/services/sms";
 import { dashboardStats, funnel, messageSeries, recentActivity } from "@/lib/recenzije/services/stats";
@@ -20,10 +21,10 @@ function greeting(tz: string) {
   return h < 12 ? "Dobro jutro" : h < 18 ? "Dobar dan" : "Dobra večer";
 }
 
-export default async function DashboardPage({ searchParams }: { searchParams: Promise<{ welcome?: string }> }) {
-  const { welcome } = await searchParams;
+export default async function DashboardPage() {
   const ctx = await requireOrg();
   const orgId = ctx.org.id;
+  const isOperator = ctx.user.email === OPERATOR_EMAIL;
   const [stats, activity, series, stages, [conn]] = await Promise.all([
     dashboardStats(orgId, 30),
     recentActivity(orgId, 10),
@@ -38,8 +39,8 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
     <>
       <PageHeader
         kicker={ctx.org.name}
-        title={`${greeting(ctx.org.timezone)}${ctx.user.name ? `, ${ctx.user.name.split(" ")[0]}` : ""}`}
-        description="Kako su vaši zahtjevi za recenzije prošli u zadnjih 30 dana."
+        title={`${greeting(ctx.org.timezone)}${ctx.user.name && !isOperator ? `, ${ctx.user.name.split(" ")[0]}` : ""}`}
+        description="Kako su prošli zahtjevi za recenzije u zadnjih 30 dana."
         actions={
           <>
             <Button variant="secondary" asChild>
@@ -53,37 +54,34 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
       />
 
       <div className="mb-8 space-y-3">
-        {welcome && (
-          <Alert tone="green" title="Vaš radni prostor je spreman">
-            Automatizacija „Zahtjev za recenziju nakon usluge” je uključena. Dodajte klijenta i označite posao završenim da pošaljete prvi zahtjev.
-          </Alert>
-        )}
         {!ctx.org.googleReviewUrl && !conn && (
           <Alert
             tone="amber"
             icon={Plug}
-            title="Povežite Google Business Profile"
+            title="Nedostaje Google link za recenzije"
             action={
               <Button size="sm" variant="secondary" asChild>
-                <Link href="/recenzije/postavke">Poveži</Link>
+                <Link href="/recenzije/postavke">Postavke</Link>
               </Button>
             }
           >
-            Zahtjevi za recenziju trebaju vaš Google link. Povežite profil ili zalijepite link u postavkama.
+            Zahtjevi za recenziju vode na taj link, pa se bez njega ne mogu poslati.
           </Alert>
         )}
         {!smsReady && !ctx.org.isDemo && (
           <Alert
             tone="amber"
             icon={Smartphone}
-            title="Slanje SMS-a još nije postavljeno"
+            title="SMS se zasad ne mogu slati"
             action={
-              <Button size="sm" variant="secondary" asChild>
-                <Link href="/recenzije/postavke#sms">Postavi SMS</Link>
-              </Button>
+              isOperator ? (
+                <Button size="sm" variant="secondary" asChild>
+                  <Link href="/admin/recenzije">Otvori admin</Link>
+                </Button>
+              ) : undefined
             }
           >
-            Povežite svoj Android mobitel (besplatno, šalje s vašeg broja) ili koristite Twilio.
+            NOVO mobitel nije povezan.{isOperator ? "" : " Javite se NOVO-u."}
           </Alert>
         )}
         {stats.failedMessages > 0 && (

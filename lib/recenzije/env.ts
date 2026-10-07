@@ -37,6 +37,15 @@ export const env = {
   twilioApiBase: (process.env.TWILIO_API_BASE || "https://api.twilio.com").replace(/\/$/, ""),
   /** SMS Gateway for Android — javni cloud server (besplatan). */
   smsGatewayApi: (process.env.SMS_GATEWAY_API || "https://api.sms-gate.app/3rdparty/v1").replace(/\/$/, ""),
+  /**
+   * NOVO mobitel: jedan zajednički Android mobitel (SMS Gateway for Android) s kojeg odlaze SVE poruke
+   * svih klijenata. Korisničko ime i lozinka su iz aplikacije na mobitelu (Cloud server), a potpisni ključ
+   * je isti kao u aplikaciji pod Settings → Webhooks → Signing Key; bez njega se webhookovi (odgovori i
+   * potvrde isporuke) odbijaju.
+   */
+  smsGatewayUser: (process.env.SMS_GATEWAY_USER || "").trim(),
+  smsGatewayPassword: (process.env.SMS_GATEWAY_PASSWORD || "").trim(),
+  smsGatewaySigningKey: (process.env.SMS_GATEWAY_SIGNING_KEY || "").trim(),
 
   googleClientId: process.env.GOOGLE_CLIENT_ID || "",
   googleClientSecret: process.env.GOOGLE_CLIENT_SECRET || "",
@@ -48,13 +57,6 @@ export const env = {
   resendKey: process.env.RESEND_API_KEY || "",
   emailFrom: process.env.RESEND_FROM_EMAIL || process.env.EMAIL_FROM || "NOVO <hello@probajnovo.com>",
 
-  /**
-   * Rezervni izvor pozivnih kodova (odvojeni zarezom, vrijede neograničeno puta). Glavni izvor su kodovi
-   * iz baze koje glavni admin pravi u /admin/recenzije (jednokratni, s rokom, opozivi). Bez ijednog
-   * važećeg koda nitko novi ne može otvoriti račun.
-   */
-  inviteCodes: (process.env.NR_INVITE_CODES || "").split(",").map((c) => c.trim()).filter(Boolean),
-
   demoEnabled: process.env.NR_DEMO !== "false",
   /** Kontakt za aktivaciju paketa kad Stripe nije uključen. */
   salesEmail: process.env.NR_SALES_EMAIL || "hello@probajnovo.com",
@@ -63,6 +65,8 @@ export const env = {
 export const integrations = {
   ai: () => Boolean(env.anthropicKey),
   twilio: () => Boolean(env.twilioSid && env.twilioToken && (env.twilioFrom || env.twilioMessagingServiceSid)),
+  /** Zajednički NOVO mobitel: dovoljni su korisničko ime i lozinka za slanje; potpisni ključ treba za webhookove. */
+  novoPhone: () => Boolean(env.smsGatewayUser && env.smsGatewayPassword),
   googleOAuth: () => Boolean(env.googleClientId && env.googleClientSecret),
   googlePlaces: () => Boolean(env.googlePlacesKey),
   stripe: () => Boolean(env.stripeSecret),

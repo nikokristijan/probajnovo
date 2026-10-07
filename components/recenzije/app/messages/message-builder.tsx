@@ -94,9 +94,9 @@ export function MessageBuilder({
   };
 
   const notReady = status.demo
-    ? "Demo: slanje je isključeno."
+    ? "Primjer: slanje je isključeno."
     : !status.sms
-      ? "Slanje SMS-a nije postavljeno. Povežite mobitel u Postavkama."
+      ? "SMS se zasad ne mogu slati jer NOVO mobitel nije povezan."
       : null;
 
   return (
@@ -244,7 +244,7 @@ export function MessageBuilder({
           {aiError && (
             <p className="mt-3 border-l-[3px] border-orange bg-orange-soft px-3 py-2 text-[13px] text-warning">
               {aiError}
-              {!status.ai && " Upute su u Postavkama."}
+              {!status.ai && " AI trenutno nije dostupan."}
             </p>
           )}
           {variants.length > 0 && (
@@ -358,7 +358,7 @@ export function MessageBuilder({
             }}
             className="space-y-4"
           >
-            <Field label="Vaš broj mobitela" htmlFor="test-phone">
+            <Field label="Broj za probnu poruku" htmlFor="test-phone">
               <Input id="test-phone" type="tel" value={testPhone} onChange={(e) => setTestPhone(e.target.value)} placeholder="091 234 5678" required autoFocus />
             </Field>
             <div className="flex justify-end gap-2">
