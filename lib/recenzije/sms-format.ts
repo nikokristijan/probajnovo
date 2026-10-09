@@ -5,7 +5,16 @@ import { smsSegments, stripDiacritics } from "./messages";
  * složi tekst koji se stvarno šalje (services/messaging.ts) i pregled u pisaču poruka.
  */
 
-export type SmsProviderName = "gateway" | "novo" | "twilio";
+export type SmsProviderName = "gateway" | "novo" | "textbee" | "twilio";
+
+/**
+ * Treba li poruka poveznicu za odjavu (/o/<token>): da kad primatelj ne može (pouzdano) odgovoriti STOP.
+ * Twilio u Hrvatskoj ne podržava odgovore. TextBee prima odgovore samo kad je postavljen webhook
+ * (TEXTBEE_WEBHOOK_SECRET, `textbeeReplies`); bez njega se ponaša kao Twilio, da poruka nikad ne ode bez ikakve odjave.
+ */
+export function needsOptOutLink(provider: SmsProviderName | null, opts: { textbeeReplies?: boolean } = {}): boolean {
+  return provider === "twilio" || (provider === "textbee" && !opts.textbeeReplies);
+}
 
 /**
  * Twilio: približna cijena odlaznog SMS-a u Hrvatsku po segmentu (GSM-7: 160 znakova, UCS-2: 70).
@@ -75,19 +84,20 @@ export type ComposedSms = {
 
 /**
  * Slaže konačan tekst poruke za pružatelja. Preko Twilija odgovori u Hrvatskoj ne dolaze do nas, pa se
- * dodaje poveznica za odjavu. Ako zbog nje poruka pređe u više SMS-ova, a postoji kraća javna adresa
- * (NR_SHORT_URL), poveznice u poruci koriste nju, ali samo ako time stvarno ostaje manje SMS-ova.
+ * dodaje poveznica za odjavu (isto za TextBee bez webhooka; pozivatelj tada šalje optOutToken, vidi needsOptOutLink).
+ * Ako zbog nje poruka pređe u više SMS-ova, a postoji kraća javna adresa (NR_SHORT_URL), poveznice u poruci koriste nju, ali samo ako time stvarno ostaje manje SMS-ova.
  *
  * `render` slaže tekst za zadanu adresu (poveznica za recenziju ovisi o njoj).
  *
  * Twilio naplaćuje svaki segment, a jedno č, š ili ž (npr. ime "Željko" ili tvrtka "Čistoća") prebacuje cijelu poruku u
  * Unicode (70 znakova po segmentu umjesto 160), pa bi ta poruka koštala 2 do 3 puta više. Zato se preko Twilija tekst
- * uvijek šalje bez kvačica (kao i zadani predlošci); isti tekst vidi pregled u pisaču poruka.
+ * uvijek šalje bez kvačica (kao i zadani predlošci); isti tekst vidi pregled u pisaču poruka. Preko Android mobitela i TextBeea
+ * tekst se ne mijenja (kvačice ostaju), a segmenti se svejedno računaju točno za pregled; trošak ide po tarifi SIM-a.
  */
 export function composeSms(opts: {
   provider: SmsProviderName | null;
   render: (base: string) => string;
-  /** Isti token kao u /r/<token> poveznici klijenta. */
+  /** Isti token kao u /r/<token> poveznici klijenta; null kad poruka ne treba poveznicu za odjavu (needsOptOutLink). */
   optOutToken: string | null;
   appUrl: string;
   shortUrl?: string | null;
@@ -97,7 +107,8 @@ export function composeSms(opts: {
   const plainText = render(appUrl);
   const plainSeg = smsSegments(plainText);
 
-  if (provider !== "twilio" || !optOutToken) {
+  // Twilio i TextBee: poveznica ide samo kad je pozivatelj poslao token (needsOptOutLink); ostali pružatelji je nikad nemaju.
+  if ((provider !== "twilio" && provider !== "textbee") || !optOutToken) {
     return { body: plainText, segments: plainSeg.segments, length: plainSeg.length, encoding: plainSeg.encoding, optOutUrl: null, base: appUrl, extraSegments: 0 };
   }
 

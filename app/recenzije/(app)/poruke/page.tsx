@@ -8,6 +8,7 @@ import { db } from "@/lib/recenzije/db";
 import { clients, messageTemplates, messages, type MessageStatus } from "@/lib/recenzije/db/schema";
 import { env, integrations } from "@/lib/recenzije/env";
 import { smsProvider } from "@/lib/recenzije/services/sms";
+import { needsOptOutLink } from "@/lib/recenzije/sms-format";
 import { OPERATOR_EMAIL } from "@/lib/recenzije/operator";
 import { formatPhone } from "@/lib/recenzije/phone";
 import { requireOrg } from "@/lib/recenzije/session";
@@ -84,6 +85,7 @@ export default async function MessagesPage({ searchParams }: { searchParams: Pro
           ai: integrations.ai(),
           sms: provider !== null,
           provider,
+          optOutLink: needsOptOutLink(provider, { textbeeReplies: integrations.textbeeInbound() }),
           demo: ctx.org.isDemo,
           reviewUrl: !!ctx.org.googleReviewUrl,
         }}

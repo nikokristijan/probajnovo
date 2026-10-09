@@ -34,7 +34,7 @@ export default async function SettingsPage({ searchParams }: { searchParams: Pro
   const canEdit = ctx.role !== "MEMBER" && !ctx.org.isDemo;
   const isOperator = ctx.user.email === OPERATOR_EMAIL;
   const provider = smsProvider(ctx.org);
-  // Zajednički pošiljatelj (Twilio ili NOVO mobitel) na koji se stari mobitel tvrtke može prebaciti.
+  // Zajednički pošiljatelj (Twilio, TextBee ili NOVO mobitel) na koji se stari mobitel tvrtke može prebaciti.
   const sharedSmsReady = smsProvider(null) !== null;
 
   return (
@@ -59,14 +59,22 @@ export default async function SettingsPage({ searchParams }: { searchParams: Pro
                 </span>
               }
               action={
-                <Badge tone={ctx.org.isDemo ? "neutral" : provider === "novo" || provider === "twilio" ? "green" : "amber"} dot>
-                  {ctx.org.isDemo ? "Primjer" : provider === "novo" ? "NOVO broj" : provider === "twilio" ? "NOVO pošiljatelj" : provider ? "Drugi broj" : "Nije spremno"}
+                <Badge tone={ctx.org.isDemo ? "neutral" : provider === "novo" || provider === "textbee" || provider === "twilio" ? "green" : "amber"} dot>
+                  {ctx.org.isDemo
+                    ? "Primjer"
+                    : provider === "novo" || provider === "textbee"
+                      ? "NOVO broj"
+                      : provider === "twilio"
+                        ? "NOVO pošiljatelj"
+                        : provider
+                          ? "Drugi broj"
+                          : "Nije spremno"}
                 </Badge>
               }
             />
             <CardBody className="space-y-3 pt-3 text-sm">
               {ctx.org.isDemo && <p className="text-muted">Primjer: slanje SMS-a je isključeno.</p>}
-              {!ctx.org.isDemo && provider === "novo" && <p>SMS se šalju s NOVO broja. U tekstu poruke je naziv ove tvrtke.</p>}
+              {!ctx.org.isDemo && (provider === "novo" || provider === "textbee") && <p>SMS se šalju s NOVO broja. U tekstu poruke je naziv ove tvrtke.</p>}
               {!ctx.org.isDemo && provider === "twilio" && (
                 <p>
                   SMS se šalju preko Twilija s NOVO pošiljatelja. U tekstu poruke je naziv ove tvrtke, a u svakoj je i poveznica za odjavu.
@@ -87,6 +95,7 @@ export default async function SettingsPage({ searchParams }: { searchParams: Pro
               )}
               {!ctx.org.isDemo &&
                 provider !== "novo" &&
+                provider !== "textbee" &&
                 provider !== "twilio" &&
                 (isOperator ? (
                   <Link href="/admin/recenzije" className="label inline-block text-accent underline underline-offset-4">

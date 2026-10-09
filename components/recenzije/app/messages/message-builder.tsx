@@ -49,7 +49,8 @@ export function MessageBuilder({
   links: { appUrl: string; shortUrl: string | null };
   /** Procjena troška u USD vidi samo NOVO tim; segmenti se prikazuju svima. */
   showCost: boolean;
-  status: { ai: boolean; sms: boolean; provider: SmsProviderName | null; demo: boolean; reviewUrl: boolean };
+  /** optOutLink: poruka dobiva poveznicu za odjavu (Twilio, i TextBee bez webhooka; vidi needsOptOutLink). */
+  status: { ai: boolean; sms: boolean; provider: SmsProviderName | null; optOutLink?: boolean; demo: boolean; reviewUrl: boolean };
 }) {
   const [text, setText] = useState(templates.find((t) => t.kind === "REVIEW_REQUEST")?.body ?? DEFAULT_REQUEST);
   const [templateId, setTemplateId] = useState<string>("");
@@ -74,11 +75,13 @@ export function MessageBuilder({
 
   const previewClient = clients.find((c) => c.id === previewId);
   // Isti sastavljač kao pri slanju (services/messaging.ts): pregled i brojač prikazuju TOČAN tekst, uključujući
-  // poveznicu za odjavu koja se preko Twilija dodaje svakoj poruci.
+  // poveznicu za odjavu koja se preko Twilija (i TextBeea bez webhooka) dodaje svakoj poruci.
   const twilio = status.provider === "twilio";
+  const textbee = status.provider === "textbee";
+  const optOutLink = status.optOutLink ?? twilio;
   const composed = composeSms({
     provider: status.provider,
-    optOutToken: twilio ? PREVIEW_TOKEN : null,
+    optOutToken: optOutLink ? PREVIEW_TOKEN : null,
     appUrl: links.appUrl,
     shortUrl: links.shortUrl,
     render: (base) =>
@@ -195,15 +198,23 @@ export function MessageBuilder({
             {!text.includes("{review_link}") && (
               <p className="mt-2 text-xs text-warning">U poruci nema {"{review_link}"}, pa se klikovi neće pratiti.</p>
             )}
-            {twilio && (
+            {optOutLink && (
               <p className="mt-2 text-xs text-muted">
-                Odgovor STOP u Hrvatskoj ne radi, pa se poruci dodaje redak <span className="font-mono">Odjava: …</span> s poveznicom za odjavu.
+                {twilio
+                  ? "Odgovor STOP u Hrvatskoj ne radi, pa se poruci dodaje redak "
+                  : "Odgovor STOP ne stiže do sustava (webhook nije postavljen), pa se poruci dodaje redak "}
+                <span className="font-mono">Odjava: …</span> s poveznicom za odjavu.
                 {seg.extraSegments > 0 && (
                   <span className="text-warning">
                     {" "}
                     Zbog njega poruka ima {seg.segments} SMS-a umjesto {seg.segments - seg.extraSegments}.
                   </span>
                 )}
+              </p>
+            )}
+            {textbee && showCost && (
+              <p className="mt-1 text-xs text-muted">
+                Trošak ide po tarifi SIM-a mobitela koji šalje ({seg.segments} SMS po poruci).
               </p>
             )}
             {twilio && showCost && (
@@ -386,14 +397,14 @@ export function MessageBuilder({
         </p>
         <PhoneMockup sender={businessName} messages={[{ text: rendered, time: "Danas 14:32" }]} />
         <p className="mx-auto mt-3 max-w-[290px] text-center text-[11px] text-subtle">
-          Link se za svakog klijenta zamjenjuje jedinstvenim praćenim linkom{twilio ? ", a isti token ide i u poveznicu za odjavu" : ""}.
+          Link se za svakog klijenta zamjenjuje jedinstvenim praćenim linkom{optOutLink ? ", a isti token ide i u poveznicu za odjavu" : ""}.
         </p>
       </aside>
 
       <Dialog open={testOpen} onOpenChange={setTestOpen}>
         <DialogContent
           title="Testna poruka"
-          description={`Varijable se pune primjerima. Poruka je označena s [TEST]${twilio ? " i nema poveznicu za odjavu" : ""}.`}
+          description={`Varijable se pune primjerima. Poruka je označena s [TEST]${optOutLink ? " i nema poveznicu za odjavu" : ""}.`}
         >
           <form
             onSubmit={(e) => {

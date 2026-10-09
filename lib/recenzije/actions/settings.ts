@@ -43,7 +43,7 @@ export async function refreshGoogleLocationAction(): Promise<ActionState> {
 
 /**
  * Stari način: tvrtka je imala vlastiti mobitel (SMS Gateway). Sada sve poruke šalje zajednički NOVO
- * pošiljatelj (Twilio ili NOVO mobitel), pa se ovdje samo uklanja ostatak stare veze.
+ * pošiljatelj (Twilio, TextBee ili NOVO mobitel), pa se ovdje samo uklanja ostatak stare veze.
  */
 export async function removeSmsGatewayAction(): Promise<ActionState> {
   const { ctx, deny } = await admin();

@@ -2,15 +2,16 @@
 
 import { useActionState, useState } from "react";
 import { useFormStatus } from "react-dom";
-import { initialState } from "@/lib/recenzije/action";
-import { checkSmsStatusAction, registerWebhooksAction, sendTestSmsAction } from "@/lib/recenzije/actions/novo-admin";
+import { initialState, type ActionState } from "@/lib/recenzije/action";
+import { checkSmsStatusAction, listTextbeeDevicesAction, registerWebhooksAction, sendTestSmsAction } from "@/lib/recenzije/actions/novo-admin";
 import type { SmsSenderStatus } from "@/lib/recenzije/services/sms-status";
 
 /**
- * SMS pošiljatelj za sve klijente: aktivni pružatelj (Twilio ili neobavezni NOVO Android mobitel), što mu fali,
- * kratka uputa za Twilio i probni SMS koji radi s oba. Stanje stiže sa servera (samo env, bez mreže); probni SMS,
- * provjera statusa i povezivanje webhookova su server radnje samo za glavnog admina. Prava greška (npr. Twilio
- * 21408) prikazuje se onakva kakva jest, s uputom.
+ * SMS pošiljatelj za sve klijente: aktivni pružatelj (Twilio, TextBee s vlastitog mobitela ili neobavezni NOVO Android
+ * mobitel), što mu fali, kratke upute za TextBee i Twilio i probni SMS koji radi s bilo kojim od njih. Stanje stiže sa servera
+ * (samo env, bez mreže); probni SMS, provjera statusa, popis TextBee uređaja i povezivanje webhookova su server radnje samo za
+ * glavnog admina. Prava greška (npr. Twilio 21408, TextBee pogrešan ključ) prikazuje se onakva kakva jest, s uputom.
+ * API ključ se nigdje ne prikazuje: ovdje se vide samo imena varijabli.
  */
 
 export type SmsSenderView = { available: true; status: SmsSenderStatus } | { available: false; error: string };
@@ -77,12 +78,65 @@ const BADGE = {
   error: "bg-[#d70015]/8 text-[#b80012]",
 } as const;
 
-const PROVIDER_NAME = { twilio: "Twilio", novo: "NOVO mobitel (Android)", none: "nijedan" } as const;
+const PROVIDER_NAME = { twilio: "Twilio", textbee: "TextBee (vaš mobitel i SIM)", novo: "NOVO mobitel (Android)", none: "nijedan" } as const;
+
+type DeviceRow = {
+  id: string;
+  name: string;
+  model: string | null;
+  brand: string | null;
+  enabled: boolean | null;
+  lastHeartbeat: string | null;
+  online: boolean | null;
+  current: boolean;
+};
+
+function formatBeat(iso: string | null) {
+  const d = iso ? new Date(iso) : null;
+  if (!d || Number.isNaN(d.getTime())) return "nema podatka";
+  return d.toLocaleString("hr-HR", { timeZone: "Europe/Zagreb", day: "numeric", month: "numeric", hour: "2-digit", minute: "2-digit" });
+}
+
+/** Popis uređaja s TextBeea: ID se može kopirati u TEXTBEE_DEVICE_ID. Ključ se ne prikazuje. */
+function TextbeeDevices({ result }: { result: ActionState }) {
+  const devices = Array.isArray(result.data?.devices) ? (result.data.devices as DeviceRow[]) : [];
+  if (result.error) return <Notice ok={false}>{result.error}</Notice>;
+  if (!result.ok) return null;
+  return (
+    <div className="flex flex-col gap-2">
+      <Notice ok>{result.message}</Notice>
+      {devices.length > 0 && (
+        <ul className="flex flex-col gap-2">
+          {devices.map((d) => (
+            <li key={d.id} className="rounded-xl border border-black/10 px-3 py-2 text-xs flex flex-col gap-1.5 min-w-0">
+              <div className="flex items-center gap-1.5 flex-wrap">
+                <b className="break-words">{d.name}</b>
+                {d.current && <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-[#0b7a3e]/10 text-[#0b7a3e]">trenutno postavljen</span>}
+                {d.enabled === true && <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-black/5">uključen</span>}
+                {d.enabled === false && <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-[#ff7f00]/12 text-[#9a4a00]">isključen</span>}
+                {d.online === true && <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-[#0b7a3e]/10 text-[#0b7a3e]">vjerojatno online</span>}
+                {d.online === false && <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-[#ff7f00]/12 text-[#9a4a00]">dugo bez signala</span>}
+              </div>
+              {(d.brand || d.model) && <div className="text-black/55 break-words">{[d.brand, d.model].filter(Boolean).join(" ")}</div>}
+              <div className="text-black/55">Zadnji signal: {formatBeat(d.lastHeartbeat)}</div>
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="text-black/55">ID uređaja:</span>
+                <code className="font-mono text-xs break-all select-all min-w-0 flex-1 basis-48">{d.id}</code>
+                <CopyButton text={d.id} />
+              </div>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
+}
 
 export default function RecenzijeSmsCard({ sms }: { sms: SmsSenderView }) {
   const [test, testAction] = useActionState(sendTestSmsAction, initialState);
   const [check, checkAction] = useActionState(checkSmsStatusAction, initialState);
   const [hooks, hooksAction] = useActionState(registerWebhooksAction, initialState);
+  const [devices, devicesAction] = useActionState(listTextbeeDevicesAction, initialState);
 
   const st = sms.available ? sms.status : null;
   // Dok status nije dostupan gumbi ostaju uključeni da se vidi prava greška; inače čekaju pružatelja.
@@ -92,9 +146,10 @@ export default function RecenzijeSmsCard({ sms }: { sms: SmsSenderView }) {
   const badge = !st ? "Status nedostupan" : st.active === "none" ? st.summary : `${st.summary} · ${st.level === "ok" ? "spreman" : "upozorenje"}`;
   const badgeCls = !st ? BADGE.error : BADGE[st.level];
 
-  // Pružatelji koji nisu postavljeni. Dok nijedan ne radi, oba su otvorena; inače se sklapaju da ne smetaju.
+  // Pružatelji koji nisu postavljeni. Dok nijedan ne radi, svi su otvoreni; inače se sklapaju da ne smetaju.
   const notConfigured = st
     ? [
+        { id: "textbee", label: "TextBee", note: "vlastiti mobitel i SIM, za probu", missing: st.textbee.missing, ok: st.textbee.configured },
         { id: "twilio", label: "Twilio", note: "preporučeno bez Android mobitela", missing: st.twilio.missing, ok: st.twilio.configured },
         { id: "novo", label: "Android mobitel", note: "neobavezno", missing: st.novo.missing, ok: st.novo.configured },
       ].filter((p) => !p.ok && p.missing.length > 0)
@@ -120,6 +175,26 @@ export default function RecenzijeSmsCard({ sms }: { sms: SmsSenderView }) {
         <dl className="grid gap-x-6 gap-y-1.5 text-xs sm:grid-cols-[auto_1fr]">
           <dt className="text-black/55">Aktivni pružatelj</dt>
           <dd className="font-semibold">{PROVIDER_NAME[st.active]}</dd>
+          {st.active === "textbee" && (
+            <>
+              <dt className="text-black/55">Pošiljatelj</dt>
+              <dd className="font-semibold break-words">broj mobitela povezanog u TextBee (vaša SIM kartica)</dd>
+              <dt className="text-black/55">Oznaka u porukama</dt>
+              <dd className="font-semibold break-all">
+                <code className="font-mono">{st.textbee.marker}</code>
+              </dd>
+              <dt className="text-black/55">Odgovori i isporuka</dt>
+              <dd className={st.textbee.repliesEnabled && st.textbee.webhookUrlUsable ? "text-[#0b7a3e] font-semibold" : "text-[#9a4a00] font-semibold"}>
+                {!st.textbee.repliesEnabled
+                  ? "isključeni (nema webhooka): poruke nose poveznicu za odjavu"
+                  : st.textbee.webhookUrlUsable
+                    ? "uključeni (webhook)"
+                    : "tajna je postavljena, ali adresa webhooka nije javna: odgovori ne stižu"}
+              </dd>
+              <dt className="text-black/55">Trošak</dt>
+              <dd className="font-semibold">po tarifi vašeg SIM-a</dd>
+            </>
+          )}
           {st.active === "twilio" && (
             <>
               <dt className="text-black/55">Pošiljatelj</dt>
@@ -183,7 +258,36 @@ export default function RecenzijeSmsCard({ sms }: { sms: SmsSenderView }) {
       )}
 
       {st && (
-        <details className="group text-xs" open={!st.twilio.configured}>
+        <details className="group text-xs" open={st.active === "none" || st.active === "textbee"}>
+          <summary className="cursor-pointer font-semibold text-black/70 hover:text-black list-none inline-flex items-center gap-1">
+            <span className="transition-transform group-open:rotate-90">›</span> Postavljanje TextBeea (vlastiti mobitel i broj) u 4 koraka
+          </summary>
+          <ol className="mt-2 flex list-decimal flex-col gap-1.5 pl-5 text-black/70 max-w-[80ch]">
+            <li>
+              <b className="text-black">Aplikacija na mobitelu povezana u TextBee.</b> Na mobitel instalirajte TextBee aplikaciju, prijavite se računom s
+              textbee.dev i povežite uređaj prema uputama u aplikaciji. U aplikaciji uključite Gateway i dopustite slanje SMS-ova; za odgovore uključite i
+              primanje SMS-ova. Poruke odlaze s vaše SIM kartice, pa se naplaćuju po vašoj tarifi.
+            </li>
+            <li>
+              <b className="text-black">Ključ i ID uređaja u Vercel env.</b> Ključ iz TextBee nadzorne ploče upišite samo u postavke servera (Vercel env) kao{" "}
+              <code className="font-mono">TEXTBEE_API_KEY</code>, nikamo drugdje (ni u chat ni u kôd). Ako je ključ ikad bio objavljen, u TextBee nadzornoj ploči napravite novi.
+              ID uređaja (<code className="font-mono">TEXTBEE_DEVICE_ID</code>) pokazuje gumb „Provjeri uređaje” ispod, a čim je ključ postavljen i gumb se pojavi.
+            </li>
+            <li>
+              <b className="text-black">Probni SMS na vlastiti broj</b> (ispod), najbolje na drugi mobitel od onog koji šalje.
+            </li>
+            <li>
+              <b className="text-black">Webhook za odgovore (neobavezno).</b> Bez njega slanje radi, ali odgovor STOP i potvrde isporuke ne stižu, pa se u
+              svaku poruku dodaje poveznica za odjavu. Za odgovore u TextBee nadzornoj ploči napravite webhook s adresom i događajima iz kutije „TextBee” ispod,
+              a tajnu koju ondje upišete (izmislite je, najmanje {st.textbee.secretMinLength} znakova) postavite i kao{" "}
+              <code className="font-mono">TEXTBEE_WEBHOOK_SECRET</code>.
+            </li>
+          </ol>
+        </details>
+      )}
+
+      {st && (
+        <details className="group text-xs" open={!st.twilio.configured && st.active !== "textbee"}>
           <summary className="cursor-pointer font-semibold text-black/70 hover:text-black list-none inline-flex items-center gap-1">
             <span className="transition-transform group-open:rotate-90">›</span> Postavljanje Twilija u 4 koraka
           </summary>
@@ -252,34 +356,83 @@ export default function RecenzijeSmsCard({ sms }: { sms: SmsSenderView }) {
           )}
         </div>
 
-        {st && st.novo.configured && (
-          <form action={hooksAction} className="flex flex-col gap-2">
-            <div className="text-xs font-semibold">Android mobitel</div>
-            <div className="flex flex-col gap-1.5 text-xs">
-              <div className="text-black/55">Webhook adresa (odgovori i isporuka):</div>
-              <div className="flex items-center gap-2 flex-wrap">
-                <code className="font-mono text-xs break-all select-all min-w-0 flex-1 basis-60">{st.novo.webhookUrl}</code>
-                <CopyButton text={st.novo.webhookUrl} />
+        <div className="flex flex-col gap-4 min-w-0">
+          {st && st.novo.configured && (
+            <form action={hooksAction} className="flex flex-col gap-2">
+              <div className="text-xs font-semibold">Android mobitel</div>
+              <div className="flex flex-col gap-1.5 text-xs">
+                <div className="text-black/55">Webhook adresa (odgovori i isporuka):</div>
+                <div className="flex items-center gap-2 flex-wrap">
+                  <code className="font-mono text-xs break-all select-all min-w-0 flex-1 basis-60">{st.novo.webhookUrl}</code>
+                  <CopyButton text={st.novo.webhookUrl} />
+                </div>
+                <div className="text-black/55">
+                  Potpisni ključ webhookova:{" "}
+                  <b className={st.novo.signingKeyConfigured ? "text-[#0b7a3e]" : "text-[#9a4a00]"}>
+                    {st.novo.signingKeyConfigured ? "postavljen" : "nije postavljen"}
+                  </b>
+                </div>
               </div>
-              <div className="text-black/55">
-                Potpisni ključ webhookova:{" "}
-                <b className={st.novo.signingKeyConfigured ? "text-[#0b7a3e]" : "text-[#9a4a00]"}>
-                  {st.novo.signingKeyConfigured ? "postavljen" : "nije postavljen"}
-                </b>
+              <div className="text-xs text-black/60">
+                Jednim klikom upiše webhook adresu u aplikaciju na mobitelu da se odgovori klijenata i isporuka vide u poruci.
+              </div>
+              <div>
+                <SubmitButton pendingLabel="Povezujem…" className="text-xs font-semibold px-4 py-2 rounded-full border border-black/15 hover:border-black/40">
+                  Poveži webhookove
+                </SubmitButton>
+              </div>
+              {hooks.error && <Notice ok={false}>{hooks.error}</Notice>}
+              {hooks.ok && hooks.message && <Notice ok>{hooks.message}</Notice>}
+            </form>
+          )}
+          {st && !st.textbee.missing.includes("TEXTBEE_API_KEY") && (
+            <div className="flex flex-col gap-3">
+              <div className="text-xs font-semibold">TextBee (vlastiti mobitel)</div>
+              <form action={devicesAction} className="flex flex-col gap-2">
+                <div className="text-xs text-black/60">
+                  Samo čitanje: popis uređaja na vašem TextBee računu, da kopirate ID za <code className="font-mono">TEXTBEE_DEVICE_ID</code>. API ključ se ne
+                  prikazuje.
+                </div>
+                <div>
+                  <SubmitButton pendingLabel="Provjeravam…" className="text-xs font-semibold px-4 py-2 rounded-full border border-black/15 hover:border-black/40">
+                    Provjeri uređaje
+                  </SubmitButton>
+                </div>
+                <TextbeeDevices result={devices} />
+              </form>
+
+              <div className="flex flex-col gap-1.5 text-xs">
+                <div className="text-black/55">Webhook adresa za TextBee nadzornu ploču (neobavezno, za odgovore i isporuku):</div>
+                <div className="flex items-center gap-2 flex-wrap">
+                  <code className="font-mono text-xs break-all select-all min-w-0 flex-1 basis-60">{st.textbee.webhookUrl}</code>
+                  <CopyButton text={st.textbee.webhookUrl} />
+                </div>
+                {!st.textbee.webhookUrlUsable && (
+                  <div className="text-[#9a4a00]">
+                    Ova adresa trenutno nije javna ({st.textbee.webhookUrlProblem}), pa je TextBee ne može dosegnuti. Postavite NR_APP_URL na javnu https adresu.
+                  </div>
+                )}
+                <div className="text-black/55">
+                  Događaji:{" "}
+                  {st.textbee.webhookEvents.map((e) => (
+                    <code key={e} className="font-mono text-[11px] bg-black/5 rounded px-1.5 py-0.5 mr-1 inline-block break-all">
+                      {e}
+                    </code>
+                  ))}
+                </div>
+                <div className="text-black/55">
+                  Tajna webhooka (<code className="font-mono">TEXTBEE_WEBHOOK_SECRET</code>, ista kao u TextBee):{" "}
+                  <b className={st.textbee.repliesEnabled ? "text-[#0b7a3e]" : "text-[#9a4a00]"}>
+                    {st.textbee.repliesEnabled ? "postavljena" : "nije postavljena (neobavezno)"}
+                  </b>
+                </div>
+                <div className="text-black/55">
+                  Uz tajnu se odgovor STOP odjavljuje u svim tvrtkama, a poruke ne trebaju poveznicu za odjavu. Bez nje se u svaku poruku dodaje poveznica za odjavu.
+                </div>
               </div>
             </div>
-            <div className="text-xs text-black/60">
-              Jednim klikom upiše webhook adresu u aplikaciju na mobitelu da se odgovori klijenata i isporuka vide u poruci.
-            </div>
-            <div>
-              <SubmitButton pendingLabel="Povezujem…" className="text-xs font-semibold px-4 py-2 rounded-full border border-black/15 hover:border-black/40">
-                Poveži webhookove
-              </SubmitButton>
-            </div>
-            {hooks.error && <Notice ok={false}>{hooks.error}</Notice>}
-            {hooks.ok && hooks.message && <Notice ok>{hooks.message}</Notice>}
-          </form>
-        )}
+          )}
+        </div>
       </div>
     </section>
   );

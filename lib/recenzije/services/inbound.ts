@@ -6,6 +6,7 @@ import { toE164 } from "@/lib/recenzije/phone";
 import { fullName } from "@/lib/recenzije/utils";
 import { logActivity } from "./activity";
 import { cancelActiveRunsForClient } from "./automation-engine";
+import { TEXTBEE_SENDER_PREFIX } from "@/lib/recenzije/textbee";
 import { TWILIO_SENDER_PREFIX } from "@/lib/recenzije/twilio";
 import { NOVO_SENDER } from "./sms";
 
@@ -193,17 +194,21 @@ export function gatewayPhoneCandidates(raw: string): string[] {
 }
 
 /** Zajednički pošiljatelji čije se poruke prepoznaju po messages.from_number. */
-export type SharedChannel = "novo" | "twilio";
+export type SharedChannel = "novo" | "twilio" | "textbee";
 
 const channelMatch = (channel: SharedChannel) =>
-  channel === "twilio" ? like(messages.fromNumber, `${TWILIO_SENDER_PREFIX}%`) : eq(messages.fromNumber, NOVO_SENDER);
+  channel === "twilio"
+    ? like(messages.fromNumber, `${TWILIO_SENDER_PREFIX}%`)
+    : channel === "textbee"
+      ? like(messages.fromNumber, `${TEXTBEE_SENDER_PREFIX}%`)
+      : eq(messages.fromNumber, NOVO_SENDER);
 
 /**
- * Dolazni SMS na ZAJEDNIČKI pošiljatelj: NOVO mobitel (SMS Gateway for Android) ili Twilio broj. Svi klijenti svih
+ * Dolazni SMS na ZAJEDNIČKI pošiljatelj: NOVO mobitel (SMS Gateway for Android), TextBee mobitel ili Twilio broj. Svi klijenti svih
  * tvrtki primaju poruke s istog pošiljatelja, pa:
  *
  * - tvrtka kojoj odgovor pripada je ona s najnovijom izlaznom porukom TOG kanala na taj broj
- *   (messages.from_number = NOVO_SENDER za Android, "twilio:..." za Twilio; kanali se nikad ne miješaju,
+ *   (messages.from_number = NOVO_SENDER za Android, "textbee:..." za TextBee, "twilio:..." za Twilio; kanali se nikad ne miješaju,
  *   pa ni alfanumerička oznaka "NOVO" na Twiliju nije isto što i Android mobitel); odgovor se sprema njoj;
  * - STOP odjavljuje broj u SVIM tvrtkama koje imaju klijenta s tim brojem (osim demoa), jer je
  *   osoba odgovorila broju s kojeg su stigle poruke svih njih. START vraća samo klijenta tvrtke

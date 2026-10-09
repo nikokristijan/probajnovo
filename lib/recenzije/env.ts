@@ -1,5 +1,6 @@
 import "server-only";
 import { createHash } from "crypto";
+import { resolveTextbeeApiBase } from "@/lib/recenzije/textbee";
 import { isPublicHttpsUrl, resolveTwilioSender } from "@/lib/recenzije/twilio";
 
 /**
@@ -62,6 +63,18 @@ export const env = {
   smsGatewayPassword: (process.env.SMS_GATEWAY_PASSWORD || "").trim(),
   smsGatewaySigningKey: (process.env.SMS_GATEWAY_SIGNING_KEY || "").trim(),
 
+  /**
+   * TextBee (textbee.dev): vlastiti mobitel s vlastitom SIM karticom i brojem, povezan preko TextBee aplikacije.
+   * Ključ i ID uređaja iz TextBee nadzorne ploče su dovoljni za slanje. Tajna webhooka (ISTI niz koji se upisuje pri
+   * stvaranju webhooka u TextBee nadzornoj ploči) uključuje primanje odgovora i potvrda isporuke; bez nje odgovori
+   * (STOP) ne stižu pa se u poruku stavlja poveznica za odjavu. Ključ se NIKAD ne piše u repozitorij ni u log.
+   */
+  textbeeApiKey: (process.env.TEXTBEE_API_KEY || "").trim(),
+  textbeeDeviceId: (process.env.TEXTBEE_DEVICE_ID || "").trim(),
+  textbeeWebhookSecret: (process.env.TEXTBEE_WEBHOOK_SECRET || "").trim(),
+  /** Samo za lokalno testiranje s lažnim poslužiteljem; produkcija uvijek ide na https://api.textbee.dev/api/v1. */
+  textbeeApiBase: resolveTextbeeApiBase(process.env.TEXTBEE_API_BASE),
+
   googleClientId: process.env.GOOGLE_CLIENT_ID || "",
   googleClientSecret: process.env.GOOGLE_CLIENT_SECRET || "",
   googlePlacesKey: process.env.GOOGLE_PLACES_API_KEY || "",
@@ -87,6 +100,10 @@ export const integrations = {
   },
   /** Zajednički NOVO mobitel: dovoljni su korisničko ime i lozinka za slanje; potpisni ključ treba za webhookove. */
   novoPhone: () => Boolean(env.smsGatewayUser && env.smsGatewayPassword),
+  /** TextBee može slati kad postoje API ključ i ID uređaja. */
+  textbee: () => Boolean(env.textbeeApiKey && env.textbeeDeviceId),
+  /** Dvosmjerni SMS preko TextBeea (odgovori, STOP, potvrde isporuke): uključen tek kad je postavljena tajna webhooka. */
+  textbeeInbound: () => Boolean(env.textbeeWebhookSecret),
   googleOAuth: () => Boolean(env.googleClientId && env.googleClientSecret),
   googlePlaces: () => Boolean(env.googlePlacesKey),
   stripe: () => Boolean(env.stripeSecret),

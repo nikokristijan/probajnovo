@@ -92,10 +92,10 @@ export default function RecenzijeClientCard({
 }: {
   row: AdminOrgRow;
   plans: CardPlan[];
-  /** Je li SMS pošiljatelj (Twilio ili NOVO mobitel) postavljen; null kad se status nije mogao pročitati. */
+  /** Je li SMS pošiljatelj (Twilio, TextBee ili NOVO mobitel) postavljen; null kad se status nije mogao pročitati. */
   smsReady: boolean | null;
-  /** Aktivni pružatelj; procjena troška prikazuje se samo uz Twilio. */
-  smsProvider: "twilio" | "novo" | "none" | null;
+  /** Aktivni pružatelj; procjena troška u USD prikazuje se samo uz Twilio (TextBee ide po tarifi SIM-a). */
+  smsProvider: "twilio" | "textbee" | "novo" | "none" | null;
   flash: { kind: "ok" | "error"; text: string } | null;
 }) {
   const st = STATE[r.state];
@@ -210,6 +210,12 @@ export default function RecenzijeClientCard({
           <span className="text-black/55">Neuspjeli SMS (30 d) </span>
           <b className={"tabular-nums " + (r.failed30d > 0 ? "text-[#b80012]" : "")}>{r.failed30d}</b>
         </div>
+        {smsProvider === "textbee" && (
+          <div className="col-span-2 sm:col-span-4 text-[11px] text-black/55 break-words">
+            Trošak SMS-a (TextBee): <b className="text-black">po tarifi vašeg SIM-a</b>. Poruke odlaze s vašeg mobitela, pa nema cijene po poruci u
+            USD.
+          </div>
+        )}
         {smsProvider === "twilio" && (
           <div className="col-span-2 sm:col-span-4 text-[11px] text-black/55 break-words">
             Procjena troška (Twilio): <b className="text-black tabular-nums">{formatUsd(estimateTwilioCostUsd(r.twilioSegmentsThisMonth))}</b> ovaj mjesec (
