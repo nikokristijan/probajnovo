@@ -15,7 +15,7 @@ export const dynamic = "force-dynamic";
 /**
  * NOVO Recenzije kao usluga: ovdje NOVO tim vodi klijente. Klijent nema prijavu ni obveza,
  * a tim za svakog otvara tvrtku, postavlja je u pravoj aplikaciji ("Otvori radni prostor") i
- * šalje preko jednog zajedničkog SMS pošiljatelja (Twilio ili neobavezni NOVO Android mobitel). Besplatno razdoblje daje se po klijentu. Demo
+ * šalje preko jednog zajedničkog SMS pošiljatelja (Twilio, TextBee s vlastitog mobitela ili neobavezni NOVO Android mobitel). Besplatno razdoblje daje se po klijentu. Demo
  * tvrtka je izostavljena. Isti uvjet pristupa kao Financije (samo glavni admin).
  */
 

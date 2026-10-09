@@ -5,7 +5,7 @@ import { NOVO_UNAUTHORIZED, SmsNotConfiguredError, gatewayFetch, novoGatewayAuth
 /**
  * Neobavezni zajednički NOVO Android mobitel (SMS Gateway for Android) kojim se mogu slati poruke svih
  * klijenata. Vjerodajnice su u env varijablama, ne u bazi: SMS_GATEWAY_USER, SMS_GATEWAY_PASSWORD i
- * SMS_GATEWAY_SIGNING_KEY. Bez mobitela SMS idu preko Twilija; stanje svih pružatelja je u sms-status.ts
+ * SMS_GATEWAY_SIGNING_KEY. Bez mobitela SMS idu preko TextBeea (vlastiti mobitel, services/textbee.ts) ili Twilija; stanje svih pružatelja je u sms-status.ts
  * (getSmsSenderStatus), a probni SMS preko aktivnog pružatelja je sendTestSms.
  */
 export type NovoPhoneStatus = {

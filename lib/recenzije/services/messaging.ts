@@ -2,9 +2,9 @@ import "server-only";
 import { and, desc, eq } from "drizzle-orm";
 import { db } from "@/lib/recenzije/db";
 import { clients, messages, organizations, services, type MessageKind } from "@/lib/recenzije/db/schema";
-import { env } from "@/lib/recenzije/env";
+import { env, integrations } from "@/lib/recenzije/env";
 import { renderTemplate, withBusinessName } from "@/lib/recenzije/messages";
-import { composeSms } from "@/lib/recenzije/sms-format";
+import { composeSms, needsOptOutLink } from "@/lib/recenzije/sms-format";
 import { isPublicHttpsUrl, publicHttpsProblem } from "@/lib/recenzije/twilio";
 import { fullName } from "@/lib/recenzije/utils";
 import { logActivity } from "./activity";
@@ -86,11 +86,13 @@ export async function sendClientMessage(input: {
     return { ok: false, error: `${fullName(client)} se odjavio/la od SMS-ova.`, code: "OPTED_OUT" };
   }
 
-  // Pružatelj se odlučuje ovdje, jedanput, pa isti odgovor određuje i tekst (poveznica za odjavu samo uz
-  // Twilio) i način slanja. Twilio u Hrvatskoj ne podržava odgovore, pa odjava ide poveznicom /o/<token>.
+  // Pružatelj se odlučuje ovdje, jedanput, pa isti odgovor određuje i tekst (poveznica za odjavu) i način slanja.
+  // Twilio u Hrvatskoj ne podržava odgovore, pa odjava ide poveznicom /o/<token>. TextBee prima odgovore samo uz
+  // webhook (TEXTBEE_WEBHOOK_SECRET); bez njega se ponaša isto kao Twilio, da poruka nikad ne ode bez ikakve odjave.
   const provider = smsProvider(org);
+  const optOutLink = needsOptOutLink(provider, { textbeeReplies: integrations.textbeeInbound() });
   // Poruka bez radne poveznice za odjavu ne smije otići: uz javnu https adresu stranice /o/<token> ne bi bila dostupna.
-  const addressProblem = provider === "twilio" ? publicHttpsProblem(env.appUrl) : null;
+  const addressProblem = optOutLink ? publicHttpsProblem(env.appUrl) : null;
   if (addressProblem) {
     return {
       ok: false,
@@ -114,8 +116,7 @@ export async function sendClientMessage(input: {
     trackingLinkId = link.id;
   }
   // Isti token kao u /r/<token> poveznici klijenta (nema promjene sheme).
-  const optOutToken =
-    provider === "twilio" ? (reviewToken ?? (await getOrCreateClientToken(org.id, client.id, org.googleReviewUrl))) : null;
+  const optOutToken = optOutLink ? (reviewToken ?? (await getOrCreateClientToken(org.id, client.id, org.googleReviewUrl))) : null;
 
   const composed = composeSms({
     provider,

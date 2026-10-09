@@ -1,19 +1,21 @@
 import "server-only";
-import { env } from "@/lib/recenzije/env";
+import { env, integrations } from "@/lib/recenzije/env";
 import { TWILIO_HR_USD_PER_SEGMENT } from "@/lib/recenzije/sms-format";
 import { smsSegments } from "@/lib/recenzije/messages";
 import { toE164 } from "@/lib/recenzije/phone";
+import { TEXTBEE_SECRET_MIN_LENGTH, TEXTBEE_WEBHOOK_PATH, textbeeSenderMarker } from "@/lib/recenzije/textbee";
 import { publicHttpsProblem, resolveTwilioSender, senderLabel, twilioHint } from "@/lib/recenzije/twilio";
 import { getNovoPhoneStatus, type NovoPhoneStatus } from "./novo-phone";
+import { needsOptOutLink } from "@/lib/recenzije/sms-format";
 import { fetchTwilioMessage, sendSms, SmsNotConfiguredError, smsProvider } from "./sms";
 
 /**
  * Stanje SMS pošiljatelja za NOVO admin: koji je pružatelj AKTIVAN (isti redoslijed kao smsProvider:
- * NOVO Android mobitel, pa Twilio), što mu fali (imena env varijabli), je li pošiljatelj ispravan i može li se
+ * NOVO Android mobitel, pa TextBee, pa Twilio), što mu fali (imena env varijabli), je li pošiljatelj ispravan i može li se
  * isporuka pratiti. Čita samo env, bez mreže, pa je bezopasno zvati pri svakom prikazu stranice.
  */
 
-export type SmsActive = "novo" | "twilio" | "none";
+export type SmsActive = "novo" | "textbee" | "twilio" | "none";
 /** zeleno / žuto / crveno */
 export type SmsLevel = "ok" | "warn" | "error";
 
@@ -34,6 +36,28 @@ export type TwilioStatus = {
   usdPerSegment: number;
 };
 
+export type TextbeeStatus = {
+  /** Ključ i ID uređaja su postavljeni: TextBee može slati. */
+  configured: boolean;
+  /** Imena env varijabli koje fale (webhook tajna je neobavezna pa se ne računa). */
+  missing: string[];
+  /** Tajna webhooka je postavljena: odgovori (STOP) i potvrde isporuke se primaju. */
+  repliesEnabled: boolean;
+  /** Tajna je kraća od onoga što TextBee, prema dokumentaciji, traži (samo upozorenje). */
+  secretTooShort: boolean;
+  /** Oznaka u poruci (messages.from_number), ako je ID uređaja postavljen. */
+  marker: string | null;
+  /** Adresa koju vlasnik upisuje u TextBee nadzornu ploču (Webhooks). */
+  webhookUrl: string;
+  webhookUrlUsable: boolean;
+  webhookUrlProblem: string | null;
+  /** Događaji koje treba označiti pri stvaranju webhooka. */
+  webhookEvents: string[];
+  /** Je li poruci potrebna poveznica za odjavu (nema webhooka pa STOP ne stiže). */
+  optOutLink: boolean;
+  secretMinLength: number;
+};
+
 export type SmsSenderStatus = {
   active: SmsActive;
   level: SmsLevel;
@@ -46,6 +70,7 @@ export type SmsSenderStatus = {
   /** Što stvarno rade odgovori klijenata na aktivnom pružatelju. */
   repliesLine: string;
   novo: NovoPhoneStatus;
+  textbee: TextbeeStatus;
   twilio: TwilioStatus;
 };
 
@@ -54,6 +79,35 @@ const INBOUND_PATH = "/api/recenzije/webhooks/twilio/inbound";
 
 export const REPLIES_TWILIO = "Odgovori klijenata: ne rade s Twilijem u Hrvatskoj; odjava ide poveznicom u poruci.";
 export const REPLIES_NOVO = "Odgovori klijenata: rade (stižu na NOVO mobitel kroz webhook); odjava je odgovorom STOP.";
+export const REPLIES_TEXTBEE = "Odgovori klijenata: rade (stižu preko TextBee webhooka); odjava je odgovorom STOP.";
+export const REPLIES_TEXTBEE_UNREACHABLE =
+  "Odgovori klijenata: ne mogu stići jer adresa webhooka nije javna (TextBee je ne može dosegnuti); poruke u tom slučaju nemaju poveznicu za odjavu.";
+export const REPLIES_TEXTBEE_NO_WEBHOOK =
+  "Odgovori klijenata: nisu uključeni jer nema TextBee webhooka (TEXTBEE_WEBHOOK_SECRET); odjava ide poveznicom u poruci.";
+
+/** Događaji koje treba označiti u TextBee nadzornoj ploči (UNCONFIRMED imena su u lib/recenzije/textbee.ts). */
+const TEXTBEE_EVENTS = ["MESSAGE_RECEIVED", "MESSAGE_SENT", "MESSAGE_DELIVERED", "MESSAGE_FAILED"];
+
+export function getTextbeeStatus(): TextbeeStatus {
+  const missing: string[] = [];
+  if (!env.textbeeApiKey) missing.push("TEXTBEE_API_KEY");
+  if (!env.textbeeDeviceId) missing.push("TEXTBEE_DEVICE_ID");
+  const repliesEnabled = integrations.textbeeInbound();
+  const webhookProblem = publicHttpsProblem(env.appUrl);
+  return {
+    configured: missing.length === 0,
+    missing,
+    repliesEnabled,
+    secretTooShort: repliesEnabled && env.textbeeWebhookSecret.length < TEXTBEE_SECRET_MIN_LENGTH,
+    marker: env.textbeeDeviceId ? textbeeSenderMarker(env.textbeeDeviceId) : null,
+    webhookUrl: `${env.appUrl}${TEXTBEE_WEBHOOK_PATH}`,
+    webhookUrlUsable: webhookProblem === null,
+    webhookUrlProblem: webhookProblem,
+    webhookEvents: TEXTBEE_EVENTS,
+    optOutLink: needsOptOutLink("textbee", { textbeeReplies: repliesEnabled }),
+    secretMinLength: TEXTBEE_SECRET_MIN_LENGTH,
+  };
+}
 
 export function getTwilioStatus(): TwilioStatus {
   const sender = resolveTwilioSender(env.twilioFrom, env.twilioMessagingServiceSid);
@@ -81,11 +135,15 @@ export function getTwilioStatus(): TwilioStatus {
   };
 }
 
+/** Jedna od dvije TextBee varijable je postavljena, a druga ne: korisnik je vjerojatno zaboravio drugu. */
+const textbeePartial = (t: TextbeeStatus) => !t.configured && t.missing.length < 2;
+
 export function getSmsSenderStatus(): SmsSenderStatus {
   const novo = getNovoPhoneStatus();
+  const textbee = getTextbeeStatus();
   const twilio = getTwilioStatus();
   const provider = smsProvider(null);
-  const active: SmsActive = provider === "novo" ? "novo" : provider === "twilio" ? "twilio" : "none";
+  const active: SmsActive = provider === "novo" ? "novo" : provider === "textbee" ? "textbee" : provider === "twilio" ? "twilio" : "none";
   const problems: string[] = [];
   let level: SmsLevel = "ok";
   let summary = "";
@@ -102,6 +160,7 @@ export function getSmsSenderStatus(): SmsSenderStatus {
         ? `Twilio pošiljatelj nije ispravan: ${twilio.senderError}`
         : "Nijedan SMS pružatelj nije postavljen, pa se SMS ne mogu slati."
     );
+    if (textbeePartial(textbee)) problems.push(`TextBee je napola postavljen (fali ${textbee.missing.join(", ")}).`);
   } else if (active === "twilio") {
     summary = "Twilio";
     if (!twilio.statusCallbackUsable) {
@@ -119,6 +178,39 @@ export function getSmsSenderStatus(): SmsSenderStatus {
     if (!novo.configured && novo.missing.length < 2) {
       warn(`Android mobitel je napola postavljen (fali ${novo.missing.join(", ")}). Dok ne bude potpun, šalje se preko Twilija.`);
     }
+    if (textbeePartial(textbee)) {
+      warn(`TextBee je napola postavljen (fali ${textbee.missing.join(", ")}). Dok ne bude potpun, šalje se preko Twilija.`);
+    }
+  } else if (active === "textbee") {
+    summary = "TextBee";
+    if (textbee.optOutLink && !textbee.webhookUrlUsable) {
+      // Isti uvjet blokira slanje klijentima (messaging.ts): bez webhooka poveznica za odjavu u poruci mora biti dostupna.
+      level = "error";
+      problems.push(
+        `Slanje klijentima je blokirano jer poveznice za recenziju i odjavu u poruci ne bi radile: ${textbee.webhookUrlProblem}. Postavite NR_APP_URL na javnu https adresu stranice (trenutno ${env.appUrl}). Probni SMS radi i dalje.`
+      );
+    }
+    if (!textbee.repliesEnabled) {
+      problems.push(
+        "Webhook nije postavljen (TEXTBEE_WEBHOOK_SECRET): slanje radi, ali odgovori klijenata (STOP) i potvrde isporuke ne stižu. Zato se u svaku poruku dodaje poveznica za odjavu."
+      );
+    }
+    if (textbee.repliesEnabled && !textbee.webhookUrlUsable) {
+      // Tajna je postavljena pa poruke ne nose poveznicu za odjavu, a TextBee ne može dostaviti webhook na nejavnu adresu.
+      warn(
+        `Webhook adresa nije javna (${textbee.webhookUrlProblem}): TextBee je ne može dosegnuti, pa odgovor STOP i potvrde isporuke neće stići, a poruke ne nose poveznicu za odjavu. Postavite NR_APP_URL na javnu https adresu ili uklonite TEXTBEE_WEBHOOK_SECRET prije slanja klijentima.`
+      );
+    }
+    if (textbee.secretTooShort) {
+      warn(`TEXTBEE_WEBHOOK_SECRET ima manje od ${textbee.secretMinLength} znakova, a TextBee prema dokumentaciji traži najmanje toliko. Ako TextBee odbije tajnu, upišite dulju na oba mjesta.`);
+    }
+    if (!novo.configured && novo.missing.length < 2) {
+      warn(`Android mobitel je napola postavljen (fali ${novo.missing.join(", ")}). Dok ne bude potpun, šalje se preko TextBeea.`);
+    }
+    if (twilio.senderError) warn(`Twilio pošiljatelj nije ispravan: ${twilio.senderError}`);
+    if (twilio.configured) {
+      problems.push("Twilio je također postavljen, ali TextBee ima prednost dok su TEXTBEE_API_KEY i TEXTBEE_DEVICE_ID postavljeni.");
+    }
   } else {
     summary = "NOVO mobitel";
     if (!novo.signingKeyConfigured) {
@@ -128,6 +220,9 @@ export function getSmsSenderStatus(): SmsSenderStatus {
     if (twilio.configured) {
       problems.push("Twilio je također postavljen, ali Android mobitel ima prednost dok su SMS_GATEWAY_USER i SMS_GATEWAY_PASSWORD postavljeni.");
     }
+    if (textbee.configured) {
+      problems.push("TextBee je također postavljen, ali Android mobitel ima prednost dok su SMS_GATEWAY_USER i SMS_GATEWAY_PASSWORD postavljeni.");
+    }
   }
 
   return {
@@ -136,8 +231,20 @@ export function getSmsSenderStatus(): SmsSenderStatus {
     summary,
     problems,
     ready: active !== "none",
-    repliesLine: active === "twilio" ? REPLIES_TWILIO : active === "novo" ? REPLIES_NOVO : "",
+    repliesLine:
+      active === "twilio"
+        ? REPLIES_TWILIO
+        : active === "novo"
+          ? REPLIES_NOVO
+          : active === "textbee"
+            ? textbee.repliesEnabled
+              ? textbee.webhookUrlUsable
+                ? REPLIES_TEXTBEE
+                : REPLIES_TEXTBEE_UNREACHABLE
+              : REPLIES_TEXTBEE_NO_WEBHOOK
+            : "",
     novo,
+    textbee,
     twilio,
   };
 }
@@ -145,7 +252,7 @@ export function getSmsSenderStatus(): SmsSenderStatus {
 // --- Probni SMS ---
 
 export type TestSmsResult = {
-  provider: "novo" | "twilio";
+  provider: "novo" | "textbee" | "twilio";
   providerLabel: string;
   sid: string;
   status: string;
@@ -158,7 +265,7 @@ export type TestSmsResult = {
 const TEST_BODY = "NOVO: probna poruka. Ako vidite ovu poruku, slanje SMS-a radi.";
 
 /**
- * Pošalje probni SMS preko AKTIVNOG pružatelja (Android mobitel ili Twilio), samo za glavnog admina.
+ * Pošalje probni SMS preko AKTIVNOG pružatelja (Android mobitel, TextBee ili Twilio), samo za glavnog admina.
  * Prava Twilio greška (npr. 21408, 21612, 21614) vraća se čitljivo, s hrvatskom uputom.
  */
 export async function sendTestSms(to: string): Promise<TestSmsResult> {
@@ -173,13 +280,17 @@ export async function sendTestSms(to: string): Promise<TestSmsResult> {
   }
   const res = await sendSms(null, { to: phone, body: TEST_BODY });
   const tw = getTwilioStatus();
+  const shown =
+    provider === "twilio"
+      ? { provider: "twilio" as const, providerLabel: "Twilio", senderLabel: tw.senderLabel }
+      : provider === "textbee"
+        ? { provider: "textbee" as const, providerLabel: "TextBee", senderLabel: "vaš mobitel i SIM (TextBee)" }
+        : { provider: "novo" as const, providerLabel: "NOVO mobitel", senderLabel: "NOVO mobitel (Android)" };
   return {
-    provider: provider === "twilio" ? "twilio" : "novo",
-    providerLabel: provider === "twilio" ? "Twilio" : "NOVO mobitel",
+    ...shown,
     sid: res.sid,
     status: res.status,
     from: res.from,
-    senderLabel: provider === "twilio" ? tw.senderLabel : "NOVO mobitel (Android)",
     segments: smsSegments(TEST_BODY).segments,
   };
 }
@@ -207,7 +318,7 @@ const STATUS_TEXT: Record<string, string> = {
 /** Provjera probnog SMS-a kod Twilija: status isporuke i, ako nije isporučen, razlog s uputom. */
 export async function checkTestSmsStatus(sid: string): Promise<TestSmsCheck> {
   if (smsProvider(null) !== "twilio") {
-    throw new Error("Provjera statusa vrijedi samo za Twilio. Za Android mobitel gledajte poruku na samom mobitelu.");
+    throw new Error("Provjera statusa vrijedi samo za Twilio. Za Android mobitel i TextBee gledajte poruku na samom mobitelu.");
   }
   const m = await fetchTwilioMessage(sid);
   const final = ["delivered", "undelivered", "failed", "canceled"].includes(m.status);

@@ -5,6 +5,7 @@ import { decrypt } from "@/lib/recenzije/crypto";
 import { env, integrations } from "@/lib/recenzije/env";
 import type { SmsProviderName } from "@/lib/recenzije/sms-format";
 import { TWILIO_SENDER_PREFIX, describeTwilioError, resolveTwilioSender } from "@/lib/recenzije/twilio";
+import { sendViaTextbee } from "./textbee";
 
 /**
  * Slanje SMS-a, bez ijednog ključa u pregledniku. Redoslijed pružatelja:
@@ -15,7 +16,10 @@ import { TWILIO_SENDER_PREFIX, describeTwilioError, resolveTwilioSender } from "
  *    github.com/capcom6/android-sms-gateway, Apache-2.0) za sve klijente. Vjerodajnice su u env
  *    varijablama (SMS_GATEWAY_USER, SMS_GATEWAY_PASSWORD), ne u bazi. Klijent nema nikakvo postavljanje;
  *    tekst poruke imenuje njegovu tvrtku.
- * 3. Twilio — globalno, iz env varijabli (TWILIO_*), plaća se po poruci. Pošiljatelj je broj (E.164),
+ * 3. TextBee (textbee.dev) — vlastiti mobitel s vlastitom SIM karticom i brojem, povezan preko TextBee aplikacije
+ *    (env TEXTBEE_API_KEY, TEXTBEE_DEVICE_ID). Dvosmjerni SMS radi samo uz webhook (TEXTBEE_WEBHOOK_SECRET); bez njega
+ *    se u poruku dodaje poveznica za odjavu kao kod Twilija. Vidi services/textbee.ts.
+ * 4. Twilio — globalno, iz env varijabli (TWILIO_*), plaća se po poruci. Pošiljatelj je broj (E.164),
  *    alfanumerička oznaka (npr. NOVO) ili Messaging Service; vidi lib/recenzije/twilio.ts. U Hrvatskoj
  *    Twilio ne podržava dvosmjerni SMS, pa se u poruku dodaje poveznica za odjavu (messaging.ts).
  *
@@ -26,7 +30,7 @@ export class SmsNotConfiguredError extends Error {
   constructor(message?: string) {
     super(
       message ??
-        "Slanje SMS-a nije postavljeno: u postavkama servera treba postaviti Twilio (TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, TWILIO_PHONE_NUMBER) ili NOVO mobitel (SMS_GATEWAY_USER, SMS_GATEWAY_PASSWORD)."
+        "Slanje SMS-a nije postavljeno: u postavkama servera treba postaviti TextBee (TEXTBEE_API_KEY, TEXTBEE_DEVICE_ID), Twilio (TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, TWILIO_PHONE_NUMBER) ili NOVO mobitel (SMS_GATEWAY_USER, SMS_GATEWAY_PASSWORD)."
     );
     this.name = "SmsNotConfiguredError";
   }
@@ -45,6 +49,7 @@ export const NOVO_SENDER = "NOVO";
 export function smsProvider(org?: OrgSms | null): SmsProvider | null {
   if (org?.smsGatewayUser && org.smsGatewayPassEnc) return "gateway";
   if (integrations.novoPhone()) return "novo";
+  if (integrations.textbee()) return "textbee";
   if (integrations.twilio()) return "twilio";
   return null;
 }
@@ -56,6 +61,7 @@ export async function sendSms(
   const provider = smsProvider(org);
   if (provider === "gateway") return sendViaOrgGateway(org!, params);
   if (provider === "novo") return sendViaNovoPhone(params);
+  if (provider === "textbee") return sendViaTextbee(params);
   if (provider === "twilio") return sendViaTwilio(params);
   throw new SmsNotConfiguredError();
 }

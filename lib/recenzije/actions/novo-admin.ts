@@ -13,12 +13,14 @@ import { db } from "@/lib/recenzije/db";
 import { ensureReviewsDb } from "@/lib/recenzije/db/ensure";
 import { organizationMembers, organizations, users } from "@/lib/recenzije/db/schema";
 import { DEMO_EMAIL, DEMO_SLUG } from "@/lib/recenzije/db/seed";
-import { env } from "@/lib/recenzije/env";
+import { env, integrations } from "@/lib/recenzije/env";
 import { toE164 } from "@/lib/recenzije/phone";
 import { ACTIVE_ORG_COOKIE } from "@/lib/recenzije/session";
 import { createManagedClient, ensureOperatorMember, updateClientDetails } from "@/lib/recenzije/services/clients-admin";
 import { registerNovoWebhooks } from "@/lib/recenzije/services/novo-phone";
 import { checkTestSmsStatus, sendTestSms } from "@/lib/recenzije/services/sms-status";
+import { listTextbeeDevices } from "@/lib/recenzije/services/textbee";
+import { scrubSecrets } from "@/lib/recenzije/textbee";
 import { estimateTwilioCostUsd, formatUsd } from "@/lib/recenzije/sms-format";
 import { activatePlanManually, AdminError, changePlan, deactivate, extendFreePeriod } from "@/lib/recenzije/services/novo-admin";
 
@@ -39,9 +41,12 @@ function safeMessage(e: unknown, fallback = "Nije uspjelo. Pokušajte ponovno.")
   return e instanceof AdminError ? e.message : fallback;
 }
 
-/** Greška vanjske usluge (Twilio, NOVO mobitel): admin mora vidjeti pravi razlog (s uputom), ali ograničene duljine. */
+/**
+ * Greška vanjske usluge (Twilio, NOVO mobitel, TextBee): admin mora vidjeti pravi razlog (s uputom), ali ograničene duljine
+ * i nikad s API ključem ili tajnom (scrubSecrets), čak i kad bi ih neka biblioteka ili odgovor slučajno uključili u poruku.
+ */
 function providerMessage(e: unknown) {
-  const m = e instanceof Error ? e.message.trim() : "";
+  const m = e instanceof Error ? scrubSecrets(e.message.trim(), [env.textbeeApiKey, env.textbeeWebhookSecret, env.twilioToken]) : "";
   return m ? m.slice(0, 700) : "Nepoznata greška.";
 }
 
@@ -332,13 +337,13 @@ export async function openDemoAction() {
   redirect("/recenzije/pregled");
 }
 
-// --- SMS pošiljatelj (Twilio ili NOVO Android mobitel) ---
+// --- SMS pošiljatelj (Twilio, TextBee ili NOVO Android mobitel) ---
 
 const testSmsSchema = z.object({ to: z.string().trim().min(1, "Upišite broj telefona").max(30, "Najviše 30 znakova") });
 
 /**
- * Probni SMS preko AKTIVNOG pružatelja (Twilio ili NOVO mobitel). Pravu grešku (npr. Twilio 21408 ili 21612,
- * mobitel nedostupan) pokazujemo adminu s uputom. Uspjeh vraća pružatelja, oznaku poruke i status.
+ * Probni SMS preko AKTIVNOG pružatelja (Twilio, TextBee ili NOVO mobitel). Pravu grešku (npr. Twilio 21408 ili 21612,
+ * TextBee pogrešan ključ ili ID uređaja, mobitel nedostupan) pokazujemo adminu s uputom. Uspjeh vraća pružatelja, oznaku poruke i status.
  */
 export async function sendTestSmsAction(_: ActionState, fd: FormData): Promise<ActionState> {
   await requireSuperAdmin();
@@ -349,8 +354,18 @@ export async function sendTestSmsAction(_: ActionState, fd: FormData): Promise<A
   try {
     const res = await sendTestSms(to);
     const via = `${res.providerLabel}${res.senderLabel ? `, pošiljatelj: ${res.senderLabel}` : ""}`;
-    const cost = res.provider === "twilio" ? ` Procjena troška: ${formatUsd(estimateTwilioCostUsd(res.segments))}.` : "";
-    const next = res.provider === "twilio" ? " Za nekoliko sekundi kliknite „Provjeri status” da vidite je li poruka stvarno stigla." : "";
+    const cost =
+      res.provider === "twilio"
+        ? ` Procjena troška: ${formatUsd(estimateTwilioCostUsd(res.segments))}.`
+        : res.provider === "textbee"
+          ? " Trošak ide po tarifi vašeg SIM-a."
+          : "";
+    const next =
+      res.provider === "twilio"
+        ? " Za nekoliko sekundi kliknite „Provjeri status” da vidite je li poruka stvarno stigla."
+        : res.provider === "textbee"
+          ? ` Poruku prvo preuzima TextBee, a mobitel je šalje preko svog SIM-a: provjerite stiže li na primateljev mobitel.${integrations.textbeeInbound() ? "" : " Webhook nije postavljen, pa se isporuka ne prati u sustavu."}`
+          : "";
     return {
       ok: true,
       message: `Poslano na ${to} (${via}). Status: ${res.status}, oznaka: ${res.sid}.${cost}${next}`,
@@ -374,6 +389,31 @@ export async function checkSmsStatusAction(_: ActionState, fd: FormData): Promis
     return r.ok ? { ok: true, message: r.text } : { error: r.text };
   } catch (e) {
     return { error: `Provjera nije uspjela: ${providerMessage(e)}` };
+  }
+}
+
+/**
+ * Samo čitanje: popis uređaja računa na TextBeeu (GET /gateway/devices), da vlasnik može kopirati ID uređaja za
+ * TEXTBEE_DEVICE_ID. API ključ se nikad ne vraća ni ne prikazuje; greške su čitljive i bez ključa.
+ */
+export async function listTextbeeDevicesAction(): Promise<ActionState> {
+  await requireSuperAdmin();
+  try {
+    const devices = await listTextbeeDevices();
+    const current = env.textbeeDeviceId || null;
+    return {
+      ok: true,
+      message:
+        devices.length > 0
+          ? `Pronađeno uređaja: ${devices.length}.`
+          : "TextBee ne vidi nijedan uređaj na ovom računu. U aplikaciji na mobitelu prijavite se istim računom i uključite Gateway.",
+      data: {
+        devices: devices.map((d) => ({ ...d, current: d.id === current })),
+        configuredDeviceId: current,
+      },
+    };
+  } catch (e) {
+    return { error: `Provjera uređaja nije uspjela: ${providerMessage(e)}` };
   }
 }
 
