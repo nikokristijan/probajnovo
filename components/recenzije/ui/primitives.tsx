@@ -36,6 +36,26 @@ export function CardBody({ className, ...props }: React.HTMLAttributes<HTMLDivEl
   return <div className={cn("p-5", className)} {...props} />;
 }
 
+/*
+ * Vodoravno pomičan sadržaj (široke tablice na mobitelu) sa sjenom na rubu koji još ima sadržaja,
+ * pa se vidi da se tablica može povući. Čisti CSS: "local" pozadine putuju sa sadržajem, "scroll" stoje.
+ */
+const SCROLL_SHADOW =
+  "linear-gradient(to right, #fff 30%, rgb(255 255 255 / 0)) 0 0 / 28px 100% no-repeat local," +
+  "linear-gradient(to left, #fff 30%, rgb(255 255 255 / 0)) 100% 0 / 28px 100% no-repeat local," +
+  "linear-gradient(to right, rgb(0 0 0 / 0.16), rgb(0 0 0 / 0)) 0 0 / 10px 100% no-repeat scroll," +
+  "linear-gradient(to left, rgb(0 0 0 / 0.16), rgb(0 0 0 / 0)) 100% 0 / 10px 100% no-repeat scroll";
+
+export function ScrollX({ className, style, ...props }: React.HTMLAttributes<HTMLDivElement>) {
+  return <div className={cn("overflow-x-auto overscroll-x-contain", className)} style={{ background: SCROLL_SHADOW, ...style }} {...props} />;
+}
+
+/**
+ * Proširuje područje dodira malih tekstualnih poveznica na ~41px visine bez ikakve promjene rasporeda
+ * (nevidljivi ::before; element mora biti inline-flex/block). Preporuka za dodir je najmanje 40px.
+ */
+export const hitArea = "relative before:absolute before:-inset-y-3 before:inset-x-0 before:content-['']";
+
 export const inputClass =
   "h-11 w-full border border-border-strong bg-white px-3 text-[15px] text-foreground placeholder:text-subtle transition-colors focus:border-foreground focus:outline-none disabled:bg-surface-2 disabled:opacity-70 aria-[invalid=true]:border-danger";
 

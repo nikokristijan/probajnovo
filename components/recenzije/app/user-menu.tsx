@@ -27,7 +27,7 @@ export function UserMenu({
   const router = useRouter();
   return (
     <Menu>
-      <MenuTrigger className="flex items-center rounded-full" aria-label="Izbornik računa">
+      <MenuTrigger className="-mr-1 grid size-11 place-items-center rounded-full" aria-label="Izbornik računa">
         <Avatar name={name || email} className="size-9" />
       </MenuTrigger>
       <MenuContent>

@@ -6,7 +6,7 @@ import { selectDistinct } from "../shared";
 import { CampaignControls } from "@/components/recenzije/app/campaigns/campaign-controls";
 import { CampaignForm } from "@/components/recenzije/app/campaigns/campaign-form";
 import { KpiCard } from "@/components/recenzije/app/kpi";
-import { Badge, PageHeader } from "@/components/recenzije/ui/primitives";
+import { Badge, hitArea, PageHeader } from "@/components/recenzije/ui/primitives";
 import { db } from "@/lib/recenzije/db";
 import { automationRuns, campaigns } from "@/lib/recenzije/db/schema";
 import { env } from "@/lib/recenzije/env";
@@ -33,7 +33,7 @@ export default async function CampaignPage({ params }: { params: Promise<{ id: s
   const s = stats.find((x) => x.id === c.id);
   return (
     <>
-      <Link href="/recenzije/kampanje" className="label mb-6 inline-flex items-center gap-1.5 text-muted hover:text-foreground">
+      <Link href="/recenzije/kampanje" className={`${hitArea} label mb-6 inline-flex items-center gap-1.5 text-muted hover:text-foreground`}>
         <ArrowLeft className="size-4" /> Kampanje
       </Link>
       <PageHeader

@@ -4,7 +4,7 @@ import { useState } from "react";
 import { Download, ExternalLink, Printer, QrCode } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/recenzije/ui/button";
-import { Card, CardBody, CardHeader } from "@/components/recenzije/ui/primitives";
+import { Card, CardBody, CardHeader, hitArea } from "@/components/recenzije/ui/primitives";
 import { cn } from "@/lib/recenzije/utils";
 import type { QrMatrix } from "@/lib/recenzije/services/qr";
 import { POSTER_VARIANTS, posterFileName, qrOnlySvg, variantInfo, type PosterVariant } from "./poster-layout";
@@ -125,17 +125,17 @@ export function PosterStudio({ orgName, reviewUrl, qr }: { orgName: string; revi
             </div>
 
             <div className="flex flex-col gap-2 sm:flex-row lg:flex-col xl:flex-row">
-              <Button size="lg" className="flex-1" onClick={() => window.print()}>
+              <Button size="lg" className="sm:flex-1 lg:flex-none xl:flex-1" onClick={() => window.print()}>
                 <Printer /> Ispiši
               </Button>
-              <Button size="lg" variant="secondary" className="flex-1" onClick={() => saveSvg(posterFileName(orgName, variant), buildPosterSvg({ orgName, qr, variant }))}>
+              <Button size="lg" variant="secondary" className="sm:flex-1 lg:flex-none xl:flex-1" onClick={() => saveSvg(posterFileName(orgName, variant), buildPosterSvg({ orgName, qr, variant }))}>
                 <Download /> Preuzmi SVG
               </Button>
             </div>
             <button
               type="button"
               onClick={() => saveSvg(posterFileName(orgName, variant, "qr"), qrOnlySvg(qr))}
-              className="label -mt-2 inline-flex cursor-pointer items-center gap-2 text-accent underline underline-offset-4 hover:text-foreground"
+              className={cn(hitArea, "label -mt-2 inline-flex cursor-pointer items-center gap-2 text-accent underline underline-offset-4 hover:text-foreground")}
             >
               <QrCode className="size-3.5" /> Preuzmi samo QR kod (SVG)
             </button>

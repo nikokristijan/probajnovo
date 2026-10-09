@@ -8,8 +8,8 @@ import { z } from "zod";
 import { createSession, destroySession } from "@/lib/recenzije/auth";
 import { db } from "@/lib/recenzije/db";
 import { ensureReviewsDb } from "@/lib/recenzije/db/ensure";
-import { DEMO_EMAIL, DEMO_SLUG } from "@/lib/recenzije/db/seed";
-import { organizationMembers, organizations, passwordResetTokens, users } from "@/lib/recenzije/db/schema";
+import { DEMO_EMAIL } from "@/lib/recenzije/db/seed";
+import { passwordResetTokens, users } from "@/lib/recenzije/db/schema";
 import { type ActionState, echoValues, formObject, zodErrors } from "@/lib/recenzije/action";
 import { randomToken, sha256 } from "@/lib/recenzije/crypto";
 import { env } from "@/lib/recenzije/env";
@@ -57,26 +57,6 @@ export async function loginAction(_: ActionState, fd: FormData): Promise<ActionS
   if (!user || user.email === OPERATOR_EMAIL || !user.passwordHash || !ok) return { values: echoValues(fd), error: "Email ili lozinka nisu točni." };
   await createSession(user.id);
   redirect(safeNext(parsed.data.next));
-}
-
-/** Ulaz u demo bez lozinke: demo je samo za čitanje i iz njega se ništa ne šalje. */
-export async function demoLoginAction() {
-  if (!env.demoEnabled) redirect("/recenzije/prijava");
-  await ensureReviewsDb();
-  const tooMany = await limited("demo", 30, 15 * 60_000);
-  if (tooMany) redirect("/recenzije/prijava?error=rate");
-  const [user] = await db.select().from(users).where(eq(users.email, DEMO_EMAIL)).limit(1);
-  const [org] = await db.select().from(organizations).where(eq(organizations.slug, DEMO_SLUG)).limit(1);
-  if (!user || !org) redirect("/recenzije/prijava?error=demo");
-  const [member] = await db
-    .select()
-    .from(organizationMembers)
-    .where(and(eq(organizationMembers.userId, user.id), eq(organizationMembers.organizationId, org.id)))
-    .limit(1);
-  if (!member) redirect("/recenzije/prijava?error=demo");
-  await createSession(user.id);
-  (await cookies()).set(ACTIVE_ORG_COOKIE, org.id, { httpOnly: true, sameSite: "lax", secure: process.env.NODE_ENV === "production", path: "/" });
-  redirect("/recenzije/pregled");
 }
 
 export async function logoutAction() {

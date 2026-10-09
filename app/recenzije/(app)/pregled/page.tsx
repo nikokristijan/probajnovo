@@ -6,7 +6,7 @@ import { ActivityFeed } from "@/components/recenzije/app/activity-feed";
 import { AddClientDialog } from "@/components/recenzije/app/clients/add-client-dialog";
 import { KpiCard } from "@/components/recenzije/app/kpi";
 import { Button } from "@/components/recenzije/ui/button";
-import { Alert, Card, CardBody, CardHeader, PageHeader } from "@/components/recenzije/ui/primitives";
+import { Alert, Card, CardBody, CardHeader, hitArea, PageHeader } from "@/components/recenzije/ui/primitives";
 import { db } from "@/lib/recenzije/db";
 import { googleConnections } from "@/lib/recenzije/db/schema";
 import { OPERATOR_EMAIL } from "@/lib/recenzije/operator";
@@ -135,7 +135,7 @@ export default async function DashboardPage() {
         <CardHeader
           title="Zadnje aktivnosti"
           action={
-            <Link href="/recenzije/klijenti" className="label text-muted hover:text-foreground">
+            <Link href="/recenzije/klijenti" className={`${hitArea} label text-muted hover:text-foreground`}>
               Svi klijenti →
             </Link>
           }

@@ -1,4 +1,3 @@
-import { demoLoginAction } from "@/lib/recenzije/actions/auth";
 import { Button } from "@/components/recenzije/ui/button";
 
 export function GoogleIcon() {
@@ -9,8 +8,8 @@ export function GoogleIcon() {
   );
 }
 
-export function OAuthButtons({ googleEnabled, demoEnabled }: { googleEnabled: boolean; demoEnabled: boolean }) {
-  if (!googleEnabled && !demoEnabled) return null;
+export function OAuthButtons({ googleEnabled }: { googleEnabled: boolean }) {
+  if (!googleEnabled) return null;
   return (
     <div className="space-y-2.5">
       {googleEnabled && (
@@ -21,13 +20,6 @@ export function OAuthButtons({ googleEnabled, demoEnabled }: { googleEnabled: bo
             <GoogleIcon /> Nastavi s Googleom
           </a>
         </Button>
-      )}
-      {demoEnabled && (
-        <form action={demoLoginAction}>
-          <Button type="submit" variant="secondary" size="lg" className="w-full">
-            Pogledaj primjer pregleda
-          </Button>
-        </form>
       )}
       <div className="label flex items-center gap-3 py-2 text-subtle">
         <span className="h-px flex-1 bg-border" /> ili emailom <span className="h-px flex-1 bg-border" />

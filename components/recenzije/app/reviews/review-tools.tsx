@@ -51,7 +51,7 @@ export function LinkClientSelect({
         aria-label="Povezani klijent"
         value={value}
         disabled={pending}
-        className="h-8 max-w-56 text-[13px]"
+        className="h-10 max-w-56 text-[13px] sm:pointer-fine:h-8"
         onChange={(e) => {
           const v = e.target.value;
           setValue(v);

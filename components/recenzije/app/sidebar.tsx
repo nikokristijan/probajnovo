@@ -2,9 +2,11 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { Menu, X } from "lucide-react";
 import { Logo } from "@/components/recenzije/brand";
+import { lockPageScroll } from "@/components/recenzije/ui/scroll-lock";
 import { cn } from "@/lib/recenzije/utils";
 
 /* Izbornik kao na probajnovo.com: mono, velika slova, narančasta točka za aktivnu stavku. */
@@ -23,7 +25,22 @@ const MAIN = [
 const BOTTOM = [{ href: "/recenzije/postavke/pretplata", label: "Paket i razdoblje" }];
 const ACCOUNT = { href: "/recenzije/postavke/racun", label: "Račun" };
 
-function NavList({ onNavigate, orgName, plan, showAccount }: { onNavigate?: () => void; orgName: string; plan: string; showAccount: boolean }) {
+function NavList({
+  onNavigate,
+  onClose,
+  closeRef,
+  orgName,
+  plan,
+  showAccount,
+}: {
+  onNavigate?: () => void;
+  /** Samo u mobilnoj ladici: gumb za zatvaranje živi u istom retku kao logo. */
+  onClose?: () => void;
+  closeRef?: React.Ref<HTMLButtonElement>;
+  orgName: string;
+  plan: string;
+  showAccount: boolean;
+}) {
   const path = usePathname();
   const isActive = (href: string, exact?: boolean) => (exact ? path === href : path === href || path.startsWith(href + "/"));
   const item = (n: { href: string; label: string; exact?: boolean }) => {
@@ -35,7 +52,9 @@ function NavList({ onNavigate, orgName, plan, showAccount }: { onNavigate?: () =
           onClick={onNavigate}
           aria-current={active ? "page" : undefined}
           className={cn(
-            "label relative flex h-9 items-center px-2 transition-colors",
+            // Na dodir (ladica) stavke su 44px visoke; na desktopu ostaju zbijene.
+            "label relative flex items-center px-2 transition-colors",
+            onClose ? "h-11" : "h-9",
             active ? "text-foreground" : "text-muted hover:text-foreground"
           )}
         >
@@ -47,17 +66,28 @@ function NavList({ onNavigate, orgName, plan, showAccount }: { onNavigate?: () =
   };
   return (
     <div className="flex h-full flex-col">
-      <div className="flex h-16 items-center border-b border-border px-5">
+      <div className="flex h-16 shrink-0 items-center justify-between gap-2 border-b border-border px-5">
         <Logo href="/recenzije/pregled" />
+        {onClose && (
+          <button
+            ref={closeRef}
+            type="button"
+            onClick={onClose}
+            className="-mr-2.5 grid size-11 shrink-0 place-items-center hover:bg-surface-2"
+            aria-label="Zatvori izbornik"
+          >
+            <X className="size-5" />
+          </button>
+        )}
       </div>
-      <div className="border-b border-border px-5 py-4">
+      <div className="shrink-0 border-b border-border px-5 py-4">
         <p className="truncate text-sm font-bold">{orgName}</p>
         <p className="label mt-1 truncate text-accent">{plan}</p>
       </div>
-      <nav aria-label="Glavni izbornik" className="flex-1 overflow-y-auto px-3 py-4">
+      <nav aria-label="Glavni izbornik" className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-3 py-4">
         <ul className="space-y-0.5">{MAIN.map(item)}</ul>
       </nav>
-      <nav aria-label="Paket i račun" className="border-t border-border px-3 py-4">
+      <nav aria-label="Paket i račun" className="shrink-0 border-t border-border px-3 py-4">
         <ul className="space-y-0.5">{(showAccount ? [...BOTTOM, ACCOUNT] : BOTTOM).map(item)}</ul>
       </nav>
     </div>
@@ -72,46 +102,99 @@ export function Sidebar({ orgName, plan, showAccount = false }: { orgName: strin
   );
 }
 
+const FOCUSABLE = 'a[href], button:not([disabled]), input:not([disabled]), [tabindex]:not([tabindex="-1"])';
+
+/*
+ * Mobilna ladica. Zašto portal: zaglavlje ima backdrop-blur, a svaki element s backdrop-filterom
+ * (kao i transform/filter) postaje "containing block" za position:fixed potomke. Ladica unutar
+ * zaglavlja zato nije pokrivala ekran, nego se skupila na visinu zaglavlja (64px) i izrezala.
+ * Renderiranjem u .nr korijen (izvan zaglavlja) fixed opet znači "cijeli viewport".
+ */
 export function MobileNav({ orgName, plan, showAccount = false }: { orgName: string; plan: string; showAccount?: boolean }) {
-  const [open, setOpen] = useState(false);
+  const path = usePathname();
+  // Ladica je otvorena samo za putanju na kojoj je otvorena: svaka navigacija (i "natrag") je zatvara.
+  const [openAt, setOpenAt] = useState<string | null>(null);
+  const [host, setHost] = useState<HTMLElement | null>(null);
+  const open = openAt === path && host !== null;
+  const triggerRef = useRef<HTMLButtonElement>(null);
+  const panelRef = useRef<HTMLDivElement>(null);
+  const closeRef = useRef<HTMLButtonElement>(null);
+  const close = useCallback(() => setOpenAt(null), []);
+
   useEffect(() => {
-    document.body.style.overflow = open ? "hidden" : "";
-    return () => {
-      document.body.style.overflow = "";
+    if (!open) return;
+    const trigger = triggerRef.current;
+    // Zaključaj pomicanje pozadine (bez poskakivanja sadržaja kad nestane klasična traka za pomicanje).
+    const unlock = lockPageScroll();
+    closeRef.current?.focus();
+
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        close();
+        return;
+      }
+      if (e.key !== "Tab" || !panelRef.current) return;
+      // Fokus ostaje unutar ladice dok je otvorena.
+      const items = Array.from(panelRef.current.querySelectorAll<HTMLElement>(FOCUSABLE));
+      if (items.length === 0) return;
+      const first = items[0];
+      const last = items[items.length - 1];
+      const active = document.activeElement;
+      if (e.shiftKey && (active === first || !panelRef.current.contains(active))) {
+        e.preventDefault();
+        last.focus();
+      } else if (!e.shiftKey && (active === last || !panelRef.current.contains(active))) {
+        e.preventDefault();
+        first.focus();
+      }
     };
-  }, [open]);
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => e.key === "Escape" && setOpen(false);
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, []);
+    // Ako se prozor proširi do desktop izgleda, ladica se skriva (lg:hidden) pa mora i otpustiti zaključani scroll.
+    const mq = window.matchMedia("(min-width: 1024px)");
+    const onMq = (e: MediaQueryListEvent) => e.matches && close();
+    document.addEventListener("keydown", onKey);
+    mq.addEventListener("change", onMq);
+    return () => {
+      document.removeEventListener("keydown", onKey);
+      mq.removeEventListener("change", onMq);
+      unlock();
+      trigger?.focus({ preventScroll: true });
+    };
+  }, [open, close]);
+
   return (
     <>
       <button
+        ref={triggerRef}
         type="button"
-        onClick={() => setOpen(true)}
-        className="grid size-10 place-items-center text-foreground hover:bg-surface-2 lg:hidden"
+        onClick={() => {
+          // .nr nosi font, boju i fokus-stilove aplikacije, pa ladica ide u njega, a ne izravno u body.
+          setHost(triggerRef.current?.closest<HTMLElement>(".nr") ?? document.body);
+          setOpenAt(path);
+        }}
+        className="-ml-2.5 grid size-11 shrink-0 place-items-center text-foreground hover:bg-surface-2 lg:hidden"
         aria-label="Otvori izbornik"
+        aria-haspopup="dialog"
         aria-expanded={open}
       >
         <Menu className="size-5" />
       </button>
-      {open && (
-        <div className="fixed inset-0 z-50 lg:hidden" role="dialog" aria-modal="true" aria-label="Izbornik">
-          <div className="absolute inset-0 bg-black/40" onClick={() => setOpen(false)} />
-          <div className="absolute inset-y-0 left-0 w-[min(300px,85vw)] animate-slide-in border-r border-foreground bg-white">
-            <button
-              type="button"
-              onClick={() => setOpen(false)}
-              className="absolute right-3 top-3 grid size-10 place-items-center hover:bg-surface-2"
-              aria-label="Zatvori izbornik"
+      {open &&
+        createPortal(
+          <div className="fixed inset-0 z-50 lg:hidden" role="dialog" aria-modal="true" aria-label="Izbornik">
+            <div
+              className="absolute inset-0 touch-none bg-black/45 transition-opacity duration-200 starting:opacity-0"
+              onClick={close}
+              aria-hidden
+            />
+            <div
+              ref={panelRef}
+              className="absolute inset-y-0 left-0 h-dvh w-[min(320px,85vw)] animate-slide-in overflow-hidden border-r border-foreground bg-white pb-[env(safe-area-inset-bottom)] pl-[env(safe-area-inset-left)] pt-[env(safe-area-inset-top)]"
             >
-              <X className="size-5" />
-            </button>
-            <NavList onNavigate={() => setOpen(false)} orgName={orgName} plan={plan} showAccount={showAccount} />
-          </div>
-        </div>
-      )}
+              <NavList onNavigate={close} onClose={close} closeRef={closeRef} orgName={orgName} plan={plan} showAccount={showAccount} />
+            </div>
+          </div>,
+          host!
+        )}
     </>
   );
 }

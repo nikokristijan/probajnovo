@@ -5,9 +5,7 @@ import NovoShell from "@/components/novo/NovoShell";
 import { RecenzijeInquiryForm } from "@/components/recenzije/inquiry-form";
 import { PhoneMockup } from "@/components/recenzije/phone";
 import { Button } from "@/components/recenzije/ui/button";
-import { demoLoginAction } from "@/lib/recenzije/actions/auth";
 import { ensureReviewsDb } from "@/lib/recenzije/db/ensure";
-import { env } from "@/lib/recenzije/env";
 import { formatEur } from "@/lib/recenzije/status";
 import { listPlans } from "@/lib/recenzije/services/billing";
 import { getAgencyContact } from "@/lib/novoHomeData";
@@ -106,6 +104,15 @@ function planPoints(p: { smsMonthlyLimit: number; locationLimit: number }) {
 
 const INDUSTRIES = ["Klime i grijanje", "Vodoinstalateri", "Električari", "Stomatolozi", "Frizeri i saloni", "Autoservisi", "Čišćenje", "Restorani", "Apartmani"];
 
+/** Primjer tjednog izvještaja koji klijent dobiva emailom. Izmišljeni podaci, i tako je označeno na stranici. */
+const SAMPLE_REPORT: [string, string][] = [
+  ["Poslano zahtjeva", "14"],
+  ["Klikova na link", "9"],
+  ["Novih recenzija", "5"],
+  ["Prosječna ocjena novih recenzija", "4,8"],
+  ["Podsjetnika na čekanju", "3"],
+];
+
 const FLOW = ["Posao gotov", "Vi nam javite", "Čekamo 10 min", "SMS zahtjev", "Čekamo 1 dan", "Podsjetnik", "Recenzija"];
 
 export default async function RecenzijeLanding({ searchParams }: { searchParams: Promise<Record<string, string | undefined>> }) {
@@ -117,15 +124,6 @@ export default async function RecenzijeLanding({ searchParams }: { searchParams:
   const waHref = contact.phone ? whatsappUrl(contact.phone, "Pozdrav! Zanima me NOVO Recenzije.") : null;
   const phoneHref = contact.phone ? telHref(contact.phone) : null;
   const mailHref = `mailto:${contact.contactEmail}?subject=${encodeURIComponent("NOVO Recenzije")}`;
-
-  /** Mali sekundarni link: pregled primjera u samo-čitaj demo radnom prostoru. */
-  const demo = env.demoEnabled ? (
-    <form action={demoLoginAction}>
-      <Button type="submit" variant="link" className="h-auto px-0 py-2">
-        Pogledaj primjer pregleda
-      </Button>
-    </form>
-  ) : null;
 
   const jsonLd = [
     {
@@ -189,7 +187,6 @@ export default async function RecenzijeLanding({ searchParams }: { searchParams:
                   Pošaljite upit <ArrowRight />
                 </a>
               </Button>
-              {demo}
             </div>
             <p className="mt-4 flex flex-wrap gap-x-4 gap-y-1 text-[13px] text-muted">
               {["Ništa za instalirati", "Bez prijave i postavljanja", "Otkaz bilo kad"].map((t) => (
@@ -271,6 +268,38 @@ export default async function RecenzijeLanding({ searchParams }: { searchParams:
             <strong>Pošteno o SMS-ovima:</strong> poruke šaljemo s našeg NOVO broja ili oznake pošiljatelja, ne s vašeg. U svakoj piše ime vaše tvrtke i potpisana je njome, pa klijent odmah zna
             od koga je. Odjava je moguća poveznicom u poruci ili, gdje mreža dopušta odgovore, odgovorom STOP, i poštuje se automatski.
           </p>
+        </section>
+
+        {/* Primjer izvještaja */}
+        <section className="border-t border-border py-12" aria-labelledby="izvjestaj">
+          <h2 id="izvjestaj" className="label flex items-center gap-2 text-muted">
+            <span className="size-1.5 bg-orange" /> Što vidite vi
+          </h2>
+          <div className="mt-4 grid items-start gap-8 lg:grid-cols-[1fr_0.9fr]">
+            <div className="min-w-0">
+              <p className="max-w-xl text-2xl font-bold leading-tight sm:text-3xl">Jednom tjedno kratak izvještaj na email. Bez prijave, bez aplikacije.</p>
+              <p className="mt-4 max-w-xl text-[15px] leading-relaxed text-muted">
+                Svaki ponedjeljak dobijete pregled zadnjih sedam dana: koliko je zahtjeva poslano, koliko ih je kliknulo i koliko je stiglo novih recenzija. Ako tjedan prođe mirno, piše i to, bez
+                ukrašavanja.
+              </p>
+            </div>
+            <figure className="min-w-0 border border-border bg-white p-5" aria-label="Primjer tjednog izvještaja s izmišljenim podacima">
+              <p className="label flex flex-wrap items-center justify-between gap-2 text-muted">
+                <span>NOVO Recenzije · Tjedni izvještaj</span>
+                <span className="border border-border-strong px-2 py-0.5 text-[11px]">Primjer</span>
+              </p>
+              <p className="mt-3 text-lg font-bold">Klima Servis Horvat</p>
+              <dl className="mt-3 divide-y divide-border border-t border-border">
+                {SAMPLE_REPORT.map(([label, value]) => (
+                  <div key={label} className="flex items-baseline justify-between gap-4 py-3">
+                    <dt className="min-w-0 text-sm text-muted">{label}</dt>
+                    <dd className="tabular shrink-0 text-lg font-bold">{value}</dd>
+                  </div>
+                ))}
+              </dl>
+              <figcaption className="mt-3 text-[12px] leading-relaxed text-muted">Izmišljeni podaci, samo za prikaz kako izvještaj izgleda.</figcaption>
+            </figure>
+          </div>
         </section>
 
         {/* Mogućnosti */}
@@ -400,12 +429,6 @@ export default async function RecenzijeLanding({ searchParams }: { searchParams:
                   </li>
                 )}
               </ul>
-              {demo && (
-                <div className="mt-6 border-t border-border pt-4">
-                  <p className="text-[13px] text-muted">Želite vidjeti kako izgleda pregled recenzija?</p>
-                  {demo}
-                </div>
-              )}
             </aside>
           </div>
         </section>

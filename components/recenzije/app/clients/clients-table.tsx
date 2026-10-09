@@ -7,7 +7,7 @@ import { ArrowDown, ArrowUp, ArrowUpDown, Ban, ChevronRight, Send } from "lucide
 import { toast } from "sonner";
 import { sendBulkRequestsAction, sendReviewRequestAction } from "@/lib/recenzije/actions/clients";
 import { Button } from "@/components/recenzije/ui/button";
-import { Avatar, Badge } from "@/components/recenzije/ui/primitives";
+import { Avatar, Badge, hitArea } from "@/components/recenzije/ui/primitives";
 import { formatPhone } from "@/lib/recenzije/phone";
 import { formatDate, REVIEW_STATUS, timeAgo } from "@/lib/recenzije/status";
 import { cn } from "@/lib/recenzije/utils";
@@ -40,7 +40,7 @@ function SortHeader({ label, col, className }: { label: string; col: string; cla
   const Icon = active ? (dir === "asc" ? ArrowUp : ArrowDown) : ArrowUpDown;
   return (
     <th scope="col" className={cn("px-4 py-3 text-left font-normal", className)} aria-sort={active ? (dir === "asc" ? "ascending" : "descending") : "none"}>
-      <Link href={`${path}?${next}`} scroll={false} className={cn("inline-flex items-center gap-1 hover:text-foreground", active && "text-foreground")}>
+      <Link href={`${path}?${next}`} scroll={false} className={cn(hitArea, "inline-flex items-center gap-1 hover:text-foreground", active && "text-foreground")}>
         {label}
         <Icon className="size-3.5 opacity-70" />
       </Link>
@@ -88,7 +88,15 @@ function SendButton({ row, compact }: { row: ClientTableRow; compact?: boolean }
       aria-label={`Pošalji zahtjev za recenziju: ${row.firstName}`}
     >
       {!pending && <Send />}
-      {compact ? "Pošalji" : row.reviewStatus === "NOT_CONTACTED" ? "Pošalji zahtjev" : "Pošalji opet"}
+      {compact ? (
+        "Pošalji"
+      ) : (
+        <>
+          {/* Dugi naziv tek na xl: na tabletu i uskom laptopu tablica inače prelazi širinu kartice i gumb se odreže. */}
+          <span className="xl:hidden">Pošalji</span>
+          <span className="hidden xl:inline">{row.reviewStatus === "NOT_CONTACTED" ? "Pošalji zahtjev" : "Pošalji opet"}</span>
+        </>
+      )}
     </Button>
   );
 }
@@ -137,17 +145,19 @@ export function ClientsTable({ rows }: { rows: ClientTableRow[] }) {
           <thead className="label border-y border-border bg-surface-2 text-muted">
             <tr>
               <th className="w-10 px-4 py-3">
-                <input
-                  type="checkbox"
-                  aria-label="Odaberi sve"
-                  checked={allSelected}
-                  onChange={() => setSelected(allSelected ? new Set() : new Set(rows.map((r) => r.id)))}
-                  className="size-4 accent-black"
-                />
+                <label className="-m-3 grid size-10 cursor-pointer place-items-center">
+                  <input
+                    type="checkbox"
+                    aria-label="Odaberi sve"
+                    checked={allSelected}
+                    onChange={() => setSelected(allSelected ? new Set() : new Set(rows.map((r) => r.id)))}
+                    className="size-4 accent-black"
+                  />
+                </label>
               </th>
               <SortHeader label="Klijent" col="name" />
               <th scope="col" className="px-4 py-3 text-left font-normal">Usluga</th>
-              <SortHeader label="Datum usluge" col="service_date" className="hidden lg:table-cell" />
+              <SortHeader label="Datum usluge" col="service_date" className="hidden min-[1120px]:table-cell" />
               <SortHeader label="Status" col="status" />
               <SortHeader label="Zadnja poruka" col="last_message" className="hidden xl:table-cell" />
               <th className="px-4 py-3">
@@ -159,16 +169,18 @@ export function ClientsTable({ rows }: { rows: ClientTableRow[] }) {
             {rows.map((r) => (
               <tr key={r.id} className={cn("group hover:bg-surface-2/50", selected.has(r.id) && "bg-orange-soft")}>
                 <td className="px-4 py-3">
-                  <input
-                    type="checkbox"
-                    aria-label={`Odaberi ${r.firstName} ${r.lastName}`}
-                    checked={selected.has(r.id)}
-                    onChange={() => toggle(r.id)}
-                    className="size-4 accent-black"
-                  />
+                  <label className="-m-3 grid size-10 cursor-pointer place-items-center">
+                    <input
+                      type="checkbox"
+                      aria-label={`Odaberi ${r.firstName} ${r.lastName}`}
+                      checked={selected.has(r.id)}
+                      onChange={() => toggle(r.id)}
+                      className="size-4 accent-black"
+                    />
+                  </label>
                 </td>
                 <td className="px-4 py-3">
-                  <Link href={`/recenzije/klijenti/${r.id}`} className="flex items-center gap-3">
+                  <Link href={`/recenzije/klijenti/${r.id}`} className="-my-1 flex items-center gap-3 py-1">
                     <Avatar name={`${r.firstName} ${r.lastName}`} />
                     <span className="min-w-0">
                       <span className="block truncate font-medium group-hover:underline">
@@ -182,7 +194,7 @@ export function ClientsTable({ rows }: { rows: ClientTableRow[] }) {
                   <span className="block">{r.service ?? <span className="text-subtle">—</span>}</span>
                   {r.technician && <span className="block text-xs text-muted">{r.technician}</span>}
                 </td>
-                <td className="tabular hidden px-4 py-3 text-muted lg:table-cell">{formatDate(r.serviceDate)}</td>
+                <td className="tabular hidden px-4 py-3 text-muted min-[1120px]:table-cell">{formatDate(r.serviceDate)}</td>
                 <td className="px-4 py-3">
                   <StatusCell row={r} />
                 </td>
@@ -200,13 +212,16 @@ export function ClientsTable({ rows }: { rows: ClientTableRow[] }) {
       <ul className="divide-y divide-border border-t border-border md:hidden">
         {rows.map((r) => (
           <li key={r.id} className="flex items-center gap-3 px-4 py-3.5">
-            <input
-              type="checkbox"
-              aria-label={`Odaberi ${r.firstName} ${r.lastName}`}
-              checked={selected.has(r.id)}
-              onChange={() => toggle(r.id)}
-              className="size-4 shrink-0 accent-black"
-            />
+            {/* Oznaka 40x40px daje dovoljno područje dodira, a kvadratić ostaje 16px na istom mjestu. */}
+            <label className="-ml-3 grid size-10 shrink-0 cursor-pointer place-items-center">
+              <input
+                type="checkbox"
+                aria-label={`Odaberi ${r.firstName} ${r.lastName}`}
+                checked={selected.has(r.id)}
+                onChange={() => toggle(r.id)}
+                className="size-4 accent-black"
+              />
+            </label>
             <Link href={`/recenzije/klijenti/${r.id}`} className="flex min-w-0 flex-1 items-center gap-3">
               <Avatar name={`${r.firstName} ${r.lastName}`} />
               <span className="min-w-0 flex-1">

@@ -177,7 +177,7 @@ export function MessageBuilder({
                     key={v.key}
                     type="button"
                     onClick={() => insert(v.key)}
-                    className="border border-border-strong bg-white px-2 py-1 font-mono text-[11px] text-muted hover:border-foreground hover:text-foreground"
+                    className="min-h-10 border border-border-strong bg-white px-2 py-1 font-mono text-[11px] text-muted hover:border-foreground hover:text-foreground sm:pointer-fine:min-h-0"
                   >
                     {v.key}
                   </button>
@@ -352,14 +352,16 @@ export function MessageBuilder({
 
         <div className="sticky bottom-0 z-10 -mx-4 flex flex-col gap-2 border-t border-border bg-background/90 px-4 py-3 backdrop-blur sm:static sm:mx-0 sm:flex-row sm:items-center sm:border-0 sm:bg-transparent sm:p-0">
           {notReady && <p className="flex-1 text-[13px] text-warning">{notReady}</p>}
+          {/* Na mobitelu gumbi rastu da popune retke (flex-auto), umjesto da ostanu nagurani lijevo. */}
           <div className="flex flex-wrap gap-2 sm:ml-auto">
-            <Button variant="outline" onClick={() => setTestOpen(true)}>
+            <Button variant="outline" className="flex-auto sm:flex-none" onClick={() => setTestOpen(true)}>
               <FlaskConical /> Pošalji test
             </Button>
-            <Button variant="secondary" onClick={() => setSaveOpen(true)}>
+            <Button variant="secondary" className="flex-auto sm:flex-none" onClick={() => setSaveOpen(true)}>
               <Save /> Spremi predložak
             </Button>
             <Button
+              className="flex-auto sm:flex-none"
               loading={sendPending}
               disabled={recipients.size === 0}
               onClick={() =>

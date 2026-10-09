@@ -2,41 +2,53 @@ import { MousePointerClick, Percent, Send, Star } from "lucide-react";
 import { AiInsights } from "@/components/recenzije/app/analytics/ai-insights";
 import { ActivityChart, BreakdownBarChart, Funnel, ReviewsBarChart } from "@/components/recenzije/app/charts";
 import { KpiCard } from "@/components/recenzije/app/kpi";
-import { Badge, Card, CardBody, CardHeader, PageHeader } from "@/components/recenzije/ui/primitives";
+import { Badge, Card, CardBody, CardHeader, PageHeader, ScrollX } from "@/components/recenzije/ui/primitives";
 import { requireOrg } from "@/lib/recenzije/session";
 import { byCampaign, byService, byTechnician, dashboardStats, funnel, messageSeries, reviewSeries } from "@/lib/recenzije/services/stats";
 
 export const metadata = { title: "Analitika" };
 
+/** Zaglavlje brojčanog stupca: na mobitelu kratki naziv da stanu svi stupci, od sm naviše puni. */
+function Th({ short, full, last }: { short: string; full: string; last?: boolean }) {
+  return (
+    <th className={`tabular py-2 text-right font-normal ${last ? "" : "pr-2 sm:pr-3"}`}>
+      <span className="sm:hidden" aria-hidden>
+        {short}
+      </span>
+      <span className="sr-only sm:not-sr-only">{full}</span>
+    </th>
+  );
+}
+
 function BreakdownTable({ rows, label }: { rows: { key: string; clients: number; contacted: number; clicked: number; reviewed: number; conversion: number }[]; label: string }) {
   if (rows.length === 0) return <p className="py-6 text-center text-sm text-muted">Još nema podataka.</p>;
   return (
-    <div className="overflow-x-auto">
-      <table className="w-full min-w-[420px] text-sm">
+    <ScrollX>
+      <table className="w-full text-sm sm:min-w-[420px]">
         <thead className="label text-left text-muted">
           <tr className="border-b border-border">
-            <th className="py-2 pr-3 font-normal">{label}</th>
-            <th className="tabular py-2 pr-3 text-right font-normal">Klijenti</th>
-            <th className="tabular py-2 pr-3 text-right font-normal">Poslano</th>
-            <th className="tabular py-2 pr-3 text-right font-normal">Klik</th>
-            <th className="tabular py-2 pr-3 text-right font-normal">Recenzija</th>
-            <th className="tabular py-2 text-right font-normal">Konv.</th>
+            <th className="py-2 pr-2 font-normal sm:pr-3">{label}</th>
+            <Th short="Klij." full="Klijenti" />
+            <Th short="Posl." full="Poslano" />
+            <Th short="Klik" full="Klik" />
+            <Th short="Rec." full="Recenzija" />
+            <Th short="Konv." full="Konv." last />
           </tr>
         </thead>
         <tbody className="divide-y divide-border">
           {rows.map((r) => (
             <tr key={r.key}>
-              <td className="py-2.5 pr-3">{r.key}</td>
-              <td className="tabular py-2.5 pr-3 text-right text-muted">{r.clients}</td>
-              <td className="tabular py-2.5 pr-3 text-right text-muted">{r.contacted}</td>
-              <td className="tabular py-2.5 pr-3 text-right text-muted">{r.clicked}</td>
-              <td className="tabular py-2.5 pr-3 text-right">{r.reviewed}</td>
+              <td className="py-2.5 pr-2 sm:pr-3">{r.key}</td>
+              <td className="tabular py-2.5 pr-2 text-right text-muted sm:pr-3">{r.clients}</td>
+              <td className="tabular py-2.5 pr-2 text-right text-muted sm:pr-3">{r.contacted}</td>
+              <td className="tabular py-2.5 pr-2 text-right text-muted sm:pr-3">{r.clicked}</td>
+              <td className="tabular py-2.5 pr-2 text-right sm:pr-3">{r.reviewed}</td>
               <td className="tabular py-2.5 text-right font-medium text-accent">{r.conversion}%</td>
             </tr>
           ))}
         </tbody>
       </table>
-    </div>
+    </ScrollX>
   );
 }
 
@@ -98,7 +110,7 @@ export default async function AnalyticsPage() {
           {camps.length === 0 ? (
             <p className="py-6 text-center text-sm text-muted">Još nema kampanja.</p>
           ) : (
-            <div className="overflow-x-auto">
+            <ScrollX>
               <table className="w-full min-w-[520px] text-sm">
                 <thead className="label text-left text-muted">
                   <tr className="border-b border-border">
@@ -127,7 +139,7 @@ export default async function AnalyticsPage() {
                   ))}
                 </tbody>
               </table>
-            </div>
+            </ScrollX>
           )}
         </CardBody>
       </Card>

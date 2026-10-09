@@ -22,7 +22,7 @@ import {
   CompleteServiceButton,
   CopyButton,
 } from "@/components/recenzije/app/clients/client-actions";
-import { Alert, Avatar, Badge, Card, CardBody, CardHeader, EmptyState, Stars } from "@/components/recenzije/ui/primitives";
+import { Alert, Avatar, Badge, Card, CardBody, CardHeader, EmptyState, hitArea, Stars } from "@/components/recenzije/ui/primitives";
 import { STEP_LABELS, formatWait } from "@/lib/recenzije/automation/types";
 import { formatPhone } from "@/lib/recenzije/phone";
 import { requireOrg } from "@/lib/recenzije/session";
@@ -64,7 +64,7 @@ export default async function ClientPage({
 
   return (
     <>
-      <Link href="/recenzije/klijenti" className="label mb-6 inline-flex items-center gap-1.5 text-muted hover:text-foreground">
+      <Link href="/recenzije/klijenti" className={`${hitArea} label mb-6 inline-flex items-center gap-1.5 text-muted hover:text-foreground`}>
         <ArrowLeft className="size-4" /> Klijenti
       </Link>
       <div className="mb-6 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
@@ -279,7 +279,7 @@ export default async function ClientPage({
                 <p className="text-[13px] text-muted">Jedinstveni praćeni link nastaje kad se pošalje prvi zahtjev za recenziju.</p>
               )}
               {ctx.org.googleReviewUrl ? (
-                <a href={ctx.org.googleReviewUrl} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1.5 text-[13px] text-accent hover:underline">
+                <a href={ctx.org.googleReviewUrl} target="_blank" rel="noopener noreferrer" className={`${hitArea} inline-flex items-center gap-1.5 text-[13px] text-accent hover:underline`}>
                   Otvori Google stranicu za recenziju <ExternalLink className="size-3.5" />
                 </a>
               ) : (
