@@ -8,6 +8,7 @@
 import { relations, sql } from "drizzle-orm";
 import {
   boolean,
+  check,
   doublePrecision,
   index,
   integer,
@@ -96,6 +97,38 @@ export const passwordResetTokens = pgTable("nr_password_reset_tokens", {
   createdAt: createdAt(),
 });
 
+/**
+ * ZASTARJELO: pozivni kodovi za registraciju. NOVO Recenzije su usluga koju vodi
+ * NOVO tim (klijenti nemaju registraciju), pa se kodovi više ne koriste ni ne
+ * prikazuju. Tablica ostaje u shemi i DDL-u (bez destruktivnih migracija) da se
+ * postojeći redovi ne gube.
+ */
+export const inviteCodes = pgTable(
+  "nr_invite_codes",
+  {
+    id: id(),
+    /** Kanonski oblik NOVO-XXXX-XXXX (velika slova, bez dvosmislenih znakova). */
+    code: text("code").notNull().unique(),
+    /** Interna bilješka za kome je kod namijenjen. */
+    label: text("label"),
+    maxUses: integer("max_uses").notNull().default(1),
+    uses: integer("uses").notNull().default(0),
+    expiresAt: timestamp("expires_at", { withTimezone: true }),
+    revokedAt: timestamp("revoked_at", { withTimezone: true }),
+    /** Email admina koji je kod napravio. */
+    createdBy: text("created_by"),
+    /** Tko je zadnji iskoristio kod (email iz registracije). */
+    lastUsedBy: text("last_used_by"),
+    lastUsedAt: timestamp("last_used_at", { withTimezone: true }),
+    createdAt: createdAt(),
+  },
+  (t) => [
+    check("nr_invite_codes_uses_range", sql`${t.uses} >= 0 and ${t.uses} <= ${t.maxUses}`),
+    check("nr_invite_codes_max_uses_min", sql`${t.maxUses} >= 1`),
+    index("nr_invite_created").on(t.createdAt),
+  ]
+);
+
 // --- Tenancy ---
 
 export const organizations = pgTable("nr_organizations", {
@@ -105,6 +138,14 @@ export const organizations = pgTable("nr_organizations", {
   industry: text("industry"),
   timezone: text("timezone").notNull().default("Europe/Zagreb"),
   phone: text("phone"),
+  /**
+   * Kontakt klijenta kojeg NOVO vodi kao uslugu (klijent nema prijavu). Tjedni izvještaj
+   * ide na contactEmail; internalNote vidi samo NOVO tim u /admin/recenzije.
+   */
+  contactName: text("contact_name"),
+  contactEmail: text("contact_email"),
+  contactPhone: text("contact_phone"),
+  internalNote: text("internal_note"),
   isDemo: boolean("is_demo").notNull().default(false),
   /** Where tracking links redirect. Set manually or from the Google connection. */
   googleReviewUrl: text("google_review_url"),
@@ -404,6 +445,12 @@ export const subscriptions = pgTable("nr_subscriptions", {
   currentPeriodEnd: timestamp("current_period_end", { withTimezone: true }),
   cancelAtPeriodEnd: boolean("cancel_at_period_end").notNull().default(false),
   trialEndsAt: timestamp("trial_ends_at", { withTimezone: true }),
+  /**
+   * Besplatno razdoblje koje je NOVO tim odobrio iz admina. Kad je postavljeno, pretplata je
+   * "active" na odabranom paketu do ove točke (isto kao currentPeriodEnd), a slanje je
+   * ograničeno SMS limitom tog paketa. Plaćena aktivacija ga briše (null).
+   */
+  freePeriodEndsAt: timestamp("free_period_ends_at", { withTimezone: true }),
   createdAt: createdAt(),
   updatedAt: updatedAt(),
 });
@@ -426,9 +473,11 @@ export type ActivityType =
   | "message_failed"
   | "reply_received"
   | "opt_out"
-  | "automation_completed";
+  | "automation_completed"
+  | "weekly_report_sent";
 
 export type User = typeof users.$inferSelect;
+export type InviteCode = typeof inviteCodes.$inferSelect;
 export type Organization = typeof organizations.$inferSelect;
 export type Client = typeof clients.$inferSelect;
 export type Service = typeof services.$inferSelect;

@@ -4,7 +4,7 @@ import "./recenzije.css";
 
 export const metadata: Metadata = {
   title: { default: "NOVO Recenzije", template: "%s · NOVO Recenzije" },
-  description: "Automatski SMS nakon svakog posla, praćenje klikova, podsjetnici i više Google recenzija za vaš obrt ili tvrtku.",
+  description: "Mi vam skupljamo Google recenzije: SMS nakon svakog posla, praćenje klikova, podsjetnici i tjedni izvještaj. Vi ne radite ništa.",
 };
 
 export const viewport: Viewport = { themeColor: "#ffffff" };

@@ -1,6 +1,6 @@
 import "server-only";
 import Stripe from "stripe";
-import { and, asc, count, eq, gte } from "drizzle-orm";
+import { and, asc, count, eq, gte, ne } from "drizzle-orm";
 import { db } from "@/lib/recenzije/db";
 import { messages, organizations, plans, subscriptions, type Plan, type Subscription } from "@/lib/recenzije/db/schema";
 import { env, integrations } from "@/lib/recenzije/env";
@@ -25,9 +25,20 @@ function stripe() {
   return stripeClient;
 }
 
-export const TRIAL_DAYS = 14;
-/** SMS allowance during the free trial (no plan row needed). */
+/** SMS allowance of a legacy trial subscription (no plan row). New clients always get a plan from the NOVO admin. */
 export const TRIAL_SMS_LIMIT = 50;
+
+/**
+ * Besplatno razdoblje odobreno iz NOVO admina: aktivna pretplata na odabranom paketu do
+ * `currentPeriodEnd` (= `freePeriodEndsAt`), pa slanje radi kao i inače i ograničeno je
+ * SMS limitom paketa. Vraća true dok razdoblje traje.
+ */
+export function isFreePeriod(
+  sub: Pick<Subscription, "status" | "freePeriodEndsAt" | "stripeSubscriptionId"> | null | undefined,
+  now = new Date()
+): boolean {
+  return !!sub && sub.status === "active" && !sub.stripeSubscriptionId && !!sub.freePeriodEndsAt && sub.freePeriodEndsAt >= now;
+}
 
 export async function listPlans(): Promise<Plan[]> {
   return db.select().from(plans).where(eq(plans.active, true)).orderBy(asc(plans.position));
@@ -36,18 +47,6 @@ export async function listPlans(): Promise<Plan[]> {
 export async function getSubscription(organizationId: string): Promise<Subscription | null> {
   const [s] = await db.select().from(subscriptions).where(eq(subscriptions.organizationId, organizationId)).limit(1);
   return s ?? null;
-}
-
-export async function startTrial(organizationId: string) {
-  await db
-    .insert(subscriptions)
-    .values({
-      organizationId,
-      planKey: "trial",
-      status: "trialing",
-      trialEndsAt: new Date(Date.now() + TRIAL_DAYS * 86_400_000),
-    })
-    .onConflictDoNothing();
 }
 
 /** Current plan + SMS usage this calendar month. */
@@ -60,7 +59,16 @@ export async function usage(organizationId: string) {
   const [{ n }] = await db
     .select({ n: count() })
     .from(messages)
-    .where(and(eq(messages.organizationId, organizationId), eq(messages.direction, "OUTBOUND"), gte(messages.createdAt, monthStart)));
+    .where(
+      and(
+        eq(messages.organizationId, organizationId),
+        eq(messages.direction, "OUTBOUND"),
+        gte(messages.createdAt, monthStart),
+        // Neposlane poruke (NOVO mobitel nedostupan, greška pružatelja) i probni SMS-ovi tima ne troše klijentov limit.
+        ne(messages.status, "FAILED"),
+        ne(messages.kind, "TEST")
+      )
+    );
   const limit = plan?.smsMonthlyLimit ?? TRIAL_SMS_LIMIT;
   const now = new Date();
   const trialExpired = sub?.status === "trialing" && sub.trialEndsAt != null && sub.trialEndsAt < now;
@@ -68,7 +76,7 @@ export async function usage(organizationId: string) {
   const manualExpired =
     sub?.status === "active" && !sub.stripeSubscriptionId && sub.currentPeriodEnd != null && sub.currentPeriodEnd < now;
   const active = sub ? ["active", "trialing"].includes(sub.status) && !trialExpired && !manualExpired : false;
-  return { subscription: sub, plan: plan ?? null, smsUsed: n, smsLimit: limit, active, trialExpired };
+  return { subscription: sub, plan: plan ?? null, smsUsed: n, smsLimit: limit, active, trialExpired, freePeriod: active && isFreePeriod(sub, now) };
 }
 
 export async function createCheckoutSession(input: { organizationId: string; planKey: string; email: string }) {

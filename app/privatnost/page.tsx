@@ -11,21 +11,16 @@ export const metadata: Metadata = {
 
 export default function PrivacyPolicyPage() {
   return (
-    <LegalPage title="Politika privatnosti" updated="5. listopada 2026.">
+    <LegalPage title="Politika privatnosti" updated="9. listopada 2026.">
       <p>
-        <strong>
-          Ovo je predložak politike privatnosti prilagođen uslugama i podacima koje NOVO stvarno
-          prikuplja, izrađen na temelju pregleda koda stranice. Nije zamjena za pravni savjet —
-          preporučujemo da ga prije objave pregleda odvjetnik ili DPO, posebno dio o pravnoj
-          osnovi obrade i rokovima čuvanja podataka.
-        </strong>
+        Vaša privatnost nam je važna. Ova politika objašnjava koje osobne podatke prikupljamo kad
+        koristite stranicu probajnovo.com i naše usluge, zašto ih obrađujemo i koja prava imate.
       </p>
 
       <h2>1. Tko smo mi</h2>
       <p>
-        Voditelj obrade podataka je <strong>[ovdje upiši puni pravni naziv obrta/tvrtke i OIB]</strong>,
-        koji posluje pod nazivom NOVO, sa sjedištem u Slavonskom Brodu, Hrvatska. Za sva pitanja o
-        obradi osobnih podataka možete nas kontaktirati na{" "}
+        Voditelj obrade podataka je <strong>NOVO</strong>, kreativna agencija sa sjedištem u Slavonskom
+        Brodu, Hrvatska. Za sva pitanja o obradi osobnih podataka možete nas kontaktirati na{" "}
         <a href="mailto:hello@novo.studio">hello@novo.studio</a>.
       </p>
 
@@ -101,7 +96,39 @@ export default function PrivacyPolicyPage() {
       <h2>9. Maloljetnici</h2>
       <p>Stranica nije namijenjena osobama mlađim od 16 godina i svjesno ne prikupljamo njihove podatke.</p>
 
-      <h2>10. Izmjene ove politike</h2>
+      <h2>10. NOVO Recenzije (usluga za naše klijente)</h2>
+      <p>
+        Uz web stranicu nudimo i uslugu NOVO Recenzije (<Link href="/recenzije">probajnovo.com/recenzije</Link>).
+        Uslugu vodimo mi: klijent nam javlja završene poslove, a mi u njegovo ime šaljemo poruke s
+        NOVO pošiljatelja (telefonskog broja ili oznake pošiljatelja), potpisane nazivom klijentove tvrtke. U toj usluzi NOVO je{" "}
+        <strong>izvršitelj obrade</strong>, a voditelj obrade je poduzeće koje nam je predalo kontakte
+        (naš klijent) i koje odlučuje kome se šalje. Klijent potvrđuje da ima pravo kontaktirati osobe
+        čije nam kontakte predaje (postojeći odnos, usluga koju im je pružio).
+      </p>
+      <p>Za rad usluge obrađujemo:</p>
+      <ul>
+        <li>kontakt podatke poduzeća (naziv, kontakt osoba, email na koji šaljemo tjedni izvještaj),</li>
+        <li>podatke o primateljima poruka koje nam poduzeće preda (ime, broj telefona, email, usluga i datum usluge),</li>
+        <li>tekst i status poslanih SMS poruka te bilježe klikova na poveznicu za recenziju (vrijeme klika),</li>
+        <li>javno dostupne Google recenzije poduzeća (ime autora, ocjena, tekst, datum).</li>
+      </ul>
+      <p>
+        Primatelj poruke može se u svakom trenutku odjaviti poveznicom za odjavu u poruci ili, gdje mreža
+        omogućuje odgovore, odgovorom „STOP”, nakon čega mu više ne šaljemo poruke. Odjava vrijedi za sva poduzeća koja
+        koriste NOVO Recenzije, pa taj broj telefona više ne prima poruke ni od jednog od njih. Podatke koristimo samo za pružanje usluge, ne prodajemo ih i ne koristimo ih za
+        oglašavanje. Podaci jednog poduzeća logički su odvojeni od podataka drugih poduzeća.
+      </p>
+      <p>
+        Za slanje i obradu koristimo podizvršitelje: Vercel i Neon (hosting i baza), Twilio (slanje SMS poruka: broj
+        primatelja i tekst poruke prosljeđuju se radi isporuke), po potrebi SMS Gateway for Android (aplikacija
+        na NOVO telefonu kojom šaljemo SMS), Anthropic (AI pisanje poruka — šalje
+        se samo ime, usluga i naziv poduzeća, bez broja telefona), Resend (email) i Stripe (naplata,
+        ako je uključena). Primatelj poruke zahtjeve za pristup ili brisanje može poslati na{" "}
+        <a href="mailto:hello@novo.studio">hello@novo.studio</a> ili poduzeću u čije je ime poruka
+        poslana.
+      </p>
+
+      <h2>11. Izmjene ove politike</h2>
       <p>
         Ovu politiku možemo povremeno ažurirati — datum zadnje izmjene naveden je na vrhu stranice.
         Veće izmjene ćemo istaknuti na stranici.

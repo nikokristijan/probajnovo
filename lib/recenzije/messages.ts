@@ -31,17 +31,64 @@ export function renderTemplate(template: string, ctx: MessageContext): string {
     .trim();
 }
 
-/** GSM-7 segments are 160 chars (153 when concatenated); UCS-2 (emoji, č, ć…) 70 / 67. */
+/**
+ * GSM-7 (osnovna tablica + proširenja). Znakovi proširenja (^ { } [ ] ~ | € i obrnuta kosa crta) zauzimaju dva mjesta.
+ * Sve izvan toga (č, ć, š, ž, đ, emoji, navodnici ...) prebacuje poruku u Unicode (UCS-2).
+ */
+const GSM_BASIC = new Set(
+  "@£$¥èéùìòÇ\nØø\rÅåΔ_ΦΓΛΩΠΨΣΘΞÆæßÉ !\"#¤%&'()*+,-./0123456789:;<=>?¡ABCDEFGHIJKLMNOPQRSTUVWXYZÄÖÑÜ§¿abcdefghijklmnopqrstuvwxyzäöñüà"
+);
+const GSM_EXTENDED = new Set("^{}\\[~]|€");
+
+/** Broj mjesta u GSM-7, ili null kad tekst nije moguće poslati u GSM-7. */
+function gsmLength(text: string): number | null {
+  let n = 0;
+  for (const ch of text) {
+    if (GSM_BASIC.has(ch)) n += 1;
+    else if (GSM_EXTENDED.has(ch)) n += 2;
+    else return null;
+  }
+  return n;
+}
+
+/** GSM-7: 160 znakova u jednoj poruci (153 kad je spojena); UCS-2 (emoji, č, ć ...): 70 / 67. */
 export function smsSegments(text: string) {
-  const gsm = /^[\x20-\x7E\n\r£¥èéùìòÇØøÅå_ÆæßÉ¡ÄÖÑÜ§¿äöñüà€]*$/.test(text);
-  const single = gsm ? 160 : 70;
-  const multi = gsm ? 153 : 67;
-  const segments = text.length <= single ? 1 : Math.ceil(text.length / multi);
-  return { encoding: gsm ? "GSM-7" : "Unicode", segments, length: text.length };
+  const gsm = gsmLength(text);
+  if (gsm !== null) {
+    return { encoding: "GSM-7" as const, segments: gsm <= 160 ? 1 : Math.ceil(gsm / 153), length: gsm };
+  }
+  const length = text.length;
+  return { encoding: "Unicode" as const, segments: length <= 70 ? 1 : Math.ceil(length / 67), length };
+}
+
+/** Bez dijakritika i velikih slova, da "Žabac d.o.o." i "zabac d.o.o." budu isto. */
+function plain(text: string) {
+  return text
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/đ/gi, "d")
+    .toLowerCase();
+}
+
+/**
+ * Sve poruke svih klijenata odlaze s istog NOVO pošiljatelja, pa primatelj samo iz teksta zna tko mu piše.
+ * Predlošci imenuju tvrtku ({business_name}); ako poruka koju je netko ručno napisao ne sadrži naziv
+ * tvrtke, dodaje se na početak.
+ */
+export function withBusinessName(body: string, businessName: string) {
+  const name = businessName.trim();
+  if (!name || plain(body).includes(plain(name))) return body;
+  return `${name}: ${body}`;
 }
 
 /** Zamjenjuje hrvatske dijakritike da SMS ostane GSM-7 (160 znakova po poruci). */
 export function stripDiacritics(text: string) {
   const map: Record<string, string> = { č: "c", ć: "c", š: "s", ž: "z", đ: "dj", Č: "C", Ć: "C", Š: "S", Ž: "Z", Đ: "Dj" };
-  return text.replace(/[čćšžđČĆŠŽĐ]/g, (c) => map[c]).replace(/[„“”]/g, '"').replace(/[‘’]/g, "'").replace(/[–—]/g, "-");
+  return text
+    .replace(/[čćšžđČĆŠŽĐ]/g, (c) => map[c])
+    .replace(/[„“”]/g, '"')
+    .replace(/[‘’]/g, "'")
+    .replace(/[–—]/g, "-")
+    .replace(/…/g, "...")
+    .replace(/ /g, " ");
 }

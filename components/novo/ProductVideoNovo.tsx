@@ -3,11 +3,11 @@
 import { useEffect, useRef, useState } from "react";
 
 /**
- * Video proizvoda kao NOVO "prozor": bez zvuka se sam vrti u petlji čim je
- * na ekranu (kao story na Instagramu), a staje kad ode s ekrana. Okvir se
- * prilagodi obliku snimke (uspravna snimka s mobitela ostaje uspravna, bez
- * crnih rubova). Gumbi: pauza, zvuk, cijeli zaslon. Kad korisnik traži manje
- * animacija, video se ne pokreće sam.
+ * Video proizvoda kao NOVO "prozor": ne pokreće se sam, nego tek kad posjetitelj
+ * stisne play (inače bi stalno trošio memoriju i bateriju). Učitava se samo
+ * metapodaci za oblik okvira, a kad ode s ekrana ili završi, staje i oslobađa
+ * dekodiranje. Okvir se prilagodi obliku snimke (uspravna snimka s mobitela
+ * ostaje uspravna). Gumbi: pauza, zvuk, cijeli zaslon.
  */
 export default function ProductVideoNovo({ src, name, poster }: { src: string; name: string; poster?: string }) {
   const ref = useRef<HTMLVideoElement>(null);
@@ -15,20 +15,14 @@ export default function ProductVideoNovo({ src, name, poster }: { src: string; n
   const [seconds, setSeconds] = useState<number | null>(null);
   const [playing, setPlaying] = useState(false);
   const [muted, setMuted] = useState(true);
-  const userPaused = useRef(false);
 
+  // Kad video ode s ekrana, pauziraj ga (ne vrti se u pozadini). Nikad ga ne pokreći sam.
   useEffect(() => {
     const v = ref.current;
-    if (!v) return;
-    const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-    if (reduce || typeof IntersectionObserver === "undefined") return;
-    const io = new IntersectionObserver(
-      ([entry]) => {
-        if (entry.isIntersecting && !userPaused.current) v.play().catch(() => {});
-        else if (!entry.isIntersecting) v.pause();
-      },
-      { threshold: 0.35 }
-    );
+    if (!v || typeof IntersectionObserver === "undefined") return;
+    const io = new IntersectionObserver(([entry]) => {
+      if (!entry.isIntersecting) v.pause();
+    });
     io.observe(v);
     return () => io.disconnect();
   }, []);
@@ -36,13 +30,8 @@ export default function ProductVideoNovo({ src, name, poster }: { src: string; n
   const togglePlay = () => {
     const v = ref.current;
     if (!v) return;
-    if (v.paused) {
-      userPaused.current = false;
-      v.play().catch(() => {});
-    } else {
-      userPaused.current = true;
-      v.pause();
-    }
+    if (v.paused) v.play().catch(() => {});
+    else v.pause();
   };
 
   const toggleSound = () => {
@@ -74,7 +63,6 @@ export default function ProductVideoNovo({ src, name, poster }: { src: string; n
           ref={ref}
           src={src}
           muted
-          loop
           playsInline
           preload="metadata"
           poster={poster}

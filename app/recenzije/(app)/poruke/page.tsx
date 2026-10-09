@@ -8,6 +8,7 @@ import { db } from "@/lib/recenzije/db";
 import { clients, messageTemplates, messages, type MessageStatus } from "@/lib/recenzije/db/schema";
 import { env, integrations } from "@/lib/recenzije/env";
 import { smsProvider } from "@/lib/recenzije/services/sms";
+import { OPERATOR_EMAIL } from "@/lib/recenzije/operator";
 import { formatPhone } from "@/lib/recenzije/phone";
 import { requireOrg } from "@/lib/recenzije/session";
 import { MESSAGE_STATUS, formatDate } from "@/lib/recenzije/status";
@@ -27,6 +28,7 @@ export default async function MessagesPage({ searchParams }: { searchParams: Pro
   const sp = await searchParams;
   const ctx = await requireOrg();
   const orgId = ctx.org.id;
+  const provider = smsProvider(ctx.org);
   const page = Math.max(1, Number(sp.page) || 1);
   const pageSize = 15;
   const filter = STATUS_FILTERS.find((f) => f.key === (sp.status ?? "")) ?? STATUS_FILTERS[0];
@@ -76,8 +78,15 @@ export default async function MessagesPage({ searchParams }: { searchParams: Pro
           optOut: c.optOut,
         }))}
         businessName={ctx.org.name}
-        previewLink={`${env.appUrl}/r/Ab3xK9pQ2m`}
-        status={{ ai: integrations.ai(), sms: smsProvider(ctx.org) !== null, demo: ctx.org.isDemo, reviewUrl: !!ctx.org.googleReviewUrl }}
+        links={{ appUrl: env.appUrl, shortUrl: env.shortUrl || null }}
+        showCost={ctx.user.email === OPERATOR_EMAIL}
+        status={{
+          ai: integrations.ai(),
+          sms: provider !== null,
+          provider,
+          demo: ctx.org.isDemo,
+          reviewUrl: !!ctx.org.googleReviewUrl,
+        }}
       />
 
       <Card className="mt-8 overflow-hidden" id="log">

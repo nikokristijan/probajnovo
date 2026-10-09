@@ -11,6 +11,10 @@ export type AutomationTemplate = {
 /*
  * Predlošci su namjerno BEZ dijakritika: SMS s č/ć/š/ž/đ prelazi u Unicode i
  * stane samo 70 znakova po poruci (umjesto 160), pa se plaća 2-3 puta više.
+ *
+ * Primatelj ne može uvijek odgovoriti (Twilio u Hrvatskoj ne podržava dvosmjerni SMS), pa predlošci ne traže
+ * odgovor na poruku. "Za odjavu odgovorite STOP." ostaje: preko Twilija se ta rečenica sama zamijeni
+ * poveznicom za odjavu, a poruci bez nje poveznica se dodaje na kraj (vidi lib/recenzije/sms-format.ts).
  */
 export const DEFAULT_REQUEST =
   "Bok {first_name}! Hvala sto ste odabrali {business_name}. Ako imate minutu, kratka Google recenzija bi nam puno znacila: {review_link}";
@@ -52,7 +56,7 @@ export const AUTOMATION_TEMPLATES: AutomationTemplate[] = [
     steps: [
       {
         type: "send_message",
-        template: "Bok {first_name}, podsjetnik: {business_name} dolazi {service_date} ({service}). Ako trebate promijeniti termin, samo odgovorite na ovu poruku.",
+        template: "Bok {first_name}, podsjetnik: {business_name} dolazi {service_date} ({service}). Ako trebate promijeniti termin, nazovite nas.",
       },
     ],
   },
@@ -74,7 +78,7 @@ export const AUTOMATION_TEMPLATES: AutomationTemplate[] = [
     steps: [
       {
         type: "send_message",
-        template: "Bok {first_name}, ovdje {business_name}. Proslo je neko vrijeme od zadnjeg servisa ({service}). Zelite li da vas nazovemo za kratki pregled? Samo odgovorite na ovu poruku.",
+        template: "Bok {first_name}, ovdje {business_name}. Proslo je neko vrijeme od zadnjeg servisa ({service}). Zelite li kratki pregled? Nazovite nas i dogovorimo termin.",
       },
     ],
   },

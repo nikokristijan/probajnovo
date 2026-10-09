@@ -28,7 +28,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ orgId: 
 
   let evt: Event;
   try {
-    evt = JSON.parse(raw) as Event;
+    evt = (JSON.parse(raw) as Event | null) ?? {};
   } catch {
     return new Response("Bad JSON", { status: 400 });
   }
@@ -40,13 +40,13 @@ export async function POST(req: Request, { params }: { params: Promise<{ orgId: 
       break;
     }
     case "sms:sent":
-      if (p.messageId) await applyDeliveryStatus(p.messageId, "SENT");
+      if (p.messageId) await applyDeliveryStatus(p.messageId, "SENT", undefined, org.id);
       break;
     case "sms:delivered":
-      if (p.messageId) await applyDeliveryStatus(p.messageId, "DELIVERED");
+      if (p.messageId) await applyDeliveryStatus(p.messageId, "DELIVERED", undefined, org.id);
       break;
     case "sms:failed":
-      if (p.messageId) await applyDeliveryStatus(p.messageId, "FAILED", `Mobitel: ${p.reason || "slanje nije uspjelo"}`);
+      if (p.messageId) await applyDeliveryStatus(p.messageId, "FAILED", `Mobitel: ${p.reason || "slanje nije uspjelo"}`, org.id);
       break;
   }
   return Response.json({ ok: true });

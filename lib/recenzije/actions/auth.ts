@@ -13,6 +13,7 @@ import { organizationMembers, organizations, passwordResetTokens, users } from "
 import { type ActionState, echoValues, formObject, zodErrors } from "@/lib/recenzije/action";
 import { randomToken, sha256 } from "@/lib/recenzije/crypto";
 import { env } from "@/lib/recenzije/env";
+import { OPERATOR_EMAIL } from "@/lib/recenzije/operator";
 import { rateLimit } from "@/lib/recenzije/rate-limit";
 import { clientIp } from "@/lib/recenzije/request";
 import { ACTIVE_ORG_COOKIE } from "@/lib/recenzije/session";
@@ -40,24 +41,6 @@ async function limited(bucket: string, limit: number, windowMs: number): Promise
   return r.ok ? null : `Previše pokušaja. Pokušajte ponovno za ${Math.ceil(r.retryAfter / 60)} min.`;
 }
 
-export async function signupAction(_: ActionState, fd: FormData): Promise<ActionState> {
-  await ensureReviewsDb();
-  const tooMany = await limited("signup", 5, 15 * 60_000);
-  if (tooMany) return { values: echoValues(fd), error: tooMany };
-  const parsed = z
-    .object({ name: z.string().trim().min(2, "Upišite ime i prezime").max(80), email, password })
-    .safeParse(formObject(fd));
-  if (!parsed.success) return { values: echoValues(fd), fieldErrors: zodErrors(parsed.error) };
-
-  const [existing] = await db.select({ id: users.id }).from(users).where(eq(users.email, parsed.data.email)).limit(1);
-  if (existing) return { values: echoValues(fd), fieldErrors: { email: "Račun s ovim emailom već postoji. Prijavite se." } };
-
-  const passwordHash = await bcrypt.hash(parsed.data.password, 12);
-  const [user] = await db.insert(users).values({ name: parsed.data.name, email: parsed.data.email, passwordHash }).returning();
-  await createSession(user.id);
-  redirect("/recenzije/postavljanje");
-}
-
 export async function loginAction(_: ActionState, fd: FormData): Promise<ActionState> {
   await ensureReviewsDb();
   const tooMany = await limited("login", 10, 15 * 60_000);
@@ -70,7 +53,8 @@ export async function loginAction(_: ActionState, fd: FormData): Promise<ActionS
   const [user] = await db.select().from(users).where(eq(users.email, parsed.data.email)).limit(1);
   // Uvijek usporedi hash (i kad korisnik ne postoji) da vrijeme odgovora ne otkriva postoji li račun.
   const ok = await bcrypt.compare(parsed.data.password, user?.passwordHash ?? DUMMY_HASH);
-  if (!user || !user.passwordHash || !ok) return { values: echoValues(fd), error: "Email ili lozinka nisu točni." };
+  // Interni "operator" (NOVO tim u adminu) nema lozinku i ne prijavljuje se ovdje.
+  if (!user || user.email === OPERATOR_EMAIL || !user.passwordHash || !ok) return { values: echoValues(fd), error: "Email ili lozinka nisu točni." };
   await createSession(user.id);
   redirect(safeNext(parsed.data.next));
 }
@@ -114,7 +98,7 @@ export async function forgotPasswordAction(_: ActionState, fd: FormData): Promis
     message: "Ako postoji račun s tim emailom, poslali smo poveznicu za novu lozinku. Vrijedi 1 sat.",
   };
   const [user] = await db.select().from(users).where(eq(users.email, parsed.data.email)).limit(1);
-  if (!user || user.email === DEMO_EMAIL) return generic;
+  if (!user || user.email === DEMO_EMAIL || user.email === OPERATOR_EMAIL) return generic;
 
   const token = randomToken(32);
   await db.insert(passwordResetTokens).values({
@@ -155,6 +139,9 @@ export async function resetPasswordAction(_: ActionState, fd: FormData): Promise
     )
     .limit(1);
   if (!row) return { error: "Poveznica nije ispravna ili je istekla. Zatražite novu." };
+
+  const [target] = await db.select({ email: users.email }).from(users).where(eq(users.id, row.userId)).limit(1);
+  if (!target || target.email === OPERATOR_EMAIL) return { error: "Poveznica nije ispravna ili je istekla. Zatražite novu." };
 
   const passwordHash = await bcrypt.hash(parsed.data.password, 12);
   await db.transaction(async (tx) => {

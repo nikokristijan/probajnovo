@@ -1,12 +1,12 @@
 "use client";
 
-import { useActionState, useEffect, useTransition } from "react";
-import { RefreshCw, Unplug } from "lucide-react";
+import { useActionState, useEffect, useState, useTransition } from "react";
+import { ExternalLink, RefreshCw, Unplug } from "lucide-react";
 import { toast } from "sonner";
 import { updateAccountAction, updateBusinessAction } from "@/lib/recenzije/actions/org";
-import { disconnectGoogleAction, refreshGoogleLocationAction, removeSmsGatewayAction, saveSmsGatewayAction } from "@/lib/recenzije/actions/settings";
+import { disconnectGoogleAction, refreshGoogleLocationAction, removeSmsGatewayAction } from "@/lib/recenzije/actions/settings";
 import { Button } from "@/components/recenzije/ui/button";
-import { Field, Input, Select } from "@/components/recenzije/ui/primitives";
+import { Field, Input, Label, Select } from "@/components/recenzije/ui/primitives";
 import { type ActionState, initialState } from "@/lib/recenzije/action";
 import { INDUSTRIES, TIMEZONES } from "@/lib/recenzije/constants";
 
@@ -17,21 +17,31 @@ function useToastOnState(state: ActionState) {
   }, [state]);
 }
 
+/** Link se otvara u novoj kartici samo ako je https adresa (nikad javascript: ni slično). */
+function isTestableUrl(v: string) {
+  return /^https:\/\/\S+$/i.test(v.trim());
+}
+
 export function BusinessForm({
   org,
   canEdit,
+  demo,
 }: {
-  org: { name: string; industry: string | null; phone: string | null; timezone: string; googleReviewUrl: string | null; googlePlaceId: string | null };
+  org: { id: string; name: string; industry: string | null; phone: string | null; timezone: string; googleReviewUrl: string | null; googlePlaceId: string | null };
   canEdit: boolean;
+  demo?: boolean;
 }) {
   const [state, action, pending] = useActionState(updateBusinessAction, initialState);
   useToastOnState(state);
   const fe = state.fieldErrors ?? {};
   const v = state.values ?? {};
+  const [url, setUrl] = useState(org.googleReviewUrl ?? "");
+  const testable = isTestableUrl(url);
   return (
     <form action={action} className="space-y-4">
+      <input type="hidden" name="orgId" value={org.id} />
       <fieldset disabled={!canEdit} className="space-y-4">
-        <Field label="Naziv tvrtke" htmlFor="b-name" error={fe.name}>
+        <Field label="Naziv tvrtke" htmlFor="b-name" error={fe.name} hint="Tako se tvrtka potpisuje u SMS porukama.">
           <Input id="b-name" name="name" defaultValue={v.name ?? org.name} required />
         </Field>
         <div className="grid gap-4 sm:grid-cols-2">
@@ -42,42 +52,70 @@ export function BusinessForm({
               ))}
             </Select>
           </Field>
-          <Field label="Vremenska zona" htmlFor="b-tz">
-            <Select id="b-tz" name="timezone" defaultValue={v.timezone ?? org.timezone}>
-              {TIMEZONES.map((t) => (
-                <option key={t}>{t}</option>
-              ))}
-            </Select>
+          <Field label="Telefon tvrtke" htmlFor="b-phone" error={fe.phone}>
+            <Input id="b-phone" name="phone" type="tel" defaultValue={v.phone ?? org.phone ?? ""} />
           </Field>
         </div>
-        <Field label="Telefon tvrtke" htmlFor="b-phone" error={fe.phone}>
-          <Input id="b-phone" name="phone" type="tel" defaultValue={v.phone ?? org.phone ?? ""} />
+        <div>
+          <div className="flex flex-wrap items-end justify-between gap-x-3">
+            <Label htmlFor="b-url">Link za Google recenzije</Label>
+            {testable && (
+              <a
+                href={url.trim()}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="label mb-2 inline-flex items-center gap-1 text-accent underline-offset-4 hover:underline"
+              >
+                Testiraj link <ExternalLink className="size-3" aria-hidden />
+              </a>
+            )}
+          </div>
+          <Input
+            id="b-url"
+            name="googleReviewUrl"
+            type="url"
+            inputMode="url"
+            value={url}
+            onChange={(e) => setUrl(e.target.value)}
+            placeholder="https://g.page/r/…/review"
+            aria-invalid={fe.googleReviewUrl ? true : undefined}
+          />
+          {fe.googleReviewUrl ? (
+            <p className="mt-1.5 text-xs text-danger">{fe.googleReviewUrl}</p>
+          ) : (
+            <p className="mt-1.5 text-xs text-muted">Kamo vode praćeni linkovi u SMS-u i QR plakat.</p>
+          )}
+        </div>
+        <Field label="Vremenska zona" htmlFor="b-tz" hint="Određuje datume u izvještajima i zadanu državu za brojeve upisane bez pozivnog broja.">
+          <Select id="b-tz" name="timezone" defaultValue={v.timezone ?? org.timezone}>
+            {TIMEZONES.map((t) => (
+              <option key={t}>{t}</option>
+            ))}
+          </Select>
         </Field>
-        <Field
-          label="Link za Google recenzije"
-          htmlFor="b-url"
-          error={fe.googleReviewUrl}
-          hint="Kamo praćeni linkovi vode klijente. Popunjava se sam kad povežete Google."
-        >
-          <Input id="b-url" name="googleReviewUrl" type="url" defaultValue={v.googleReviewUrl ?? org.googleReviewUrl ?? ""} placeholder="https://g.page/r/…/review" />
-        </Field>
-        <Field label="Google Place ID" htmlFor="b-place" hint="Nije obavezno. Služi za izradu linka i za Places API.">
-          <Input id="b-place" name="googlePlaceId" defaultValue={v.googlePlaceId ?? org.googlePlaceId ?? ""} placeholder="ChIJ…" />
-        </Field>
+        <details className="border border-border bg-surface-2 px-3 py-2.5 [&[open]>summary]:mb-3">
+          <summary className="label cursor-pointer select-none text-muted">Napredno</summary>
+          <Field label="Google Place ID" htmlFor="b-place" hint="Nije obavezno. Za izradu linka i za preuzimanje recenzija preko Places API-ja.">
+            <Input id="b-place" name="googlePlaceId" defaultValue={v.googlePlaceId ?? org.googlePlaceId ?? ""} placeholder="ChIJ…" />
+          </Field>
+        </details>
       </fieldset>
       {canEdit ? (
         <div className="flex justify-end">
           <Button type="submit" loading={pending}>
-            Spremi profil tvrtke
+            Spremi
           </Button>
         </div>
       ) : (
-        <p className="text-xs text-muted">Profil tvrtke mogu mijenjati samo vlasnik i admini.</p>
+        <p className="text-xs text-muted">
+          {demo ? "Ovo je primjer za razgledavanje, izmjene su isključene." : "Podatke tvrtke mogu mijenjati samo vlasnik i admini."}
+        </p>
       )}
     </form>
   );
 }
 
+/** Račun starih korisnika (klijenti više nemaju prijavu). NOVO tim ga ne koristi. */
 export function AccountForm({ name, email, hasPassword }: { name: string; email: string; hasPassword: boolean }) {
   const [state, action, pending] = useActionState(updateAccountAction, initialState);
   useToastOnState(state);
@@ -88,7 +126,7 @@ export function AccountForm({ name, email, hasPassword }: { name: string; email:
       <Field label="Ime i prezime" htmlFor="u-name" error={fe.name}>
         <Input id="u-name" name="name" defaultValue={v.name ?? name} required />
       </Field>
-      <Field label="Email" htmlFor="u-email" hint="Za promjenu emaila za prijavu javite se podršci.">
+      <Field label="Email" htmlFor="u-email" hint="Za promjenu emaila za prijavu javite se NOVO-u.">
         <Input id="u-email" value={email} disabled readOnly />
       </Field>
       <div className="border-t border-border pt-4">
@@ -133,54 +171,23 @@ export function GoogleActions() {
   );
 }
 
-/** Povezivanje mobitela tvrtke (SMS Gateway for Android). */
-export function SmsGatewayForm({ connectedUser, hasSigningKey, canEdit }: { connectedUser: string | null; hasSigningKey: boolean; canEdit: boolean }) {
-  const [state, action, pending] = useActionState(saveSmsGatewayAction, initialState);
-  const [removing, start] = useTransition();
-  useToastOnState(state);
-  const fe = state.fieldErrors ?? {};
-  const v = state.values ?? {};
+/** Ostatak starog načina (vlastiti mobitel tvrtke): jednim klikom slanje prelazi na NOVO broj. */
+export function LegacyPhoneSwitch({ canEdit }: { canEdit: boolean }) {
+  const [pending, start] = useTransition();
   return (
-    <form action={action} className="space-y-4">
-      <fieldset disabled={!canEdit} className="grid gap-4 sm:grid-cols-2">
-        <Field label="Korisničko ime (Username)" htmlFor="gw-user" error={fe.user}>
-          <Input id="gw-user" name="user" autoComplete="off" defaultValue={v.user ?? connectedUser ?? ""} placeholder="npr. ABCD12" />
-        </Field>
-        <Field label="Lozinka (Password)" htmlFor="gw-pass" error={fe.pass} hint={connectedUser ? "Upišite ponovno samo ako je mijenjate." : undefined}>
-          <Input id="gw-pass" name="pass" type="password" autoComplete="new-password" />
-        </Field>
-        <Field
-          label="Ključ za potpis (Signing key)"
-          htmlFor="gw-key"
-          className="sm:col-span-2"
-          hint={hasSigningKey ? "Spremljen. Upišite novi samo ako ste ga promijenili u aplikaciji." : "Aplikacija → Settings → Webhooks → Signing Key. Potreban za potvrde isporuke i odgovore."}
-        >
-          <Input id="gw-key" name="signingKey" type="password" autoComplete="off" />
-        </Field>
-      </fieldset>
-      {canEdit && (
-        <div className="flex flex-wrap gap-2">
-          <Button type="submit" loading={pending}>
-            {connectedUser ? "Spremi i ponovno poveži" : "Poveži mobitel"}
-          </Button>
-          {connectedUser && (
-            <Button
-              type="button"
-              variant="ghost"
-              disabled={removing}
-              onClick={() =>
-                start(async () => {
-                  const r = await removeSmsGatewayAction();
-                  if (r.ok) toast.success(r.message);
-                  else toast.error(r.error);
-                })
-              }
-            >
-              <Unplug /> Odspoji
-            </Button>
-          )}
-        </div>
-      )}
-    </form>
+    <Button
+      size="sm"
+      variant="secondary"
+      disabled={!canEdit || pending}
+      onClick={() =>
+        start(async () => {
+          const r = await removeSmsGatewayAction();
+          if (r.ok) toast.success(r.message);
+          else toast.error(r.error);
+        })
+      }
+    >
+      <Unplug /> Prebaci na NOVO broj
+    </Button>
   );
 }

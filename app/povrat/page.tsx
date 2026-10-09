@@ -10,13 +10,10 @@ export const metadata: Metadata = {
 
 export default function RefundPolicyPage() {
   return (
-    <LegalPage title="Politika povrata" updated="21. rujna 2026.">
+    <LegalPage title="Politika povrata" updated="7. listopada 2026.">
       <p>
-        <strong>
-          Ovo je predložak usklađen s općim pravilima Zakona o zaštiti potrošača i EU direktive o
-          pravima potrošača (posebno izuzetak za proizvode izrađene po mjeri) — nije zamjena za pravni
-          savjet. Preporučujemo da ga prije objave pregleda odvjetnik.
-        </strong>
+        Ova politika objašnjava kada i kako možete odustati od narudžbe ili tražiti povrat novca,
+        sukladno Zakonu o zaštiti potrošača i pravilima EU o pravima potrošača.
       </p>
 
       <h2>1. Kreativne i web usluge</h2>

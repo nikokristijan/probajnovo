@@ -6,7 +6,9 @@ import { z } from "zod";
 import { db } from "@/lib/recenzije/db";
 import { clients, reviews } from "@/lib/recenzije/db/schema";
 import type { ActionState } from "@/lib/recenzije/action";
+import { integrations } from "@/lib/recenzije/env";
 import { rateLimit } from "@/lib/recenzije/rate-limit";
+import { REVIEW_SUMMARY_MAX_REVIEWS, type ReviewSummaryPayload } from "@/lib/recenzije/review-summary";
 import { requireOrg, requireWritableOrg } from "@/lib/recenzije/session";
 import { AiNotConfiguredError, suggestReply, summarizeReviews } from "@/lib/recenzije/services/ai";
 import { markReviewReceived, replyToReview, syncReviews } from "@/lib/recenzije/services/google";
@@ -104,19 +106,46 @@ export async function postReplyAction(reviewId: string, text: string): Promise<A
   }
 }
 
+/**
+ * AI sažetak zadnjih recenzija organizacije. Šalju se samo ocjena, datum i tekst
+ * (bez imena recenzenata). Bez ključa, bez recenzija ili uz grešku AI-ja vraća
+ * jasnu poruku; nikad ne vraća izmišljen sažetak.
+ */
 export async function summarizeReviewsAction(): Promise<ActionState> {
   const ctx = await requireOrg();
-  const rl = rateLimit(`ai:${ctx.org.id}`, 20, 60_000);
-  if (!rl.ok) return { error: "Previše AI zahtjeva. Pričekajte minutu." };
+  if (!integrations.ai()) return errorState(new AiNotConfiguredError());
+
   const rows = await db
-    .select({ rating: reviews.rating, comment: reviews.comment, reviewerName: reviews.reviewerName })
+    .select({ rating: reviews.rating, comment: reviews.comment, reviewedAt: reviews.reviewedAt })
     .from(reviews)
     .where(eq(reviews.organizationId, ctx.org.id))
     .orderBy(desc(reviews.reviewedAt))
-    .limit(80);
+    .limit(REVIEW_SUMMARY_MAX_REVIEWS);
+  if (rows.length === 0) return { error: "Još nema recenzija", data: { code: "NO_REVIEWS" } };
+  const withTextCount = rows.filter((r) => (r.comment ?? "").trim().length > 0).length;
+  if (withTextCount === 0) {
+    return {
+      error: "Nijedna od zadnjih recenzija nema napisan tekst, pa nema što sažeti. Postoje samo ocjene.",
+      data: { code: "NO_TEXT" },
+    };
+  }
+
+  // Sažetak je skuplji od običnog AI poziva, pa ima vlastiti, stroži limit (demo još stroži).
+  const rl = rateLimit(`ai-summary:${ctx.org.id}`, ctx.org.isDemo ? 3 : 6, 10 * 60_000);
+  if (!rl.ok) {
+    return { error: `Sažetak ste upravo tražili. Pokušajte ponovno za ${Math.max(1, Math.ceil(rl.retryAfter / 60))} min.` };
+  }
+
   try {
-    const text = await summarizeReviews(rows);
-    return { ok: true, data: { text } };
+    const summary = await summarizeReviews(rows);
+    const payload: ReviewSummaryPayload = {
+      ...summary,
+      reviewCount: rows.length,
+      withTextCount,
+      averageRating: rows.reduce((a, r) => a + r.rating, 0) / rows.length,
+      generatedAt: new Date().toISOString(),
+    };
+    return { ok: true, data: payload };
   } catch (e) {
     return errorState(e);
   }

@@ -16,7 +16,8 @@ import { Dialog, DialogContent } from "@/components/recenzije/ui/dialog";
 import { Badge, Card, Field, Input, Select, Textarea } from "@/components/recenzije/ui/primitives";
 import { DEFAULT_REQUEST } from "@/lib/recenzije/automation/templates";
 import { TEMPLATE_VARIABLES } from "@/lib/recenzije/automation/types";
-import { renderTemplate, smsSegments, stripDiacritics } from "@/lib/recenzije/messages";
+import { renderTemplate, stripDiacritics, withBusinessName } from "@/lib/recenzije/messages";
+import { composeSms, estimateTwilioCostUsd, formatUsd, type SmsProviderName } from "@/lib/recenzije/sms-format";
 
 const LANGS = [
   { v: "Croatian", l: "Hrvatski" },
@@ -30,18 +31,25 @@ import { cn } from "@/lib/recenzije/utils";
 type Template = { id: string; name: string; kind: string; body: string };
 type ClientOpt = { id: string; name: string; firstName: string; lastName: string; service: string | null; technician: string | null; serviceDate: Date | null; optOut: boolean };
 
+/** Primjer tokena iste duljine kao pravi (createToken(10)), da pregled broji znakove kao stvarna poruka. */
+const PREVIEW_TOKEN = "Ab3xK9pQ2m";
+
 export function MessageBuilder({
   templates,
   clients,
   businessName,
-  previewLink,
+  links,
+  showCost,
   status,
 }: {
   templates: Template[];
   clients: ClientOpt[];
   businessName: string;
-  previewLink: string;
-  status: { ai: boolean; sms: boolean; demo: boolean; reviewUrl: boolean };
+  /** Glavna i (neobavezna) kratka javna adresa; ista pravila kao pri stvarnom slanju. */
+  links: { appUrl: string; shortUrl: string | null };
+  /** Procjena troška u USD vidi samo NOVO tim; segmenti se prikazuju svima. */
+  showCost: boolean;
+  status: { ai: boolean; sms: boolean; provider: SmsProviderName | null; demo: boolean; reviewUrl: boolean };
 }) {
   const [text, setText] = useState(templates.find((t) => t.kind === "REVIEW_REQUEST")?.body ?? DEFAULT_REQUEST);
   const [templateId, setTemplateId] = useState<string>("");
@@ -65,16 +73,30 @@ export function MessageBuilder({
   const ref = useRef<HTMLTextAreaElement>(null);
 
   const previewClient = clients.find((c) => c.id === previewId);
-  const rendered = renderTemplate(text, {
-    firstName: previewClient?.firstName ?? "Ivana",
-    lastName: previewClient?.lastName ?? "Horvat",
-    businessName,
-    service: previewClient?.service ?? "AC Repair",
-    technician: previewClient?.technician,
-    serviceDate: previewClient?.serviceDate ? new Date(previewClient.serviceDate) : new Date(),
-    reviewLink: previewLink,
+  // Isti sastavljač kao pri slanju (services/messaging.ts): pregled i brojač prikazuju TOČAN tekst, uključujući
+  // poveznicu za odjavu koja se preko Twilija dodaje svakoj poruci.
+  const twilio = status.provider === "twilio";
+  const composed = composeSms({
+    provider: status.provider,
+    optOutToken: twilio ? PREVIEW_TOKEN : null,
+    appUrl: links.appUrl,
+    shortUrl: links.shortUrl,
+    render: (base) =>
+      withBusinessName(
+        renderTemplate(text, {
+          firstName: previewClient?.firstName ?? "Ivana",
+          lastName: previewClient?.lastName ?? "Horvat",
+          businessName,
+          service: previewClient?.service ?? "AC Repair",
+          technician: previewClient?.technician,
+          serviceDate: previewClient?.serviceDate ? new Date(previewClient.serviceDate) : new Date(),
+          reviewLink: `${base}/r/${PREVIEW_TOKEN}`,
+        }),
+        businessName
+      ),
   });
-  const seg = smsSegments(rendered);
+  const rendered = composed.body;
+  const seg = composed;
   const filtered = useMemo(
     () => clients.filter((c) => c.name.toLowerCase().includes(search.toLowerCase())).slice(0, 50),
     [clients, search]
@@ -94,9 +116,9 @@ export function MessageBuilder({
   };
 
   const notReady = status.demo
-    ? "Demo: slanje je isključeno."
+    ? "Primjer: slanje je isključeno."
     : !status.sms
-      ? "Slanje SMS-a nije postavljeno. Povežite mobitel u Postavkama."
+      ? "SMS se zasad ne mogu slati jer SMS pošiljatelj nije postavljen."
       : null;
 
   return (
@@ -173,6 +195,29 @@ export function MessageBuilder({
             {!text.includes("{review_link}") && (
               <p className="mt-2 text-xs text-warning">U poruci nema {"{review_link}"}, pa se klikovi neće pratiti.</p>
             )}
+            {twilio && (
+              <p className="mt-2 text-xs text-muted">
+                Odgovor STOP u Hrvatskoj ne radi, pa se poruci dodaje redak <span className="font-mono">Odjava: …</span> s poveznicom za odjavu.
+                {seg.extraSegments > 0 && (
+                  <span className="text-warning">
+                    {" "}
+                    Zbog njega poruka ima {seg.segments} SMS-a umjesto {seg.segments - seg.extraSegments}.
+                  </span>
+                )}
+              </p>
+            )}
+            {twilio && showCost && (
+              <p className="mt-1 text-xs text-muted">
+                Procjena troška: {formatUsd(estimateTwilioCostUsd(seg.segments))} po poruci
+                {recipients.size > 0 && (
+                  <>
+                    , za {recipients.size} primatelja oko{" "}
+                    <b className="text-foreground">{formatUsd(estimateTwilioCostUsd(seg.segments * recipients.size))}</b>
+                  </>
+                )}
+                . Okvirno, vrijedi za Hrvatsku.
+              </p>
+            )}
           </div>
         </Card>
 
@@ -244,7 +289,7 @@ export function MessageBuilder({
           {aiError && (
             <p className="mt-3 border-l-[3px] border-orange bg-orange-soft px-3 py-2 text-[13px] text-warning">
               {aiError}
-              {!status.ai && " Upute su u Postavkama."}
+              {!status.ai && " AI trenutno nije dostupan."}
             </p>
           )}
           {variants.length > 0 && (
@@ -339,12 +384,15 @@ export function MessageBuilder({
         </p>
         <PhoneMockup sender={businessName} messages={[{ text: rendered, time: "Danas 14:32" }]} />
         <p className="mx-auto mt-3 max-w-[290px] text-center text-[11px] text-subtle">
-          Link se za svakog klijenta zamjenjuje jedinstvenim praćenim linkom.
+          Link se za svakog klijenta zamjenjuje jedinstvenim praćenim linkom{twilio ? ", a isti token ide i u poveznicu za odjavu" : ""}.
         </p>
       </aside>
 
       <Dialog open={testOpen} onOpenChange={setTestOpen}>
-        <DialogContent title="Testna poruka" description="Varijable se pune primjerima. Poruka je označena s [TEST].">
+        <DialogContent
+          title="Testna poruka"
+          description={`Varijable se pune primjerima. Poruka je označena s [TEST]${twilio ? " i nema poveznicu za odjavu" : ""}.`}
+        >
           <form
             onSubmit={(e) => {
               e.preventDefault();
@@ -358,7 +406,7 @@ export function MessageBuilder({
             }}
             className="space-y-4"
           >
-            <Field label="Vaš broj mobitela" htmlFor="test-phone">
+            <Field label="Broj za probnu poruku" htmlFor="test-phone">
               <Input id="test-phone" type="tel" value={testPhone} onChange={(e) => setTestPhone(e.target.value)} placeholder="091 234 5678" required autoFocus />
             </Field>
             <div className="flex justify-end gap-2">

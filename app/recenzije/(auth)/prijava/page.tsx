@@ -1,4 +1,3 @@
-import Link from "next/link";
 import { redirect } from "next/navigation";
 import { CheckCircle2 } from "lucide-react";
 import { LoginForm } from "@/components/recenzije/auth/forms";
@@ -12,6 +11,7 @@ const ERRORS: Record<string, string> = {
   demo: "Demo trenutno nije dostupan. Pokušajte za minutu.",
   rate: "Previše pokušaja. Pokušajte ponovno za nekoliko minuta.",
   google: "Prijava Googleom nije uspjela. Pokušajte ponovno.",
+  nopristup: "Za ovaj račun nema pristupa. Javite se NOVO-u.",
   google_off: "Prijava Googleom još nije uključena.",
 };
 
@@ -25,7 +25,7 @@ export default async function LoginPage({ searchParams }: { searchParams: Promis
         <span className="size-1.5 bg-orange" /> Prijava
       </p>
       <h1 className="text-3xl font-bold">Dobro došli natrag</h1>
-      <p className="mt-2 text-[15px] text-muted">Prijavite se u svoj pregled recenzija.</p>
+      <p className="mt-2 text-[15px] text-muted">Prijava za pregled recenzija.</p>
       <div className="mt-8 space-y-4">
         {sp.reset && (
           <p className="flex items-center gap-2 border-l-[3px] border-success bg-success-soft p-3 text-sm">
@@ -41,10 +41,11 @@ export default async function LoginPage({ searchParams }: { searchParams: Promis
         <LoginForm next={sp.next} />
       </div>
       <p className="mt-8 text-sm text-muted">
-        Nemate račun?{" "}
-        <Link href="/recenzije/registracija" className="font-bold text-foreground underline underline-offset-4">
-          Probajte 14 dana besplatno
-        </Link>
+        Trebate pristup ili pomoć? Javite nam se na{" "}
+        <a href={`mailto:${env.salesEmail}`} className="font-bold text-foreground underline underline-offset-4">
+          {env.salesEmail}
+        </a>
+        .
       </p>
     </div>
   );

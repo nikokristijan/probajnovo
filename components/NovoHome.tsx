@@ -597,20 +597,20 @@ function ProductsView({
             </Link>
           )}
 
-          {/* NOVO Recenzije — SaaS za Google recenzije, zasebna aplikacija na /recenzije. */}
+          {/* NOVO Recenzije — usluga koju vodi NOVO (skupljanje Google recenzija), ponuda na /recenzije. */}
           {category === null && (
             <Link href="/recenzije" className="pl-card">
               <div className="pl-card-img pl-card-img--recenzije" aria-hidden="true">
                 <span className="pl-recenzije-stars">★★★★★</span>
               </div>
               <div className="pl-card-body">
-                <span className="pl-card-cat mono">SOFTVER</span>
+                <span className="pl-card-cat mono">USLUGA</span>
                 <span className="pl-card-name">Google recenzije na autopilotu</span>
-                <span className="pl-card-tagline">Nakon svake usluge klijent dobije SMS s poveznicom za recenziju, a podsjetnik ide sam.</span>
+                <span className="pl-card-tagline">Mi vam skupljamo Google recenzije: SMS potpisan imenom vaše tvrtke nakon svakog posla, a vi ne radite ništa.</span>
                 <span className="pl-card-foot">
-                  <span className="pl-card-price mono">14 dana besplatno</span>
+                  <span className="pl-card-price mono">Mjesečna usluga</span>
                   <span className="pl-card-go mono" aria-hidden="true">
-                    ISPROBAJ →
+                    SAZNAJ VIŠE →
                   </span>
                 </span>
               </div>

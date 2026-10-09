@@ -66,7 +66,7 @@ function SendButton({ row, compact }: { row: ClientTableRow; compact?: boolean }
   const [pending, start] = useTransition();
   if (row.smsOptOut) {
     return (
-      <span className="inline-flex items-center gap-1 text-xs text-subtle" title="Klijent je odgovorio STOP">
+      <span className="inline-flex items-center gap-1 text-xs text-subtle" title="Klijent se odjavio od SMS-ova (odgovor STOP ili poveznica za odjavu)">
         <Ban className="size-3.5" /> Odjavljen
       </span>
     );

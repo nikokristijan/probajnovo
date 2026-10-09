@@ -3,19 +3,28 @@ import { and, desc, eq } from "drizzle-orm";
 import { db } from "@/lib/recenzije/db";
 import { clients, messages, organizations, services, type MessageKind } from "@/lib/recenzije/db/schema";
 import { env } from "@/lib/recenzije/env";
-import { renderTemplate } from "@/lib/recenzije/messages";
+import { renderTemplate, withBusinessName } from "@/lib/recenzije/messages";
+import { composeSms } from "@/lib/recenzije/sms-format";
+import { isPublicHttpsUrl, publicHttpsProblem } from "@/lib/recenzije/twilio";
 import { fullName } from "@/lib/recenzije/utils";
 import { logActivity } from "./activity";
-import { sendSms, SmsNotConfiguredError } from "./sms";
-import { createTrackingLink } from "./tracking";
+import { isNumberOptedOut } from "./opted-out";
+import { sendSms, smsProvider, SmsNotConfiguredError } from "./sms";
+import { createTrackingLink, getOrCreateClientToken } from "./tracking";
 import { usage } from "./billing";
+
+export { withBusinessName };
+
+/** Adresa na koju Twilio javlja status isporuke; samo javna https (inače ju Twilio odbija ili ne može dosegnuti). */
+export function twilioStatusCallbackUrl() {
+  return isPublicHttpsUrl(env.appUrl) ? `${env.appUrl}/api/recenzije/webhooks/twilio/status` : undefined;
+}
 
 export type SendOutcome =
   | { ok: true; messageId: string; body: string }
   | { ok: false; messageId?: string; error: string; code: "NOT_CONFIGURED" | "NO_REVIEW_URL" | "OPTED_OUT" | "SEND_FAILED" | "NOT_FOUND" | "DEMO" | "LIMIT" };
 
-export const DEMO_ERROR =
-  "Ovo je demo, pa se pravi SMS ne šalje. Napravite svoj račun za slanje poruka.";
+export const DEMO_ERROR = "Ovo je demo za razgledavanje, pa se pravi SMS ne šalje.";
 
 /** Builds the template context for a client: latest service + business name. */
 export async function messageContext(organizationId: string, clientId: string) {
@@ -37,8 +46,9 @@ export async function messageContext(organizationId: string, clientId: string) {
 
 /**
  * Sends one SMS to a client of an organization. Creates a tracking link when the
- * template contains {review_link}. Never pretends success: if Twilio is not
- * configured or the send fails, the message is stored as FAILED with the reason.
+ * template contains {review_link}. Never pretends success: if no SMS provider is
+ * configured (NOVO phone, see sms.ts) or the send fails, the message is stored as
+ * FAILED with the reason.
  */
 export async function sendClientMessage(input: {
   organizationId: string;
@@ -58,40 +68,75 @@ export async function sendClientMessage(input: {
 
   const plan = await usage(org.id);
   if (!plan.active) {
-    return { ok: false, error: "Probno razdoblje ili pretplata je istekla. Odaberite paket u Postavke → Pretplata.", code: "LIMIT" };
+    return {
+      ok: false,
+      error: "Pretplata ovog klijenta nije aktivna (razdoblje je isteklo ili paket nije aktiviran). Aktivirajte paket ili besplatno razdoblje u NOVO adminu.",
+      code: "LIMIT",
+    };
   }
   if (plan.smsUsed >= plan.smsLimit) {
-    return { ok: false, error: `Dosegnut je mjesečni limit SMS-ova (${plan.smsLimit}). Za nastavak odaberite veći paket.`, code: "LIMIT" };
+    return {
+      ok: false,
+      error: `Dosegnut je mjesečni limit SMS-ova (${plan.smsLimit}). Za nastavak promijenite paket klijenta u NOVO adminu.`,
+      code: "LIMIT",
+    };
   }
 
   if (client.smsOptOut) {
-    return { ok: false, error: `${fullName(client)} se odjavio/la od SMS-ova (odgovor STOP).`, code: "OPTED_OUT" };
+    return { ok: false, error: `${fullName(client)} se odjavio/la od SMS-ova.`, code: "OPTED_OUT" };
   }
 
-  let reviewLink: string | null = null;
+  // Pružatelj se odlučuje ovdje, jedanput, pa isti odgovor određuje i tekst (poveznica za odjavu samo uz
+  // Twilio) i način slanja. Twilio u Hrvatskoj ne podržava odgovore, pa odjava ide poveznicom /o/<token>.
+  const provider = smsProvider(org);
+  // Poruka bez radne poveznice za odjavu ne smije otići: uz javnu https adresu stranice /o/<token> ne bi bila dostupna.
+  const addressProblem = provider === "twilio" ? publicHttpsProblem(env.appUrl) : null;
+  if (addressProblem) {
+    return {
+      ok: false,
+      error: `Poveznica za odjavu u poruci ne bi radila (${addressProblem}). Administrator treba postaviti NR_APP_URL na javnu https adresu stranice.`,
+      code: "NOT_CONFIGURED",
+    };
+  }
+
+  let reviewToken: string | null = null;
   let trackingLinkId: string | null = null;
   if (input.template.includes("{review_link}")) {
     if (!org.googleReviewUrl) {
       return {
         ok: false,
-        error: "Prije slanja dodajte link za Google recenzije u Postavke → Profil tvrtke.",
+        error: "Prije slanja dodajte link za Google recenzije u Postavke → Podaci tvrtke.",
         code: "NO_REVIEW_URL",
       };
     }
-    const { link, url } = await createTrackingLink(org.id, client.id, org.googleReviewUrl);
-    reviewLink = url;
+    const { link } = await createTrackingLink(org.id, client.id, org.googleReviewUrl);
+    reviewToken = link.token;
     trackingLinkId = link.id;
   }
+  // Isti token kao u /r/<token> poveznici klijenta (nema promjene sheme).
+  const optOutToken =
+    provider === "twilio" ? (reviewToken ?? (await getOrCreateClientToken(org.id, client.id, org.googleReviewUrl))) : null;
 
-  const body = renderTemplate(input.template, {
-    firstName: client.firstName,
-    lastName: client.lastName,
-    businessName: org.name,
-    service: service?.name,
-    technician: service?.technician,
-    serviceDate: service?.serviceDate,
-    reviewLink,
+  const composed = composeSms({
+    provider,
+    optOutToken,
+    appUrl: env.appUrl,
+    shortUrl: env.shortUrl || null,
+    render: (base) =>
+      withBusinessName(
+        renderTemplate(input.template, {
+          firstName: client.firstName,
+          lastName: client.lastName,
+          businessName: org.name,
+          service: service?.name,
+          technician: service?.technician,
+          serviceDate: service?.serviceDate,
+          reviewLink: reviewToken ? `${base}/r/${reviewToken}` : null,
+        }),
+        org.name
+      ),
   });
+  const body = composed.body;
 
   const [msg] = await db
     .insert(messages)
@@ -112,7 +157,7 @@ export async function sendClientMessage(input: {
     const res = await sendSms(org, {
       to: client.phone,
       body,
-      statusCallback: env.appUrl.startsWith("https://") ? `${env.appUrl}/api/recenzije/webhooks/twilio/status` : undefined,
+      statusCallback: twilioStatusCallbackUrl(),
     });
     const now = new Date();
     await db
@@ -163,6 +208,10 @@ export async function sendTestMessage(organizationId: string, to: string, body: 
   const [org] = await db.select().from(organizations).where(eq(organizations.id, organizationId)).limit(1);
   if (!org) return { ok: false, error: "Tvrtka nije pronađena", code: "NOT_FOUND" };
   if (org.isDemo) return { ok: false, error: DEMO_ERROR, code: "DEMO" };
+  // Probna poruka nema klijenta ni poveznicu za odjavu, pa se nikad ne šalje na broj koji se već odjavio.
+  if (await isNumberOptedOut(to)) {
+    return { ok: false, error: "Taj se broj odjavio od SMS-ova, pa mu se ni probne poruke ne šalju.", code: "OPTED_OUT" };
+  }
   const [msg] = await db
     .insert(messages)
     .values({ organizationId, kind: "TEST", toNumber: to, body, status: "QUEUED" })

@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useActionState } from "react";
 import { AlertCircle, CheckCircle2 } from "lucide-react";
-import { forgotPasswordAction, loginAction, resetPasswordAction, signupAction } from "@/lib/recenzije/actions/auth";
+import { forgotPasswordAction, loginAction, resetPasswordAction } from "@/lib/recenzije/actions/auth";
 import { Button } from "@/components/recenzije/ui/button";
 import { Field, Input } from "@/components/recenzije/ui/primitives";
 import { initialState, type ActionState } from "@/lib/recenzije/action";
@@ -38,28 +38,6 @@ export function LoginForm({ next }: { next?: string }) {
       <Button type="submit" className="w-full" size="lg" loading={pending}>
         Prijava →
       </Button>
-    </form>
-  );
-}
-
-export function SignupForm() {
-  const [state, action, pending] = useActionState(signupAction, initialState);
-  return (
-    <form action={action} className="space-y-4" noValidate>
-      <FormError state={state} />
-      <Field label="Ime i prezime" htmlFor="name" error={state.fieldErrors?.name}>
-        <Input id="name" name="name" autoComplete="name" required aria-invalid={!!state.fieldErrors?.name} defaultValue={state.values?.name} />
-      </Field>
-      <Field label="Email" htmlFor="email" error={state.fieldErrors?.email}>
-        <Input id="email" name="email" type="email" autoComplete="email" required aria-invalid={!!state.fieldErrors?.email} defaultValue={state.values?.email} />
-      </Field>
-      <Field label="Lozinka" htmlFor="password" error={state.fieldErrors?.password} hint="Najmanje 8 znakova, s barem jednim brojem.">
-        <Input id="password" name="password" type="password" autoComplete="new-password" required aria-invalid={!!state.fieldErrors?.password} />
-      </Field>
-      <Button type="submit" className="w-full" size="lg" loading={pending}>
-        Otvori račun →
-      </Button>
-      <p className="label text-center text-muted">14 dana besplatno · bez kartice</p>
     </form>
   );
 }

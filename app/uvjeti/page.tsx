@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import LegalPage from "@/components/LegalPage";
 
 export const metadata: Metadata = {
@@ -10,16 +11,7 @@ export const metadata: Metadata = {
 
 export default function TermsPage() {
   return (
-    <LegalPage title="Uvjeti korištenja" updated="21. rujna 2026.">
-      <p>
-        <strong>
-          Ovo je predložak uvjeta korištenja prilagođen uslugama koje NOVO stvarno nudi. Nije
-          zamjena za pravni savjet — preporučujemo pregled odvjetnika prije objave, posebno dijelove
-          o plaćanju, rokovima izrade i ograničenju odgovornosti koje trebate uskladiti sa stvarnom
-          poslovnom praksom.
-        </strong>
-      </p>
-
+    <LegalPage title="Uvjeti korištenja" updated="9. listopada 2026.">
       <h2>1. Prihvaćanje uvjeta</h2>
       <p>
         Korištenjem probajnovo.com i slanjem upita prihvaćate ove uvjete. Ako se s njima ne slažete,
@@ -44,8 +36,7 @@ export default function TermsPage() {
       <h2>4. Plaćanje</h2>
       <p>
         Način i dinamika plaćanja (predujam, plaćanje po ispostavljenom računu i sl.) dogovaraju se
-        pojedinačno za svaku narudžbu i navode se u ponudi/računu.{" "}
-        <strong>[ovdje dopuni konkretne uvjete plaćanja koje stvarno koristiš]</strong>.
+        pojedinačno za svaku narudžbu i navode se u ponudi/računu. Rok plaćanja naveden je na računu.
       </p>
 
       <h2>5. Izrada i isporuka fizičkih proizvoda</h2>
@@ -72,19 +63,43 @@ export default function TermsPage() {
         posrednik u rezervaciji.
       </p>
 
-      <h2>8. Vanjske poveznice</h2>
+      <h2>8. NOVO Recenzije</h2>
+      <p>
+        NOVO Recenzije je usluga koju za vas vodi NOVO: u vaše ime šaljemo zahtjeve za Google
+        recenzije vašim klijentima (SMS i, po dogovoru, email). Vi nemate račun niti obveze oko
+        postavljanja; završene poslove nam javljate porukom ili popisom, a mi ih unosimo i šaljemo
+        poruke.
+      </p>
+      <p>
+        Poruke se šalju s NOVO pošiljatelja (telefonskog broja ili oznake pošiljatelja), u vaše ime, i potpisane su
+        nazivom vaše tvrtke. Predajom kontakata svojih klijenata potvrđujete da imate pravo kontaktirati te osobe (riječ
+        je o klijentima kojima ste pružili uslugu i koji su vam zbog nje dali kontakt) i da nam ne
+        predajete kontakte osoba koje to ne žele. Ne šaljemo neželjene poruke. Primatelj se
+        može odjaviti poveznicom za odjavu u poruci ili, gdje mreža omogućuje odgovore, odgovorom „STOP”; svaka odjava
+        poštuje se i toj osobi više ne šaljemo poruke. Za osobne podatke tih osoba
+        NOVO je izvršitelj obrade, a vi ste voditelj obrade; detalje opisuje{" "}
+        <Link href="/privatnost">politika privatnosti</Link>.
+      </p>
+      <p>
+        Recenzije objavljuje Google i ne možemo jamčiti njihov broj, ocjenu niti da će ih Google
+        prikazati ili zadržati. Ne lažiramo recenzije i ne skrivamo loše ocjene. Opseg paketa (npr.
+        broj poruka mjesečno) i cijena dogovaraju se u ponudi; cijene su bez PDV-a, naplata je
+        mjesečna, a uslugu možete otkazati u bilo kojem trenutku, bez ugovorne obveze.
+      </p>
+
+      <h2>9. Vanjske poveznice</h2>
       <p>
         Stranica može sadržavati poveznice na vanjske servise (Instagram, Google karte, YouTube/Vimeo
         video). Ne odgovaramo za sadržaj ili politike privatnosti tih vanjskih stranica.
       </p>
 
-      <h2>9. Mjerodavno pravo</h2>
+      <h2>10. Mjerodavno pravo</h2>
       <p>Na ove uvjete primjenjuje se pravo Republike Hrvatske.</p>
 
-      <h2>10. Izmjene uvjeta</h2>
+      <h2>11. Izmjene uvjeta</h2>
       <p>Uvjete možemo povremeno ažurirati — datum zadnje izmjene naveden je na vrhu stranice.</p>
 
-      <h2>11. Kontakt</h2>
+      <h2>12. Kontakt</h2>
       <p>
         Pitanja o ovim uvjetima šaljite na <a href="mailto:hello@novo.studio">hello@novo.studio</a>.
       </p>
