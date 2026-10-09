@@ -8,6 +8,7 @@ import {
   openWorkspaceAction,
 } from "@/lib/recenzije/actions/novo-admin";
 import { formatAdminDate, type AdminOrgRow, type AdminOrgState } from "@/lib/recenzije/services/novo-admin";
+import { estimateTwilioCostUsd, formatUsd, TWILIO_HR_USD_PER_SEGMENT } from "@/lib/recenzije/sms-format";
 
 /**
  * Kartica jednog klijenta u /admin/recenzije: tko je, što je platio (ili je besplatno), koliko
@@ -85,13 +86,16 @@ const primaryBtn = "rounded-full bg-black text-white text-xs font-semibold px-4 
 export default function RecenzijeClientCard({
   row: r,
   plans,
-  phoneReady,
+  smsReady,
+  smsProvider,
   flash,
 }: {
   row: AdminOrgRow;
   plans: CardPlan[];
-  /** Je li NOVO mobitel postavljen; null kad se status nije mogao pročitati. */
-  phoneReady: boolean | null;
+  /** Je li SMS pošiljatelj (Twilio ili NOVO mobitel) postavljen; null kad se status nije mogao pročitati. */
+  smsReady: boolean | null;
+  /** Aktivni pružatelj; procjena troška prikazuje se samo uz Twilio. */
+  smsProvider: "twilio" | "novo" | "none" | null;
   flash: { kind: "ok" | "error"; text: string } | null;
 }) {
   const st = STATE[r.state];
@@ -106,7 +110,7 @@ export default function RecenzijeClientCard({
   const missing: string[] = [];
   if (!r.hasReviewUrl) missing.push("Google link");
   if (!r.active) missing.push("aktivan paket");
-  if (phoneReady !== true) missing.push("NOVO mobitel");
+  if (smsReady !== true) missing.push("SMS pošiljatelj");
   const ready = missing.length === 0;
 
   return (
@@ -206,6 +210,14 @@ export default function RecenzijeClientCard({
           <span className="text-black/55">Neuspjeli SMS (30 d) </span>
           <b className={"tabular-nums " + (r.failed30d > 0 ? "text-[#b80012]" : "")}>{r.failed30d}</b>
         </div>
+        {smsProvider === "twilio" && (
+          <div className="col-span-2 sm:col-span-4 text-[11px] text-black/55 break-words">
+            Procjena troška (Twilio): <b className="text-black tabular-nums">{formatUsd(estimateTwilioCostUsd(r.twilioSegmentsThisMonth))}</b> ovaj mjesec (
+            {r.twilioSegmentsThisMonth} segm. × {TWILIO_HR_USD_PER_SEGMENT.toLocaleString("hr-HR", { minimumFractionDigits: 3 })} USD). Pun limit od {r.smsLimit} SMS ≈{" "}
+            {formatUsd(estimateTwilioCostUsd(r.smsLimit))} do {formatUsd(estimateTwilioCostUsd(r.smsLimit * 2))} (1 do 2 segmenta po poruci). Okvirno, stvarni trošak je na
+            Twilio računu.
+          </div>
+        )}
       </div>
 
       <div className="flex flex-col gap-1.5">
@@ -216,7 +228,7 @@ export default function RecenzijeClientCard({
         <div className="flex flex-wrap gap-1.5">
           <Pill ok={r.hasReviewUrl} label="Google link" />
           <Pill ok={r.active} label="Aktivan paket" />
-          <Pill ok={phoneReady === true} label="NOVO mobitel" missing={phoneReady === null ? "status nepoznat" : "nije postavljen"} />
+          <Pill ok={smsReady === true} label="SMS pošiljatelj" missing={smsReady === null ? "status nepoznat" : "nije postavljen"} />
         </div>
       </div>
 

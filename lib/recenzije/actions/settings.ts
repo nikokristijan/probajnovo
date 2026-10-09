@@ -5,9 +5,9 @@ import { revalidatePath } from "next/cache";
 import { db } from "@/lib/recenzije/db";
 import { organizations } from "@/lib/recenzije/db/schema";
 import { type ActionState } from "@/lib/recenzije/action";
-import { integrations } from "@/lib/recenzije/env";
 import { requireOrg, requireRole, DEMO_LOCKED, type OrgContext } from "@/lib/recenzije/session";
 import { disconnectGoogle, discoverLocation } from "@/lib/recenzije/services/google";
+import { smsProvider } from "@/lib/recenzije/services/sms";
 
 /** Vlasnik ili admin, i nikad demo. */
 async function admin(): Promise<{ ctx: OrgContext; deny: ActionState | null }> {
@@ -43,17 +43,17 @@ export async function refreshGoogleLocationAction(): Promise<ActionState> {
 
 /**
  * Stari način: tvrtka je imala vlastiti mobitel (SMS Gateway). Sada sve poruke šalje zajednički NOVO
- * mobitel, pa se ovdje samo uklanja ostatak stare veze i slanje prelazi na NOVO broj.
+ * pošiljatelj (Twilio ili NOVO mobitel), pa se ovdje samo uklanja ostatak stare veze.
  */
 export async function removeSmsGatewayAction(): Promise<ActionState> {
   const { ctx, deny } = await admin();
   if (deny) return deny;
-  // Bez NOVO mobitela odspajanje starog ostavilo bi tvrtku bez ikakvog slanja.
-  if (!integrations.novoPhone()) return { error: "NOVO mobitel još nije povezan, pa se stari mobitel zasad ne odspaja. Javite se NOVO-u." };
+  // Bez zajedničkog pošiljatelja odspajanje starog ostavilo bi tvrtku bez ikakvog slanja.
+  if (smsProvider(null) === null) return { error: "NOVO SMS pošiljatelj još nije postavljen, pa se stari mobitel zasad ne odspaja. Javite se NOVO-u." };
   await db
     .update(organizations)
     .set({ smsGatewayUser: null, smsGatewayPassEnc: null, smsGatewaySigningKeyEnc: null })
     .where(eq(organizations.id, ctx.org.id));
   revalidatePath("/recenzije", "layout");
-  return { ok: true, message: "Stari mobitel je odspojen. SMS se od sada šalju s NOVO broja." };
+  return { ok: true, message: "Stari mobitel je odspojen. SMS se od sada šalju s NOVO pošiljatelja." };
 }

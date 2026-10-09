@@ -11,7 +11,7 @@ export const metadata: Metadata = {
 
 export default function TermsPage() {
   return (
-    <LegalPage title="Uvjeti korištenja" updated="7. listopada 2026.">
+    <LegalPage title="Uvjeti korištenja" updated="9. listopada 2026.">
       <h2>1. Prihvaćanje uvjeta</h2>
       <p>
         Korištenjem probajnovo.com i slanjem upita prihvaćate ove uvjete. Ako se s njima ne slažete,
@@ -71,11 +71,12 @@ export default function TermsPage() {
         poruke.
       </p>
       <p>
-        Poruke se šalju s NOVO telefonskog broja, u vaše ime, i potpisane su nazivom vaše tvrtke.
-        Predajom kontakata svojih klijenata potvrđujete da imate pravo kontaktirati te osobe (riječ
+        Poruke se šalju s NOVO pošiljatelja (telefonskog broja ili oznake pošiljatelja), u vaše ime, i potpisane su
+        nazivom vaše tvrtke. Predajom kontakata svojih klijenata potvrđujete da imate pravo kontaktirati te osobe (riječ
         je o klijentima kojima ste pružili uslugu i koji su vam zbog nje dali kontakt) i da nam ne
-        predajete kontakte osoba koje to ne žele. Ne šaljemo neželjene poruke, a svaka odjava
-        (odgovor „STOP”) poštuje se i toj osobi više ne šaljemo poruke. Za osobne podatke tih osoba
+        predajete kontakte osoba koje to ne žele. Ne šaljemo neželjene poruke. Primatelj se
+        može odjaviti poveznicom za odjavu u poruci ili, gdje mreža omogućuje odgovore, odgovorom „STOP”; svaka odjava
+        poštuje se i toj osobi više ne šaljemo poruke. Za osobne podatke tih osoba
         NOVO je izvršitelj obrade, a vi ste voditelj obrade; detalje opisuje{" "}
         <Link href="/privatnost">politika privatnosti</Link>.
       </p>

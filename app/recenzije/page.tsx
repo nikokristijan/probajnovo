@@ -60,7 +60,7 @@ const FEATURES = [
   { title: "Automatski podsjetnici", text: "Ako klijent ne klikne, sutradan stiže jedan nenametljiv podsjetnik. Tijek staje čim stigne recenzija." },
   { title: "Tjedni izvještaj", text: "Jednom tjedno dobivate email s brojkama: koliko je poruka poslano, koliko klikova i novih recenzija." },
   { title: "Sve vodimo mi", text: "Postavljanje, tekstove poruka, slanje i praćenje. Vi nemate ni račun, ni aplikaciju, ni postavke." },
-  { title: "Pošteno", text: "Ne lažiramo recenzije ni podatke i ne skrivamo loše ocjene. Odjava odgovorom STOP poštuje se automatski." },
+  { title: "Pošteno", text: "Ne lažiramo recenzije ni podatke i ne skrivamo loše ocjene. Odjava poveznicom u poruci ili odgovorom STOP poštuje se automatski." },
 ];
 
 const FAQ = [
@@ -74,7 +74,7 @@ const FAQ = [
   },
   {
     q: "S kojeg broja idu SMS-ovi?",
-    a: "S našeg NOVO broja, ne s vašeg. Svaka poruka sadrži ime vaše tvrtke, pa klijent odmah zna od koga je. Ako se klijent odjavi odgovorom STOP, više mu ne šaljemo.",
+    a: "S našeg NOVO broja ili oznake pošiljatelja, ne s vašeg. Svaka poruka sadrži ime vaše tvrtke, pa klijent odmah zna od koga je. Klijent se može odjaviti poveznicom za odjavu u poruci ili, gdje mreža dopušta odgovore, odgovorom STOP, i više mu ne šaljemo.",
   },
   {
     q: "Kako znate da je klijent ostavio recenziju?",
@@ -268,8 +268,8 @@ export default async function RecenzijeLanding({ searchParams }: { searchParams:
             ))}
           </div>
           <p className="mt-6 max-w-3xl border-l-[3px] border-orange bg-orange-soft p-4 text-[15px] leading-relaxed">
-            <strong>Pošteno o SMS-ovima:</strong> poruke šaljemo s našeg NOVO broja, ne s vašeg. U svakoj piše ime vaše tvrtke i potpisana je njome, pa klijent odmah zna
-            od koga je. Odjava odgovorom STOP poštuje se automatski.
+            <strong>Pošteno o SMS-ovima:</strong> poruke šaljemo s našeg NOVO broja ili oznake pošiljatelja, ne s vašeg. U svakoj piše ime vaše tvrtke i potpisana je njome, pa klijent odmah zna
+            od koga je. Odjava je moguća poveznicom u poruci ili, gdje mreža dopušta odgovore, odgovorom STOP, i poštuje se automatski.
           </p>
         </section>
 

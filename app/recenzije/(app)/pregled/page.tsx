@@ -81,7 +81,7 @@ export default async function DashboardPage() {
               ) : undefined
             }
           >
-            NOVO mobitel nije povezan.{isOperator ? "" : " Javite se NOVO-u."}
+            SMS pošiljatelj nije postavljen.{isOperator ? "" : " Javite se NOVO-u."}
           </Alert>
         )}
         {stats.failedMessages > 0 && (

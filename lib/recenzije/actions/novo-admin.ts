@@ -17,12 +17,14 @@ import { env } from "@/lib/recenzije/env";
 import { toE164 } from "@/lib/recenzije/phone";
 import { ACTIVE_ORG_COOKIE } from "@/lib/recenzije/session";
 import { createManagedClient, ensureOperatorMember, updateClientDetails } from "@/lib/recenzije/services/clients-admin";
-import { registerNovoWebhooks, sendNovoTestSms } from "@/lib/recenzije/services/novo-phone";
+import { registerNovoWebhooks } from "@/lib/recenzije/services/novo-phone";
+import { checkTestSmsStatus, sendTestSms } from "@/lib/recenzije/services/sms-status";
+import { estimateTwilioCostUsd, formatUsd } from "@/lib/recenzije/sms-format";
 import { activatePlanManually, AdminError, changePlan, deactivate, extendFreePeriod } from "@/lib/recenzije/services/novo-admin";
 
 /**
  * Radnje s /admin/recenzije. Smije ih samo glavni admin NOVO-a (isti uvjet kao Financije):
- * mijenjaju naplatu klijenata, otvaraju njihov radni prostor i šalju SMS s NOVO mobitela.
+ * mijenjaju naplatu klijenata, otvaraju njihov radni prostor i šalju probni SMS preko SMS pošiljatelja.
  * Svaka radnja ponovno provjerava ovlast na serveru, ne oslanja se na to da je gumb skriven.
  */
 async function requireSuperAdmin() {
@@ -37,10 +39,10 @@ function safeMessage(e: unknown, fallback = "Nije uspjelo. Pokušajte ponovno.")
   return e instanceof AdminError ? e.message : fallback;
 }
 
-/** Greška vanjske usluge (NOVO mobitel): admin mora vidjeti pravi razlog, ali ograničene duljine. */
+/** Greška vanjske usluge (Twilio, NOVO mobitel): admin mora vidjeti pravi razlog (s uputom), ali ograničene duljine. */
 function providerMessage(e: unknown) {
   const m = e instanceof Error ? e.message.trim() : "";
-  return m ? m.slice(0, 400) : "Nepoznata greška.";
+  return m ? m.slice(0, 700) : "Nepoznata greška.";
 }
 
 const orgId = z.string().trim().min(1, "Klijent nije pronađen.").max(40, "Klijent nije pronađen.");
@@ -330,11 +332,14 @@ export async function openDemoAction() {
   redirect("/recenzije/pregled");
 }
 
-// --- NOVO mobitel ---
+// --- SMS pošiljatelj (Twilio ili NOVO Android mobitel) ---
 
 const testSmsSchema = z.object({ to: z.string().trim().min(1, "Upišite broj telefona").max(30, "Najviše 30 znakova") });
 
-/** Probni SMS preko zajedničkog NOVO mobitela. Pravu grešku (npr. mobitel nedostupan) pokazujemo adminu. */
+/**
+ * Probni SMS preko AKTIVNOG pružatelja (Twilio ili NOVO mobitel). Pravu grešku (npr. Twilio 21408 ili 21612,
+ * mobitel nedostupan) pokazujemo adminu s uputom. Uspjeh vraća pružatelja, oznaku poruke i status.
+ */
 export async function sendTestSmsAction(_: ActionState, fd: FormData): Promise<ActionState> {
   await requireSuperAdmin();
   const parsed = testSmsSchema.safeParse(formObject(fd));
@@ -342,10 +347,33 @@ export async function sendTestSmsAction(_: ActionState, fd: FormData): Promise<A
   const to = toE164(parsed.data.to);
   if (!to) return { values: echoValues(fd), fieldErrors: { to: "Upišite ispravan broj telefona" } };
   try {
-    const res = await sendNovoTestSms(to);
-    return { ok: true, message: `Poslano na ${to} (status: ${res.status}, oznaka: ${res.sid}).`, values: { to: parsed.data.to } };
+    const res = await sendTestSms(to);
+    const via = `${res.providerLabel}${res.senderLabel ? `, pošiljatelj: ${res.senderLabel}` : ""}`;
+    const cost = res.provider === "twilio" ? ` Procjena troška: ${formatUsd(estimateTwilioCostUsd(res.segments))}.` : "";
+    const next = res.provider === "twilio" ? " Za nekoliko sekundi kliknite „Provjeri status” da vidite je li poruka stvarno stigla." : "";
+    return {
+      ok: true,
+      message: `Poslano na ${to} (${via}). Status: ${res.status}, oznaka: ${res.sid}.${cost}${next}`,
+      values: { to: parsed.data.to },
+      data: { sid: res.sid, provider: res.provider },
+    };
   } catch (e) {
     return { values: echoValues(fd), error: `Slanje nije uspjelo: ${providerMessage(e)}` };
+  }
+}
+
+const checkStatusSchema = z.object({ sid: z.string().trim().regex(/^[A-Za-z0-9_-]{6,64}$/, "Neispravna oznaka poruke") });
+
+/** Provjera probnog SMS-a kod Twilija: status isporuke i razlog ako nije stigao. */
+export async function checkSmsStatusAction(_: ActionState, fd: FormData): Promise<ActionState> {
+  await requireSuperAdmin();
+  const parsed = checkStatusSchema.safeParse(formObject(fd));
+  if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "Neispravna oznaka poruke" };
+  try {
+    const r = await checkTestSmsStatus(parsed.data.sid);
+    return r.ok ? { ok: true, message: r.text } : { error: r.text };
+  } catch (e) {
+    return { error: `Provjera nije uspjela: ${providerMessage(e)}` };
   }
 }
 

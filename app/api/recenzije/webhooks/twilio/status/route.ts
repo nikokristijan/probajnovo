@@ -1,5 +1,6 @@
 import { applyDeliveryStatus } from "@/lib/recenzije/services/inbound";
 import { mapTwilioStatus } from "@/lib/recenzije/services/sms";
+import { describeTwilioError } from "@/lib/recenzije/twilio";
 import { ensureReviewsDb } from "@/lib/recenzije/db/ensure";
 import { readTwilio } from "../../_shared";
 
@@ -13,7 +14,7 @@ export async function POST(req: Request) {
   await applyDeliveryStatus(
     params.MessageSid,
     status,
-    `Twilio ${params.ErrorCode ?? ""}${params.ErrorMessage ? `: ${params.ErrorMessage}` : ""}`.trim()
+    describeTwilioError({ code: params.ErrorCode, message: params.ErrorMessage }).slice(0, 400)
   );
   return new Response(null, { status: 204 });
 }

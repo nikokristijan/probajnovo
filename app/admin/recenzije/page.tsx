@@ -3,33 +3,26 @@ import { redirect } from "next/navigation";
 import { getCurrentAdminRecord } from "@/lib/auth";
 import RecenzijeClientCard, { eur } from "@/components/admin/RecenzijeClientCard";
 import RecenzijeNewClientForm, { type PlanOption } from "@/components/admin/RecenzijeNewClientForm";
-import RecenzijeNovoPhoneCard, { type NovoPhoneView } from "@/components/admin/RecenzijeNovoPhoneCard";
+import RecenzijeSmsCard, { type SmsSenderView } from "@/components/admin/RecenzijeSmsCard";
 import { EmptyState } from "@/components/admin/EmptyState";
 import { StatCard } from "@/components/admin/StatCard";
 import { openDemoAction } from "@/lib/recenzije/actions/novo-admin";
 import { listOrganizationsForNovoAdmin, listPlansForNovoAdmin, summarize } from "@/lib/recenzije/services/novo-admin";
-import { getNovoPhoneStatus } from "@/lib/recenzije/services/novo-phone";
+import { getSmsSenderStatus } from "@/lib/recenzije/services/sms-status";
 
 export const dynamic = "force-dynamic";
 
 /**
  * NOVO Recenzije kao usluga: ovdje NOVO tim vodi klijente. Klijent nema prijavu ni obveza,
  * a tim za svakog otvara tvrtku, postavlja je u pravoj aplikaciji ("Otvori radni prostor") i
- * šalje s jednog zajedničkog NOVO mobitela. Besplatno razdoblje daje se po klijentu. Demo
+ * šalje preko jednog zajedničkog SMS pošiljatelja (Twilio ili neobavezni NOVO Android mobitel). Besplatno razdoblje daje se po klijentu. Demo
  * tvrtka je izostavljena. Isti uvjet pristupa kao Financije (samo glavni admin).
  */
 
-/** Status mobitela dolazi iz env varijabli; ako čitanje ne uspije, stranica i dalje radi. */
-function readPhone(): NovoPhoneView {
+/** Status SMS pošiljatelja dolazi iz env varijabli; ako čitanje ne uspije, stranica i dalje radi. */
+function readSms(): SmsSenderView {
   try {
-    const s = getNovoPhoneStatus();
-    return {
-      available: true,
-      configured: s.configured,
-      missing: s.missing,
-      webhookUrl: s.webhookUrl,
-      signingKeyConfigured: s.signingKeyConfigured,
-    };
+    return { available: true, status: getSmsSenderStatus() };
   } catch (e) {
     return { available: false, error: e instanceof Error ? e.message.slice(0, 300) : "Nepoznata greška." };
   }
@@ -47,8 +40,9 @@ export default async function AdminRecenzijePage({
   const sp = await searchParams;
   const [rows, plans] = await Promise.all([listOrganizationsForNovoAdmin(), listPlansForNovoAdmin()]);
   const sum = summarize(rows);
-  const phone = readPhone();
-  const phoneReady = phone.available ? phone.configured : null;
+  const sms = readSms();
+  const smsReady = sms.available ? sms.status.ready : null;
+  const smsProvider = sms.available ? sms.status.active : null;
 
   const planOptions: PlanOption[] = plans.map((p) => ({
     key: p.key,
@@ -101,7 +95,7 @@ export default async function AdminRecenzijePage({
         </div>
       )}
 
-      <RecenzijeNovoPhoneCard phone={phone} />
+      <RecenzijeSmsCard sms={sms} />
 
       <section className="admin-animate-grid grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
         <StatCard label="Klijenti" value={sum.total} />
@@ -124,7 +118,8 @@ export default async function AdminRecenzijePage({
               key={r.id}
               row={r}
               plans={plans}
-              phoneReady={phoneReady}
+              smsReady={smsReady}
+              smsProvider={smsProvider}
               flash={flashText && flashClientId === r.id ? { kind: flashKind, text: flashText } : null}
             />
           ))}

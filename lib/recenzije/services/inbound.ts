@@ -1,11 +1,12 @@
 import "server-only";
-import { and, desc, eq, inArray, notInArray } from "drizzle-orm";
+import { and, desc, eq, inArray, like, ne, notInArray } from "drizzle-orm";
 import { db } from "@/lib/recenzije/db";
 import { clients, messages, organizations, type Client, type MessageStatus } from "@/lib/recenzije/db/schema";
 import { toE164 } from "@/lib/recenzije/phone";
 import { fullName } from "@/lib/recenzije/utils";
 import { logActivity } from "./activity";
 import { cancelActiveRunsForClient } from "./automation-engine";
+import { TWILIO_SENDER_PREFIX } from "@/lib/recenzije/twilio";
 import { NOVO_SENDER } from "./sms";
 
 const STOP = /^\s*(stop|stopall|unsubscribe|cancel|end|quit|odjava|odjavi|stani|prestani|prestanite)\s*[.!]?\s*$/i;
@@ -83,10 +84,11 @@ async function storeInbound(
 }
 
 /**
- * STOP: klijent se više ne kontaktira. Aktivnost se zapisuje samo kad se stanje stvarno promijeni, pa je
- * ponovljena obrada istog odgovora bezopasna (isto stanje, bez udvostručenih zapisa).
+ * Odjava: klijent se više ne kontaktira (odgovor STOP ili poveznica /o/<token>; učinak je isti). Aktivnost
+ * se zapisuje samo kad se stanje stvarno promijeni, pa je ponovljena obrada bezopasna (isto stanje, bez
+ * udvostručenih zapisa).
  */
-async function optOutClient(client: Client) {
+export async function optOutClient(client: Client, reason = "Klijent je odgovorio STOP") {
   // Stanje se mijenja atomski: samo zahtjev koji ga stvarno promijeni zapisuje aktivnost, pa dvije
   // istodobne isporuke istog odgovora ne udvostručuju zapis (klijent iz upita može biti zastario).
   const changed = await db
@@ -104,7 +106,29 @@ async function optOutClient(client: Client) {
   } else {
     await db.update(clients).set({ nextFollowUpAt: null }).where(eq(clients.id, client.id));
   }
-  await cancelActiveRunsForClient(client.organizationId, client.id, "Klijent je odgovorio STOP");
+  await cancelActiveRunsForClient(client.organizationId, client.id, reason);
+}
+
+/**
+ * Odjavljuje broj u SVIM tvrtkama koje imaju klijenta s tim brojem (osim demoa). Svi klijenti dijele isti
+ * NOVO pošiljatelj (Android mobitel ili Twilio), pa odjava s jedne poruke vrijedi za poruke svih tvrtki.
+ * Vraća broj obrađenih klijenata.
+ */
+export async function optOutPhoneEverywhere(numbers: string[], opts: { reason?: string; exceptClientId?: string } = {}) {
+  if (numbers.length === 0) return 0;
+  const holders = await db
+    .select({ client: clients })
+    .from(clients)
+    .innerJoin(organizations, eq(organizations.id, clients.organizationId))
+    .where(
+      and(
+        inArray(clients.phone, numbers),
+        eq(organizations.isDemo, false),
+        opts.exceptClientId ? ne(clients.id, opts.exceptClientId) : undefined
+      )
+    );
+  for (const { client } of holders) await optOutClient(client, opts.reason);
+  return holders.length;
 }
 
 async function resubscribeClient(client: Client) {
@@ -127,37 +151,18 @@ async function logReply(client: Client, body: string) {
 }
 
 /**
- * Dolazni SMS. Ako webhook zna tvrtku (SMS Gateway tvrtke), koristi nju; inače (Twilio,
- * zajednički broj) tvrtku koja je tom broju zadnja pisala. Zajednički NOVO mobitel ima vlastiti
- * ulaz: handleSharedPhoneInbound.
+ * Dolazni SMS na mobitel TVRTKE (SMS Gateway tvrtke): webhook zna tvrtku iz adrese. Zajednički pošiljatelji
+ * (NOVO mobitel, Twilio) imaju vlastiti ulaz: handleSharedPhoneInbound.
  */
-export async function handleInboundSms(input: { organizationId?: string; from: string; to: string; body: string; providerSid?: string | null }) {
+export async function handleInboundSms(input: { organizationId: string; from: string; to: string; body: string; providerSid?: string | null }) {
   const body = input.body.slice(0, MAX_REPLY_LENGTH);
-  let organizationId = input.organizationId;
-  let clientId: string | null = null;
+  const organizationId = input.organizationId;
 
-  if (organizationId) {
-    const [c] = await db
-      .select({ id: clients.id })
-      .from(clients)
-      .where(and(eq(clients.organizationId, organizationId), eq(clients.phone, input.from)))
-      .limit(1);
-    clientId = c?.id ?? null;
-  } else {
-    const [last] = await db
-      .select({ organizationId: messages.organizationId, clientId: messages.clientId })
-      .from(messages)
-      .where(and(eq(messages.toNumber, input.from), eq(messages.direction, "OUTBOUND")))
-      .orderBy(desc(messages.createdAt))
-      .limit(1);
-    if (!last) return;
-    organizationId = last.organizationId;
-    clientId = last.clientId;
-  }
-
-  const [client] = clientId
-    ? await db.select().from(clients).where(and(eq(clients.id, clientId), eq(clients.organizationId, organizationId))).limit(1)
-    : [];
+  const [client] = await db
+    .select()
+    .from(clients)
+    .where(and(eq(clients.organizationId, organizationId), eq(clients.phone, input.from)))
+    .limit(1);
 
   const fresh = await storeInbound(organizationId, client?.id ?? null, input, body);
 
@@ -187,11 +192,19 @@ export function gatewayPhoneCandidates(raw: string): string[] {
   return out;
 }
 
+/** Zajednički pošiljatelji čije se poruke prepoznaju po messages.from_number. */
+export type SharedChannel = "novo" | "twilio";
+
+const channelMatch = (channel: SharedChannel) =>
+  channel === "twilio" ? like(messages.fromNumber, `${TWILIO_SENDER_PREFIX}%`) : eq(messages.fromNumber, NOVO_SENDER);
+
 /**
- * Dolazni SMS na ZAJEDNIČKI NOVO mobitel. Svi klijenti svih tvrtki primaju poruke s istog broja, pa:
+ * Dolazni SMS na ZAJEDNIČKI pošiljatelj: NOVO mobitel (SMS Gateway for Android) ili Twilio broj. Svi klijenti svih
+ * tvrtki primaju poruke s istog pošiljatelja, pa:
  *
- * - tvrtka kojoj odgovor pripada je ona s najnovijom izlaznom porukom s NOVO mobitela na taj broj
- *   (messages.from_number = NOVO_SENDER); odgovor se sprema njoj;
+ * - tvrtka kojoj odgovor pripada je ona s najnovijom izlaznom porukom TOG kanala na taj broj
+ *   (messages.from_number = NOVO_SENDER za Android, "twilio:..." za Twilio; kanali se nikad ne miješaju,
+ *   pa ni alfanumerička oznaka "NOVO" na Twiliju nije isto što i Android mobitel); odgovor se sprema njoj;
  * - STOP odjavljuje broj u SVIM tvrtkama koje imaju klijenta s tim brojem (osim demoa), jer je
  *   osoba odgovorila broju s kojeg su stigle poruke svih njih. START vraća samo klijenta tvrtke
  *   kojoj je odgovor pripisan (ručnu odjavu u drugoj tvrtki ne diramo);
@@ -202,17 +215,19 @@ export async function handleSharedPhoneInbound(input: {
   to?: string;
   body: string;
   providerSid?: string | null;
+  channel?: SharedChannel;
 }) {
   const result = { recorded: false, optedOut: 0 };
   const numbers = [...new Set((Array.isArray(input.from) ? input.from : [input.from]).filter(Boolean))];
   if (numbers.length === 0) return result;
   const body = input.body.slice(0, MAX_REPLY_LENGTH);
   const stop = STOP.test(body);
+  const channel = input.channel ?? "novo";
 
   const [last] = await db
     .select({ organizationId: messages.organizationId, toNumber: messages.toNumber })
     .from(messages)
-    .where(and(inArray(messages.toNumber, numbers), eq(messages.direction, "OUTBOUND"), eq(messages.fromNumber, NOVO_SENDER)))
+    .where(and(inArray(messages.toNumber, numbers), eq(messages.direction, "OUTBOUND"), channelMatch(channel)))
     .orderBy(desc(messages.createdAt))
     .limit(1);
   // Nepoznat pošiljatelj koji nije tražio odjavu: ništa se ne sprema.

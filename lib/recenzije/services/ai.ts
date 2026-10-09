@@ -83,7 +83,8 @@ function parseJsonArray(text: string): string[] {
 
 const SMS_RULES = `Rules:
 - Write SMS text only, no greetings like "Subject:".
-- Keep each message under 300 characters.
+- Keep each message short: aim for under 120 characters of your own text and never more than 200. A tracking link (and, depending on the sender, an opt-out link) is added afterwards and every 160 characters is billed as one SMS.
+- Do not ask the customer to reply to the message and do not write opt-out or STOP instructions; the opt-out is added automatically where needed.
 - Must contain the literal placeholder {review_link} exactly once (it is replaced with a tracking link).
 - You may use these placeholders: {first_name}, {business_name}, {service}, {technician}, {service_date}.
 - Sound like a real local business owner: warm, specific, never pushy, no emojis overload (max one), no ALL CAPS.

@@ -34,6 +34,8 @@ export default async function SettingsPage({ searchParams }: { searchParams: Pro
   const canEdit = ctx.role !== "MEMBER" && !ctx.org.isDemo;
   const isOperator = ctx.user.email === OPERATOR_EMAIL;
   const provider = smsProvider(ctx.org);
+  // Zajednički pošiljatelj (Twilio ili NOVO mobitel) na koji se stari mobitel tvrtke može prebaciti.
+  const sharedSmsReady = smsProvider(null) !== null;
 
   return (
     <>
@@ -57,30 +59,35 @@ export default async function SettingsPage({ searchParams }: { searchParams: Pro
                 </span>
               }
               action={
-                <Badge tone={ctx.org.isDemo ? "neutral" : provider === "novo" ? "green" : "amber"} dot>
-                  {ctx.org.isDemo ? "Primjer" : provider === "novo" ? "NOVO broj" : provider ? "Drugi broj" : "Nije spremno"}
+                <Badge tone={ctx.org.isDemo ? "neutral" : provider === "novo" || provider === "twilio" ? "green" : "amber"} dot>
+                  {ctx.org.isDemo ? "Primjer" : provider === "novo" ? "NOVO broj" : provider === "twilio" ? "NOVO pošiljatelj" : provider ? "Drugi broj" : "Nije spremno"}
                 </Badge>
               }
             />
             <CardBody className="space-y-3 pt-3 text-sm">
               {ctx.org.isDemo && <p className="text-muted">Primjer: slanje SMS-a je isključeno.</p>}
               {!ctx.org.isDemo && provider === "novo" && <p>SMS se šalju s NOVO broja. U tekstu poruke je naziv ove tvrtke.</p>}
+              {!ctx.org.isDemo && provider === "twilio" && (
+                <p>
+                  SMS se šalju preko Twilija s NOVO pošiljatelja. U tekstu poruke je naziv ove tvrtke, a u svakoj je i poveznica za odjavu.
+                </p>
+              )}
               {!ctx.org.isDemo && provider === "gateway" && (
                 <>
-                  <p>Ova tvrtka još ima vlastiti mobitel iz starog načina, pa SMS idu s njega, a ne s NOVO broja.</p>
-                  <LegacyPhoneSwitch canEdit={canEdit && integrations.novoPhone()} />
-                  {!integrations.novoPhone() && <p className="text-xs text-muted">Prebacivanje je moguće tek kad se poveže NOVO mobitel.</p>}
+                  <p>Ova tvrtka još ima vlastiti mobitel iz starog načina, pa SMS idu s njega, a ne s NOVO pošiljatelja.</p>
+                  <LegacyPhoneSwitch canEdit={canEdit && sharedSmsReady} />
+                  {!sharedSmsReady && <p className="text-xs text-muted">Prebacivanje je moguće tek kad NOVO postavi SMS pošiljatelja.</p>}
                 </>
               )}
-              {!ctx.org.isDemo && provider === "twilio" && <p className="text-muted">NOVO mobitel trenutno nije povezan pa SMS idu preko rezervne usluge.</p>}
               {!ctx.org.isDemo && !provider && (
                 <p className="flex items-start gap-2 text-warning">
                   <CircleAlert className="mt-0.5 size-4 shrink-0" />
-                  <span>SMS se zasad ne mogu slati jer NOVO mobitel nije povezan.</span>
+                  <span>SMS se zasad ne mogu slati jer SMS pošiljatelj nije postavljen.</span>
                 </p>
               )}
               {!ctx.org.isDemo &&
                 provider !== "novo" &&
+                provider !== "twilio" &&
                 (isOperator ? (
                   <Link href="/admin/recenzije" className="label inline-block text-accent underline underline-offset-4">
                     Otvori admin →

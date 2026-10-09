@@ -16,6 +16,7 @@ import { logActivity } from "@/lib/recenzije/services/activity";
 import { cancelActiveRunsForClient, triggerAutomations } from "@/lib/recenzije/services/automation-engine";
 import { markReviewReceived } from "@/lib/recenzije/services/google";
 import { sendClientMessage, type SendOutcome } from "@/lib/recenzije/services/messaging";
+import { isNumberOptedOut } from "@/lib/recenzije/services/opted-out";
 
 const clientSchema = z.object({
   firstName: z.string().trim().min(1, "Upišite ime").max(60),
@@ -73,6 +74,9 @@ export async function createClientAction(_: ActionState, fd: FormData): Promise<
     .limit(1);
   if (dupe) return { values: echoValues(fd), fieldErrors: { phone: "Klijent s ovim brojem već postoji" } };
 
+  // Odjava (STOP ili poveznica) vrijedi za sve tvrtke: novi klijent s već odjavljenim brojem nasljeđuje odjavu,
+  // inače bi ga prva automatizacija (CLIENT_CREATED) odmah kontaktirala.
+  const alreadyOptedOut = await isNumberOptedOut(phone);
   const [client] = await db
     .insert(clients)
     .values({
@@ -82,10 +86,14 @@ export async function createClientAction(_: ActionState, fd: FormData): Promise<
       phone,
       email: c.data.email || null,
       notes: c.data.notes || null,
+      smsOptOut: alreadyOptedOut,
     })
     .returning();
   const name = fullName(client);
   await logActivity({ organizationId: ctx.org.id, clientId: client.id, type: "client_created", title: `Dodan klijent ${name}` });
+  if (alreadyOptedOut) {
+    await logActivity({ organizationId: ctx.org.id, clientId: client.id, type: "opt_out", title: `${name} je već odjavljen/a od SMS-ova (odjava vrijedi za sve tvrtke)` });
+  }
 
   let workflowNote = "";
   if (s.data.service) {
@@ -108,7 +116,8 @@ export async function createClientAction(_: ActionState, fd: FormData): Promise<
   revalidatePath("/recenzije/klijenti");
   revalidatePath("/recenzije/pregled");
   if (raw.open === "1") redirect(`/recenzije/klijenti/${client.id}?added=1`);
-  return { ok: true, message: `Klijent ${name} dodan.${workflowNote}`, data: { id: client.id } };
+  const optOutNote = alreadyOptedOut ? " Ovaj se broj već odjavio od SMS-ova, pa mu se poruke ne šalju." : "";
+  return { ok: true, message: `Klijent ${name} dodan.${workflowNote}${optOutNote}`, data: { id: client.id } };
 }
 
 export async function updateClientAction(_: ActionState, fd: FormData): Promise<ActionState> {
@@ -127,15 +136,30 @@ export async function updateClientAction(_: ActionState, fd: FormData): Promise<
     .where(and(eq(clients.organizationId, ctx.org.id), eq(clients.phone, phone)))
     .limit(1);
   if (dupe && dupe.id !== id.data) return { values: echoValues(fd), fieldErrors: { phone: "Drugi klijent već ima ovaj broj" } };
+  // Promjena broja na broj koji je već odjavljen (bilo kod koje tvrtke) ne smije zaobići odjavu.
+  const [current] = await db
+    .select({ phone: clients.phone })
+    .from(clients)
+    .where(and(eq(clients.id, id.data), eq(clients.organizationId, ctx.org.id)))
+    .limit(1);
+  const inheritOptOut = Boolean(current && current.phone !== phone && (await isNumberOptedOut(phone)));
   const [row] = await db
     .update(clients)
-    .set({ firstName: c.data.firstName, lastName: c.data.lastName, phone, email: c.data.email || null, notes: c.data.notes || null })
+    .set({
+      firstName: c.data.firstName,
+      lastName: c.data.lastName,
+      phone,
+      email: c.data.email || null,
+      notes: c.data.notes || null,
+      ...(inheritOptOut ? { smsOptOut: true, nextFollowUpAt: null } : {}),
+    })
     .where(and(eq(clients.id, id.data), eq(clients.organizationId, ctx.org.id)))
     .returning({ id: clients.id });
   if (!row) return { values: echoValues(fd), error: "Klijent nije pronađen" };
+  if (inheritOptOut) await cancelActiveRunsForClient(ctx.org.id, id.data, "Broj je već odjavljen");
   revalidatePath(`/recenzije/klijenti/${id.data}`);
   revalidatePath("/recenzije/klijenti");
-  return { ok: true, message: "Klijent ažuriran" };
+  return { ok: true, message: inheritOptOut ? "Klijent ažuriran. Novi se broj već odjavio od SMS-ova, pa mu se poruke ne šalju." : "Klijent ažuriran" };
 }
 
 export async function deleteClientAction(id: string) {

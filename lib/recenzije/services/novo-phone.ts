@@ -1,19 +1,12 @@
 import "server-only";
 import { env, integrations } from "@/lib/recenzije/env";
-import { toE164 } from "@/lib/recenzije/phone";
-import {
-  NOVO_UNAUTHORIZED,
-  SmsNotConfiguredError,
-  gatewayFetch,
-  novoGatewayAuth,
-  registerGatewayWebhooks,
-  sendViaNovoPhone,
-} from "./sms";
+import { NOVO_UNAUTHORIZED, SmsNotConfiguredError, gatewayFetch, novoGatewayAuth, registerGatewayWebhooks } from "./sms";
 
 /**
- * Jedan zajednički NOVO mobitel (SMS Gateway for Android) kojim se šalju SVE
- * poruke svih klijenata. Vjerodajnice su u env varijablama, ne u bazi:
- * SMS_GATEWAY_USER, SMS_GATEWAY_PASSWORD i SMS_GATEWAY_SIGNING_KEY.
+ * Neobavezni zajednički NOVO Android mobitel (SMS Gateway for Android) kojim se mogu slati poruke svih
+ * klijenata. Vjerodajnice su u env varijablama, ne u bazi: SMS_GATEWAY_USER, SMS_GATEWAY_PASSWORD i
+ * SMS_GATEWAY_SIGNING_KEY. Bez mobitela SMS idu preko Twilija; stanje svih pružatelja je u sms-status.ts
+ * (getSmsSenderStatus), a probni SMS preko aktivnog pružatelja je sendTestSms.
  */
 export type NovoPhoneStatus = {
   configured: boolean;
@@ -27,8 +20,6 @@ export type NovoPhoneStatus = {
 const WEBHOOK_PATH = "/api/recenzije/webhooks/sms-gateway/novo";
 /** Stabilni ID-evi webhookova na uređaju (nr-novo-sms-received, ...): ponovno povezivanje prepisuje, ne udvostručuje. */
 const WEBHOOK_ID_PREFIX = "nr-novo";
-
-const TEST_BODY = "NOVO: probna poruka. Ako vidite ovu poruku, slanje preko NOVO mobitela radi.";
 
 /**
  * "configured" znači da se može slati (korisničko ime i lozinka). `missing` navodi samo te varijable;
@@ -45,15 +36,6 @@ export function getNovoPhoneStatus(): NovoPhoneStatus {
     webhookUrl: `${env.appUrl}${WEBHOOK_PATH}`,
     signingKeyConfigured: Boolean(env.smsGatewaySigningKey),
   };
-}
-
-/** Pošalje probni SMS preko NOVO mobitela (samo za glavnog admina). */
-export async function sendNovoTestSms(to: string): Promise<{ sid: string; status: string }> {
-  const phone = toE164(to);
-  if (!phone) throw new Error("Neispravan broj telefona. Upišite broj u obliku +385 91 234 5678.");
-  if (!integrations.novoPhone()) throw new SmsNotConfiguredError();
-  const res = await sendViaNovoPhone({ to: phone, body: TEST_BODY });
-  return { sid: res.sid, status: res.status };
 }
 
 /**

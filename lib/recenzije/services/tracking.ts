@@ -1,5 +1,5 @@
 import "server-only";
-import { and, eq, sql } from "drizzle-orm";
+import { and, desc, eq, sql } from "drizzle-orm";
 import { db } from "@/lib/recenzije/db";
 import { clients, linkClicks, trackingLinks } from "@/lib/recenzije/db/schema";
 import { createToken } from "@/lib/recenzije/id";
@@ -8,8 +8,13 @@ import { sha256 } from "@/lib/recenzije/crypto";
 import { logActivity } from "./activity";
 import { fullName } from "@/lib/recenzije/utils";
 
-export function trackingUrl(token: string) {
-  return `${env.appUrl}/r/${token}`;
+export function trackingUrl(token: string, base = env.appUrl) {
+  return `${base}/r/${token}`;
+}
+
+/** Poveznica za odjavu: isti token kao /r/<token>, pa nr_tracking_links već veže token na klijenta i tvrtku. */
+export function optOutUrl(token: string, base = env.appUrl) {
+  return `${base}/o/${token}`;
 }
 
 export async function createTrackingLink(organizationId: string, clientId: string, destinationUrl: string) {
@@ -19,6 +24,22 @@ export async function createTrackingLink(organizationId: string, clientId: strin
     .values({ organizationId, clientId, token, destinationUrl })
     .returning();
   return { link, url: trackingUrl(token) };
+}
+
+/**
+ * Token za poveznicu za odjavu u poruci koja nema {review_link}: koristi se zadnja poveznica klijenta,
+ * a ako je nema, stvara se nova (odredište je Google stranica tvrtke, inače naslovnica). Nema promjene sheme.
+ */
+export async function getOrCreateClientToken(organizationId: string, clientId: string, fallbackDestination: string | null) {
+  const [existing] = await db
+    .select({ token: trackingLinks.token })
+    .from(trackingLinks)
+    .where(and(eq(trackingLinks.organizationId, organizationId), eq(trackingLinks.clientId, clientId)))
+    .orderBy(desc(trackingLinks.createdAt))
+    .limit(1);
+  if (existing) return existing.token;
+  const { link } = await createTrackingLink(organizationId, clientId, fallbackDestination || env.appUrl);
+  return link.token;
 }
 
 /**

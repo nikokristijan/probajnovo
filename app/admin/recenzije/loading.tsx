@@ -1,6 +1,6 @@
 /**
  * Skeleton dok se /admin/recenzije učitava (popis klijenata radi upite nad cijelom bazom
- * Recenzija). Oblik prati stranicu: naslov, kartica NOVO mobitela, statistike i par klijenata.
+ * Recenzija). Oblik prati stranicu: naslov, kartica SMS pošiljatelja, statistike i par klijenata.
  */
 export default function AdminRecenzijeLoading() {
   return (

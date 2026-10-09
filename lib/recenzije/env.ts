@@ -1,5 +1,6 @@
 import "server-only";
 import { createHash } from "crypto";
+import { isPublicHttpsUrl, resolveTwilioSender } from "@/lib/recenzije/twilio";
 
 /**
  * Server-only postavke za NOVO Recenzije. Ništa odavde ne ide u preglednik.
@@ -14,6 +15,18 @@ function appUrl() {
   return `http://localhost:${process.env.PORT || 3000}`;
 }
 
+/**
+ * Kratka javna adresa (npr. https://nvo.hr) koja pokazuje na ISTU stranicu; neobavezna. Koristi se samo
+ * u tekstu SMS-a kad bi poveznica za odjavu inače gurnula poruku u više SMS-ova. Neispravna vrijednost
+ * (nije javni https) se ignorira.
+ */
+function shortUrl() {
+  const raw = (process.env.NR_SHORT_URL || "").trim().replace(/\/+$/, "");
+  if (!raw) return "";
+  const url = /^https?:\/\//i.test(raw) ? raw : `https://${raw}`;
+  return isPublicHttpsUrl(url) ? url : "";
+}
+
 /** Izvedeni ključevi: jedna tajna (SESSION_SECRET) → odvojeni ključ za svaku namjenu. */
 export function derivedKey(purpose: string) {
   const secret = process.env.NR_SECRET || process.env.SESSION_SECRET || "";
@@ -23,16 +36,18 @@ export function derivedKey(purpose: string) {
 
 export const env = {
   appUrl: appUrl().replace(/\/$/, ""),
+  shortUrl: shortUrl(),
   cronSecret: process.env.CRON_SECRET || "",
 
   anthropicKey: process.env.ANTHROPIC_API_KEY || "",
   /** Haiku je najjeftiniji i sasvim dovoljan za kratke SMS-ove. */
   anthropicModel: process.env.ANTHROPIC_MODEL || "claude-haiku-4-5",
 
-  twilioSid: process.env.TWILIO_ACCOUNT_SID || "",
-  twilioToken: process.env.TWILIO_AUTH_TOKEN || "",
-  twilioFrom: process.env.TWILIO_PHONE_NUMBER || "",
-  twilioMessagingServiceSid: process.env.TWILIO_MESSAGING_SERVICE_SID || "",
+  twilioSid: (process.env.TWILIO_ACCOUNT_SID || "").trim(),
+  twilioToken: (process.env.TWILIO_AUTH_TOKEN || "").trim(),
+  /** Broj u obliku E.164 (+385...) ILI alfanumerička oznaka pošiljatelja (npr. NOVO); vidi lib/recenzije/twilio.ts. */
+  twilioFrom: (process.env.TWILIO_PHONE_NUMBER || "").trim(),
+  twilioMessagingServiceSid: (process.env.TWILIO_MESSAGING_SERVICE_SID || "").trim(),
   /** Samo za lokalno testiranje s lažnim serverom; produkcija uvijek ide na Twilio. */
   twilioApiBase: (process.env.TWILIO_API_BASE || "https://api.twilio.com").replace(/\/$/, ""),
   /** SMS Gateway for Android — javni cloud server (besplatan). */
@@ -64,7 +79,12 @@ export const env = {
 
 export const integrations = {
   ai: () => Boolean(env.anthropicKey),
-  twilio: () => Boolean(env.twilioSid && env.twilioToken && (env.twilioFrom || env.twilioMessagingServiceSid)),
+  /** Twilio može slati samo uz račun i ISPRAVAN pošiljatelj (broj, oznaka ili Messaging Service). */
+  twilio: () => {
+    if (!env.twilioSid || !env.twilioToken) return false;
+    const sender = resolveTwilioSender(env.twilioFrom, env.twilioMessagingServiceSid);
+    return sender.mode === "messaging_service" || sender.mode === "from";
+  },
   /** Zajednički NOVO mobitel: dovoljni su korisničko ime i lozinka za slanje; potpisni ključ treba za webhookove. */
   novoPhone: () => Boolean(env.smsGatewayUser && env.smsGatewayPassword),
   googleOAuth: () => Boolean(env.googleClientId && env.googleClientSecret),
