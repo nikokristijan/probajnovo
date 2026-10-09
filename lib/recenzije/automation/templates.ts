@@ -10,16 +10,20 @@ export type AutomationTemplate = {
 
 /*
  * Predlošci su namjerno BEZ dijakritika: SMS s č/ć/š/ž/đ prelazi u Unicode i
- * stane samo 70 znakova po poruci (umjesto 160), pa se plaća 2-3 puta više.
+ * stane samo 70 znakova po poruci (umjesto 160), pa se plaća 2-3 puta više. Jedina iznimka je fraza za odjavu
+ * "napišite": sastavljač je sam piše bez kvačica kad je ostatak poruke GSM-7 (vidi dolje).
  *
- * Primatelj ne može uvijek odgovoriti (Twilio u Hrvatskoj ne podržava dvosmjerni SMS), pa predlošci ne traže
- * odgovor na poruku. "Za odjavu odgovorite STOP." ostaje: preko Twilija se ta rečenica sama zamijeni
- * poveznicom za odjavu, a poruci bez nje poveznica se dodaje na kraj (vidi lib/recenzije/sms-format.ts).
+ * Odjava se u predlošku ne mora pisati: sastavljač (composeSms, lib/recenzije/sms-format.ts) svakoj poruci stavlja
+ * TOČNO JEDNU uputu kao zadnji redak, ovisno o pružatelju. Gdje odgovori rade (Android mobitel, TextBee s webhookom)
+ * to je "Za odjavu napišite STOP." (bez kvačica kad je ostatak poruke GSM-7), a gdje ne rade (Twilio u Hrvatskoj,
+ * TextBee bez webhooka) "Odjava: <poveznica>". Ako predložak ima vlastitu frazu "Za odjavu napišite STOP." (ili stariji
+ * oblik "odgovorite STOP"), ona se normalizira ili zamijeni poveznicom, pa u poruci nikad nisu dvije upute.
+ * Jedina ključna riječ koju klijent vidi je STOP.
  */
 export const DEFAULT_REQUEST =
   "Bok {first_name}! Hvala sto ste odabrali {business_name}. Ako imate minutu, kratka Google recenzija bi nam puno znacila: {review_link}";
 export const DEFAULT_FOLLOW_UP =
-  "Bok {first_name}, samo kratki podsjetnik od {business_name}: ako ste bili zadovoljni, podijelite iskustvo u par rijeci {review_link} Za odjavu odgovorite STOP.";
+  "Bok {first_name}, samo kratki podsjetnik od {business_name}: ako ste bili zadovoljni, podijelite iskustvo u par rijeci {review_link} Za odjavu napišite STOP.";
 
 export const AUTOMATION_TEMPLATES: AutomationTemplate[] = [
   {

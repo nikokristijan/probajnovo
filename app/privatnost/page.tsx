@@ -113,8 +113,8 @@ export default function PrivacyPolicyPage() {
         <li>javno dostupne Google recenzije poduzeća (ime autora, ocjena, tekst, datum).</li>
       </ul>
       <p>
-        Primatelj poruke može se u svakom trenutku odjaviti poveznicom za odjavu u poruci ili, gdje mreža
-        omogućuje odgovore, odgovorom „STOP”, nakon čega mu više ne šaljemo poruke. Odjava vrijedi za sva poduzeća koja
+        Primatelj poruke može se u svakom trenutku odjaviti odgovorom „STOP” (uputa je na kraju poruke) ili, gdje mreža
+        ne omogućuje odgovore, poveznicom za odjavu u poruci, nakon čega mu više ne šaljemo poruke. Odjava vrijedi za sva poduzeća koja
         koriste NOVO Recenzije, pa taj broj telefona više ne prima poruke ni od jednog od njih. Podatke koristimo samo za pružanje usluge, ne prodajemo ih i ne koristimo ih za
         oglašavanje. Podaci jednog poduzeća logički su odvojeni od podataka drugih poduzeća.
       </p>

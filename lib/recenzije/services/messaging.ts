@@ -86,8 +86,9 @@ export async function sendClientMessage(input: {
     return { ok: false, error: `${fullName(client)} se odjavio/la od SMS-ova.`, code: "OPTED_OUT" };
   }
 
-  // Pružatelj se odlučuje ovdje, jedanput, pa isti odgovor određuje i tekst (poveznica za odjavu) i način slanja.
-  // Twilio u Hrvatskoj ne podržava odgovore, pa odjava ide poveznicom /o/<token>. TextBee prima odgovore samo uz
+  // Pružatelj se odlučuje ovdje, jedanput, pa isti odgovor određuje i tekst (odjava) i način slanja.
+  // Gdje odgovori rade (Android mobitel, TextBee uz webhook) poruka završava uputom "Za odjavu napišite STOP.", a composeSms
+  // je stavlja sam. Twilio u Hrvatskoj ne podržava odgovore, pa odjava ide poveznicom /o/<token>. TextBee prima odgovore samo uz
   // webhook (TEXTBEE_WEBHOOK_SECRET); bez njega se ponaša isto kao Twilio, da poruka nikad ne ode bez ikakve odjave.
   const provider = smsProvider(org);
   const optOutLink = needsOptOutLink(provider, { textbeeReplies: integrations.textbeeInbound() });

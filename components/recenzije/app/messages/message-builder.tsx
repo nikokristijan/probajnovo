@@ -49,7 +49,7 @@ export function MessageBuilder({
   links: { appUrl: string; shortUrl: string | null };
   /** Procjena troška u USD vidi samo NOVO tim; segmenti se prikazuju svima. */
   showCost: boolean;
-  /** optOutLink: poruka dobiva poveznicu za odjavu (Twilio, i TextBee bez webhooka; vidi needsOptOutLink). */
+  /** optOutLink: poruka dobiva poveznicu za odjavu (Twilio, i TextBee bez webhooka; vidi needsOptOutLink). Inače završava uputom "Za odjavu napišite STOP.". */
   status: { ai: boolean; sms: boolean; provider: SmsProviderName | null; optOutLink?: boolean; demo: boolean; reviewUrl: boolean };
 }) {
   const [text, setText] = useState(templates.find((t) => t.kind === "REVIEW_REQUEST")?.body ?? DEFAULT_REQUEST);
@@ -75,7 +75,7 @@ export function MessageBuilder({
 
   const previewClient = clients.find((c) => c.id === previewId);
   // Isti sastavljač kao pri slanju (services/messaging.ts): pregled i brojač prikazuju TOČAN tekst, uključujući
-  // poveznicu za odjavu koja se preko Twilija (i TextBeea bez webhooka) dodaje svakoj poruci.
+  // odjavu koja se dodaje svakoj poruci: poveznicu preko Twilija (i TextBeea bez webhooka), a uputu "Za odjavu napišite STOP." drugdje.
   const twilio = status.provider === "twilio";
   const textbee = status.provider === "textbee";
   const optOutLink = status.optOutLink ?? twilio;
@@ -100,6 +100,7 @@ export function MessageBuilder({
   });
   const rendered = composed.body;
   const seg = composed;
+  const replyOptOut = composed.optOut === "reply";
   const filtered = useMemo(
     () => clients.filter((c) => c.name.toLowerCase().includes(search.toLowerCase())).slice(0, 50),
     [clients, search]
@@ -208,6 +209,17 @@ export function MessageBuilder({
                   <span className="text-warning">
                     {" "}
                     Zbog njega poruka ima {seg.segments} SMS-a umjesto {seg.segments - seg.extraSegments}.
+                  </span>
+                )}
+              </p>
+            )}
+            {replyOptOut && (
+              <p className="mt-2 text-xs text-muted">
+                Poruka završava uputom <span className="font-mono">Za odjavu napišite STOP.</span> Dodaje se sama, a ako je već u tekstu, ostaje samo jednom.
+                {seg.extraSegments > 0 && (
+                  <span className="text-warning">
+                    {" "}
+                    Zbog nje poruka ima {seg.segments} SMS-a umjesto {seg.segments - seg.extraSegments}.
                   </span>
                 )}
               </p>
