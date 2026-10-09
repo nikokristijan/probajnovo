@@ -122,7 +122,7 @@ export function CampaignForm({
                     aria-pressed={on}
                     onClick={() => set("statuses", on ? (v.statuses as string[]).filter((x) => x !== s) : [...(v.statuses as string[]), s])}
                     className={cn(
-                      "label rounded-full border px-3 py-1.5",
+                      "label min-h-10 rounded-full border px-3 py-1.5 sm:pointer-fine:min-h-0",
                       on ? "border-foreground bg-foreground text-white" : "border-border-strong text-muted hover:text-foreground"
                     )}
                   >

@@ -6,7 +6,7 @@ import { toast } from "sonner";
 import { updateAccountAction, updateBusinessAction } from "@/lib/recenzije/actions/org";
 import { disconnectGoogleAction, refreshGoogleLocationAction, removeSmsGatewayAction } from "@/lib/recenzije/actions/settings";
 import { Button } from "@/components/recenzije/ui/button";
-import { Field, Input, Label, Select } from "@/components/recenzije/ui/primitives";
+import { Field, hitArea, Input, Label, Select } from "@/components/recenzije/ui/primitives";
 import { type ActionState, initialState } from "@/lib/recenzije/action";
 import { INDUSTRIES, TIMEZONES } from "@/lib/recenzije/constants";
 
@@ -64,7 +64,7 @@ export function BusinessForm({
                 href={url.trim()}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="label mb-2 inline-flex items-center gap-1 text-accent underline-offset-4 hover:underline"
+                className={`${hitArea} label mb-2 inline-flex items-center gap-1 text-accent underline-offset-4 hover:underline`}
               >
                 Testiraj link <ExternalLink className="size-3" aria-hidden />
               </a>

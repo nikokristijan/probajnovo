@@ -3,7 +3,7 @@ import { notFound } from "next/navigation";
 import { and, asc, count, eq } from "drizzle-orm";
 import { ArrowLeft } from "lucide-react";
 import { AutomationBuilder } from "@/components/recenzije/app/automations/builder";
-import { PageHeader } from "@/components/recenzije/ui/primitives";
+import { hitArea, PageHeader } from "@/components/recenzije/ui/primitives";
 import { db } from "@/lib/recenzije/db";
 import { automationRuns, automations, clients } from "@/lib/recenzije/db/schema";
 import { requireOrg } from "@/lib/recenzije/session";
@@ -22,7 +22,7 @@ export default async function AutomationPage({ params }: { params: Promise<{ id:
   const n = (s: string[]) => runs.filter((r) => s.includes(r.status)).reduce((x, r) => x + r.n, 0);
   return (
     <>
-      <Link href="/recenzije/automatizacije" className="label mb-6 inline-flex items-center gap-1.5 text-muted hover:text-foreground">
+      <Link href="/recenzije/automatizacije" className={`${hitArea} label mb-6 inline-flex items-center gap-1.5 text-muted hover:text-foreground`}>
         <ArrowLeft className="size-4" /> Automatizacije
       </Link>
       <PageHeader kicker="Automatizacija" title={a.name} description="Složite tijek odozgo prema dolje. Izmjene vrijede za nova pokretanja nakon spremanja." />

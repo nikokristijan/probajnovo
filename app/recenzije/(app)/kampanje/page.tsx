@@ -36,23 +36,24 @@ export default async function CampaignsPage() {
       ) : (
         <div className="grid gap-4 md:grid-cols-2">
           {list.map((c) => (
-            <Link key={c.id} href={`/recenzije/kampanje/${c.id}`} className="group border border-border bg-white p-5 transition-colors hover:border-foreground">
+            <Link key={c.id} href={`/recenzije/kampanje/${c.id}`} className="group @container border border-border bg-white p-5 transition-colors hover:border-foreground">
               <div className="flex items-start justify-between gap-3">
                 <h2 className="text-lg font-bold group-hover:underline">{c.name}</h2>
                 <Badge tone={CAMPAIGN_TONE[c.status]} dot>
                   {CAMPAIGN_LABEL[c.status]}
                 </Badge>
               </div>
-              <dl className="mt-5 grid grid-cols-4 gap-2 text-center">
+              {/* Četiri pločice stanu tek kad kartica ima ~320px sadržaja; ispod toga 2x2 da natpisi ne iscure iz okvira. */}
+              <dl className="mt-5 grid grid-cols-2 gap-2 text-center @[20rem]:grid-cols-4">
                 {[
                   ["Poslano", c.sent],
                   ["Klikovi", c.clicked],
                   ["Recenzije", c.reviewed],
                   ["Neuspjelo", c.failed],
                 ].map(([k, val]) => (
-                  <div key={k as string} className="border border-border px-2 py-2.5">
+                  <div key={k as string} className="min-w-0 border border-border px-1.5 py-2.5">
                     <dd className="tabular text-lg font-semibold">{val}</dd>
-                    <dt className="label mt-0.5 text-[10px] text-muted">{k}</dt>
+                    <dt className="mt-0.5 truncate font-mono text-[10px] uppercase tracking-[0.08em] text-muted">{k}</dt>
                   </div>
                 ))}
               </dl>

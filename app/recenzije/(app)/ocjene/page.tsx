@@ -173,7 +173,7 @@ export default async function ReviewsPage({ searchParams }: { searchParams: Prom
                 href={f.key ? `/recenzije/ocjene?filter=${f.key}` : "/recenzije/ocjene"}
                 scroll={false}
                 className={cn(
-                  "label whitespace-nowrap rounded-full border px-3 py-1.5",
+                  "label flex min-h-10 items-center whitespace-nowrap rounded-full border px-3 py-1.5 sm:pointer-fine:min-h-0",
                   active ? "border-foreground bg-foreground text-white" : "border-border-strong text-muted hover:text-foreground"
                 )}
               >
@@ -192,7 +192,7 @@ export default async function ReviewsPage({ searchParams }: { searchParams: Prom
           <ul className="divide-y divide-border border-t border-border">
             {rows.map(({ review: r, clientFirst, clientLast }) => (
               <li key={r.id} className="px-5 py-4">
-                <div className="flex flex-col gap-3 sm:flex-row sm:items-start">
+                <div className="flex items-start gap-3">
                   <Avatar name={r.reviewerName} />
                   <div className="min-w-0 flex-1">
                     <div className="flex flex-wrap items-center gap-x-3 gap-y-1">

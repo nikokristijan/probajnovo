@@ -29,7 +29,7 @@ export function PhoneMockup({
       aria-label="SMS preview"
     >
       <div className="overflow-hidden rounded-[36px] bg-[#0e1110]">
-        <div className="flex items-center justify-between px-6 pb-1 pt-3 text-[11px] font-medium text-foreground/80">
+        <div className="flex items-center justify-between px-6 pb-1 pt-3 text-[11px] font-medium text-white/80">
           <span>9:41</span>
           <span className="h-5 w-20 rounded-full bg-black" aria-hidden />
           <span>5G</span>
@@ -38,7 +38,7 @@ export function PhoneMockup({
           <span className="grid size-10 place-items-center rounded-full bg-accent text-sm font-bold text-accent-foreground">
             {sender.trim()[0]?.toUpperCase() ?? "N"}
           </span>
-          <span className="mt-1 max-w-[80%] truncate text-xs text-foreground/80">{sender}</span>
+          <span className="mt-1 max-w-[80%] truncate text-xs text-white/80">{sender}</span>
         </div>
         <div className="flex min-h-[300px] flex-col gap-2 px-3 py-4">
           {messages.map((m, i) => (
@@ -49,11 +49,11 @@ export function PhoneMockup({
                   m.from === "client" ? "rounded-br-md bg-[#2f7cf6] text-white" : "rounded-bl-md bg-[#262a28] text-[#eef2ef]"
                 )}
               >
-                {m.text ? linkify(m.text) : <span className="text-foreground/40">Your message…</span>}
+                {m.text ? linkify(m.text) : <span className="text-white/40">Your message…</span>}
               </div>
             </div>
           ))}
-          {messages[0]?.time && <p className="mt-1 text-center text-[10px] text-foreground/40">{messages[0].time}</p>}
+          {messages[0]?.time && <p className="mt-1 text-center text-[10px] text-white/40">{messages[0].time}</p>}
         </div>
       </div>
     </div>

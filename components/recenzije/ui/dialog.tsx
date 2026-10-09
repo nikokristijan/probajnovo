@@ -3,6 +3,7 @@
 import { X } from "lucide-react";
 import * as React from "react";
 import { cn } from "@/lib/recenzije/utils";
+import { lockPageScroll } from "./scroll-lock";
 
 /*
  * Lagane zamjene za Radix (Dialog, Switch, Menu) na nativnim elementima:
@@ -70,6 +71,11 @@ export function DialogContent({
     if (ctx.open && !d.open) d.showModal();
     if (!ctx.open && d.open) d.close();
   }, [ctx.open]);
+  // Nativni <dialog> ne zaključava pomicanje stranice iza sebe (osobito na iOS-u): zaključaj dok je otvoren.
+  React.useEffect(() => {
+    if (!ctx.open) return;
+    return lockPageScroll();
+  }, [ctx.open]);
   return (
     <dialog
       ref={ref}
@@ -80,7 +86,7 @@ export function DialogContent({
         if (e.target === e.currentTarget) ctx.setOpen(false);
       }}
       className={cn(
-        "m-0 mt-auto max-h-[92dvh] w-full max-w-none overflow-y-auto border-t-2 border-foreground bg-white p-0 text-foreground",
+        "m-0 mt-auto max-h-[92dvh] w-full max-w-none overflow-y-auto overscroll-contain border-t-2 border-foreground bg-white p-0 text-foreground",
         "sm:m-auto sm:border-2",
         wide ? "sm:max-w-2xl" : "sm:max-w-lg",
         className
@@ -134,7 +140,8 @@ export function Switch({
       disabled={disabled}
       onClick={() => onCheckedChange(!checked)}
       className={cn(
-        "relative h-6 w-11 shrink-0 cursor-pointer rounded-full border transition-colors disabled:opacity-50",
+        // before: nevidljivo proširenje područja dodira na 44px visine (preklopka je vizualno 24px).
+        "relative h-6 w-11 shrink-0 cursor-pointer rounded-full border transition-colors before:absolute before:-inset-y-2.5 before:inset-x-0 before:content-[''] disabled:opacity-50",
         checked ? "border-foreground bg-foreground" : "border-border-strong bg-surface-3"
       )}
     >

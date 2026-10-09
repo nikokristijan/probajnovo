@@ -64,7 +64,7 @@ export function ActivityFeed({
               {e.clientName ? (
                 <span className="relative">
                   <Avatar name={e.clientName} className="size-8 text-[11px]" />
-                  <span className={cn("absolute -bottom-1 -right-1 grid size-[18px] place-items-center rounded-full ring-2 ring-white", meta.cls)}>
+                  <span className={cn("absolute -bottom-1.5 -right-1.5 grid size-4 place-items-center rounded-full ring-2 ring-white", meta.cls)}>
                     <Icon className="size-[10px]" />
                   </span>
                 </span>

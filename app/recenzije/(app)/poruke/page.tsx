@@ -98,7 +98,7 @@ export default async function MessagesPage({ searchParams }: { searchParams: Pro
               href={f.key ? `/recenzije/poruke?status=${f.key}#log` : "/recenzije/poruke#log"}
               scroll={false}
               className={cn(
-                "label whitespace-nowrap rounded-full border px-3 py-1.5",
+                "label flex min-h-10 items-center whitespace-nowrap rounded-full border px-3 py-1.5 sm:pointer-fine:min-h-0",
                 filter.key === f.key ? "border-foreground bg-foreground text-white" : "border-border-strong text-muted hover:text-foreground"
               )}
             >
@@ -117,7 +117,7 @@ export default async function MessagesPage({ searchParams }: { searchParams: Pro
                 <li key={m.id} className="flex flex-col gap-2 px-5 py-3.5 sm:flex-row sm:items-start sm:gap-4">
                   <div className="flex shrink-0 items-center gap-2 sm:w-52">
                     {m.clientId ? (
-                      <Link href={`/recenzije/klijenti/${m.clientId}`} className="truncate text-sm font-medium hover:text-accent">
+                      <Link href={`/recenzije/klijenti/${m.clientId}`} className="-my-2.5 truncate py-2.5 text-sm font-medium hover:text-accent">
                         {who}
                       </Link>
                     ) : (

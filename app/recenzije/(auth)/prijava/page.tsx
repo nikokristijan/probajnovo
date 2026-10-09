@@ -37,7 +37,7 @@ export default async function LoginPage({ searchParams }: { searchParams: Promis
             {error}
           </p>
         )}
-        <OAuthButtons googleEnabled={integrations.googleOAuth()} demoEnabled={env.demoEnabled} />
+        <OAuthButtons googleEnabled={integrations.googleOAuth()} />
         <LoginForm next={sp.next} />
       </div>
       <p className="mt-8 text-sm text-muted">

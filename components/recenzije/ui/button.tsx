@@ -17,7 +17,8 @@ const buttonVariants = cva(
         link: "px-0 h-auto text-accent underline underline-offset-4 hover:text-foreground",
       },
       size: {
-        sm: "h-8 px-3",
+        // 40px na mobitelu i tabletu (dodir); kompaktnih 32px samo na širokom ekranu s mišem (sm + pointer-fine).
+        sm: "h-10 px-3 sm:pointer-fine:h-8",
         md: "h-10 px-4",
         lg: "h-12 px-6 text-[12px]",
         icon: "size-10",

@@ -3,6 +3,7 @@ import Link from "next/link";
 import { FlaskConical, UserCog } from "lucide-react";
 import { MobileNav, Sidebar } from "@/components/recenzije/app/sidebar";
 import { UserMenu } from "@/components/recenzije/app/user-menu";
+import { hitArea } from "@/components/recenzije/ui/primitives";
 import { OPERATOR_EMAIL } from "@/lib/recenzije/operator";
 import { describePlan } from "@/lib/recenzije/plan-view";
 import { requireOrg } from "@/lib/recenzije/session";
@@ -31,7 +32,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
                 Radite kao NOVO tim za <b>{ctx.org.name}</b>
               </span>
             </span>
-            <Link href="/admin/recenzije" className="font-bold underline underline-offset-2">
+            <Link href="/admin/recenzije" className={`${hitArea} inline-block font-bold underline underline-offset-2`}>
               Natrag na admin
             </Link>
           </div>
@@ -40,7 +41,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
           <div className="flex flex-wrap items-center justify-center gap-x-3 gap-y-1 bg-accent px-4 py-2 text-center text-[13px] text-white">
             <FlaskConical className="size-4 shrink-0" aria-hidden />
             <span>Ovo je primjer za razgledavanje. Izmjene i slanje SMS-a su isključeni.</span>
-            <Link href="/recenzije#upit" className="font-bold underline underline-offset-2">
+            <Link href="/recenzije#upit" className={`${hitArea} inline-block font-bold underline underline-offset-2`}>
               Pošaljite upit
             </Link>
           </div>
@@ -49,7 +50,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
           <div className="bg-orange px-4 py-2 text-center text-[13px] text-black">
             Paket nije aktivan, pa je slanje poruka pauzirano.{" "}
             {isOperator ? (
-              <Link href="/admin/recenzije" className="font-bold underline underline-offset-2">
+              <Link href="/admin/recenzije" className={`${hitArea} inline-block font-bold underline underline-offset-2`}>
                 Uredite u adminu
               </Link>
             ) : (

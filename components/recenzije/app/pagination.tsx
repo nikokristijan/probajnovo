@@ -25,7 +25,7 @@ export function Pagination({
   };
   const from = total === 0 ? 0 : (page - 1) * pageSize + 1;
   const to = Math.min(total, page * pageSize);
-  const btn = "label inline-flex h-9 items-center gap-1 border border-border-strong px-3";
+  const btn = "label inline-flex h-10 min-w-10 items-center justify-center gap-1 border border-border-strong px-3 sm:pointer-fine:h-9";
   return (
     <div className="flex items-center justify-between gap-3 border-t border-border px-4 py-3 text-sm text-muted">
       <span className="tabular">
