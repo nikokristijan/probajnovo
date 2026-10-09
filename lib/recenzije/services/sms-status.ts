@@ -85,6 +85,10 @@ export const REPLIES_TEXTBEE_UNREACHABLE =
 export const REPLIES_TEXTBEE_NO_WEBHOOK =
   "Odgovori klijenata: nisu uključeni jer nema TextBee webhooka (TEXTBEE_WEBHOOK_SECRET); odjava ide poveznicom u poruci.";
 
+/** Savjet kad TextBee radi bez webhooka (TEXTBEE_WEBHOOK_SECRET): poruke nose poveznicu za odjavu umjesto upute "Za odjavu napišite STOP.". */
+export const TEXTBEE_NO_WEBHOOK_HINT =
+  "Poruke nose poveznicu za odjavu. Za ljepšu poruku (odjava odgovorom STOP) uključite webhook i postavite TEXTBEE_WEBHOOK_SECRET.";
+
 /** Događaji koje treba označiti u TextBee nadzornoj ploči (UNCONFIRMED imena su u lib/recenzije/textbee.ts). */
 const TEXTBEE_EVENTS = ["MESSAGE_RECEIVED", "MESSAGE_SENT", "MESSAGE_DELIVERED", "MESSAGE_FAILED"];
 
@@ -190,11 +194,7 @@ export function getSmsSenderStatus(): SmsSenderStatus {
         `Slanje klijentima je blokirano jer poveznice za recenziju i odjavu u poruci ne bi radile: ${textbee.webhookUrlProblem}. Postavite NR_APP_URL na javnu https adresu stranice (trenutno ${env.appUrl}). Probni SMS radi i dalje.`
       );
     }
-    if (!textbee.repliesEnabled) {
-      problems.push(
-        "Webhook nije postavljen (TEXTBEE_WEBHOOK_SECRET): slanje radi, ali odgovori klijenata (STOP) i potvrde isporuke ne stižu. Zato se u svaku poruku dodaje poveznica za odjavu."
-      );
-    }
+    if (!textbee.repliesEnabled) problems.push(TEXTBEE_NO_WEBHOOK_HINT);
     if (textbee.repliesEnabled && !textbee.webhookUrlUsable) {
       // Tajna je postavljena pa poruke ne nose poveznicu za odjavu, a TextBee ne može dostaviti webhook na nejavnu adresu.
       warn(

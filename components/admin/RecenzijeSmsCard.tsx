@@ -277,10 +277,10 @@ export default function RecenzijeSmsCard({ sms }: { sms: SmsSenderView }) {
               <b className="text-black">Probni SMS na vlastiti broj</b> (ispod), najbolje na drugi mobitel od onog koji šalje.
             </li>
             <li>
-              <b className="text-black">Webhook za odgovore (neobavezno).</b> Bez njega slanje radi, ali odgovor STOP i potvrde isporuke ne stižu, pa se u
-              svaku poruku dodaje poveznica za odjavu. Za odgovore u TextBee nadzornoj ploči napravite webhook s adresom i događajima iz kutije „TextBee” ispod,
-              a tajnu koju ondje upišete (izmislite je, najmanje {st.textbee.secretMinLength} znakova) postavite i kao{" "}
-              <code className="font-mono">TEXTBEE_WEBHOOK_SECRET</code>.
+              <b className="text-black">Webhook za odgovore (neobavezno).</b> Bez njega slanje radi, a poruke nose poveznicu za odjavu. Uz njega se
+              odjava piše odgovorom STOP, ali TextBee tada na server šalje svaki SMS primljen na tom mobitelu (ne samo odgovore klijenata). Za odgovore u
+              TextBee nadzornoj ploči napravite webhook s adresom i događajima iz kutije „TextBee” ispod, a tajnu koju ondje upišete (izmislite je, najmanje{" "}
+              {st.textbee.secretMinLength} znakova) postavite i kao <code className="font-mono">TEXTBEE_WEBHOOK_SECRET</code>.
             </li>
           </ol>
         </details>
@@ -427,7 +427,8 @@ export default function RecenzijeSmsCard({ sms }: { sms: SmsSenderView }) {
                   </b>
                 </div>
                 <div className="text-black/55">
-                  Uz tajnu se odgovor STOP odjavljuje u svim tvrtkama, a poruke ne trebaju poveznicu za odjavu. Bez nje se u svaku poruku dodaje poveznica za odjavu.
+                  Uz tajnu se odgovor STOP odjavljuje u svim tvrtkama, a poruke umjesto poveznice završavaju uputom „Za odjavu napišite STOP.” Bez nje poruke nose
+                  poveznicu za odjavu. Privatnost: uz webhook se na server šalje svaki SMS primljen na tom mobitelu, ne samo odgovori klijenata.
                 </div>
               </div>
             </div>

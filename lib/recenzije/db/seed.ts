@@ -310,7 +310,7 @@ export async function seedDemo() {
         clientId: client.id,
         kind: "FOLLOW_UP",
         toNumber: c.phone,
-        body: `Bok ${c.first}, samo kratki podsjetnik od Donald's Cooling: ako ste bili zadovoljni, podijelite iskustvo u par rijeci ${base}/r/${token} Za odjavu odgovorite STOP.`,
+        body: `Bok ${c.first}, samo kratki podsjetnik od Donald's Cooling: ako ste bili zadovoljni, podijelite iskustvo u par rijeci ${base}/r/${token}\nZa odjavu napisite STOP.`,
         status: "DELIVERED",
         providerSid: `demo-${createToken(20)}`,
         automationRunId: run.id,

@@ -75,8 +75,8 @@ export default function TermsPage() {
         nazivom vaše tvrtke. Predajom kontakata svojih klijenata potvrđujete da imate pravo kontaktirati te osobe (riječ
         je o klijentima kojima ste pružili uslugu i koji su vam zbog nje dali kontakt) i da nam ne
         predajete kontakte osoba koje to ne žele. Ne šaljemo neželjene poruke. Primatelj se
-        može odjaviti poveznicom za odjavu u poruci ili, gdje mreža omogućuje odgovore, odgovorom „STOP”; svaka odjava
-        poštuje se i toj osobi više ne šaljemo poruke. Za osobne podatke tih osoba
+        može odjaviti odgovorom „STOP” (uputa je na kraju poruke) ili, gdje mreža ne omogućuje odgovore, poveznicom za
+        odjavu u poruci; svaka odjava poštuje se i toj osobi više ne šaljemo poruke. Za osobne podatke tih osoba
         NOVO je izvršitelj obrade, a vi ste voditelj obrade; detalje opisuje{" "}
         <Link href="/privatnost">politika privatnosti</Link>.
       </p>
