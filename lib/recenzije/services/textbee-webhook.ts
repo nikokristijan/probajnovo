@@ -23,7 +23,7 @@ export type TextbeeHookTarget =
   /** Zajednički mobitel: tajna iz env varijable (prazno = nije postavljeno, 503 kao i prije). */
   | { kind: "shared"; secret: string }
   /** Mobitel tvrtke: tajna i tvrtka. `null` = nepoznata tvrtka ili tvrtka bez tajne (odgovor je isti kao za loš potpis). */
-  | { kind: "org"; org: { id: string; secret: string } | null };
+  | { kind: "org"; org: { id: string; secret: string; apiKey?: string | null } | null };
 
 /** Tajna za usporedbu kad nema prave (nepoznata tvrtka): da trajanje i odgovor ne otkriju razliku. */
 const DUMMY_SECRET = "0".repeat(48);
@@ -112,7 +112,7 @@ export async function handleTextbeeWebhook(req: Request, target: TextbeeHookTarg
         await applyStatus(evt, "DELIVERED", undefined, org?.id);
         break;
       case "failed": {
-        const reason = cleanServerMessage(evt.errorMessage || (evt.errorCode ? `kod ${evt.errorCode}` : ""), [secret]) || "slanje nije uspjelo";
+        const reason = cleanServerMessage(evt.errorMessage || (evt.errorCode ? `kod ${evt.errorCode}` : ""), [secret, org?.apiKey]) || "slanje nije uspjelo";
         await applyStatus(evt, "FAILED", `TextBee: ${reason}`.slice(0, 200), org?.id);
         break;
       }

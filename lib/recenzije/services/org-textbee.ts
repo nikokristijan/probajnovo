@@ -44,8 +44,11 @@ async function loadEditable(organizationId: string) {
   return org;
 }
 
-/** Za webhook: tvrtka i njezina dešifrirana tajna; null kad tvrtke nema, nema mobitela ili tajne (pozivatelj to ne razlikuje od lošeg potpisa). */
-export async function resolveOrgWebhook(organizationId: string): Promise<{ id: string; secret: string } | null> {
+/**
+ * Za webhook: tvrtka i njezina dešifrirana tajna (uz API ključ, ali samo da ga se može izbaciti iz teksta grešaka); null kad tvrtke nema,
+ * nema mobitela ili tajne (pozivatelj to ne razlikuje od lošeg potpisa).
+ */
+export async function resolveOrgWebhook(organizationId: string): Promise<{ id: string; secret: string; apiKey: string | null } | null> {
   if (!/^[A-Za-z0-9_-]{1,40}$/.test(organizationId)) return null;
   await ensureReviewsDb();
   const [org] = await db
@@ -55,7 +58,13 @@ export async function resolveOrgWebhook(organizationId: string): Promise<{ id: s
     .limit(1);
   if (!org?.secretEnc || !hasOwnTextbee({ textbeeApiKeyEnc: org.keyEnc, textbeeDeviceId: org.deviceId })) return null;
   try {
-    return { id: org.id, secret: decrypt(org.secretEnc) };
+    let apiKey: string | null = null;
+    try {
+      apiKey = org.keyEnc ? decrypt(org.keyEnc) : null;
+    } catch {
+      /* ključ koji se ne da pročitati ne smije spriječiti webhook; samo se ne može izbaciti iz teksta */
+    }
+    return { id: org.id, secret: decrypt(org.secretEnc), apiKey };
   } catch {
     return null;
   }
