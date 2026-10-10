@@ -343,10 +343,10 @@
   position: sticky;
   top: 0;
   z-index: 20;
-  background: rgb(255 255 255 / 0.97);
+  /* Potpuno neprozirna: kroz poluprozirnu podlogu bi pri skrolanju probijao tekst stavki. */
+  background: #fff;
   border-top: 1px solid var(--jl-line);
   border-bottom: 1px solid var(--jl-line);
-  box-shadow: 0 1px 0 rgb(0 0 0 / 0.02);
 }
 .jl-nav-in {
   max-width: 720px;

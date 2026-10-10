@@ -4,9 +4,10 @@ import { useActionState } from "react";
 import { useFormStatus } from "react-dom";
 import { initialState } from "@/lib/recenzije/action";
 import { updateClientDetailsAction } from "@/lib/recenzije/actions/novo-admin";
+import { BUSINESS_TYPES, type BusinessType } from "@/lib/recenzije/business-type";
 
 /**
- * Kontakt klijenta (na njegov email ide tjedni izvještaj) i interna bilješka koju vidi samo
+ * Kontakt klijenta (na njegov email ide tjedni izvještaj), vrsta poslovanja i interna bilješka koju vidi samo
  * NOVO tim. Spremanje je server radnja samo za glavnog admina; poruka se prikazuje ovdje.
  */
 
@@ -16,6 +17,11 @@ export type ClientDetailsDefaults = {
   contactEmail: string;
   contactPhone: string;
   internalNote: string;
+  /**
+   * Trenutna vrsta poslovanja. null = nije se mogla pročitati: tada se polje uopće ne prikazuje ni ne šalje,
+   * pa spremanje kontakta ne može slučajno promijeniti vrstu.
+   */
+  businessType: BusinessType | null;
 };
 
 function SaveButton() {
@@ -73,6 +79,30 @@ export default function RecenzijeClientDetailsForm({ defaults }: { defaults: Cli
         />
         {e.contactPhone && <span className="text-[11px] text-[#b80012]">{e.contactPhone}</span>}
       </label>
+      {defaults.businessType && (
+        <label className="flex flex-col gap-1 text-xs text-black/60 min-w-0 sm:col-span-3">
+          Vrsta poslovanja
+          <select
+            // Ključ prati spremljenu vrijednost (i vraćenu pri grešci): React nakon svake radnje resetira formu na vrijednost iz
+            // trenutka montiranja, pa bi neupravljani <select> inače ostao na staroj vrsti iako je nova spremljena, a idući "Spremi" bi je vratio.
+            key={`${defaults.businessType}:${v.businessType ?? ""}`}
+            name="businessType"
+            defaultValue={v.businessType ?? defaults.businessType}
+            className="admin-input text-sm sm:max-w-sm"
+            aria-invalid={!!e.businessType}
+          >
+            {BUSINESS_TYPES.map((t) => (
+              <option key={t.value} value={t.value}>
+                {t.label}
+              </option>
+            ))}
+          </select>
+          <span className="text-[11px] text-black/45">
+            Ugostiteljstvo uključuje digitalni jelovnik s QR kodom i stavku „Jelovnik” u radnom prostoru. Prelazak na „Usluga / obrt” gasi javni jelovnik; unesene stavke ostaju spremljene.
+          </span>
+          {e.businessType && <span className="text-[11px] text-[#b80012]">{e.businessType}</span>}
+        </label>
+      )}
       <label className="flex flex-col gap-1 text-xs text-black/60 min-w-0 sm:col-span-3">
         Interna bilješka (vidi samo NOVO tim)
         <textarea

@@ -77,6 +77,8 @@ export async function listClients(organizationId: string, p: ClientListParams) {
       email: clients.email,
       reviewStatus: clients.reviewStatus,
       smsOptOut: clients.smsOptOut,
+      /** 'menu' = gost koji je sam upisao broj na jelovniku (jedna poruka s molbom za recenziju). */
+      source: clients.source,
       lastMessageAt: clients.lastMessageAt,
       nextFollowUpAt: clients.nextFollowUpAt,
       createdAt: clients.createdAt,

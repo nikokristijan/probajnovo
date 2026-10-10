@@ -22,7 +22,7 @@ export function twilioStatusCallbackUrl() {
 
 export type SendOutcome =
   | { ok: true; messageId: string; body: string }
-  | { ok: false; messageId?: string; error: string; code: "NOT_CONFIGURED" | "NO_REVIEW_URL" | "OPTED_OUT" | "SEND_FAILED" | "NOT_FOUND" | "DEMO" | "LIMIT" };
+  | { ok: false; messageId?: string; error: string; code: "NOT_CONFIGURED" | "NO_REVIEW_URL" | "OPTED_OUT" | "SEND_FAILED" | "NOT_FOUND" | "DEMO" | "LIMIT" | "NO_CONSENT" };
 
 export const DEMO_ERROR = "Ovo je demo za razgledavanje, pa se pravi SMS ne šalje.";
 
@@ -84,6 +84,17 @@ export async function sendClientMessage(input: {
 
   if (client.smsOptOut) {
     return { ok: false, error: `${fullName(client)} se odjavio/la od SMS-ova.`, code: "OPTED_OUT" };
+  }
+
+  // Gost koji je samo upisao broj na jelovniku (source "menu", bez ijedne usluge) pristao je na JEDNU poruku s molbom za
+  // recenziju, koju šalje automatizacija jelovnika. Ručne poruke, podsjetnici, kampanje i ponovljeni zahtjevi mu se ne šalju.
+  // Čim tim zabilježi uslugu, gost je običan klijent i ograničenje nestaje.
+  if (client.source === "menu" && !service && !(input.kind === "REVIEW_REQUEST" && input.automationRunId)) {
+    return {
+      ok: false,
+      error: "Gost s jelovnika pristao je samo na jednu poruku s molbom za recenziju, pa mu se druge poruke ne šalju.",
+      code: "NO_CONSENT",
+    };
   }
 
   // Pružatelj se odlučuje ovdje, jedanput, pa isti odgovor određuje i tekst (odjava) i način slanja.

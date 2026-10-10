@@ -84,7 +84,11 @@ const FAQ = [
   },
   {
     q: "Kome smijemo slati poruke?",
-    a: "Samo osobama kojima ste upravo pružili uslugu i koje su vam dale kontakt zbog nje. Ne šaljemo poruke nepoznatim brojevima ni kupljenim bazama.",
+    a: "Samo osobama kojima ste upravo pružili uslugu i koje su vam dale kontakt zbog nje, a kod kafića i restorana gostima koji su sami upisali broj i potvrdili privolu. Ne šaljemo poruke nepoznatim brojevima ni kupljenim bazama.",
+  },
+  {
+    q: "Imam kafić ili restoran. Kako to radi s jelovnikom?",
+    a: "Jelovnik izrađujemo i vodimo na našoj stranici, a vi QR kod stavite na stolove. Gost skenira kod, upiše broj mobitela uz privolu i otvara jelovnik. Otprilike sat i pol do dva sata kasnije dobije jednu poruku s molbom za Google recenziju; noću (22:00 do 9:00) ne šaljemo, pa tada poruka stiže ujutro. Broj čuvamo najviše 12 mjeseci i koristimo samo za tu poruku, a odjava je odgovorom STOP ili poveznicom u poruci. Ako želite, gost jelovnik može pogledati i bez unosa broja.",
   },
   { q: "Mogu li otkazati?", a: "Da, bilo kad. Plaća se mjesečno, bez ugovorne obveze." },
 ];
@@ -102,7 +106,28 @@ function planPoints(p: { smsMonthlyLimit: number; locationLimit: number }) {
   ];
 }
 
-const INDUSTRIES = ["Klime i grijanje", "Vodoinstalateri", "Električari", "Stomatolozi", "Frizeri i saloni", "Autoservisi", "Čišćenje", "Restorani", "Apartmani"];
+const VENUE_INDUSTRY = "Kafići i restorani";
+const INDUSTRIES = ["Klime i grijanje", "Vodoinstalateri", "Električari", "Stomatolozi", "Frizeri i saloni", "Autoservisi", "Čišćenje", VENUE_INDUSTRY, "Apartmani"];
+
+/** Ugostiteljstvo: jelovnik na našoj stranici + QR kod na stolovima. Samo ono što stvarno radimo; nikakvih obećanja o broju recenzija. */
+const VENUE_STEPS = [
+  {
+    title: "Jelovnik izrađujemo mi",
+    text: "Na našoj stranici unesemo kategorije, jela i cijene (po želji i engleski tekst) ili povežemo jelovnik koji već imate. Točnost cijena i alergena potvrđujete vi.",
+  },
+  {
+    title: "QR kod na stolove",
+    text: "Dobivate QR kodove spremne za ispis, po želji s brojem stola. Ispisujete ih i postavljate vi.",
+  },
+  {
+    title: "Gost upiše broj, pa vidi jelovnik",
+    text: "Prije jelovnika gost upiše broj mobitela i potvrdi privolu. Uz polje piše točno što dobiva. Po dogovoru jelovnik može pogledati i bez broja.",
+  },
+  {
+    title: "Jedna poruka nakon posjeta",
+    text: "Otprilike sat i pol do dva sata kasnije gost dobije jedan SMS s molbom za Google recenziju. Noću (22:00 do 9:00) ne šaljemo, pa tada poruka stiže ujutro.",
+  },
+];
 
 /** Primjer tjednog izvještaja koji klijent dobiva emailom. Izmišljeni podaci, i tako je označeno na stranici. */
 const SAMPLE_REPORT: [string, string][] = [
@@ -317,11 +342,55 @@ export default async function RecenzijeLanding({ searchParams }: { searchParams:
             ))}
           </div>
           <div className="mt-6 flex flex-wrap gap-2">
-            {INDUSTRIES.map((i) => (
-              <span key={i} className="label rounded-full border border-border-strong px-3 py-1.5 text-muted">
-                {i}
-              </span>
+            {INDUSTRIES.map((i) =>
+              i === VENUE_INDUSTRY ? (
+                <a key={i} href="#kafici" className="label rounded-full border border-border-strong px-3 py-1.5 text-muted underline-offset-4 hover:text-foreground hover:underline">
+                  {i}
+                </a>
+              ) : (
+                <span key={i} className="label rounded-full border border-border-strong px-3 py-1.5 text-muted">
+                  {i}
+                </span>
+              )
+            )}
+          </div>
+        </section>
+
+        {/* Kafići i restorani */}
+        <section className="scroll-mt-6 border-t border-border py-12" aria-labelledby="kafici-naslov" id="kafici">
+          <h2 id="kafici-naslov" className="label flex items-center gap-2 text-muted">
+            <span className="size-1.5 bg-orange" /> Kafići i restorani
+          </h2>
+          <p className="mt-4 max-w-2xl text-2xl font-bold leading-tight sm:text-3xl">Jelovnik na QR kodu koji ujedno skuplja recenzije.</p>
+          <p className="mt-4 max-w-2xl text-[15px] leading-relaxed text-muted">
+            Za ugostiteljske lokale imamo jednu mogućnost više: digitalni jelovnik koji izrađujemo i hostamo na našoj stranici. Vi stavite QR kod na stolove, a gost nakon posjeta
+            dobije jednu poruku s molbom za Google recenziju.
+          </p>
+          <ol className="mt-8 grid gap-px border border-border bg-border sm:grid-cols-2 lg:grid-cols-4">
+            {VENUE_STEPS.map((s, i) => (
+              <li key={s.title} className="bg-white p-6">
+                <span className="label text-accent">0{i + 1}</span>
+                <h3 className="mt-3 text-lg font-bold leading-snug">{s.title}</h3>
+                <p className="mt-2 text-[15px] leading-relaxed text-muted">{s.text}</p>
+              </li>
             ))}
+          </ol>
+          <div className="mt-6 grid items-start gap-6 lg:grid-cols-[1.2fr_0.8fr]">
+            <p className="min-w-0 border-l-[3px] border-orange bg-orange-soft p-4 text-[15px] leading-relaxed">
+              <strong>Pošteno o brojevima:</strong> broj služi samo za tu jednu poruku i čuva se najviše 12 mjeseci. Istom gostu ne šaljemo novi zahtjev unutar 30 dana, a tko se odjavi
+              (odgovorom STOP ili poveznicom u poruci), više ne dobiva poruke ni od jednog lokala. Privola mora biti dobrovoljna, pa preporučujemo da gost jelovnik može pogledati i bez
+              unosa broja; to postavljamo po dogovoru s vama.
+            </p>
+            <figure className="min-w-0 border border-border bg-white p-5" aria-label="Primjer poruke gostu s izmišljenim lokalom">
+              <p className="label flex flex-wrap items-center justify-between gap-2 text-muted">
+                <span>Poruka gostu</span>
+                <span className="border border-border-strong px-2 py-0.5 text-[11px]">Primjer</span>
+              </p>
+              <p className="mt-3 break-words text-[15px] leading-relaxed">
+                Hvala sto ste svratili u Konoba Marin! Ako vam je bilo lijepo, ostavite nam kratku Google recenziju: probajnovo.com/r/k3Fq9xLm2a Za odjavu napisite STOP.
+              </p>
+              <figcaption className="mt-3 text-[12px] leading-relaxed text-muted">Izmišljen lokal, samo za prikaz. Ime gosta ne znamo, pa ga poruka ne spominje.</figcaption>
+            </figure>
           </div>
         </section>
 

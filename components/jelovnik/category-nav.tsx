@@ -37,7 +37,11 @@ export function CategoryNav({ categories }: { categories: NavCategory[] }) {
         if (el.getBoundingClientRect().top <= LINE_OFFSET) current = el;
         else break;
       }
-      const atBottom = window.innerHeight + window.scrollY >= document.documentElement.scrollHeight - 4;
+      // "Na dnu" vrijedi samo kad se stranica uopće može skrolati: kratki jelovnik (npr. dvije kategorije) stane u cijeli
+      // zaslon, pa je on stalno "na dnu" i bez ovoga bi uvijek bila istaknuta zadnja kategorija.
+      const root = document.documentElement;
+      const scrollable = root.scrollHeight > window.innerHeight + 8;
+      const atBottom = scrollable && window.innerHeight + window.scrollY >= root.scrollHeight - 4;
       if (atBottom) current = els[els.length - 1];
       const id = current.id.slice("jl-c-".length);
       setActive((prev) => (prev === id ? prev : id));

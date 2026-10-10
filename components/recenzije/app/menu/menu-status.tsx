@@ -103,6 +103,11 @@ export function MenuStatus({
           Gost koji skenira QR kod vidi stranicu s greškom i ne ostavlja broj. Uključite ga prije ispisa i postavljanja kodova.
         </Alert>
       )}
+      {on && items === 0 && !hasExternalUrl && (
+        <Alert tone="amber" icon={CircleAlert} title="Jelovnik nema stavki">
+          Gost nakon unosa broja vidi prazan jelovnik. Dodajte stavke (ručno ili Brzim uvozom) ili upišite adresu vlastitog jelovnika u Postavkama, prije nego ispišete QR kodove.
+        </Alert>
+      )}
       {!hasReviewUrl && (
         <Alert
           tone="red"

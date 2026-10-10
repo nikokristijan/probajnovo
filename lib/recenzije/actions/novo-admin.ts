@@ -1,6 +1,6 @@
 "use server";
 
-import { and, eq } from "drizzle-orm";
+import { and, eq, sql } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
@@ -12,11 +12,14 @@ import { createSession } from "@/lib/recenzije/auth";
 import { db } from "@/lib/recenzije/db";
 import { ensureReviewsDb } from "@/lib/recenzije/db/ensure";
 import { organizationMembers, organizations, users } from "@/lib/recenzije/db/schema";
+import { BUSINESS_TYPE_VALUES, industryFor, workspaceTargetFor } from "@/lib/recenzije/business-type";
 import { DEMO_EMAIL, DEMO_SLUG } from "@/lib/recenzije/db/seed";
 import { env, integrations } from "@/lib/recenzije/env";
 import { toE164 } from "@/lib/recenzije/phone";
 import { ACTIVE_ORG_COOKIE } from "@/lib/recenzije/session";
 import { createManagedClient, ensureOperatorMember, updateClientDetails } from "@/lib/recenzije/services/clients-admin";
+import { ensureVenueAutomation } from "@/lib/recenzije/services/guests";
+import { ensureVenueMenu } from "@/lib/recenzije/services/menus";
 import { registerNovoWebhooks } from "@/lib/recenzije/services/novo-phone";
 import { checkTestSmsStatus, sendTestSms } from "@/lib/recenzije/services/sms-status";
 import { listTextbeeDevices } from "@/lib/recenzije/services/textbee";
@@ -187,9 +190,11 @@ const createClientSchema = z.object({
   planKey,
   freeDays: intField(0, 90, "Upišite broj dana od 0 do 90", 0),
   paidMonths: intField(1, 24, "Upišite broj mjeseci od 1 do 24", 1),
+  /** Vrsta poslovanja: "venue" uključuje digitalni jelovnik (is_venue). Izostavljeno = usluga / obrt, kao i prije. */
+  businessType: z.enum(BUSINESS_TYPE_VALUES, { error: "Odaberite vrstu poslovanja" }).optional().default("service"),
 });
 
-/** Odgovor nosi `data.orgId` da forma može odmah ponuditi "Otvori radni prostor". */
+/** Odgovor nosi `data.orgId` da forma može odmah ponuditi "Otvori radni prostor" (i "Otvori jelovnik" za ugostiteljstvo). */
 export async function createClientAction(_: ActionState, fd: FormData): Promise<ActionState> {
   const admin = await requireSuperAdmin();
   const parsed = createClientSchema.safeParse(formObject(fd));
@@ -206,7 +211,8 @@ export async function createClientAction(_: ActionState, fd: FormData): Promise<
   try {
     const created = await createManagedClient({
       name: d.name,
-      industry: d.industry || null,
+      // Ugostiteljstvo bez upisane djelatnosti dobiva zadanu ("Ugostiteljstvo"), da kartica klijenta ne ostane prazna.
+      industry: industryFor(d.industry, d.businessType),
       phone,
       googleReviewUrl: d.googleReviewUrl || null,
       contactName: d.contactName,
@@ -215,22 +221,46 @@ export async function createClientAction(_: ActionState, fd: FormData): Promise<
       planKey: d.planKey,
       freeDays: d.freeDays,
       paidMonths: d.paidMonths,
+      isVenue: d.businessType === "venue",
     });
     await logActivity({
       adminEmail: admin.email,
-      action: "Recenzije: novi klijent",
+      action: d.businessType === "venue" ? "Recenzije: novi klijent (ugostiteljstvo)" : "Recenzije: novi klijent",
       targetLabel: created.summary,
       propertyId: null,
     }).catch(() => undefined);
     revalidatePath("/admin/recenzije");
-    return { ok: true, message: `Klijent je dodan. ${created.summary}`, data: { orgId: created.id } };
+    const venueHint = d.businessType === "venue" ? " Jelovnik se uređuje u radnom prostoru (stavka Jelovnik)." : "";
+    return {
+      ok: true,
+      message: `Klijent je dodan. ${created.summary}${venueHint}`,
+      data: { orgId: created.id, isVenue: d.businessType === "venue" },
+    };
   } catch (e) {
     if (!(e instanceof AdminError)) console.error("[recenzije] novi klijent", e);
     return { values: echoValues(fd), error: safeMessage(e, "Klijent nije dodan. Pokušajte ponovno.") };
   }
 }
 
-// --- Kontakt i bilješka ---
+// --- Kontakt, bilješka i vrsta poslovanja ---
+
+/**
+ * Klijent je (sada) ugostiteljstvo: osiguraj jelovnik i njegovu automatizaciju te zadanu djelatnost ako je prazna. Idempotentno.
+ * Greška ovdje ne smije poništiti već spremljenu izmjenu: jelovnik i automatizacija ionako nastaju pri prvom otvaranju
+ * jelovnika odnosno prvom unosu broja.
+ */
+async function prepareVenue(organizationId: string) {
+  try {
+    await db
+      .update(organizations)
+      .set({ industry: industryFor("", "venue") })
+      .where(and(eq(organizations.id, organizationId), sql`coalesce(length(trim(${organizations.industry})), 0) = 0`));
+    await ensureVenueMenu(organizationId);
+    await ensureVenueAutomation(organizationId);
+  } catch (e) {
+    console.error("[recenzije] priprema jelovnika klijenta", e);
+  }
+}
 
 const detailsSchema = z.object({
   orgId,
@@ -238,6 +268,8 @@ const detailsSchema = z.object({
   contactEmail,
   contactPhone: z.string().trim().max(30, "Najviše 30 znakova").optional().default(""),
   internalNote: z.string().trim().max(2000, "Najviše 2000 znakova").optional().default(""),
+  /** Izostavljeno = vrsta poslovanja se ne mijenja (npr. kad se vrsta nije mogla pročitati). */
+  businessType: z.enum(BUSINESS_TYPE_VALUES, { error: "Odaberite vrstu poslovanja" }).optional(),
 });
 
 export async function updateClientDetailsAction(_: ActionState, fd: FormData): Promise<ActionState> {
@@ -255,14 +287,18 @@ export async function updateClientDetailsAction(_: ActionState, fd: FormData): P
       contactEmail: d.contactEmail,
       contactPhone,
       internalNote: d.internalNote || null,
+      isVenue: d.businessType === undefined ? undefined : d.businessType === "venue",
     });
+    if (d.businessType === "venue") await prepareVenue(d.orgId);
     await logActivity({
       adminEmail: admin.email,
-      action: "Recenzije: uređen kontakt klijenta",
+      action: d.businessType === undefined ? "Recenzije: uređen kontakt klijenta" : `Recenzije: uređen klijent (${d.businessType === "venue" ? "ugostiteljstvo" : "usluga / obrt"})`,
       targetLabel: name,
       propertyId: null,
     }).catch(() => undefined);
     revalidatePath("/admin/recenzije");
+    // Radni prostor čita vrstu poslovanja pri svakom prikazu (stavka "Jelovnik" u izborniku), pa ga osvježi i ovdje.
+    revalidatePath("/recenzije", "layout");
     return { ok: true, message: "Spremljeno." };
   } catch (e) {
     if (!(e instanceof AdminError)) console.error("[recenzije] kontakt klijenta", e);
@@ -283,7 +319,8 @@ const orgCookie = {
 /**
  * "Otvori radni prostor": NOVO tim ulazi u pravu aplikaciju (/recenzije) kao interni operater,
  * s aktivnom tvrtkom tog klijenta. Tako se klijenti, slanje, poruke i recenzije vode istim
- * zaslonima kao i prije, samo što ih umjesto klijenta koristi NOVO. Samo glavni admin.
+ * zaslonima kao i prije, samo što ih umjesto klijenta koristi NOVO. Samo glavni admin. Neobavezno polje `redirectTo`
+ * bira stranicu na koju se ulazi (zadano pregled; "/recenzije/jelovnik" za ugostiteljstvo), samo s popisa WORKSPACE_TARGETS.
  */
 export async function openWorkspaceAction(formData: FormData) {
   const admin = await requireSuperAdmin();
@@ -291,6 +328,9 @@ export async function openWorkspaceAction(formData: FormData) {
   const parsed = z.object({ orgId }).safeParse(raw);
   if (!parsed.success) redirect(`/admin/recenzije?greska=${encodeURIComponent(firstIssue(parsed.error))}`);
   const id = parsed.data.orgId;
+  // Neobavezno odredište ("Jelovnik" na kartici ugostiteljskog klijenta): samo s fiksnog popisa internih putanja.
+  const target = workspaceTargetFor(raw.redirectTo);
+  if (!target) redirect(`/admin/recenzije?greska=${encodeURIComponent("Nepoznato odredište.")}&k=${encodeURIComponent(id)}#klijent-${encodeURIComponent(id)}`);
 
   let operatorId: string | null = null;
   let failure: string | null = null;
@@ -312,7 +352,7 @@ export async function openWorkspaceAction(formData: FormData) {
     targetLabel: id,
     propertyId: null,
   }).catch(() => undefined);
-  redirect("/recenzije/pregled");
+  redirect(target);
 }
 
 /** Demo (Donald's Cooling) se otvara kao i na javnoj stranici: pod demo korisnikom, samo za čitanje. */

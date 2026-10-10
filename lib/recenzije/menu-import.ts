@@ -6,7 +6,7 @@ import { parsePriceToCents } from "./menu-format";
  *
  * Pravila (jedan redak = jedna stvar):
  * - Redak koji ZAVRŠAVA cijenom je stavka: "Margherita 8,50", "Margherita ........ 8,50 €", "Margherita - rajčica, sir 8,50".
- *   Cijena može biti 5,50 / 5.50 / 5,5 / 5 / €5,50 / 5,50 EUR / 1.250,00. Naziv je tekst ispred cijene; ako u njemu
+ *   Cijena može biti 5,50 / 5.50 / 5,5 / 5 / 2,- (cijeli iznos) / €5,50 / 5,50 EUR / 1.250,00. Naziv je tekst ispred cijene; ako u njemu
  *   ima " - ", ono iza je opis. Opis može doći i iza cijene ("Cappuccino 2,00 - s mlijekom"), ako cijena ima dvije
  *   decimale ili oznaku valute.
  * - Redak BEZ cijene je naziv kategorije ("Pizze", "PIZZE", "Pizze:", "# Pizze", "=== Pizze ===") ili opis prethodne stavke.
@@ -56,6 +56,20 @@ function collapse(s: string) {
 
 function toCents(priceText: string): number | null {
   return parsePriceToCents(priceText);
+}
+
+/** Cijena s crticom umjesto decimala ("Kava 2,-", "Čaj 2.- €") je cijeli iznos: pretvara se u "2,00" prije razlaganja retka. */
+// Završetak retka bez susjednih \s* (isti razmaci se ne smiju moći podijeliti na više načina): s ovakvim uzorkom
+// redak "1,-" + tisuće razmaka + "x" daje kubično vrijeme. Predugi retci se ionako preskaču pa se ovdje ne diraju.
+const DASH_PRICE = new RegExp(`(\\d)\\s*[,.]\\s*[-–—]{1,2}(?=(?:\\s*${CURRENCY})?[\\s.;,]*$)`, "i");
+function normalizeDashPrice(line: string): string {
+  if (line.length > IMPORT_LIMITS.maxLineChars) return line;
+  return line.replace(DASH_PRICE, "$1,00");
+}
+
+/** Redak koji sadrži cijenu s dvije decimale ili oznakom valute (ali ne mjeru poput "0,33 l"). */
+function containsPrice(t: string): boolean {
+  return /€|\beur(?:a|o|e)?\b/i.test(t) || /\d[.,]\d{2}(?!\d)(?!\s*(?:l|dl|cl|ml|g|kg|%)(?![\p{L}]))/iu.test(t);
 }
 
 function isAllCaps(s: string) {
@@ -156,7 +170,11 @@ export function parseMenuText(input: string): ParsedMenu {
     st.blank = false;
   };
 
-  const lines = input.replace(/\r\n?/g, "\n").replace(/[\u200b-\u200d\ufeff]/g, "").split("\n");
+  const lines = input
+    .replace(/\r\n?/g, "\n")
+    .replace(/[\u200b-\u200d\ufeff]/g, "")
+    .split("\n")
+    .map(normalizeDashPrice);
   /** Idući redak ako postoji i nije prazan (inače null): za naziv i cijenu u odvojenim retcima. */
   const adjacentLine = (idx: number): string | null => {
     const t = (lines[idx] ?? "").replace(/[\u00a0\u2007\u202f]/g, " ").trim();
@@ -236,7 +254,10 @@ export function parseMenuText(input: string): ParsedMenu {
     const text = collapse(t);
     const headingByForm = text.endsWith(":") || (isAllCaps(text) && !text.includes(",") && text.split(" ").length <= 4);
     const asDescription = st.last !== null && !st.blank && !headingByForm && descriptionLike(text);
+    // Cijena usred retka ili iza koje stoji nešto drugo ("3,50 € (0,3 l)", "2,80 €*") se ne prepoznaje; ne smije se tiho utopiti u opis.
+    const priceNotAtEnd = containsPrice(text);
     if (asDescription && st.last) {
+      if (priceNotAtEnd) warn(lineNo, `"${text.slice(0, 40)}": izgleda kao stavka, ali cijena nije na kraju retka pa je dodano kao opis prethodne stavke. Provjerite.`);
       const item: ParsedItem = st.last;
       item.description = collapse(`${item.description ?? ""} ${text}`).slice(0, IMPORT_LIMITS.descriptionChars);
       continue;
@@ -263,6 +284,7 @@ export function parseMenuText(input: string): ParsedMenu {
       skip(lineNo);
       continue;
     }
+    if (priceNotAtEnd) warn(lineNo, `"${text.slice(0, 40)}": izgleda kao stavka, ali cijena nije na kraju retka pa je uzeto kao naziv kategorije. Provjerite.`);
     openCategory(name, lineNo);
     st.blank = true;
   }

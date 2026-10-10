@@ -7,6 +7,7 @@ import RecenzijeSmsCard, { type SmsSenderView } from "@/components/admin/Recenzi
 import { EmptyState } from "@/components/admin/EmptyState";
 import { StatCard } from "@/components/admin/StatCard";
 import { openDemoAction } from "@/lib/recenzije/actions/novo-admin";
+import { type AdminVenueInfo, getAdminVenueInfo } from "@/lib/recenzije/services/admin-venues";
 import { listOrganizationsForNovoAdmin, listPlansForNovoAdmin, summarize } from "@/lib/recenzije/services/novo-admin";
 import { getSmsSenderStatus } from "@/lib/recenzije/services/sms-status";
 
@@ -28,6 +29,19 @@ function readSms(): SmsSenderView {
   }
 }
 
+/**
+ * Vrsta poslovanja i brojke jelovnika dolaze iz zasebnog upita. Ako čitanje ne uspije, stranica i dalje radi, ali tada
+ * kartice NE nude promjenu vrste poslovanja (prazna karta = nepoznato), da spremanje kontakta ništa ne prebriše.
+ */
+async function readVenues(ids: string[]): Promise<Map<string, AdminVenueInfo> | null> {
+  try {
+    return await getAdminVenueInfo(ids);
+  } catch (e) {
+    console.error("[recenzije] admin: podaci o ugostiteljstvu", e);
+    return null;
+  }
+}
+
 export default async function AdminRecenzijePage({
   searchParams,
 }: {
@@ -40,6 +54,7 @@ export default async function AdminRecenzijePage({
   const sp = await searchParams;
   const [rows, plans] = await Promise.all([listOrganizationsForNovoAdmin(), listPlansForNovoAdmin()]);
   const sum = summarize(rows);
+  const venues = await readVenues(rows.map((r) => r.id));
   const sms = readSms();
   const smsReady = sms.available ? sms.status.ready : null;
   const smsProvider = sms.available ? sms.status.active : null;
@@ -121,6 +136,7 @@ export default async function AdminRecenzijePage({
               smsReady={smsReady}
               smsProvider={smsProvider}
               flash={flashText && flashClientId === r.id ? { kind: flashKind, text: flashText } : null}
+              venue={venues?.get(r.id) ?? null}
             />
           ))}
         </section>

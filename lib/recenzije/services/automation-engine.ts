@@ -6,6 +6,7 @@ import {
   automations,
   campaigns,
   clients,
+  messages,
   organizations,
   services,
   type AutomationRun,
@@ -24,6 +25,8 @@ const MAX_STEPS_PER_TICK = 20;
  * šalje: "Hvala što ste svratili" nakon dva dana je neugodna, a privola je bila za poruku otprilike sat i pol nakon posjeta.
  */
 export const VENUE_MAX_LATE_MS = 24 * 60 * 60_000;
+/** Koliko dugo preuzeto pokretanje pripada jednom radniku (vidi processRun). Obrada jednog pokretanja traje sekunde. */
+export const RUN_CLAIM_LEASE_MS = 10 * 60_000;
 const TRIGGER_TEXT = { SERVICE_COMPLETED: "završena usluga", CLIENT_CREATED: "novi klijent", MANUAL: "ručno" } as const;
 
 function entry(stepIndex: number, type: string, message: string): RunLogEntry {
@@ -153,9 +156,14 @@ async function planForRun(run: AutomationRun): Promise<RunPlan | null> {
  * two workers can't execute the same step.
  */
 export async function processRun(runId: string, now: Date = new Date()): Promise<void> {
+  // Kad je pokretanje dospjelo (vrijeme prije zahtjeva za zakup), pamtimo ga za provjeru kašnjenja niže.
+  const [pre] = await db.select({ dueAt: automationRuns.nextRunAt }).from(automationRuns).where(eq(automationRuns.id, runId)).limit(1);
+  // Zakup: preuzimanje pomiče nextRunAt u budućnost, pa istodobni radnik (drugi poziv processDueRuns iz posjeta stranici
+  // jelovnika, crona ili druge instance) ne može preuzeti isto pokretanje i poslati istu poruku još jednom. Zaglavljeno
+  // pokretanje (proces je stao usred slanja) opet postaje dospjelo kad zakup istekne.
   const [claimed] = await db
     .update(automationRuns)
-    .set({ status: "RUNNING" })
+    .set({ status: "RUNNING", nextRunAt: new Date(now.getTime() + RUN_CLAIM_LEASE_MS) })
     .where(
       and(
         eq(automationRuns.id, runId),
@@ -167,6 +175,7 @@ export async function processRun(runId: string, now: Date = new Date()): Promise
   if (!claimed) return;
 
   const run = claimed;
+  const dueAt = pre?.dueAt ?? now;
   const plan = await planForRun(run);
   const steps = plan?.steps ?? null;
   const log: RunLogEntry[] = [...(run.log ?? [])];
@@ -190,7 +199,7 @@ export async function processRun(runId: string, now: Date = new Date()): Promise
       log.push(entry(index, "end", "Automatizacija je isključena, poruka se ne šalje"));
       return finish("CANCELLED");
     }
-    if (now.getTime() - run.nextRunAt.getTime() > VENUE_MAX_LATE_MS) {
+    if (now.getTime() - dueAt.getTime() > VENUE_MAX_LATE_MS) {
       log.push(entry(index, "error", "Prekasno za slanje: poruka je trebala otići prije više od 24 sata"));
       return finish("CANCELLED");
     }
@@ -297,6 +306,20 @@ export async function processRun(runId: string, now: Date = new Date()): Promise
         : step.type === "send_follow_up"
           ? "FOLLOW_UP"
           : "MANUAL";
+    if (plan?.venue) {
+      // Gost je pristao na JEDNU poruku: ako je za ovaj korak poruka već krenula (npr. proces je stao nakon slanja, pa je
+      // zakup istekao), ne šalje se ponovno.
+      const [already] = await db
+        .select({ id: messages.id })
+        .from(messages)
+        .where(and(eq(messages.automationRunId, run.id), eq(messages.kind, kind), inArray(messages.status, ["QUEUED", "SENT", "DELIVERED"])))
+        .limit(1);
+      if (already) {
+        log.push(entry(index, step.type, "Poruka je već poslana, ne šalje se ponovno"));
+        index++;
+        continue;
+      }
+    }
     const out = await sendClientMessage({
       organizationId: run.organizationId,
       clientId: client.id,

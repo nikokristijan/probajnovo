@@ -17,7 +17,7 @@ import {
 import { Button } from "@/components/recenzije/ui/button";
 import { Dialog, DialogContent, Switch } from "@/components/recenzije/ui/dialog";
 import { Alert, Card, CardBody, CardHeader, EmptyState, Field, Input, Select, Textarea } from "@/components/recenzije/ui/primitives";
-import { formatPriceCents, priceCentsToInput } from "@/lib/recenzije/menu-format";
+import { formatPriceCents, parsePriceToCents, priceCentsToInput } from "@/lib/recenzije/menu-format";
 import { plural, type CategoryDTO, type ItemDTO } from "./menu-types";
 
 type CatDialog = { mode: "create" } | { mode: "edit"; category: CategoryDTO } | null;
@@ -313,7 +313,18 @@ function CategoryForm({ category, onDone }: { category: CategoryDTO | null; onDo
   return (
     <form onSubmit={submit} className="space-y-4" noValidate>
       <Field label="Naziv" htmlFor="c-name" error={error ?? undefined}>
-        <Input id="c-name" value={name} maxLength={120} onChange={(e) => setName(e.target.value)} autoFocus autoComplete="off" aria-invalid={error ? true : undefined} />
+        <Input
+          id="c-name"
+          value={name}
+          maxLength={120}
+          onChange={(e) => {
+            setName(e.target.value);
+            setError(null);
+          }}
+          autoFocus
+          autoComplete="off"
+          aria-invalid={error ? true : undefined}
+        />
       </Field>
       <details className="border border-border bg-surface-2 px-3 py-2.5 [&[open]>summary]:mb-3" open={Boolean(category?.nameEn)}>
         <summary className="label flex min-h-6 cursor-pointer select-none items-center text-muted">Engleski</summary>
@@ -354,13 +365,22 @@ function ItemForm({
   const [nameEn, setNameEn] = useState(item?.nameEn ?? "");
   const [descriptionEn, setDescriptionEn] = useState(item?.descriptionEn ?? "");
   const [errors, setErrors] = useState<Record<string, string>>({});
-  const again = useRef(false);
 
-  function submit(e: React.FormEvent) {
-    e.preventDefault();
+  /** Greška uz polje nestaje čim ga se počne ispravljati (inače crvena poruka stoji uz već ispravnu vrijednost). */
+  function clearError(field: string) {
+    setErrors((prev) => (prev[field] ? { ...prev, [field]: "" } : prev));
+  }
+
+  function save(wantAgain: boolean) {
+    // Oba obavezna polja provjeravamo odjednom, da se ne otkriva jedna greška po jedna.
+    const missing: Record<string, string> = {};
+    if (!name.trim()) missing.name = "Naziv: obavezno polje";
+    if (!price.trim() || parsePriceToCents(price) === null) missing.price = "Cijena: upišite iznos u eurima, npr. 5,50.";
+    if (Object.keys(missing).length > 0) {
+      setErrors(missing);
+      return;
+    }
     setErrors({});
-    const wantAgain = again.current;
-    again.current = false;
     start(async () => {
       const input = {
         name,
@@ -386,10 +406,29 @@ function ItemForm({
   const hasEnglish = Boolean(item?.nameEn || item?.descriptionEn);
 
   return (
-    <form onSubmit={submit} className="space-y-4" noValidate>
+    <form
+      onSubmit={(e) => {
+        // Enter u polju uvijek znači glavnu radnju ("Dodaj stavku" / "Spremi"), nikad "Spremi i dodaj novu".
+        e.preventDefault();
+        save(false);
+      }}
+      className="space-y-4"
+      noValidate
+    >
       <div className="grid gap-4 sm:grid-cols-[minmax(0,1fr)_140px]">
         <Field label="Naziv" htmlFor="i-name" error={errors.name}>
-          <Input id="i-name" value={name} maxLength={120} onChange={(e) => setName(e.target.value)} autoFocus autoComplete="off" aria-invalid={errors.name ? true : undefined} />
+          <Input
+            id="i-name"
+            value={name}
+            maxLength={120}
+            onChange={(e) => {
+              setName(e.target.value);
+              clearError("name");
+            }}
+            autoFocus
+            autoComplete="off"
+            aria-invalid={errors.name ? true : undefined}
+          />
         </Field>
         <Field label="Cijena (€)" htmlFor="i-price" error={errors.price}>
           <Input
@@ -398,7 +437,10 @@ function ItemForm({
             inputMode="decimal"
             placeholder="5,50"
             maxLength={30}
-            onChange={(e) => setPrice(e.target.value)}
+            onChange={(e) => {
+              setPrice(e.target.value);
+              clearError("price");
+            }}
             autoComplete="off"
             aria-invalid={errors.price ? true : undefined}
           />
@@ -445,18 +487,11 @@ function ItemForm({
           Odustani
         </Button>
         {!item && (
-          <Button
-            type="submit"
-            variant="secondary"
-            disabled={pending}
-            onClick={() => {
-              again.current = true;
-            }}
-          >
+          <Button type="button" variant="secondary" disabled={pending} onClick={() => save(true)}>
             Spremi i dodaj novu
           </Button>
         )}
-        <Button type="submit" loading={pending} onClick={() => (again.current = false)}>
+        <Button type="submit" loading={pending}>
           {item ? "Spremi" : "Dodaj stavku"}
         </Button>
       </div>

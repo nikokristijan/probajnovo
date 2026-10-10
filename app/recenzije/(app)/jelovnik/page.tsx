@@ -4,6 +4,7 @@ import { MenuWorkspace } from "@/components/recenzije/app/menu/menu-workspace";
 import { parseMenuTab, toGuestView, type CategoryDTO } from "@/components/recenzije/app/menu/menu-types";
 import { Button } from "@/components/recenzije/ui/button";
 import { Card, EmptyState, PageHeader } from "@/components/recenzije/ui/primitives";
+import { delayWording } from "@/lib/recenzije/guest-consent";
 import { requireOrg } from "@/lib/recenzije/session";
 import { getGuestSummary, listRecentGuests } from "@/lib/recenzije/services/guests";
 import { getVenueMenuForOperator } from "@/lib/recenzije/services/menus";
@@ -72,7 +73,7 @@ export default async function MenuPage({ searchParams }: { searchParams: Promise
       <PageHeader
         kicker="Jelovnik"
         title="Digitalni jelovnik"
-        description="Gost skenira QR kod, upiše broj mobitela i otvara jelovnik. Broj se sprema, a nakon sat i pol do dva sata gostu stiže poruka s molbom za Google recenziju."
+        description={`Gost skenira QR kod, upiše broj mobitela i otvara jelovnik. Broj se sprema, a otprilike nakon ${delayWording(m.delayMinutes)} gostu stiže poruka s molbom za Google recenziju.`}
         actions={
           <>
             <Button variant="secondary" asChild>

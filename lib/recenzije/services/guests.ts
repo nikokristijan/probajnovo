@@ -495,7 +495,8 @@ export type PurgeResult = { cutoff: Date; visits: number; clients: number; messa
 /**
  * Briše sve starije od 12 mjeseci: unose gostiju i klijente nastale s jelovnika (source = 'menu') zajedno s njihovim
  * porukama. Klijent se NE briše ako ima usluge (tim ga je u međuvremenu preuzeo kao pravog klijenta), ako mu je
- * zadnja poruka mlađa od roka ili ako broj ima noviji unos. Klijenti koje je unio tim (source null) se nikad ne diraju.
+ * zadnja poruka mlađa od roka, ako broj ima noviji unos ili ako se gost odjavio (redak ostaje kao evidencija odjave, ali
+ * mu se stare poruke brišu). Klijenti koje je unio tim (source null) se nikad ne diraju.
  * Idempotentno: ponovljen poziv ne radi ništa dok ne zastari nešto novo. Poziva se iz dnevnog crona.
  */
 export async function purgeOldGuestData(now: Date = new Date()): Promise<PurgeResult> {
@@ -511,6 +512,9 @@ export async function purgeOldGuestData(now: Date = new Date()): Promise<PurgeRe
       .where(
         and(
           eq(clients.source, "menu"),
+          // Odjavljeni gost ostaje kao evidencija odjave (samo broj i oznaka): bez nje bi se isti broj nakon 12 mjeseci
+          // mogao ponovno upisati na jelovniku i dobiti poruku (isNumberOptedOut čita upravo ovaj redak).
+          eq(clients.smsOptOut, false),
           lt(clients.createdAt, cutoff),
           or(isNull(clients.lastMessageAt), lt(clients.lastMessageAt, cutoff)),
           sql`not exists (select 1 from nr_services s where s.client_id = ${clients.id})`,
@@ -519,6 +523,23 @@ export async function purgeOldGuestData(now: Date = new Date()): Promise<PurgeRe
       );
     let removedMessages = 0;
     let removedClients = 0;
+    // Odjavljenima se brišu samo stare poruke (tekst poruke, status), a redak klijenta s odjavom ostaje.
+    const kept = await tx
+      .select({ id: clients.id })
+      .from(clients)
+      .where(
+        and(
+          eq(clients.source, "menu"),
+          eq(clients.smsOptOut, true),
+          lt(clients.createdAt, cutoff),
+          sql`not exists (select 1 from nr_services s where s.client_id = ${clients.id})`
+        )
+      );
+    for (let i = 0; i < kept.length; i += 500) {
+      const ids = kept.slice(i, i + 500).map((c) => c.id);
+      const m = await tx.delete(messages).where(and(inArray(messages.clientId, ids), lt(messages.createdAt, cutoff))).returning({ id: messages.id });
+      removedMessages += m.length;
+    }
     for (let i = 0; i < doomed.length; i += 500) {
       const ids = doomed.slice(i, i + 500).map((c) => c.id);
       const m = await tx.delete(messages).where(inArray(messages.clientId, ids)).returning({ id: messages.id });

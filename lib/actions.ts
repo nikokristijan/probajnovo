@@ -133,6 +133,7 @@ const RESERVED_SLUGS = new Set([
   "en", // /en/[slug] — auto-prijevod vikendica, vidi app/en/[slug]/page.tsx
   "nfc", // /nfc/[slug] — gost-facing WiFi stranice za NFC pločice, vidi lib/db/schema.ts nfcTags
   "proizvodi", // /proizvodi i /proizvodi/[slug] — javne stranice proizvoda, vidi lib/db/schema.ts products
+  "jelovnik", // /jelovnik/[slug] — javni QR jelovnici ugostiteljskih klijenata NOVO Recenzija, vidi app/jelovnik
 ]);
 
 /** Postgres 42P01 ("relation does not exist") — kod živi na `.cause` kod Drizzle grešaka, ne na samoj grešci. */

@@ -22,11 +22,14 @@ const MODES: { id: Mode; label: string; hint: string }[] = [
   { id: "sheet", label: "Svi stolovi", hint: "A4 ploča s karticama" },
 ];
 
-/** Isto kao kod plakata za recenziju: pri ispisu ostaje samo plakat, na točnoj veličini papira. */
+/**
+ * Isto kao kod plakata za recenziju: pri ispisu ostaje samo plakat, na točnoj veličini papira. Veličina se zadaje u mm
+ * (a ne imenom "A6"): preglednici znaju samo A3 do A5, pa bi A6 inače pao na zadani papir pisača.
+ */
 function posterPrintCss(v: ReturnType<typeof variantInfo>) {
   const sel = `#${PRINT_ID}`;
   return `@media print {
-  @page { size: ${v.page}; margin: 0; }
+  @page { size: ${v.widthMm}mm ${v.heightMm}mm; margin: 0; }
   html, body { margin: 0 !important; padding: 0 !important; background: #fff !important; height: auto !important; overflow: visible !important; }
   body :not(:has(${sel})):not(${sel}):not(${sel} *) { display: none !important; }
   body :has(${sel}) { display: block !important; position: static !important; width: auto !important; height: 0 !important; min-height: 0 !important; margin: 0 !important; padding: 0 !important; border: 0 !important; overflow: visible !important; transform: none !important; filter: none !important; backdrop-filter: none !important; }
@@ -137,7 +140,8 @@ export function MenuPosterStudio({
   function makeSheet() {
     setSheetError(null);
     const c = Number(count);
-    const f = Number(from);
+    // Prazno polje "Prvi stol" znači 1 (a ne 0, kako bi Number("") dao).
+    const f = from.trim() === "" ? 1 : Number(from);
     buildSheet(async () => {
       const r = await buildMenuTableQrsAction({ count: c, from: f });
       if (r.ok) {

@@ -7,13 +7,16 @@ import {
   extendFreePeriodAction,
   openWorkspaceAction,
 } from "@/lib/recenzije/actions/novo-admin";
+import { businessTypeOf } from "@/lib/recenzije/business-type";
+import type { AdminVenueInfo } from "@/lib/recenzije/services/admin-venues";
 import { formatAdminDate, type AdminOrgRow, type AdminOrgState } from "@/lib/recenzije/services/novo-admin";
 import { estimateTwilioCostUsd, formatUsd, TWILIO_HR_USD_PER_SEGMENT } from "@/lib/recenzije/sms-format";
 
 /**
  * Kartica jednog klijenta u /admin/recenzije: tko je, što je platio (ili je besplatno), koliko
  * je poslano, je li spreman za slanje i što NOVO tim može napraviti (otvoriti radni prostor,
- * promijeniti paket, urediti kontakt). Server komponenta: radnje su server akcije koje
+ * promijeniti paket, urediti kontakt). Ugostiteljski klijenti dobivaju oznaku, brzi ulaz u jelovnik,
+ * javnu adresu jelovnika i broj unosa gostiju. Server komponenta: radnje su server akcije koje
  * ponovno provjeravaju da je admin glavni admin.
  */
 
@@ -89,6 +92,7 @@ export default function RecenzijeClientCard({
   smsReady,
   smsProvider,
   flash,
+  venue,
 }: {
   row: AdminOrgRow;
   plans: CardPlan[];
@@ -97,7 +101,10 @@ export default function RecenzijeClientCard({
   /** Aktivni pružatelj; procjena troška u USD prikazuje se samo uz Twilio (TextBee ide po tarifi SIM-a). */
   smsProvider: "twilio" | "textbee" | "novo" | "none" | null;
   flash: { kind: "ok" | "error"; text: string } | null;
+  /** Podaci o ugostiteljstvu; null kad se nisu mogli pročitati (tada se vrsta poslovanja ne prikazuje i ne mijenja). */
+  venue: AdminVenueInfo | null;
 }) {
+  const isVenue = venue?.isVenue === true;
   const st = STATE[r.state];
   const pct = Math.min(100, Math.round((r.smsThisMonth / Math.max(1, r.smsLimit)) * 100));
   const hasPlan = !!r.sub && r.sub.planKey !== "trial" && !!r.planName;
@@ -122,6 +129,9 @@ export default function RecenzijeClientCard({
             <span className={"text-[10px] font-semibold px-2 py-0.5 rounded-full " + st.cls}>{st.label}</span>
             {r.viaStripe && (
               <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-black/5 text-black/55">Stripe</span>
+            )}
+            {isVenue && (
+              <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full border border-black/15 text-black/65">Ugostiteljstvo</span>
             )}
           </div>
           <div className="text-xs text-black/55 mt-0.5 break-words">
@@ -238,6 +248,37 @@ export default function RecenzijeClientCard({
         </div>
       </div>
 
+      {isVenue && venue && (
+        <div className="rounded-xl border border-black/10 p-3 flex flex-col gap-2 text-xs min-w-0">
+          <div className="flex items-center gap-2 flex-wrap">
+            <div className="font-semibold text-sm">Jelovnik</div>
+            {venue.slug && !venue.menuEnabled && (
+              <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-[#ff7f00]/12 text-[#9a4a00]">Isključen</span>
+            )}
+          </div>
+          {venue.publicUrl ? (
+            <div className="min-w-0 break-words">
+              <span className="text-black/55">Javna adresa </span>
+              <a href={venue.publicUrl} target="_blank" rel="noopener noreferrer" className="font-semibold underline decoration-black/20 break-all">
+                {venue.publicUrl}
+              </a>
+            </div>
+          ) : (
+            <div className="text-black/55">Jelovnik nastaje pri prvom otvaranju stavke „Jelovnik” u radnom prostoru.</div>
+          )}
+          <div className="grid grid-cols-2 gap-x-4 gap-y-1">
+            <div>
+              <span className="text-black/55">Unosa brojeva (30 d) </span>
+              <b className="tabular-nums">{venue.guests30d}</b>
+            </div>
+            <div>
+              <span className="text-black/55">Zakazanih poruka </span>
+              <b className="tabular-nums">{venue.scheduled30d}</b>
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className="flex flex-wrap items-center gap-2">
         <form action={openWorkspaceAction}>
           <input type="hidden" name="orgId" value={r.id} />
@@ -245,12 +286,22 @@ export default function RecenzijeClientCard({
             Otvori radni prostor
           </button>
         </form>
-        <span className="text-[11px] text-black/45">Klijenti, slanje, poruke i recenzije za {r.name}.</span>
+        {isVenue && (
+          // Isti ulaz, ali odmah na stranicu Jelovnik. Odredište je s fiksnog popisa na serveru (redirectTo).
+          <form action={openWorkspaceAction}>
+            <input type="hidden" name="orgId" value={r.id} />
+            <input type="hidden" name="redirectTo" value="/recenzije/jelovnik" />
+            <button type="submit" className="rounded-full border border-black/15 hover:border-black/40 text-xs font-semibold px-4 py-2">
+              Jelovnik
+            </button>
+          </form>
+        )}
+        <span className="text-[11px] text-black/45 min-w-0 break-words">Klijenti, slanje, poruke i recenzije za {r.name}.</span>
       </div>
 
       <details className="group">
         <summary className="cursor-pointer text-xs font-semibold text-black/70 hover:text-black list-none inline-flex items-center gap-1">
-          <span className="transition-transform group-open:rotate-90">›</span> Kontakt i bilješka
+          <span className="transition-transform group-open:rotate-90">›</span> {venue ? "Kontakt, vrsta poslovanja i bilješka" : "Kontakt i bilješka"}
         </summary>
         <div className="mt-3">
           <RecenzijeClientDetailsForm
@@ -260,6 +311,7 @@ export default function RecenzijeClientCard({
               contactEmail: contactEmail ?? "",
               contactPhone: r.contactPhone ?? "",
               internalNote: r.internalNote ?? "",
+              businessType: venue ? businessTypeOf(venue.isVenue) : null,
             }}
           />
         </div>

@@ -11,7 +11,7 @@ export const metadata: Metadata = {
 
 export default function TermsPage() {
   return (
-    <LegalPage title="Uvjeti korištenja" updated="9. listopada 2026.">
+    <LegalPage title="Uvjeti korištenja" updated="10. listopada 2026.">
       <h2>1. Prihvaćanje uvjeta</h2>
       <p>
         Korištenjem probajnovo.com i slanjem upita prihvaćate ove uvjete. Ako se s njima ne slažete,
@@ -87,19 +87,57 @@ export default function TermsPage() {
         mjesečna, a uslugu možete otkazati u bilo kojem trenutku, bez ugovorne obveze.
       </p>
 
-      <h2>9. Vanjske poveznice</h2>
+      <h2>9. Digitalni jelovnik za ugostiteljske lokale</h2>
+      <p>
+        Ugostiteljski lokali (kafići, restorani, konobe) uz NOVO Recenzije mogu koristiti digitalni jelovnik
+        koji za njih izrađujemo i hostamo na probajnovo.com/jelovnik/… Lokal QR kod s adresom jelovnika
+        stavlja na stolove. Gost prije jelovnika može upisati broj mobitela i potvrditi privolu te nakon
+        posjeta dobiva jednu SMS poruku s molbom za Google recenziju, u vremenu navedenom uz polje za broj
+        (zadano otprilike sat i pol, najmanje sat, najviše četiri sata) i nikad između 22:00 i 9:00.
+        Odjavljenim brojevima ne šaljemo ništa. Brojeve koristimo samo za tu jednu poruku i brišemo ih
+        najkasnije nakon 12 mjeseci (osim oznake odjave, koju čuvamo da broj ne bi ponovno dobivao poruke).
+      </p>
+      <p>Ako koristite jelovnik, vi kao lokal:</p>
+      <ul>
+        <li>
+          odgovarate za sadržaj jelovnika: nazive, opise, alergene, prijevode i posebno cijene. Cijene su
+          isključivo vaše i prikazujemo ih onako kako ste ih dali; izmjene nam javite, a mi ih unosimo.
+          Mi smo samo izrađivač i poslužitelj jelovnika;
+        </li>
+        <li>
+          tekst privole koji gost vidi uz polje za broj ne smijete tražiti da mijenjamo, prikrivati ni
+          zaobilaziti, niti smijete upisivati brojeve umjesto gostiju;
+        </li>
+        <li>
+          kao voditelj obrade odlučujete smije li gost vidjeti jelovnik bez broja. Privola mora biti
+          dobrovoljna, pa preporučujemo da pregled bez broja bude dopušten; ako to isključite, odgovornost
+          za takvu postavku je vaša;
+        </li>
+        <li>
+          sami ispisujete i postavljate QR kodove. Ako na vaš zahtjev promijenimo adresu jelovnika, već
+          ispisani kodovi više neće voditi na njega;
+        </li>
+        <li>osiguravate ispravan Google link za recenzije i aktivan paket, jer se bez njih poruke ne šalju.</li>
+      </ul>
+      <p>
+        Trudimo se da je jelovnik dostupan, no ne jamčimo neprekidan rad. Ako imate vlastiti jelovnik
+        (PDF ili stranicu), gosta nakon unosa broja možemo uputiti na njega; za taj sadržaj odgovarate vi.
+        Obrada podataka gostiju opisana je u <Link href="/privatnost">politici privatnosti</Link>.
+      </p>
+
+      <h2>10. Vanjske poveznice</h2>
       <p>
         Stranica može sadržavati poveznice na vanjske servise (Instagram, Google karte, YouTube/Vimeo
         video). Ne odgovaramo za sadržaj ili politike privatnosti tih vanjskih stranica.
       </p>
 
-      <h2>10. Mjerodavno pravo</h2>
+      <h2>11. Mjerodavno pravo</h2>
       <p>Na ove uvjete primjenjuje se pravo Republike Hrvatske.</p>
 
-      <h2>11. Izmjene uvjeta</h2>
+      <h2>12. Izmjene uvjeta</h2>
       <p>Uvjete možemo povremeno ažurirati — datum zadnje izmjene naveden je na vrhu stranice.</p>
 
-      <h2>12. Kontakt</h2>
+      <h2>13. Kontakt</h2>
       <p>
         Pitanja o ovim uvjetima šaljite na <a href="mailto:hello@novo.studio">hello@novo.studio</a>.
       </p>
