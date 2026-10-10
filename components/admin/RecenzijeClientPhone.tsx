@@ -141,11 +141,13 @@ export default function RecenzijeClientPhone(p: ClientPhoneProps) {
         <div className="rounded-xl border border-black/10 p-3 flex flex-col gap-2.5 min-w-0">
           <div className="font-semibold text-sm">Odgovori i isporuka (webhook)</div>
           {p.hookSeenLabel ? (
-            <div className="text-[#0b7a3e] font-semibold">Webhook radi: zadnji događaj {p.hookSeenLabel}.</div>
+            <div className="text-[#0b7a3e] font-semibold">
+              Webhook radi: zadnji događaj {p.hookSeenLabel}. Poruke ovog klijenta završavaju uputom „Za odjavu napišite STOP.”.
+            </div>
           ) : (
             <div className="rounded-lg border border-[#ff7f00]/30 bg-[#ff7f00]/5 px-3 py-2 text-[#7a3a00]">
-              Webhook još nije primio nijedan događaj. Poruke ovog klijenta već završavaju uputom „Za odjavu napišite STOP.”, ali odgovor STOP neće stići dok ne napravite
-              webhook u TextBeeu (koraci ispod).
+              Webhook još nije primio nijedan događaj. Dok ne proradi, poruke ovog klijenta nose poveznicu za odjavu. Čim stigne prvi ispravno potpisan događaj, poruke
+              automatski prelaze na „Za odjavu napišite STOP.”. Napravite webhook u TextBeeu (koraci ispod) i pošaljite probnu poruku.
             </div>
           )}
 
@@ -209,7 +211,7 @@ export default function RecenzijeClientPhone(p: ClientPhoneProps) {
                   {e}
                 </code>
               ))}
-              pa spremite. Pošaljite probnu poruku: iznad se tada pojavi „Webhook radi”.
+              pa spremite (za odjavu odgovorom STOP obavezno je označen MESSAGE_RECEIVED). Pošaljite probnu poruku: iznad se tada pojavi „Webhook radi”.
             </li>
           </ol>
           <p className="text-[11px] text-black/45">

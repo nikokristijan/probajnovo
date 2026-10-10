@@ -5,7 +5,8 @@ import { enterMenuAction, submitMenuGate, type GateResult } from "@/app/jelovnik
 import { menuNoun, type MenuKind } from "@/lib/recenzije/menu-noun";
 import { GATE_LIMITS, GATE_MESSAGES } from "./constants";
 
-const PHONE_HINT = "Strani broj upišite s + i pozivnim brojem, npr. +49 151 2345678.";
+const PHONE_HINT_TEXT = "Strani broj upišite s + i pozivnim brojem, npr.";
+const PHONE_HINT_EXAMPLE = "+49 151 2345678";
 
 function SubmitButton({ pending, kind }: { pending: boolean; kind: MenuKind }) {
   const noun = menuNoun(kind);
@@ -124,7 +125,7 @@ export function GateForm({
           }}
         />
         <p id="jl-phone-hint" className="jl-hint">
-          {PHONE_HINT}
+          {PHONE_HINT_TEXT} <span className="jl-nowrap">{PHONE_HINT_EXAMPLE}</span>.
         </p>
         {phoneError && (
           <p id="jl-phone-error" role="alert" className="jl-error">

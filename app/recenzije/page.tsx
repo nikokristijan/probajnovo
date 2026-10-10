@@ -88,7 +88,7 @@ const FAQ = [
   },
   {
     q: "Imam kafić ili restoran. Kako to radi s jelovnikom?",
-    a: "Jelovnik izrađujemo i vodimo na našoj stranici, a vi QR kod stavite na stolove. Gost skenira kod i otvara jelovnik. Ako upiše broj mobitela uz privolu, otprilike sat i pol do dva sata kasnije dobije jednu poruku s molbom za Google recenziju; noću (22:00 do 9:00) ne šaljemo, pa tada poruka stiže ujutro. Broj čuvamo najviše 12 mjeseci i koristimo samo za tu poruku, a odjava je odgovorom STOP ili poveznicom u poruci. Gost jelovnik uvijek može pogledati i bez unosa broja (sitna poveznica ispod polja); tada ništa ne spremamo ni ne šaljemo.",
+    a: "Jelovnik izrađujemo i vodimo na našoj stranici, a vi QR kod stavite na stolove. Gost skenira kod i otvara jelovnik. Ako upiše broj mobitela uz privolu, otprilike sat i pol do dva sata kasnije dobije poruku s molbom za Google recenziju; noću (22:00 do 9:00) ne šaljemo, pa tada poruka stiže ujutro. Stranicu možete nazvati „jelovnik” ili „meni”. Standardno gost pristaje samo na tu jednu poruku i broj koristimo samo za nju. Ako sami uključite obavijesti, gost vidi drugi tekst privole i pristaje i na povremene obavijesti vašeg lokala o novostima, događanjima i ponudama; tekst privole to jasno navodi, a vi odgovarate za sadržaj i učestalost obavijesti. Broj čuvamo najviše 12 mjeseci, a odjava je odgovorom STOP ili poveznicom u poruci. Gost jelovnik uvijek može pogledati i bez unosa broja (sitna poveznica ispod polja); tada ništa ne spremamo ni ne šaljemo.",
   },
   { q: "Mogu li otkazati?", a: "Da, bilo kad. Plaća se mjesečno, bez ugovorne obveze." },
 ];
@@ -124,8 +124,8 @@ const VENUE_STEPS = [
     text: "Gost može upisati broj mobitela i potvrditi privolu; uz polje piše točno što dobiva. Jelovnik može pogledati i bez broja.",
   },
   {
-    title: "Jedna poruka nakon posjeta",
-    text: "Otprilike sat i pol do dva sata kasnije gost dobije jedan SMS s molbom za Google recenziju. Noću (22:00 do 9:00) ne šaljemo, pa tada poruka stiže ujutro.",
+    title: "Molba za recenziju nakon posjeta",
+    text: "Otprilike sat i pol do dva sata kasnije gost dobije SMS s molbom za Google recenziju. Noću (22:00 do 9:00) ne šaljemo, pa tada poruka stiže ujutro. Obavijesti o novostima i ponudama šaljemo samo ako ih lokal uključi, a gost ih je izričito prihvatio.",
   },
 ];
 
@@ -364,7 +364,7 @@ export default async function RecenzijeLanding({ searchParams }: { searchParams:
           <p className="mt-4 max-w-2xl text-2xl font-bold leading-tight sm:text-3xl">Jelovnik na QR kodu koji ujedno skuplja recenzije.</p>
           <p className="mt-4 max-w-2xl text-[15px] leading-relaxed text-muted">
             Za ugostiteljske lokale imamo jednu mogućnost više: digitalni jelovnik koji izrađujemo i hostamo na našoj stranici. Vi stavite QR kod na stolove, a gost nakon posjeta
-            dobije jednu poruku s molbom za Google recenziju.
+            dobije poruku s molbom za Google recenziju.
           </p>
           <ol className="mt-8 grid gap-px border border-border bg-border sm:grid-cols-2 lg:grid-cols-4">
             {VENUE_STEPS.map((s, i) => (
@@ -377,7 +377,7 @@ export default async function RecenzijeLanding({ searchParams }: { searchParams:
           </ol>
           <div className="mt-6 grid items-start gap-6 lg:grid-cols-[1.2fr_0.8fr]">
             <p className="min-w-0 border-l-[3px] border-orange bg-orange-soft p-4 text-[15px] leading-relaxed">
-              <strong>Pošteno o brojevima:</strong> broj služi samo za tu jednu poruku i čuva se najviše 12 mjeseci. Istom gostu ne šaljemo novi zahtjev unutar 30 dana, a tko se odjavi
+              <strong>Pošteno o brojevima:</strong> broj služi samo za poruke koje piše u privoli koju gost vidi (zadano samo jedna poruka s molbom za recenziju, a obavijesti lokala samo ako ih lokal uključi) i čuva se najviše 12 mjeseci. Istom gostu ne šaljemo novi zahtjev unutar 30 dana, a tko se odjavi
               (odgovorom STOP ili poveznicom u poruci), više ne dobiva poruke ni od jednog lokala. Privola je dobrovoljna: gost jelovnik uvijek može pogledati i bez
               unosa broja, a tada ništa ne spremamo.
             </p>

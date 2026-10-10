@@ -5,6 +5,7 @@
  */
 
 import { escapeHtml } from "@/lib/recenzije/utils";
+import { menuNoun, type MenuKind } from "@/lib/recenzije/menu-noun";
 import { COLORS, FONT_MONO, FONT_SANS, ellipsize, textWidth } from "./poster-layout";
 
 export const SHEET_COLS = 3;
@@ -47,7 +48,7 @@ export function sheetPageCount(tables: number): number {
 }
 
 /** Jedna SVG stranica za svaki blok od 12 stolova. `inline`: za ugradnju u stranicu (kao poster-svg). */
-export function buildTableSheetPages({ orgName, tables, inline = false }: { orgName: string; tables: TableQr[]; inline?: boolean }): string[] {
+export function buildTableSheetPages({ orgName, tables, inline = false, menuKind }: { orgName: string; tables: TableQr[]; inline?: boolean; menuKind?: MenuKind }): string[] {
   const cellW = (PAGE_W - MARGIN * 2) / SHEET_COLS;
   const cellH = (PAGE_H - MARGIN * 2) / SHEET_ROWS;
   const sans = inline ? INLINE_SANS : FONT_SANS;
@@ -92,14 +93,14 @@ export function buildTableSheetPages({ orgName, tables, inline = false }: { orgN
         `<text x="${n(cx)}" y="${n(by + QR_BOX + 8.8)}" text-anchor="middle" font-size="8.5" font-weight="700" letter-spacing="-0.1" fill="${COLORS.ink}">Stol ${escapeHtml(label)}</text>`
       );
       parts.push(
-        `<text x="${n(cx)}" y="${n(by + QR_BOX + 13.6)}" text-anchor="middle" font-size="2.7" fill="${COLORS.muted}" ${monoAttr}>skenirajte za jelovnik</text>`
+        `<text x="${n(cx)}" y="${n(by + QR_BOX + 13.6)}" text-anchor="middle" font-size="2.7" fill="${COLORS.muted}" ${monoAttr}>skenirajte za ${menuNoun(menuKind).acc}</text>`
       );
     });
 
     const first = chunk[0]?.label ?? "";
     const last = chunk[chunk.length - 1]?.label ?? "";
     const range = chunk.length > 1 ? `stolovi ${first} do ${last}` : chunk.length === 1 ? `stol ${first}` : "bez stolova";
-    const aria = `QR kodovi jelovnika za ${venue.text}: ${range}`;
+    const aria = `QR kodovi ${menuNoun(menuKind).gen} za ${venue.text}: ${range}`;
     const root = inline
       ? `xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${PAGE_W} ${PAGE_H}" role="img" aria-label="${escapeHtml(aria)}" style="display:block;width:100%;height:auto;font-family:${sans}"`
       : `xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${PAGE_W} ${PAGE_H}" width="${PAGE_W}mm" height="${PAGE_H}mm" font-family="${sans}"`;

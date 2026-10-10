@@ -37,7 +37,7 @@ export function Brand({ name, logoUrl, id }: { name: string; logoUrl: string | n
       </h1>
     );
   }
-  return <h1 id={id} className="jl-brand jl-brand-name">
+  return <h1 id={id} className={name.length > 28 ? "jl-brand jl-brand-name is-long" : "jl-brand jl-brand-name"}>
       {name}
     </h1>;
 }

@@ -7,6 +7,7 @@
  * samo je fizički upola manji, pa su mali mono natpisi povećani (faktor k).
  */
 
+import { menuNoun, type MenuKind } from "@/lib/recenzije/menu-noun";
 import { escapeHtml } from "@/lib/recenzije/utils";
 import {
   CANVAS,
@@ -14,8 +15,8 @@ import {
   FONT_MONO,
   FONT_SANS,
   HEADLINE,
-  MENU_HEADLINE,
-  MENU_KICKER,
+  menuHeadline,
+  menuKicker,
   STAR_PATH,
   STEPS,
   fitName,
@@ -38,7 +39,7 @@ export type PosterSvgOptions = {
   /** "review" (zadano) = plakat za Google recenziju; "menu" = plakat za digitalni jelovnik. */
   kind?: PosterKind;
   /** Samo za kind "menu": broj stola (ispisuje se umjesto zvjezdica) i smije li gost pogledati jelovnik bez broja. */
-  menu?: { table?: string | null; allowSkip?: boolean };
+  menu?: { table?: string | null; allowSkip?: boolean; menuKind?: MenuKind };
 };
 
 /** Fontovi stranice (next/font varijable), uz rezervu ako varijabla ne postoji. */
@@ -75,9 +76,9 @@ function cleanText(s: string): string {
 
 export function buildPosterSvg({ orgName, qr, variant, inline = false, kind = "review", menu }: PosterSvgOptions): string {
   const isMenu = kind === "menu";
-  const headline = isMenu ? MENU_HEADLINE : HEADLINE;
+  const headline = isMenu ? menuHeadline(menu?.menuKind) : HEADLINE;
   const steps = isMenu ? menuSteps(menu?.allowSkip === true) : STEPS.map((s, i) => ({ ...s, note: STEP_NOTES[i] }));
-  const kickerText = isMenu ? MENU_KICKER : "GOOGLE RECENZIJA";
+  const kickerText = isMenu ? menuKicker(menu?.menuKind) : "GOOGLE RECENZIJA";
   const table = isMenu ? Array.from(cleanText(menu?.table ?? "").replace(/\s+/g, " ").trim()).slice(0, 12).join("") : "";
   const v = variantInfo(variant);
   const W = CANVAS.w;
@@ -174,7 +175,7 @@ export function buildPosterSvg({ orgName, qr, variant, inline = false, kind = "r
   parts.push(`<path d="M${COL_X} ${QR_Y + QR_BOX}H${right}" fill="none" stroke="${COLORS.ink}" stroke-width="0.4"/>`);
 
   const label = isMenu
-    ? `QR plakat jelovnika za ${name.lines.join(" ")}${table ? `, stol ${table}` : ""}: ${headline.join(" ")}. ${steps.map((s) => s.text).join(", ")}.`
+    ? `QR plakat ${menuNoun(menu?.menuKind).gen} za ${name.lines.join(" ")}${table ? `, stol ${table}` : ""}: ${headline.join(" ")}. ${steps.map((s) => s.text).join(", ")}.`
     : `QR plakat za ${name.lines.join(" ")}: ${HEADLINE.join(" ")}. ${STEPS.map((s) => s.text).join(", ")}.`;
   const rootAttrs = inline
     ? `xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${W} ${H}" role="img" aria-label="${escapeHtml(label)}" style="display:block;width:100%;height:auto;font-family:${sans}"`

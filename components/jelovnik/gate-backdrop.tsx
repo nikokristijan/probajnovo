@@ -30,7 +30,7 @@ function RealPreview({ menu, categories, all }: { menu: PublicMenuInfo; categori
       <div className="jl-nav jl-nav-static">
         <div className="jl-nav-in">
           <div className="jl-chips">
-            {all.slice(0, 6).map((c) => (
+            {all.slice(0, 5).map((c) => (
               <span key={c.id} className="jl-chip">
                 {c.name}
               </span>
