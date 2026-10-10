@@ -39,7 +39,7 @@ export function QuickActions({ actions }: { actions: PublicMenuActions }) {
       {(wifi || (contact && !phoneOnly)) && (
         <noscript>
           {/* Bez JavaScripta tipke za ploče ne rade, pa su ploče otvorene, a te tipke skrivene. */}
-          <style>{`.jl-qa-bar li:has(.jl-qa-btn[aria-controls]){display:none}.jl-qa-panel{grid-template-rows:1fr;visibility:visible;transition:none}.jl-qa-ph{display:block}`}</style>
+          <style>{`.jl-qa-bar li:has(.jl-qa-btn[aria-controls]){display:none}.jl-qa-panel{grid-template-rows:1fr;visibility:visible;transition:none}.jl-qa-ph{display:block}.jl-qa-copy{display:none}`}</style>
         </noscript>
       )}
       <ul className="jl-qa-bar">
