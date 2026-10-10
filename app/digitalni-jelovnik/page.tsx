@@ -282,7 +282,7 @@ export default async function DigitalniJelovnikPage({ searchParams }: { searchPa
               <QrGlyph className="block w-full" />
               <p className="label mt-2 text-center text-[10px] leading-snug">Skenirajte i pogledajte jelovnik</p>
             </div>
-            <figcaption className="mt-9 text-center text-[15px] leading-relaxed text-muted">
+            <figcaption className="mt-9 text-center text-[15px] leading-relaxed text-muted sm:mt-16">
               Primjer kako jelovnik izgleda na mobitelu. Lokal i cijene su izmišljeni.
             </figcaption>
           </figure>
@@ -399,10 +399,8 @@ export default async function DigitalniJelovnikPage({ searchParams }: { searchPa
               const featured = p.badge != null;
               return (
                 <div key={p.key} className={"flex min-w-0 flex-col border bg-white p-6 " + (featured ? "border-2 border-foreground" : "border-border")}>
-                  <div className="flex min-h-8 flex-wrap items-center justify-between gap-2">
-                    <h3 className="label text-[14px] text-foreground">{p.name}</h3>
-                    {p.badge && <span className="label rounded-full bg-orange px-3 py-1 text-black">{p.badge}</span>}
-                  </div>
+                  <div className="lg:min-h-7">{p.badge && <span className="label inline-block rounded-full bg-orange px-3 py-1 text-black">{p.badge}</span>}</div>
+                  <h3 className="label mt-2 text-[14px] text-foreground">{p.name}</h3>
                   <p className="mt-4 flex items-baseline gap-2">
                     <span className="tabular text-[46px] font-bold leading-none">{formatEur(p.priceMonthlyEur)}</span>
                     <span className="text-[17px] text-ink-soft">/ mjesec</span>
