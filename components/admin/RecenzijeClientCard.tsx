@@ -1,4 +1,5 @@
 import RecenzijeClientDetailsForm from "@/components/admin/RecenzijeClientDetailsForm";
+import RecenzijeClientPhone from "@/components/admin/RecenzijeClientPhone";
 import RecenzijeConfirmButton from "@/components/admin/RecenzijeConfirmButton";
 import {
   activatePlanAction,
@@ -8,6 +9,11 @@ import {
   openWorkspaceAction,
 } from "@/lib/recenzije/actions/novo-admin";
 import { businessTypeOf } from "@/lib/recenzije/business-type";
+import { env } from "@/lib/recenzije/env";
+import type { SmsSenderKind } from "@/lib/recenzije/services/sms";
+import { TEXTBEE_EVENTS } from "@/lib/recenzije/services/sms-status";
+import { publicHttpsProblem } from "@/lib/recenzije/twilio";
+import { textbeeOrgWebhookPath } from "@/lib/recenzije/textbee";
 import type { AdminVenueInfo } from "@/lib/recenzije/services/admin-venues";
 import { formatAdminDate, type AdminOrgRow, type AdminOrgState } from "@/lib/recenzije/services/novo-admin";
 import { estimateTwilioCostUsd, formatUsd, TWILIO_HR_USD_PER_SEGMENT } from "@/lib/recenzije/sms-format";
@@ -86,20 +92,30 @@ const panel = "rounded-xl border border-black/10 p-3 flex flex-col gap-2 min-w-0
 const label = "flex flex-col gap-1 text-xs text-black/60 min-w-0";
 const primaryBtn = "rounded-full bg-black text-white text-xs font-semibold px-4 py-2 self-start";
 
+/** Što šalje poruke ove tvrtke (r.senderKind, isti redoslijed kao pri slanju): oznaka na kartici. */
+const SENDER_LABEL: Record<SmsSenderKind, string> = {
+  org_textbee: "vlastiti TextBee mobitel",
+  org_gateway: "Android mobitel klijenta (stariji način)",
+  novo: "zajednički NOVO mobitel",
+  textbee: "TextBee (zajednički)",
+  twilio: "Twilio",
+  none: "nije postavljeno",
+};
+
+function seenLabel(iso: string | null) {
+  const d = iso ? new Date(iso) : null;
+  if (!d || Number.isNaN(d.getTime())) return null;
+  return d.toLocaleString("hr-HR", { timeZone: "Europe/Zagreb", day: "numeric", month: "numeric", year: "numeric", hour: "2-digit", minute: "2-digit" });
+}
+
 export default function RecenzijeClientCard({
   row: r,
   plans,
-  smsReady,
-  smsProvider,
   flash,
   venue,
 }: {
   row: AdminOrgRow;
   plans: CardPlan[];
-  /** Je li SMS pošiljatelj (Twilio, TextBee ili NOVO mobitel) postavljen; null kad se status nije mogao pročitati. */
-  smsReady: boolean | null;
-  /** Aktivni pružatelj; procjena troška u USD prikazuje se samo uz Twilio (TextBee ide po tarifi SIM-a). */
-  smsProvider: "twilio" | "textbee" | "novo" | "none" | null;
   flash: { kind: "ok" | "error"; text: string } | null;
   /** Podaci o ugostiteljstvu; null kad se nisu mogli pročitati (tada se vrsta poslovanja ne prikazuje i ne mijenja). */
   venue: AdminVenueInfo | null;
@@ -117,8 +133,11 @@ export default function RecenzijeClientCard({
   const missing: string[] = [];
   if (!r.hasReviewUrl) missing.push("Google link");
   if (!r.active) missing.push("aktivan paket");
-  if (smsReady !== true) missing.push("SMS pošiljatelj");
+  const sender = r.senderKind;
+  const smsReady = sender !== "none";
+  if (!smsReady) missing.push("SMS pošiljatelj");
   const ready = missing.length === 0;
+  const ownPhone = sender === "org_textbee";
 
   return (
     <article id={`klijent-${r.id}`} className="neu-card px-4 py-4 flex flex-col gap-4 scroll-mt-20">
@@ -220,13 +239,13 @@ export default function RecenzijeClientCard({
           <span className="text-black/55">Neuspjeli SMS (30 d) </span>
           <b className={"tabular-nums " + (r.failed30d > 0 ? "text-[#b80012]" : "")}>{r.failed30d}</b>
         </div>
-        {smsProvider === "textbee" && (
+        {(sender === "textbee" || ownPhone) && (
           <div className="col-span-2 sm:col-span-4 text-[11px] text-black/55 break-words">
-            Trošak SMS-a (TextBee): <b className="text-black">po tarifi vašeg SIM-a</b>. Poruke odlaze s vašeg mobitela, pa nema cijene po poruci u
-            USD.
+            Trošak SMS-a (TextBee): <b className="text-black">{ownPhone ? "po tarifi SIM-a mobitela ovog klijenta" : "po tarifi vašeg SIM-a"}</b>. Poruke odlaze s mobitela, pa nema
+            cijene po poruci u USD.
           </div>
         )}
-        {smsProvider === "twilio" && (
+        {sender === "twilio" && (
           <div className="col-span-2 sm:col-span-4 text-[11px] text-black/55 break-words">
             Procjena troška (Twilio): <b className="text-black tabular-nums">{formatUsd(estimateTwilioCostUsd(r.twilioSegmentsThisMonth))}</b> ovaj mjesec (
             {r.twilioSegmentsThisMonth} segm. × {TWILIO_HR_USD_PER_SEGMENT.toLocaleString("hr-HR", { minimumFractionDigits: 3 })} USD). Pun limit od {r.smsLimit} SMS ≈{" "}
@@ -244,7 +263,11 @@ export default function RecenzijeClientCard({
         <div className="flex flex-wrap gap-1.5">
           <Pill ok={r.hasReviewUrl} label="Google link" />
           <Pill ok={r.active} label="Aktivan paket" />
-          <Pill ok={smsReady === true} label="SMS pošiljatelj" missing={smsReady === null ? "status nepoznat" : "nije postavljen"} />
+          <Pill ok={smsReady} label="SMS pošiljatelj" missing="nije postavljen" />
+        </div>
+        <div className="text-xs">
+          <span className="text-black/55">Šalje s: </span>
+          <b className={ownPhone ? "text-[#0b7a3e]" : sender === "none" ? "text-[#9a4a00]" : ""}>{SENDER_LABEL[sender]}</b>
         </div>
       </div>
 
@@ -313,6 +336,32 @@ export default function RecenzijeClientCard({
               internalNote: r.internalNote ?? "",
               businessType: venue ? businessTypeOf(venue.isVenue) : null,
             }}
+          />
+        </div>
+      </details>
+
+      <details className="group">
+        <summary className="cursor-pointer text-xs font-semibold text-black/70 hover:text-black list-none inline-flex items-center gap-1">
+          <span className="transition-transform group-open:rotate-90">›</span> Mobitel ovog klijenta (TextBee)
+          <span
+            className={
+              "ml-1 text-[10px] font-semibold px-2 py-0.5 rounded-full " + (ownPhone ? "bg-[#0b7a3e]/10 text-[#0b7a3e]" : "bg-black/5 text-black/55")
+            }
+          >
+            {ownPhone ? "postavljen" : "nije postavljen"}
+          </span>
+        </summary>
+        <div className="mt-3">
+          <RecenzijeClientPhone
+            orgId={r.id}
+            orgName={r.name}
+            keySet={r.textbeeKeySet}
+            deviceId={r.textbeeDeviceId}
+            secretSet={r.textbeeSecretSet}
+            webhookUrl={`${env.appUrl}${textbeeOrgWebhookPath(r.id)}`}
+            webhookUrlProblem={publicHttpsProblem(env.appUrl)}
+            hookSeenLabel={seenLabel(r.textbeeHookSeenAt)}
+            events={TEXTBEE_EVENTS}
           />
         </div>
       </details>

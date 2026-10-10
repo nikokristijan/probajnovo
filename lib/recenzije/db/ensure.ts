@@ -9,7 +9,7 @@ import { db } from "./index";
  * da se dva serverless pokretanja ne sudare. Kad se shema promijeni:
  * dodaj ALTER TABLE ... ADD COLUMN IF NOT EXISTS na kraj i povećaj SCHEMA_VERSION.
  */
-export const SCHEMA_VERSION = 5;
+export const SCHEMA_VERSION = 6;
 
 const DDL = `
 CREATE TABLE IF NOT EXISTS "nr_meta" ("key" text PRIMARY KEY NOT NULL, "value" text NOT NULL);
@@ -417,6 +417,9 @@ CREATE INDEX IF NOT EXISTS "nr_menu_guest_created" ON "nr_menu_guests" USING btr
 CREATE INDEX IF NOT EXISTS "nr_client_source_created" ON "nr_clients" USING btree ("source","created_at");
 ALTER TABLE "nr_menus" ALTER COLUMN "allow_skip" SET DEFAULT true;
 ALTER TABLE "nr_menus" ADD COLUMN IF NOT EXISTS "logo_url" text;
+ALTER TABLE "nr_organizations" ADD COLUMN IF NOT EXISTS "textbee_api_key_enc" text;
+ALTER TABLE "nr_organizations" ADD COLUMN IF NOT EXISTS "textbee_device_id" text;
+ALTER TABLE "nr_organizations" ADD COLUMN IF NOT EXISTS "textbee_webhook_secret_enc" text;
 `;
 
 /**

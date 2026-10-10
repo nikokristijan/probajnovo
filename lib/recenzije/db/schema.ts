@@ -162,6 +162,13 @@ export const organizations = pgTable("nr_organizations", {
   smsGatewayUser: text("sms_gateway_user"),
   smsGatewayPassEnc: text("sms_gateway_pass_enc"),
   smsGatewaySigningKeyEnc: text("sms_gateway_signing_key_enc"),
+  /**
+   * TextBee mobitel samo ove tvrtke (poruke tvrtke odlaze s njezina broja). Ključ i tajna webhooka su šifrirani
+   * (lib/recenzije/crypto), ID uređaja je običan tekst. Postavlja ih samo glavni admin; vidi services/org-textbee.ts.
+   */
+  textbeeApiKeyEnc: text("textbee_api_key_enc"),
+  textbeeDeviceId: text("textbee_device_id"),
+  textbeeWebhookSecretEnc: text("textbee_webhook_secret_enc"),
   createdAt: createdAt(),
   updatedAt: updatedAt(),
 });

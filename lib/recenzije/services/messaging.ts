@@ -2,14 +2,14 @@ import "server-only";
 import { and, desc, eq } from "drizzle-orm";
 import { db } from "@/lib/recenzije/db";
 import { clients, messages, organizations, services, type MessageKind } from "@/lib/recenzije/db/schema";
-import { env, integrations } from "@/lib/recenzije/env";
+import { env } from "@/lib/recenzije/env";
 import { renderTemplate, withBusinessName } from "@/lib/recenzije/messages";
-import { composeSms, needsOptOutLink } from "@/lib/recenzije/sms-format";
+import { composeSms } from "@/lib/recenzije/sms-format";
 import { isPublicHttpsUrl, publicHttpsProblem } from "@/lib/recenzije/twilio";
 import { fullName } from "@/lib/recenzije/utils";
 import { logActivity } from "./activity";
 import { isNumberOptedOut } from "./opted-out";
-import { sendSms, smsProvider, SmsNotConfiguredError } from "./sms";
+import { optOutLinkFor, sendSms, smsProvider, SmsNotConfiguredError } from "./sms";
 import { createTrackingLink, getOrCreateClientToken } from "./tracking";
 import { usage } from "./billing";
 
@@ -100,9 +100,10 @@ export async function sendClientMessage(input: {
   // Pružatelj se odlučuje ovdje, jedanput, pa isti odgovor određuje i tekst (odjava) i način slanja.
   // Gdje odgovori rade (Android mobitel, TextBee uz webhook) poruka završava uputom "Za odjavu napišite STOP.", a composeSms
   // je stavlja sam. Twilio u Hrvatskoj ne podržava odgovore, pa odjava ide poveznicom /o/<token>. TextBee prima odgovore samo uz
-  // webhook (TEXTBEE_WEBHOOK_SECRET); bez njega se ponaša isto kao Twilio, da poruka nikad ne ode bez ikakve odjave.
+  // webhook (zajednički: TEXTBEE_WEBHOOK_SECRET, mobitel tvrtke: njezina tajna webhooka); bez njega se ponaša isto kao Twilio, da
+  // poruka nikad ne ode bez ikakve odjave. Pružatelj i odjava gledaju CIJELI redak tvrtke (org), ne samo globalne postavke.
   const provider = smsProvider(org);
-  const optOutLink = needsOptOutLink(provider, { textbeeReplies: integrations.textbeeInbound() });
+  const optOutLink = optOutLinkFor(org);
   // Poruka bez radne poveznice za odjavu ne smije otići: uz javnu https adresu stranice /o/<token> ne bi bila dostupna.
   const addressProblem = optOutLink ? publicHttpsProblem(env.appUrl) : null;
   if (addressProblem) {

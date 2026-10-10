@@ -3,20 +3,23 @@ import { createHmac, timingSafeEqual } from "crypto";
 import type { Organization } from "@/lib/recenzije/db/schema";
 import { decrypt } from "@/lib/recenzije/crypto";
 import { env, integrations } from "@/lib/recenzije/env";
-import type { SmsProviderName } from "@/lib/recenzije/sms-format";
+import { needsOptOutLink, type SmsProviderName } from "@/lib/recenzije/sms-format";
 import { TWILIO_SENDER_PREFIX, describeTwilioError, resolveTwilioSender } from "@/lib/recenzije/twilio";
-import { sendViaTextbee } from "./textbee";
+import { TextbeeApiError, sendViaTextbee, type TextbeeCreds } from "./textbee";
 
 /**
  * Slanje SMS-a, bez ijednog ključa u pregledniku. Redoslijed pružatelja:
  *
+ * 0. TextBee mobitel same tvrtke (nr_organizations.textbee_*, postavlja ga glavni admin u kartici klijenta): ima prednost nad
+ *    SVIM ostalim, jer je vlasnik taj mobitel namjerno postavio za tu tvrtku. Ako slanje s njega ne uspije, poruka se NE šalje
+ *    drugim putem (otišla bi s krivog broja), nego završava kao FAILED s razlogom.
  * 1. Mobitel same tvrtke (stariji način, i dalje radi): vjerodajnice SMS Gatewaya spremljene
  *    po tvrtki, šifrirane. Poruke idu s tog broja.
  * 2. NOVO mobitel: JEDAN zajednički mobitel agencije (SMS Gateway for Android,
  *    github.com/capcom6/android-sms-gateway, Apache-2.0) za sve klijente. Vjerodajnice su u env
  *    varijablama (SMS_GATEWAY_USER, SMS_GATEWAY_PASSWORD), ne u bazi. Klijent nema nikakvo postavljanje;
  *    tekst poruke imenuje njegovu tvrtku.
- * 3. TextBee (textbee.dev) — vlastiti mobitel s vlastitom SIM karticom i brojem, povezan preko TextBee aplikacije
+ * 3. TextBee (textbee.dev), zajednički — vlastiti mobitel s vlastitom SIM karticom i brojem, povezan preko TextBee aplikacije
  *    (env TEXTBEE_API_KEY, TEXTBEE_DEVICE_ID). Dvosmjerni SMS radi samo uz webhook (TEXTBEE_WEBHOOK_SECRET); bez njega
  *    se u poruku dodaje poveznica za odjavu kao kod Twilija. Vidi services/textbee.ts.
  * 4. Twilio — globalno, iz env varijabli (TWILIO_*), plaća se po poruci. Pošiljatelj je broj (E.164),
@@ -38,7 +41,14 @@ export class SmsNotConfiguredError extends Error {
 
 export type SendResult = { sid: string; status: string; from: string | null };
 export type SmsProvider = SmsProviderName;
-type OrgSms = Pick<Organization, "smsGatewayUser" | "smsGatewayPassEnc">;
+/**
+ * Dio retka tvrtke koji odlučuje o pružatelju. Namjerno je sve obavezno (a ne Partial), pa pozivatelj koji preda tvrtku bez
+ * TextBee polja ne prođe tsc: tiho slanje sa zajedničkog broja umjesto s broja tvrtke bila bi najgora greška.
+ */
+export type OrgSms = Pick<
+  Organization,
+  "smsGatewayUser" | "smsGatewayPassEnc" | "textbeeApiKeyEnc" | "textbeeDeviceId" | "textbeeWebhookSecretEnc"
+>;
 
 /**
  * Oznaka u messages.from_number za poruke poslane preko zajedničkog NOVO mobitela. Po njoj webhook
@@ -46,23 +56,80 @@ type OrgSms = Pick<Organization, "smsGatewayUser" | "smsGatewayPassEnc">;
  */
 export const NOVO_SENDER = "NOVO";
 
-export function smsProvider(org?: OrgSms | null): SmsProvider | null {
-  if (org?.smsGatewayUser && org.smsGatewayPassEnc) return "gateway";
+/** Što stvarno šalje poruke tvrtke (finije od SmsProviderName: razlikuje mobitel tvrtke od zajedničkog). */
+export type SmsSenderKind = "org_textbee" | "org_gateway" | "novo" | "textbee" | "twilio" | "none";
+
+/** Tvrtka ima vlastiti TextBee mobitel: postoje šifrirani ključ i ID uređaja. */
+export const hasOwnTextbee = (org?: Pick<OrgSms, "textbeeApiKeyEnc" | "textbeeDeviceId"> | null) =>
+  Boolean(org?.textbeeApiKeyEnc && org.textbeeDeviceId?.trim());
+
+/** Tvrtka ima vlastiti Android SMS Gateway (stariji način). */
+export const hasOwnGateway = (org?: Pick<OrgSms, "smsGatewayUser" | "smsGatewayPassEnc"> | null) => Boolean(org?.smsGatewayUser && org.smsGatewayPassEnc);
+
+/**
+ * Redoslijed pružatelja na jednom mjestu: mobitel tvrtke (TextBee pa Android) pa zajednički NOVO mobitel, zajednički TextBee, Twilio.
+ * Prima samo zastavice, pa isti redoslijed koristi i admin popis (gdje se šifrirane vrijednosti ni ne čitaju).
+ */
+export function senderKindFrom(own: { textbee: boolean; gateway: boolean }): SmsSenderKind {
+  if (own.textbee) return "org_textbee";
+  if (own.gateway) return "org_gateway";
   if (integrations.novoPhone()) return "novo";
   if (integrations.textbee()) return "textbee";
   if (integrations.twilio()) return "twilio";
-  return null;
+  return "none";
+}
+
+export const smsSenderKind = (org?: OrgSms | null): SmsSenderKind => senderKindFrom({ textbee: hasOwnTextbee(org), gateway: hasOwnGateway(org) });
+
+export function smsProvider(org?: OrgSms | null): SmsProvider | null {
+  switch (smsSenderKind(org)) {
+    case "org_textbee":
+    case "textbee":
+      return "textbee";
+    case "org_gateway":
+      return "gateway";
+    case "novo":
+      return "novo";
+    case "twilio":
+      return "twilio";
+    default:
+      return null;
+  }
+}
+
+/**
+ * Stižu li odgovori (STOP) i potvrde isporuke preko TextBeea za ovu tvrtku. Vlastiti TextBee mobitel tvrtke: samo kad tvrtka
+ * ima tajnu webhooka (postavlja se pri spremanju mobitela); zajednički TextBee: kad je postavljen TEXTBEE_WEBHOOK_SECRET.
+ */
+export const textbeeRepliesEnabled = (org?: OrgSms | null) => (hasOwnTextbee(org) ? Boolean(org?.textbeeWebhookSecretEnc) : integrations.textbeeInbound());
+
+/** Treba li poruka ove tvrtke poveznicu za odjavu (/o/<token>): jedino mjesto koje to odlučuje za poruke, pisač i pregled. */
+export const optOutLinkFor = (org?: OrgSms | null) => needsOptOutLink(smsProvider(org), { textbeeReplies: textbeeRepliesEnabled(org) });
+
+/** Dešifrirane vjerodajnice TextBee mobitela tvrtke; greška (npr. ključ šifriran drugom tajnom) je čitljiva i bez ključa. */
+export function orgTextbeeCreds(org: OrgSms): TextbeeCreds {
+  try {
+    return {
+      apiKey: decrypt(org.textbeeApiKeyEnc!),
+      deviceId: org.textbeeDeviceId!.trim(),
+      webhookSecret: org.textbeeWebhookSecretEnc ? decrypt(org.textbeeWebhookSecretEnc) : null,
+    };
+  } catch {
+    throw new TextbeeApiError("TextBee (mobitel klijenta): spremljeni API ključ se ne može pročitati. U kartici klijenta ga upišite ponovno.", null);
+  }
 }
 
 export async function sendSms(
   org: OrgSms | null | undefined,
   params: { to: string; body: string; statusCallback?: string }
 ): Promise<SendResult> {
-  const provider = smsProvider(org);
-  if (provider === "gateway") return sendViaOrgGateway(org!, params);
-  if (provider === "novo") return sendViaNovoPhone(params);
-  if (provider === "textbee") return sendViaTextbee(params);
-  if (provider === "twilio") return sendViaTwilio(params);
+  const kind = smsSenderKind(org);
+  // Mobitel tvrtke: nikakvo vraćanje na drugi pružatelj ako ne uspije (vidi komentar na vrhu datoteke).
+  if (kind === "org_textbee") return sendViaTextbee(params, orgTextbeeCreds(org!));
+  if (kind === "org_gateway") return sendViaOrgGateway(org!, params);
+  if (kind === "novo") return sendViaNovoPhone(params);
+  if (kind === "textbee") return sendViaTextbee(params);
+  if (kind === "twilio") return sendViaTwilio(params);
   throw new SmsNotConfiguredError();
 }
 

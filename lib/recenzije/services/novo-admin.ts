@@ -5,6 +5,7 @@ import { ensureReviewsDb } from "@/lib/recenzije/db/ensure";
 import { organizations, plans, subscriptions, type Subscription } from "@/lib/recenzije/db/schema";
 import { OPERATOR_EMAIL } from "@/lib/recenzije/operator";
 import { isFreePeriod, TRIAL_SMS_LIMIT } from "@/lib/recenzije/services/billing";
+import { senderKindFrom, type SmsSenderKind } from "@/lib/recenzije/services/sms";
 
 /**
  * Pregled NOVO Recenzija za NOVO admin (/admin/recenzije). NOVO Recenzije su usluga koju
@@ -40,6 +41,12 @@ export async function listOrganizationsForNovoAdmin() {
       contactPhone: organizations.contactPhone,
       internalNote: organizations.internalNote,
       createdAt: organizations.createdAt,
+      // Mobitel tvrtke za slanje: samo zastavice i ID uređaja (običan tekst). Šifrirani ključ i tajna se NE čitaju ovdje.
+      textbeeKeySet: sql<boolean>`"nr_organizations"."textbee_api_key_enc" is not null`,
+      textbeeDeviceId: organizations.textbeeDeviceId,
+      textbeeSecretSet: sql<boolean>`"nr_organizations"."textbee_webhook_secret_enc" is not null`,
+      textbeeHookSeenAt: sql<string | null>`(select m.value from nr_meta m where m.key = 'textbee_hook_seen:' || "nr_organizations"."id")`,
+      ownGateway: sql<boolean>`("nr_organizations"."sms_gateway_user" is not null and "nr_organizations"."sms_gateway_pass_enc" is not null)`,
       hasReviewUrl: sql<boolean>`coalesce(length(trim(${organizations.googleReviewUrl})), 0) > 0`,
       // Stariji računi koje je tvrtka sama otvorila: vlasnik ostaje rezervni kontakt. Operater nikad.
       ownerEmail: sql<string | null>`(select u.email from nr_organization_members m join nr_users u on u.id = m.user_id where m.organization_id = "nr_organizations"."id" and u.email <> ${OPERATOR_EMAIL} order by (m.role = 'OWNER') desc, m.created_at asc limit 1)`,
@@ -83,8 +90,11 @@ export async function listOrganizationsForNovoAdmin() {
     }
 
     const paying = state === "active" && s?.planKey !== "trial";
+    // Isti redoslijed pružatelja kao pri slanju (services/sms.ts): ovo je ono što će ova tvrtka STVARNO koristiti.
+    const senderKind: SmsSenderKind = senderKindFrom({ textbee: r.textbeeKeySet && !!r.textbeeDeviceId?.trim(), gateway: r.ownGateway });
     return {
       ...r,
+      senderKind,
       smsLimit: s && s.planKey !== "trial" ? (r.planSmsLimit ?? TRIAL_SMS_LIMIT) : TRIAL_SMS_LIMIT,
       state,
       active,
