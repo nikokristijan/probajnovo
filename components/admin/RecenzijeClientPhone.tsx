@@ -162,27 +162,34 @@ export default function RecenzijeClientPhone(p: ClientPhoneProps) {
 
           <div className="flex flex-col gap-1.5">
             <div className="text-black/55">Tajna webhooka:</div>
-            {secret ? (
+            {secret && (
               <div className="flex items-center gap-2 flex-wrap">
                 <code className="font-mono text-xs break-all select-all min-w-0 flex-1 basis-60">{secret}</code>
                 <CopyButton text={secret} />
               </div>
-            ) : (
-              <div className="flex gap-2 flex-wrap items-center">
+            )}
+            <div className="flex gap-2 flex-wrap items-center">
+              {!secret && (
                 <form action={revealAction}>
                   <input type="hidden" name="orgId" value={p.orgId} />
                   <SubmitButton pendingLabel="Učitavam…" className={ghostBtn}>
                     Prikaži tajnu
                   </SubmitButton>
                 </form>
-                <form action={regenAction}>
-                  <input type="hidden" name="orgId" value={p.orgId} />
-                  <SubmitButton pendingLabel="Mijenjam…" className={ghostBtn}>
-                    Nova tajna
-                  </SubmitButton>
-                </form>
-              </div>
-            )}
+              )}
+              <form
+                action={regenAction}
+                onSubmit={(e) => {
+                  // Stara tajna odmah prestaje vrijediti, pa odgovori i isporuka ne stižu dok se nova ne upiše u TextBee.
+                  if (!window.confirm("Nova tajna odmah zamjenjuje staru. Odgovori i isporuka neće stizati dok je ne upišete u webhook u TextBeeu. Nastaviti?")) e.preventDefault();
+                }}
+              >
+                <input type="hidden" name="orgId" value={p.orgId} />
+                <SubmitButton pendingLabel="Mijenjam…" className={ghostBtn}>
+                  Nova tajna
+                </SubmitButton>
+              </form>
+            </div>
             {reveal.error && <Notice ok={false}>{reveal.error}</Notice>}
             {regen.error && <Notice ok={false}>{regen.error}</Notice>}
             {regen.ok && regen.message && <Notice ok>{regen.message}</Notice>}
