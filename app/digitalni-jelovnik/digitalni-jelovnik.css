@@ -294,9 +294,9 @@
   justify-content: center;
   min-height: 34px;
   border: 1px solid var(--djp-gold);
-  font-size: 9.5px;
+  font-size: 9px;
   font-weight: 600;
-  letter-spacing: 0.14em;
+  letter-spacing: 0.08em;
   text-transform: uppercase;
   color: var(--djp-gold-bright);
   white-space: nowrap;

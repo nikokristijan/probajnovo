@@ -2,7 +2,6 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { ArrowRight, Check, Phone } from "lucide-react";
 import NovoShell from "@/components/novo/NovoShell";
-import LegalFooterLinks from "@/components/LegalFooterLinks";
 import { Button } from "@/components/recenzije/ui/button";
 import { DigitalniJelovnikInquiryForm } from "@/components/digitalni-jelovnik/inquiry-form";
 import { GatePhone, MenuPhone, QrGlyph } from "@/components/digitalni-jelovnik/phones";
@@ -99,7 +98,7 @@ const WE_DO = [
   },
   {
     title: "Podrška na hrvatskom",
-    text: "Kad god nešto niste sigurni, nazovite ili napišite nam. Odgovara vam netko iz NOVO-a, na hrvatskom.",
+    text: "Kad god nešto niste sigurni, nazovite ili napišite nam. Odgovara vam netko od nas, na hrvatskom.",
   },
 ];
 
@@ -140,7 +139,7 @@ const FAQ = [
     a: "Gostu ne treba vaš Wi-Fi, dovoljan je njegov mobilni internet. Ako negdje u lokalu nema signala, preporučujemo da uz QR kod zadržite i papirnati jelovnik kao rezervu.",
   },
   {
-    q: "Moraju li gosti ostaviti broj? I što ako ne žele poruke?",
+    q: "Moraju li gosti ostaviti broj i što ako ne žele poruke?",
     a: "Ne moraju. Ispod polja za broj je poveznica za pregled jelovnika bez broja, a tada ništa ne spremamo i ne šaljemo. Gost koji je ostavio broj može se u svakom trenutku odjaviti odgovorom STOP i više ne dobiva poruke.",
   },
   {
@@ -254,7 +253,7 @@ export default async function DigitalniJelovnikPage({ searchParams }: { searchPa
               od {formatEur(CHEAPEST)} <span className="text-lg font-normal text-muted">/ mjesec, bez PDV-a</span>
             </p>
             <div className="mt-6 flex flex-wrap items-center gap-x-6 gap-y-3">
-              <Button size="lg" asChild className="h-14 px-8 text-[14px]">
+              <Button size="lg" asChild className="h-14 w-full px-8 text-[14px] sm:w-auto">
                 <a href="#upit">
                   Pošaljite upit <ArrowRight />
                 </a>
@@ -277,7 +276,7 @@ export default async function DigitalniJelovnikPage({ searchParams }: { searchPa
           <figure className="relative mx-auto w-full max-w-[340px] min-w-0 lg:mx-0 lg:justify-self-center">
             <MenuPhone />
             <div
-              className="absolute -bottom-5 -left-1 hidden w-[132px] rotate-[-4deg] border border-foreground bg-white p-2.5 shadow-[6px_6px_0_0_rgb(0_0_0/0.9)] sm:block lg:-left-14"
+              className="absolute -bottom-5 -left-[68px] hidden w-[112px] rotate-[-4deg] border border-foreground bg-white p-2 shadow-[5px_5px_0_0_rgb(0_0_0/0.9)] sm:block"
               aria-hidden="true"
             >
               <QrGlyph className="block w-full" />
@@ -364,8 +363,8 @@ export default async function DigitalniJelovnikPage({ searchParams }: { searchPa
           <h2 id="posteno" className={H2}>
             Gost odlučuje, a mi poštujemo njegov izbor
           </h2>
-          <div className="mt-9 grid items-start gap-8 lg:grid-cols-[1.25fr_0.75fr]">
-            <ul className="grid min-w-0 gap-px border border-border bg-border sm:grid-cols-2">
+          <div className="mt-9">
+            <ul className="grid min-w-0 gap-px border border-border bg-border sm:grid-cols-2 lg:grid-cols-3">
               {HONEST.map((h) => (
                 <li key={h.title} className="bg-white p-6">
                   <h3 className="text-[20px] font-bold leading-snug">{h.title}</h3>
@@ -373,7 +372,7 @@ export default async function DigitalniJelovnikPage({ searchParams }: { searchPa
                 </li>
               ))}
             </ul>
-            <figure className="min-w-0 border border-border bg-white p-5" aria-label="Primjer poruke gostu">
+            <figure className="mt-6 min-w-0 max-w-xl border border-border bg-white p-5" aria-label="Primjer poruke gostu">
               <p className="label flex flex-wrap items-center justify-between gap-2 text-muted">
                 <span>Poruka gostu</span>
                 <span className="border border-border-strong px-2 py-0.5 text-[12px]">Primjer</span>
@@ -400,15 +399,16 @@ export default async function DigitalniJelovnikPage({ searchParams }: { searchPa
               const featured = p.badge != null;
               return (
                 <div key={p.key} className={"flex min-w-0 flex-col border bg-white p-6 " + (featured ? "border-2 border-foreground" : "border-border")}>
-                  <div className="flex flex-wrap items-center justify-between gap-2">
+                  <div className="flex min-h-8 flex-wrap items-center justify-between gap-2">
                     <h3 className="label text-[14px] text-foreground">{p.name}</h3>
                     {p.badge && <span className="label rounded-full bg-orange px-3 py-1 text-black">{p.badge}</span>}
                   </div>
-                  <p className="mt-5">
+                  <p className="mt-4 flex items-baseline gap-2">
                     <span className="tabular text-[46px] font-bold leading-none">{formatEur(p.priceMonthlyEur)}</span>
-                    <span className="text-[17px] text-muted"> / mj bez PDV-a</span>
+                    <span className="text-[17px] text-ink-soft">/ mjesec</span>
                   </p>
-                  <p className="mt-3 text-[16px] text-ink-soft">
+                  <p className="mt-1 text-[16px] text-muted">bez PDV-a</p>
+                  <p className="mt-3 text-[16px] leading-snug text-ink-soft">
                     Godišnje {formatEur(annualPriceEur(p.priceMonthlyEur))}, plaća se {ANNUAL_PAID_MONTHS} mjeseci umjesto 12.
                   </p>
                   <p className="mt-4 text-[17px] leading-relaxed text-ink-soft">{p.summary}</p>
@@ -514,7 +514,14 @@ export default async function DigitalniJelovnikPage({ searchParams }: { searchPa
           </Link>
           .
         </p>
-        <LegalFooterLinks />
+        <nav aria-label="Pravne informacije" className="mt-2 flex flex-wrap gap-x-6 pb-6 text-[16px]">
+          <Link href="/privatnost" className="inline-flex min-h-11 items-center underline underline-offset-4">
+            Politika privatnosti
+          </Link>
+          <Link href="/uvjeti" className="inline-flex min-h-11 items-center underline underline-offset-4">
+            Uvjeti korištenja
+          </Link>
+        </nav>
       </div>
     </NovoShell>
   );

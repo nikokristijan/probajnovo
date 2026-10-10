@@ -36,10 +36,12 @@ export function QuickActions({ actions }: { actions: PublicMenuActions }) {
 
   return (
     <div className="jl-qa" onKeyDown={onKeyDown} data-count={count}>
-      <noscript>
-        {/* Bez JavaScripta tipke za ploče ne rade, pa su ploče otvorene, a te tipke skrivene. */}
-        <style>{`.jl-qa-bar li:has(.jl-qa-btn[aria-controls]){display:none}.jl-qa-panel{grid-template-rows:1fr;visibility:visible;transition:none}.jl-qa-ph{display:block}`}</style>
-      </noscript>
+      {(wifi || (contact && !phoneOnly)) && (
+        <noscript>
+          {/* Bez JavaScripta tipke za ploče ne rade, pa su ploče otvorene, a te tipke skrivene. */}
+          <style>{`.jl-qa-bar li:has(.jl-qa-btn[aria-controls]){display:none}.jl-qa-panel{grid-template-rows:1fr;visibility:visible;transition:none}.jl-qa-ph{display:block}`}</style>
+        </noscript>
+      )}
       <ul className="jl-qa-bar">
         {reviewUrl && (
           <li>

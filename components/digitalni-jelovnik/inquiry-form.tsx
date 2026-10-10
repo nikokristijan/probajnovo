@@ -4,12 +4,23 @@ import Link from "next/link";
 import { useActionState, useEffect, useState } from "react";
 import { AlertCircle, CheckCircle2 } from "lucide-react";
 import { Button } from "@/components/recenzije/ui/button";
-import { Field, Input, Select, Textarea } from "@/components/recenzije/ui/primitives";
+import { Input, Label, Select, Textarea } from "@/components/recenzije/ui/primitives";
 import { digitalniJelovnikInquiryAction } from "@/app/digitalni-jelovnik/actions";
 import { initialState } from "@/lib/recenzije/action";
 import { track } from "@/lib/track";
 
 export type PlanOption = { key: string; label: string };
+
+/** Polje s oznakom i uputom; uputa je 14 px (zajednički Field iz recenzije ima 12 px, premalo za starije čitatelje). */
+function Field({ label, htmlFor, error, hint, children }: { label: string; htmlFor: string; error?: string; hint?: string; children: React.ReactNode }) {
+  return (
+    <div>
+      <Label htmlFor={htmlFor}>{label}</Label>
+      {children}
+      {error ? <p className="mt-1.5 text-[14px] text-danger">{error}</p> : hint ? <p className="mt-1.5 text-[14px] leading-snug text-muted">{hint}</p> : null}
+    </div>
+  );
+}
 
 /** Isti ključ kao na obrascima za proizvode i recenzije, pa upit nosi izvor prvog dolaska (oglas, tražilica...). */
 const ATTR_KEY = "novo-attribution";
@@ -141,7 +152,7 @@ export function DigitalniJelovnikInquiryForm({ plans, defaultPlan }: { plans: Pl
             i obradom podataka radi odgovora na upit.
           </span>
         </label>
-        {fe.consent && <p className="mt-1.5 text-sm text-danger">{fe.consent}</p>}
+        {fe.consent && <p className="mt-1.5 text-[14px] text-danger">{fe.consent}</p>}
       </div>
 
       <Button type="submit" size="lg" className="h-14 w-full px-8 text-[14px] sm:w-auto" loading={pending}>
