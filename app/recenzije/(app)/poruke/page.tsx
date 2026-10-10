@@ -9,7 +9,8 @@ import { clients, messageTemplates, messages, type MessageStatus } from "@/lib/r
 import { env, integrations } from "@/lib/recenzije/env";
 import { mayMessageClient } from "@/lib/recenzije/menu-send-rules";
 import { clientHasNoticesConsentSql } from "@/lib/recenzije/services/menu-consent";
-import { optOutLinkFor, smsProvider } from "@/lib/recenzije/services/sms";
+import { smsProvider } from "@/lib/recenzije/services/sms";
+import { optOutLinkForOrg } from "@/lib/recenzije/services/textbee-hook-seen";
 import { OPERATOR_EMAIL } from "@/lib/recenzije/operator";
 import { formatPhone } from "@/lib/recenzije/phone";
 import { requireOrg } from "@/lib/recenzije/session";
@@ -90,7 +91,7 @@ export default async function MessagesPage({ searchParams }: { searchParams: Pro
           ai: integrations.ai(),
           sms: provider !== null,
           provider,
-          optOutLink: optOutLinkFor(ctx.org),
+          optOutLink: await optOutLinkForOrg(ctx.org),
           demo: ctx.org.isDemo,
           reviewUrl: !!ctx.org.googleReviewUrl,
         }}

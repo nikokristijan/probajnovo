@@ -12,7 +12,8 @@ import { fullName } from "@/lib/recenzije/utils";
 import { logActivity } from "./activity";
 import { hasNoticesConsent } from "./menu-consent";
 import { isNumberOptedOut } from "./opted-out";
-import { optOutLinkFor, sendSms, smsProvider, SmsNotConfiguredError } from "./sms";
+import { sendSms, smsProvider, SmsNotConfiguredError } from "./sms";
+import { optOutLinkForOrg } from "./textbee-hook-seen";
 import { createTrackingLink, getOrCreateClientToken } from "./tracking";
 import { usage } from "./billing";
 
@@ -110,7 +111,7 @@ export async function sendClientMessage(input: {
   // webhook (zajednički: TEXTBEE_WEBHOOK_SECRET, mobitel tvrtke: njezina tajna webhooka); bez njega se ponaša isto kao Twilio, da
   // poruka nikad ne ode bez ikakve odjave. Pružatelj i odjava gledaju CIJELI redak tvrtke (org), ne samo globalne postavke.
   const provider = smsProvider(org);
-  const optOutLink = optOutLinkFor(org);
+  const optOutLink = await optOutLinkForOrg(org);
   // Poruka bez radne poveznice za odjavu ne smije otići: uz javnu https adresu stranice /o/<token> ne bi bila dostupna.
   const addressProblem = optOutLink ? publicHttpsProblem(env.appUrl) : null;
   if (addressProblem) {

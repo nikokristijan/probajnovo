@@ -6,6 +6,7 @@ import { ensureReviewsDb } from "@/lib/recenzije/db/ensure";
 import { messages } from "@/lib/recenzije/db/schema";
 import { applyDeliveryStatus, gatewayPhoneCandidates, handleSharedPhoneInbound } from "./inbound";
 import { verifyTextbeeSignature } from "./textbee";
+import { textbeeHookSeenKey } from "./textbee-hook-seen";
 import { TEXTBEE_SIGNATURE_HEADER, cleanServerMessage, parseTextbeeWebhook, type TextbeeWebhookEvent } from "@/lib/recenzije/textbee";
 
 const MAX_BODY_BYTES = 64 * 1024;
@@ -59,7 +60,7 @@ async function applyStatus(evt: TextbeeWebhookEvent, status: "SENT" | "DELIVERED
 async function markHookSeen(organizationId: string) {
   try {
     await db.execute(
-      sql`insert into nr_meta (key, value) values (${`textbee_hook_seen:${organizationId}`}, ${new Date().toISOString()})
+      sql`insert into nr_meta (key, value) values (${textbeeHookSeenKey(organizationId)}, ${new Date().toISOString()})
           on conflict (key) do update set value = excluded.value`
     );
   } catch {

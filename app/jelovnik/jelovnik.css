@@ -56,7 +56,6 @@ body:has(.jl) {
   display: flex;
   flex-direction: column;
 }
-.jl-main > .jl-wrap.jl-gate,
 .jl-main > .jl-wrap.jl-center {
   margin-top: auto;
   margin-bottom: auto;
@@ -164,43 +163,129 @@ body:has(.jl) {
   text-wrap: pretty;
 }
 
-/* ---------- vrata ---------- */
+/* ---------- vrata: mali prozor iznad zamućene stranice ---------- */
 
-.jl-gate {
-  padding-top: 40px;
-  padding-bottom: 28px;
-  max-width: 460px;
-  animation: jl-rise 0.7s cubic-bezier(0.2, 0.7, 0.2, 1) both;
+/* Cijeli sloj je fiksan: stranica iza ne može se pomicati. Prozor ima vlastito pomicanje kad ne stane. */
+.jl-gate-layer {
+  position: fixed;
+  inset: 0;
+  z-index: 30;
+  display: grid;
+  grid-template-rows: minmax(0, 1fr) auto;
+  overflow: hidden;
+  overscroll-behavior: none;
+  background: var(--jl-bg);
+}
+html:has(.jl-gate-layer),
+body:has(.jl-gate-layer) {
+  overflow: hidden;
+  overscroll-behavior: none;
+}
+/* Ukrasna pozadina: ništa se ne može fokusirati, kliknuti ni odabrati. */
+.jl-backdrop {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+  user-select: none;
+  -webkit-user-select: none;
+}
+.jl-backdrop .jl-head,
+.jl-backdrop .jl-sec {
+  animation: none;
+}
+.jl-nav-static {
+  position: static;
+}
+/* Zamućenje i zatamnjenje: tekst iza se ne može pročitati. Preglednici bez backdrop-filtera dobivaju zamućenu pozadinu izravno. */
+.jl-scrim {
+  position: absolute;
+  inset: 0;
+  background: rgb(6 6 6 / 0.6);
+  -webkit-backdrop-filter: blur(9px);
+  backdrop-filter: blur(9px);
+}
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .jl-backdrop-in {
+    filter: blur(9px);
+  }
+  .jl-scrim {
+    background: rgb(6 6 6 / 0.7);
+  }
+}
+.jl-gate-main {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 0;
+  padding: 16px;
+}
+.jl-card {
+  position: relative;
+  width: 100%;
+  max-width: 372px;
+  max-height: calc(100vh - 100px);
+  max-height: min(85dvh, calc(100dvh - 100px));
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+  padding: 24px 20px 4px;
+  border: 1px solid var(--jl-hair);
+  background: #0d0c0b;
+  box-shadow: 0 30px 90px rgb(0 0 0 / 0.75), 0 0 0 1px rgb(0 0 0 / 0.5);
+  animation: jl-pop 0.4s cubic-bezier(0.2, 0.7, 0.2, 1) both;
+}
+.jl-card .jl-brand-name {
+  font-size: clamp(26px, 8vw, 32px);
+  line-height: 1.1;
+}
+.jl-card .jl-brand-logo {
+  width: 100%;
+  max-width: 200px;
+  height: 36px;
+}
+.jl-card-line {
+  margin: 12px 0 0;
+  font-size: 14px;
+  line-height: 1.5;
+  text-align: center;
+  color: var(--jl-soft);
+  text-wrap: balance;
+}
+.jl-sr {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
 }
 .jl-form {
   position: relative;
-  margin-top: 32px;
+  margin-top: 16px;
 }
 .jl-field {
   display: block;
   text-align: center;
 }
-.jl-label {
-  display: block;
-  margin-bottom: 10px;
-  font-size: 11px;
-  font-weight: 500;
-  letter-spacing: 0.26em;
-  text-transform: uppercase;
-  color: var(--jl-muted);
-}
 .jl-input {
   display: block;
   width: 100%;
-  min-height: 58px;
-  padding: 0 16px;
+  min-height: 50px;
+  padding: 0 14px;
   border: 1px solid var(--jl-line-strong);
   border-radius: 0;
   background: rgb(255 255 255 / 0.03);
   color: var(--jl-text);
   font: inherit;
   /* 18 px: iOS ne povećava stranicu pri fokusu na polju (granica je 16 px). */
-  font-size: 19px;
+  font-size: 18px;
   font-weight: 400;
   letter-spacing: 0.06em;
   text-align: center;
@@ -223,54 +308,49 @@ body:has(.jl) {
   box-shadow: 0 0 0 1px var(--jl-danger);
 }
 .jl-hint {
-  margin: 10px 0 0;
-  font-size: 13px;
-  line-height: 1.55;
+  margin: 6px 0 0;
+  font-size: 12px;
+  line-height: 1.5;
   color: var(--jl-muted);
 }
 .jl-error {
-  margin: 10px 0 0;
-  padding: 10px 14px;
+  margin: 8px 0 0;
+  padding: 8px 12px;
   border-left: 2px solid var(--jl-danger);
   background: rgb(240 160 148 / 0.09);
-  font-size: 14px;
+  font-size: 13px;
   line-height: 1.5;
   color: #f7d9d4;
   text-align: left;
 }
 .jl-error-block {
-  margin-top: 18px;
+  margin-top: 12px;
 }
 
 .jl-consent {
-  margin-top: 26px;
-  padding: 16px 16px 6px;
-  border: 1px solid var(--jl-line);
-  background: var(--jl-raised);
-}
-.jl-consent.has-error {
-  border-color: var(--jl-danger);
+  margin-top: 10px;
 }
 .jl-check {
   display: flex;
   align-items: flex-start;
-  gap: 14px;
+  gap: 12px;
   min-height: 44px;
+  padding: 6px 0 2px;
   cursor: pointer;
 }
 .jl-check input {
   flex: none;
   appearance: none;
   -webkit-appearance: none;
-  width: 24px;
-  height: 24px;
+  width: 22px;
+  height: 22px;
   margin: 1px 0 0;
   border: 1px solid var(--jl-gold);
   border-radius: 0;
   background-color: transparent;
   background-repeat: no-repeat;
   background-position: center;
-  background-size: 16px 16px;
+  background-size: 15px 15px;
   cursor: pointer;
   transition: background-color 0.15s ease;
 }
@@ -282,19 +362,21 @@ body:has(.jl) {
   border-color: var(--jl-danger);
 }
 .jl-check-text {
-  font-size: 13px;
-  line-height: 1.65;
+  font-size: 12.5px;
+  line-height: 1.55;
   color: var(--jl-soft);
 }
 .jl-more {
-  margin: 4px 0 10px 38px;
-  font-size: 13px;
+  margin: 0 0 0 34px;
+  font-size: 12.5px;
   line-height: 1.6;
   color: var(--jl-muted);
 }
 .jl-more summary {
-  display: inline-block;
-  padding: 8px 0;
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  padding: 0;
   cursor: pointer;
   color: var(--jl-soft);
   text-decoration: underline;
@@ -317,27 +399,71 @@ body:has(.jl) {
   text-decoration-color: var(--jl-hair);
   text-underline-offset: 4px;
 }
-.jl-privacy {
-  margin: 8px 0 0 38px;
-  font-size: 13px;
-  line-height: 1.5;
-  color: var(--jl-muted);
-}
-.jl-privacy a,
 .jl-foot-link {
   text-decoration: underline;
   text-decoration-color: var(--jl-hair);
   text-underline-offset: 4px;
 }
-.jl-privacy a {
-  display: inline-block;
-  padding: 12px 0;
-  margin: -12px 0;
-  color: var(--jl-gold-bright);
-  font-weight: 500;
+/* Podnožje ispod prozora: sitno, na dnu ekrana. */
+.jl-gate-layer .jl-foot {
+  position: relative;
+  z-index: 1;
+  margin-top: 0;
+  border-top: 0;
+  padding-bottom: max(4px, env(safe-area-inset-bottom));
 }
-.jl-privacy a:hover {
-  text-decoration-color: currentColor;
+.jl-gate-layer .jl-foot-in {
+  justify-content: center;
+  gap: 28px;
+}
+.jl-gate-layer .jl-foot-link {
+  min-height: 44px;
+  color: var(--jl-muted);
+}
+
+/* Neutralan kostur pozadine (lokal ne dopušta pregled bez broja): samo oblici, bez ijednog stvarnog teksta. */
+.jl-ph-bar {
+  display: block;
+  height: 14px;
+  background: #24221e;
+}
+.jl-ph-brand {
+  width: min(70%, 260px);
+  height: 44px;
+  margin: 0 auto;
+}
+.jl-ph-kicker {
+  width: 110px;
+  height: 12px;
+  margin: 22px auto 0;
+}
+.jl-ph-chip {
+  flex: none;
+  height: 16px;
+  margin: 14px 14px;
+}
+.jl-ph-sec {
+  width: 44%;
+  height: 30px;
+  margin: 0 auto 30px;
+}
+.jl-ph-row {
+  padding: 18px 0;
+  border-bottom: 1px solid var(--jl-line);
+}
+.jl-ph-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+}
+.jl-ph-price {
+  width: 52px;
+}
+.jl-ph-desc {
+  height: 12px;
+  margin-top: 12px;
+  background: #1c1a17;
 }
 
 /* Skriveno polje za botove: izvan ekrana, ali ne display:none (botovi takva polja preskaču). */
@@ -358,8 +484,8 @@ body:has(.jl) {
   justify-content: center;
   gap: 10px;
   width: 100%;
-  min-height: 56px;
-  margin-top: 22px;
+  min-height: 50px;
+  margin-top: 10px;
   padding: 0 24px;
   border: 1px solid var(--jl-gold);
   border-radius: 0;
@@ -401,7 +527,7 @@ body:has(.jl) {
 
 /* Pravna poveznica "bez unosa broja": namjerno sitna i mirna, ali čitljiva (kontrast iznad 4,5 : 1) i s dovoljno razmaka za dodir. */
 .jl-skip {
-  margin: 14px 0 0;
+  margin: 0;
   text-align: center;
 }
 .jl-skip-link {
@@ -681,6 +807,9 @@ body:has(.jl) {
   padding-bottom: 48px;
   max-width: 460px;
 }
+.jl-external .jl-btn {
+  margin-top: 22px;
+}
 .jl-external .jl-hint {
   margin-top: 14px;
   text-align: center;
@@ -782,6 +911,17 @@ body:has(.jl) {
   }
 }
 
+@keyframes jl-pop {
+  from {
+    opacity: 0;
+    transform: translateY(8px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
 /* ---------- učitavanje ---------- */
 
 .jl-skel {
@@ -833,9 +973,6 @@ body:has(.jl) {
   .jl-head:not(:has(.jl-head-top)) {
     padding-top: 72px;
   }
-  .jl-gate {
-    padding-top: 56px;
-  }
   .jl-sec {
     padding-top: 64px;
   }
@@ -866,7 +1003,7 @@ body:has(.jl) {
 /* ---------- smanjeno kretanje ---------- */
 
 @media (prefers-reduced-motion: reduce) {
-  .jl-gate,
+  .jl-card,
   .jl-head,
   .jl-sec {
     animation: none;

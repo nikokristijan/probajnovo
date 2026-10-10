@@ -98,13 +98,18 @@ export function smsProvider(org?: OrgSms | null): SmsProvider | null {
 }
 
 /**
- * Stižu li odgovori (STOP) i potvrde isporuke preko TextBeea za ovu tvrtku. Vlastiti TextBee mobitel tvrtke: samo kad tvrtka
- * ima tajnu webhooka (postavlja se pri spremanju mobitela); zajednički TextBee: kad je postavljen TEXTBEE_WEBHOOK_SECRET.
+ * Stižu li odgovori (STOP) i potvrde isporuke preko TextBeea za ovu tvrtku. Zajednički TextBee: kad je postavljen TEXTBEE_WEBHOOK_SECRET.
+ * Vlastiti TextBee mobitel tvrtke: tek kad tvrtka ima tajnu webhooka I kad je webhook stvarno radio (`hookSeen`: stigao je barem
+ * jedan ispravno potpisan događaj, vidi textbee-hook-seen.ts). Tajna nastaje već pri prvom spremanju mobitela, a webhook u TextBee
+ * nadzornoj ploči možda još ne postoji; do prvog događaja STOP odgovori ne bi stizali, pa poruka nosi poveznicu za odjavu.
+ * Zadano (`hookSeen` izostavljen) je sigurna strana: poveznica.
  */
-export const textbeeRepliesEnabled = (org?: OrgSms | null) => (hasOwnTextbee(org) ? Boolean(org?.textbeeWebhookSecretEnc) : integrations.textbeeInbound());
+export const textbeeRepliesEnabled = (org?: OrgSms | null, hookSeen = false) =>
+  hasOwnTextbee(org) ? Boolean(org?.textbeeWebhookSecretEnc) && hookSeen : integrations.textbeeInbound();
 
-/** Treba li poruka ove tvrtke poveznicu za odjavu (/o/<token>): jedino mjesto koje to odlučuje za poruke, pisač i pregled. */
-export const optOutLinkFor = (org?: OrgSms | null) => needsOptOutLink(smsProvider(org), { textbeeReplies: textbeeRepliesEnabled(org) });
+/** Treba li poruka ove tvrtke poveznicu za odjavu (/o/<token>). Za mobitel tvrtke s TextBeeom pozivatelj mora predati `hookSeen` (optOutLinkForOrg). */
+export const optOutLinkFor = (org?: OrgSms | null, hookSeen = false) =>
+  needsOptOutLink(smsProvider(org), { textbeeReplies: textbeeRepliesEnabled(org, hookSeen) });
 
 /** Dešifrirane vjerodajnice TextBee mobitela tvrtke; greška (npr. ključ šifriran drugom tajnom) je čitljiva i bez ključa. */
 export function orgTextbeeCreds(org: OrgSms): TextbeeCreds {

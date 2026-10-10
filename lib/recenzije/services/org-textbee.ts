@@ -7,6 +7,7 @@ import { ensureReviewsDb } from "@/lib/recenzije/db/ensure";
 import { organizations } from "@/lib/recenzije/db/schema";
 import { AdminError } from "./novo-admin";
 import { hasOwnTextbee } from "./sms";
+import { textbeeHookSeenKey } from "./textbee-hook-seen";
 import { listTextbeeDevices, type TextbeeCreds } from "./textbee";
 import { TEXTBEE_DEVICE_ID_PATTERN } from "@/lib/recenzije/textbee";
 
@@ -15,7 +16,7 @@ import { TEXTBEE_DEVICE_ID_PATTERN } from "@/lib/recenzije/textbee";
  * webhooka su u bazi šifrirani; ništa odavde ne vraća ključ, a tajna webhooka se vraća samo kad je admin izričito traži.
  */
 
-const META_SEEN = (organizationId: string) => `textbee_hook_seen:${organizationId}`;
+const META_SEEN = textbeeHookSeenKey;
 
 /** Nova tajna webhooka: 48 heksadecimalnih znakova (192 bita), dovoljno dugo za sva ograničenja TextBeea (barem 20 znakova). */
 export const newWebhookSecret = () => randomBytes(24).toString("hex");
