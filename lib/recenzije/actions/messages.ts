@@ -10,6 +10,7 @@ import { defaultCountryCode, toE164 } from "@/lib/recenzije/phone";
 import { rateLimit } from "@/lib/recenzije/rate-limit";
 import { requireOrg, requireWritableOrg } from "@/lib/recenzije/session";
 import { AiNotConfiguredError, generateSmsVariants } from "@/lib/recenzije/services/ai";
+import { isSkippedSend, skippedNote } from "@/lib/recenzije/menu-send-rules";
 import { sendClientMessage, sendTestMessage } from "@/lib/recenzije/services/messaging";
 
 const body = z.string().trim().min(5, "Najprije napišite poruku").max(1000, "Najviše 1.000 znakova");
@@ -136,10 +137,13 @@ export async function sendNowAction(clientIds: string[], text: string): Promise<
     .where(and(eq(clients.organizationId, ctx.org.id), inArray(clients.id, ids.data)));
   const kind = b.data.includes("{review_link}") ? "REVIEW_REQUEST" : "MANUAL";
   let sent = 0;
+  let skipped = 0;
   const errors: string[] = [];
   for (const r of rows) {
     const out = await sendClientMessage({ organizationId: ctx.org.id, clientId: r.id, template: b.data, kind });
     if (out.ok) sent++;
+    // Gost s jelovnika bez privole za obavijesti (ili noćna pauza): preskače se, ne računa se kao greška.
+    else if (isSkippedSend(out.code)) skipped++;
     else {
       errors.push(out.error);
       if (["NOT_CONFIGURED", "NO_REVIEW_URL", "DEMO", "LIMIT"].includes(out.code)) break;
@@ -147,9 +151,9 @@ export async function sendNowAction(clientIds: string[], text: string): Promise<
   }
   revalidatePath("/recenzije/poruke");
   revalidatePath("/recenzije/klijenti");
-  if (sent === 0) return { error: errors[0] ?? "Poruka nije poslana" };
+  if (sent === 0) return { error: errors[0] ?? (skipped > 0 ? `Nijedna poruka nije poslana.${skippedNote(skipped)}` : "Poruka nije poslana") };
   return {
     ok: true,
-    message: `Poslano ${sent} od ${rows.length}${errors.length ? ` · neuspjelo: ${errors.length}` : ""}`,
+    message: `Poslano ${sent} od ${rows.length}${errors.length ? ` · neuspjelo: ${errors.length}` : ""}${skipped ? ` · preskočeno: ${skipped} (gosti s jelovnika bez privole za obavijesti ili noćna pauza)` : ""}`,
   };
 }

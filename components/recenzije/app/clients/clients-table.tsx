@@ -8,6 +8,7 @@ import { toast } from "sonner";
 import { sendBulkRequestsAction, sendReviewRequestAction } from "@/lib/recenzije/actions/clients";
 import { Button } from "@/components/recenzije/ui/button";
 import { Avatar, Badge, hitArea } from "@/components/recenzije/ui/primitives";
+import { mayMessageClient, MENU_GUEST_LABEL, menuGuestBadge } from "@/lib/recenzije/menu-send-rules";
 import { formatPhone } from "@/lib/recenzije/phone";
 import { formatDate, REVIEW_STATUS, timeAgo } from "@/lib/recenzije/status";
 import { cn } from "@/lib/recenzije/utils";
@@ -20,14 +21,36 @@ export type ClientTableRow = {
   phone: string;
   reviewStatus: ReviewStatus;
   smsOptOut: boolean;
-  /** 'menu' = gost s jelovnika (privola vrijedi samo za jednu poruku koju šalje automatizacija). */
+  /** 'menu' = gost s jelovnika (bez privole za obavijesti privola vrijedi samo za jednu poruku koju šalje automatizacija). */
   source?: string | null;
+  /** Gost s jelovnika koji je pristao i na obavijesti. */
+  noticesConsent?: boolean;
   lastMessageAt: Date | null;
   nextFollowUpAt: Date | null;
   service: string | null;
   technician: string | null;
   serviceDate: Date | null;
 };
+
+/** Smije li se redak odabrati za slanje: gost s jelovnika bez usluge i bez privole za obavijesti ne smije (poslužitelj to ionako provodi). */
+const selectable = (r: ClientTableRow) => mayMessageClient({ source: r.source, hasService: Boolean(r.service), noticesConsent: Boolean(r.noticesConsent) });
+
+/** Oznaka "Gost s jelovnika" (uz podatak smije li dobiti obavijesti); null za ostale klijente. */
+function SourceTag({ row }: { row: ClientTableRow }) {
+  if (row.source !== "menu") return null;
+  return (
+    <span
+      className="mt-0.5 block text-[11px] text-subtle"
+      title={
+        row.noticesConsent
+          ? "Gost je pristao na obavijesti lokala, pa mu se mogu slati i ručne poruke, podsjetnici i kampanje (ne noću, 22:00 do 09:00)."
+          : "Gost je pristao samo na jednu poruku s molbom za recenziju, koju šalje automatizacija jelovnika."
+      }
+    >
+      {menuGuestBadge(Boolean(row.noticesConsent))}
+    </span>
+  );
+}
 
 function SortHeader({ label, col, className }: { label: string; col: string; className?: string }) {
   const sp = useSearchParams();
@@ -74,14 +97,14 @@ function SendButton({ row, compact }: { row: ClientTableRow; compact?: boolean }
     );
   }
   if (row.reviewStatus === "REVIEW_RECEIVED" || row.reviewStatus === "COMPLETED") return null;
-  // Gost s jelovnika bez usluge: ručno slanje je isključeno (poslužitelj ga ionako odbija), pa gumb ne nudimo.
-  if (row.source === "menu" && !row.service) {
+  // Gost s jelovnika bez usluge i bez privole za obavijesti: ručno slanje je isključeno (poslužitelj ga ionako odbija), pa gumb ne nudimo.
+  if (!selectable(row)) {
     return (
       <span
         className="inline-flex items-center gap-1 text-xs text-subtle"
         title="Gost s jelovnika pristao je samo na jednu poruku s molbom za recenziju, koju šalje automatizacija jelovnika."
       >
-        Gost jelovnika
+        {MENU_GUEST_LABEL}
       </span>
     );
   }
@@ -117,7 +140,8 @@ function SendButton({ row, compact }: { row: ClientTableRow; compact?: boolean }
 export function ClientsTable({ rows }: { rows: ClientTableRow[] }) {
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [pending, start] = useTransition();
-  const allSelected = rows.length > 0 && rows.every((r) => selected.has(r.id));
+  const pickable = rows.filter(selectable);
+  const allSelected = pickable.length > 0 && pickable.every((r) => selected.has(r.id));
   const toggle = (id: string) =>
     setSelected((s) => {
       const n = new Set(s);
@@ -163,7 +187,8 @@ export function ClientsTable({ rows }: { rows: ClientTableRow[] }) {
                     type="checkbox"
                     aria-label="Odaberi sve"
                     checked={allSelected}
-                    onChange={() => setSelected(allSelected ? new Set() : new Set(rows.map((r) => r.id)))}
+                    onChange={() => setSelected(allSelected ? new Set() : new Set(pickable.map((r) => r.id)))}
+                    disabled={pickable.length === 0}
                     className="size-4 accent-black"
                   />
                 </label>
@@ -188,7 +213,8 @@ export function ClientsTable({ rows }: { rows: ClientTableRow[] }) {
                       aria-label={`Odaberi ${r.firstName} ${r.lastName}`}
                       checked={selected.has(r.id)}
                       onChange={() => toggle(r.id)}
-                      className="size-4 accent-black"
+                      disabled={!selectable(r)}
+                      className="size-4 accent-black disabled:opacity-40"
                     />
                   </label>
                 </td>
@@ -200,6 +226,7 @@ export function ClientsTable({ rows }: { rows: ClientTableRow[] }) {
                         {r.firstName} {r.lastName}
                       </span>
                       <span className="tabular block text-xs text-muted">{formatPhone(r.phone)}</span>
+                      <SourceTag row={r} />
                     </span>
                   </Link>
                 </td>
@@ -232,7 +259,8 @@ export function ClientsTable({ rows }: { rows: ClientTableRow[] }) {
                 aria-label={`Odaberi ${r.firstName} ${r.lastName}`}
                 checked={selected.has(r.id)}
                 onChange={() => toggle(r.id)}
-                className="size-4 accent-black"
+                disabled={!selectable(r)}
+                className="size-4 accent-black disabled:opacity-40"
               />
             </label>
             <Link href={`/recenzije/klijenti/${r.id}`} className="flex min-w-0 flex-1 items-center gap-3">
@@ -244,6 +272,7 @@ export function ClientsTable({ rows }: { rows: ClientTableRow[] }) {
                 <span className="block truncate text-xs text-muted">
                   {r.service ?? "Bez usluge"} · {formatDate(r.serviceDate)}
                 </span>
+                <SourceTag row={r} />
                 <span className="mt-1.5 block">
                   <StatusCell row={r} />
                 </span>

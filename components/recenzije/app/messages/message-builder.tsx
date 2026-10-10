@@ -29,7 +29,7 @@ const LANGS = [
 import { cn } from "@/lib/recenzije/utils";
 
 type Template = { id: string; name: string; kind: string; body: string };
-type ClientOpt = { id: string; name: string; firstName: string; lastName: string; service: string | null; technician: string | null; serviceDate: Date | null; optOut: boolean };
+type ClientOpt = { id: string; name: string; firstName: string; lastName: string; service: string | null; technician: string | null; serviceDate: Date | null; optOut: boolean; menuOnly?: boolean };
 
 /** Primjer tokena iste duljine kao pravi (createToken(10)), da pregled broji znakove kao stvarna poruka. */
 const PREVIEW_TOKEN = "Ab3xK9pQ2m";
@@ -350,11 +350,11 @@ export function MessageBuilder({
             {filtered.length === 0 && <li className="px-3 py-6 text-center text-sm text-muted">Nema klijenata</li>}
             {filtered.map((c) => (
               <li key={c.id}>
-                <label className={cn("flex cursor-pointer items-center gap-3 px-3 py-2.5 text-sm hover:bg-surface-2", c.optOut && "opacity-50")}>
+                <label className={cn("flex cursor-pointer items-center gap-3 px-3 py-2.5 text-sm hover:bg-surface-2", (c.optOut || c.menuOnly) && "opacity-50")}>
                   <input
                     type="checkbox"
                     className="size-4 accent-black"
-                    disabled={c.optOut}
+                    disabled={c.optOut || c.menuOnly}
                     checked={recipients.has(c.id)}
                     onChange={() =>
                       setRecipients((s) => {
@@ -366,7 +366,7 @@ export function MessageBuilder({
                     }
                   />
                   <span className="flex-1 truncate">{c.name}</span>
-                  <span className="truncate text-xs text-muted">{c.optOut ? "Odjavljen" : c.service}</span>
+                  <span className="truncate text-xs text-muted">{c.optOut ? "Odjavljen" : c.menuOnly ? "Gost s jelovnika, bez obavijesti" : c.service}</span>
                 </label>
               </li>
             ))}

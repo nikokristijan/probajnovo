@@ -33,11 +33,14 @@ export function ClientHeaderActions({
   clientId,
   reviewed,
   optOut,
+  canSend = true,
   client,
 }: {
   clientId: string;
   reviewed: boolean;
   optOut: boolean;
+  /** False za gosta s jelovnika bez usluge i bez privole za obavijesti: poslužitelj mu ručne poruke odbija. */
+  canSend?: boolean;
   client: { firstName: string; lastName: string; phone: string; email: string | null; notes: string | null };
 }) {
   const send = useToastAction();
@@ -46,7 +49,7 @@ export function ClientHeaderActions({
   const [confirmDelete, setConfirmDelete] = useState(false);
   return (
     <div className="flex flex-wrap items-center gap-2">
-      {!reviewed && !optOut && (
+      {!reviewed && !optOut && canSend && (
         <Button loading={send.pending} onClick={() => send.run(() => sendReviewRequestAction(clientId))}>
           {!send.pending && <Send />} Pošalji zahtjev za recenziju
         </Button>

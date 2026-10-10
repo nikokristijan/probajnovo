@@ -63,6 +63,11 @@ export type CaptureInput = {
   /** IP klijenta (lib/recenzije/request.ts clientIp()); sprema se samo kao HMAC. */
   ip: string;
   userAgent?: string | null;
+  /**
+   * Je li gost na stranici vidio varijantu privole s obavijestima (skriveno polje obrasca). Izostavljeno = kao trenutna postavka
+   * lokala (pozivi s poslužitelja); `false` = vidio je užu varijantu, pa se obavijesti ne bilježe čak ni ako ih je lokal u međuvremenu uključio.
+   */
+  noticesShown?: boolean;
   /** Skriveno polje obrasca. Ako je išta upisano, riječ je o botu: vraća se lažni uspjeh, ništa se ne sprema. */
   honeypot?: string | null;
   now?: Date;
@@ -236,7 +241,11 @@ export async function captureGuest(input: CaptureInput): Promise<CaptureResult> 
   const automation = await ensureVenueAutomation(organizationId);
   const plan = org.isDemo ? null : await usage(organizationId);
   const globallyOptedOut = await isNumberOptedOut(phone);
-  const consentText = guestConsentText(menu.venueName, menu.delayMinutes);
+  // Isti tekst kao na stranici (ista funkcija, iste postavke lokala): sprema se kao dokaz. Privola za obavijesti vrijedi samo ako lokal
+  // obavijesti trenutno šalje I ako je gost vidio tu varijantu teksta (obrazac šalje što je vidio; ako je lokal u međuvremenu promijenio
+  // postavku, vrijedi uža varijanta, pa nitko ne dobije više nego što je pročitao ili što lokal sada želi).
+  const noticesConsent = menu.noticesEnabled && input.noticesShown !== false;
+  const consentText = guestConsentText(menu.venueName, menu.delayMinutes, { ...menu, noticesEnabled: noticesConsent });
   const tz = safeTimeZone(org.timezone);
 
   const result = await db.transaction(async (tx) => {
@@ -336,6 +345,7 @@ export async function captureGuest(input: CaptureInput): Promise<CaptureResult> 
         consentAt: now,
         consentVersion: GUEST_CONSENT_VERSION,
         consentText,
+        noticesConsent,
         ipHash,
         userAgent: shortUserAgent(d.userAgent),
         outcome,
@@ -372,7 +382,7 @@ export async function resolveMenuAccess(input: { slug: string; cookieValue?: str
   if (!menu) return { kind: "not_found" };
   if (verifyGuestCookie(menu.id, input.cookieValue, (input.now ?? new Date()).getTime())) return { kind: "menu", menu, via: "cookie" };
   if (menu.allowSkip && input.skip) return { kind: "menu", menu, via: "skip" };
-  return { kind: "gate", menu, consentText: guestConsentText(menu.venueName, menu.delayMinutes) };
+  return { kind: "gate", menu, consentText: guestConsentText(menu.venueName, menu.delayMinutes, menu) };
 }
 
 // --- Popis za operatera ---

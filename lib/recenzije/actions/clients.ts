@@ -15,6 +15,7 @@ import { fullName } from "@/lib/recenzije/utils";
 import { logActivity } from "@/lib/recenzije/services/activity";
 import { cancelActiveRunsForClient, triggerAutomations } from "@/lib/recenzije/services/automation-engine";
 import { markReviewReceived } from "@/lib/recenzije/services/google";
+import { isSkippedSend, skippedNote } from "@/lib/recenzije/menu-send-rules";
 import { sendClientMessage, type SendOutcome } from "@/lib/recenzije/services/messaging";
 import { isNumberOptedOut } from "@/lib/recenzije/services/opted-out";
 
@@ -257,18 +258,21 @@ export async function sendBulkRequestsAction(ids: string[]): Promise<ActionState
     .from(clients)
     .where(and(eq(clients.organizationId, ctx.org.id), inArray(clients.id, clean.data)));
   let sent = 0;
+  let skipped = 0;
   let firstError = "";
   for (const r of rows) {
     const out = await sendClientMessage({ organizationId: ctx.org.id, clientId: r.id, template, kind: "REVIEW_REQUEST" });
     if (out.ok) sent++;
+    // Gost s jelovnika bez privole za obavijesti (ili noćna pauza): preskače se, ne računa se kao greška.
+    else if (isSkippedSend(out.code)) skipped++;
     else if (!firstError) firstError = out.error;
     // Stop early on account-level problems; every other client would fail the same way.
     if (!out.ok && ["NOT_CONFIGURED", "NO_REVIEW_URL", "DEMO", "LIMIT"].includes(out.code)) break;
   }
   revalidatePath("/recenzije/klijenti");
   revalidatePath("/recenzije/pregled");
-  if (sent === 0) return { error: firstError || "Nijedna poruka nije poslana" };
-  return { ok: true, message: `Poslano ${sent} od ${rows.length} zahtjeva${firstError ? `. Neki nisu uspjeli: ${firstError}` : ""}` };
+  if (sent === 0) return { error: firstError || (skipped > 0 ? `Nijedna poruka nije poslana.${skippedNote(skipped)}` : "Nijedna poruka nije poslana") };
+  return { ok: true, message: `Poslano ${sent} od ${rows.length} zahtjeva${firstError ? `. Neki nisu uspjeli: ${firstError}` : ""}${skippedNote(skipped)}` };
 }
 
 export async function markReviewedAction(clientId: string): Promise<ActionState> {

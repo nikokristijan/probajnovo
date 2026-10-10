@@ -3,11 +3,14 @@ import { and, desc, eq } from "drizzle-orm";
 import { db } from "@/lib/recenzije/db";
 import { clients, messages, organizations, services, type MessageKind } from "@/lib/recenzije/db/schema";
 import { env } from "@/lib/recenzije/env";
+import { isAutomatedReviewRequest, NO_CONSENT_ERROR, QUIET_HOURS_ERROR } from "@/lib/recenzije/menu-send-rules";
 import { renderTemplate, withBusinessName } from "@/lib/recenzije/messages";
+import { isQuietHour, safeTimeZone } from "@/lib/recenzije/quiet-hours";
 import { composeSms } from "@/lib/recenzije/sms-format";
 import { isPublicHttpsUrl, publicHttpsProblem } from "@/lib/recenzije/twilio";
 import { fullName } from "@/lib/recenzije/utils";
 import { logActivity } from "./activity";
+import { hasNoticesConsent } from "./menu-consent";
 import { isNumberOptedOut } from "./opted-out";
 import { optOutLinkFor, sendSms, smsProvider, SmsNotConfiguredError } from "./sms";
 import { createTrackingLink, getOrCreateClientToken } from "./tracking";
@@ -22,7 +25,7 @@ export function twilioStatusCallbackUrl() {
 
 export type SendOutcome =
   | { ok: true; messageId: string; body: string }
-  | { ok: false; messageId?: string; error: string; code: "NOT_CONFIGURED" | "NO_REVIEW_URL" | "OPTED_OUT" | "SEND_FAILED" | "NOT_FOUND" | "DEMO" | "LIMIT" | "NO_CONSENT" };
+  | { ok: false; messageId?: string; error: string; code: "NOT_CONFIGURED" | "NO_REVIEW_URL" | "OPTED_OUT" | "SEND_FAILED" | "NOT_FOUND" | "DEMO" | "LIMIT" | "NO_CONSENT" | "QUIET_HOURS" };
 
 export const DEMO_ERROR = "Ovo je demo za razgledavanje, pa se pravi SMS ne šalje.";
 
@@ -57,6 +60,8 @@ export async function sendClientMessage(input: {
   kind: MessageKind;
   campaignId?: string | null;
   automationRunId?: string | null;
+  /** Trenutak slanja; samo za testove (noćna pauza za goste s jelovnika). */
+  now?: Date;
 }): Promise<SendOutcome> {
   const ctx = await messageContext(input.organizationId, input.clientId);
   if (!ctx) return { ok: false, error: "Klijent nije pronađen", code: "NOT_FOUND" };
@@ -86,15 +91,17 @@ export async function sendClientMessage(input: {
     return { ok: false, error: `${fullName(client)} se odjavio/la od SMS-ova.`, code: "OPTED_OUT" };
   }
 
-  // Gost koji je samo upisao broj na jelovniku (source "menu", bez ijedne usluge) pristao je na JEDNU poruku s molbom za
-  // recenziju, koju šalje automatizacija jelovnika. Ručne poruke, podsjetnici, kampanje i ponovljeni zahtjevi mu se ne šalju.
-  // Čim tim zabilježi uslugu, gost je običan klijent i ograničenje nestaje.
-  if (client.source === "menu" && !service && !(input.kind === "REVIEW_REQUEST" && input.automationRunId)) {
-    return {
-      ok: false,
-      error: "Gost s jelovnika pristao je samo na jednu poruku s molbom za recenziju, pa mu se druge poruke ne šalju.",
-      code: "NO_CONSENT",
-    };
+  // Gost s jelovnika (source "menu"): svaki gost pristaje na JEDNU automatsku poruku s molbom za recenziju. Ručne poruke,
+  // podsjetnici, kampanje i skupna slanja idu samo gostu koji je pristao i na obavijesti (nr_menu_guests.notices_consent, kad je lokal
+  // imao uključene obavijesti) ili kojem je tim zabilježio uslugu (tada je običan klijent). Uz to se takvim gostima noću (22:00 do 09:00)
+  // ne šalje ništa osim automatskog zahtjeva za recenziju, koji ima vlastitu noćnu pauzu (automation-engine.ts).
+  if (client.source === "menu" && !isAutomatedReviewRequest(input)) {
+    if (!service && !(await hasNoticesConsent(org.id, client.id))) {
+      return { ok: false, error: NO_CONSENT_ERROR, code: "NO_CONSENT" };
+    }
+    if (isQuietHour(input.now ?? new Date(), safeTimeZone(org.timezone))) {
+      return { ok: false, error: QUIET_HOURS_ERROR, code: "QUIET_HOURS" };
+    }
   }
 
   // Pružatelj se odlučuje ovdje, jedanput, pa isti odgovor određuje i tekst (odjava) i način slanja.

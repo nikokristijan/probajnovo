@@ -4,6 +4,7 @@
  * Ovdje su samo obični objekti (bez Date): sve što ide u preglednik je JSON.
  */
 
+import type { MenuKind } from "@/lib/recenzije/menu-noun";
 import type { GuestOutcome } from "@/lib/recenzije/db/schema";
 import type { Tone } from "@/components/recenzije/ui/primitives";
 import type { GuestRow } from "@/lib/recenzije/services/guests";
@@ -36,6 +37,12 @@ export type MenuSettingsDTO = {
   logoUrl: string | null;
   allowSkip: boolean;
   delayMinutes: number;
+  /** Kako se stranica zove gostu: jelovnik ili meni. */
+  menuKind: MenuKind;
+  /** Lokal šalje i povremene obavijesti (mijenja tekst privole). */
+  noticesEnabled: boolean;
+  /** Naziv lokala: za pregled teksta privole u postavkama. */
+  venueName: string;
 };
 
 export type GuestSummaryDTO = {

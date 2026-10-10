@@ -7,6 +7,8 @@ import { Badge, Card, CardHeader, EmptyState, PageHeader } from "@/components/re
 import { db } from "@/lib/recenzije/db";
 import { clients, messageTemplates, messages, type MessageStatus } from "@/lib/recenzije/db/schema";
 import { env, integrations } from "@/lib/recenzije/env";
+import { mayMessageClient } from "@/lib/recenzije/menu-send-rules";
+import { clientHasNoticesConsentSql } from "@/lib/recenzije/services/menu-consent";
 import { optOutLinkFor, smsProvider } from "@/lib/recenzije/services/sms";
 import { OPERATOR_EMAIL } from "@/lib/recenzije/operator";
 import { formatPhone } from "@/lib/recenzije/phone";
@@ -43,6 +45,8 @@ export default async function MessagesPage({ searchParams }: { searchParams: Pro
         firstName: clients.firstName,
         lastName: clients.lastName,
         optOut: clients.smsOptOut,
+        source: clients.source,
+        noticesConsent: sql<boolean>`${clientHasNoticesConsentSql}`,
         service: sql<string | null>`(select s.name from nr_services s where s.client_id = "nr_clients"."id" order by s.service_date desc limit 1)`,
         technician: sql<string | null>`(select s.technician from nr_services s where s.client_id = "nr_clients"."id" order by s.service_date desc limit 1)`,
         serviceDate: sql<string | null>`(select s.service_date from nr_services s where s.client_id = "nr_clients"."id" order by s.service_date desc limit 1)`,
@@ -76,6 +80,8 @@ export default async function MessagesPage({ searchParams }: { searchParams: Pro
           technician: c.technician,
           serviceDate: c.serviceDate ? new Date(c.serviceDate) : null,
           optOut: c.optOut,
+          // Gost s jelovnika bez usluge i bez privole za obavijesti: ne može se odabrati (poslužitelj ga ionako preskače).
+          menuOnly: !mayMessageClient({ source: c.source, hasService: Boolean(c.service), noticesConsent: c.noticesConsent }),
         }))}
         businessName={ctx.org.name}
         links={{ appUrl: env.appUrl, shortUrl: env.shortUrl || null }}

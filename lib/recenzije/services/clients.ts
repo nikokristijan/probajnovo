@@ -14,6 +14,7 @@ import {
   type ReviewStatus,
 } from "@/lib/recenzije/db/schema";
 import { REVIEW_STATUS_ORDER } from "@/lib/recenzije/status";
+import { clientHasNoticesConsentSql, hasNoticesConsent } from "./menu-consent";
 
 export type ClientListParams = {
   q?: string;
@@ -79,6 +80,8 @@ export async function listClients(organizationId: string, p: ClientListParams) {
       smsOptOut: clients.smsOptOut,
       /** 'menu' = gost koji je sam upisao broj na jelovniku (jedna poruka s molbom za recenziju). */
       source: clients.source,
+      /** Gost s jelovnika koji je pristao i na obavijesti (nr_menu_guests.notices_consent). */
+      noticesConsent: sql<boolean>`${clientHasNoticesConsentSql}`,
       lastMessageAt: clients.lastMessageAt,
       nextFollowUpAt: clients.nextFollowUpAt,
       createdAt: clients.createdAt,
@@ -146,5 +149,6 @@ export async function getClientDetail(organizationId: string, clientId: string) 
       .limit(10),
     db.select().from(activityEvents).where(and(eq(activityEvents.clientId, clientId), eq(activityEvents.organizationId, organizationId))).orderBy(desc(activityEvents.createdAt)).limit(50),
   ]);
-  return { client, services: svc, messages: msgs, links, reviews: revs, runs, activity };
+  const noticesConsent = client.source === "menu" ? await hasNoticesConsent(organizationId, clientId) : false;
+  return { client, services: svc, messages: msgs, links, reviews: revs, runs, activity, noticesConsent };
 }
