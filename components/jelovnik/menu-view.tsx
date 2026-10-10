@@ -1,6 +1,7 @@
 import type { PublicCategory, PublicItem, PublicMenu, PublicMenuInfo } from "@/lib/recenzije/services/menus";
 import { formatPriceCents } from "@/lib/recenzije/menu-format";
 import { Bi } from "./bilingual";
+import { Brand } from "./brand";
 import { CategoryNav } from "./category-nav";
 import { Footer, Kicker } from "./chrome";
 import { FlashNotice } from "./flash-notice";
@@ -11,11 +12,13 @@ function Header({ menu, lang }: { menu: PublicMenuInfo; lang: Lang }) {
   const intro = menu.intro ?? menu.introEn;
   return (
     <header className="jl-wrap jl-head">
-      <div className="jl-head-top">
-        <Kicker>{menu.title}</Kicker>
-        {menu.hasEnglish && <LangSwitch initial={lang} />}
-      </div>
-      <h1 className="jl-title">{menu.venueName}</h1>
+      {menu.hasEnglish && (
+        <div className="jl-head-top">
+          <LangSwitch initial={lang} />
+        </div>
+      )}
+      <Brand name={menu.venueName} logoUrl={menu.logoUrl} />
+      <Kicker>{menu.title}</Kicker>
       {intro && (
         <p className="jl-intro">
           <Bi hr={intro} en={menu.intro ? menu.introEn : null} />
@@ -32,7 +35,12 @@ function Item({ item }: { item: PublicItem }) {
         <h3 className="jl-item-name">
           <Bi hr={item.name} en={item.nameEn} />
         </h3>
-        {item.priceCents > 0 && <span className="jl-price">{formatPriceCents(item.priceCents)}</span>}
+        {item.priceCents > 0 && (
+          <>
+            <span className="jl-leader" aria-hidden />
+            <span className="jl-price">{formatPriceCents(item.priceCents)}</span>
+          </>
+        )}
       </div>
       {item.description && (
         <p className="jl-desc">

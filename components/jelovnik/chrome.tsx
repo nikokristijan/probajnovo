@@ -1,13 +1,8 @@
 import Link from "next/link";
 
-/** Mala oznaka iznad naslova, u NOVO stilu (mono, velika slova, narančasti kvadratić). */
+/** Mala oznaka (velika slova, razmaknuta slova) s tankim crtama sa strane. */
 export function Kicker({ children }: { children: React.ReactNode }) {
-  return (
-    <p className="jl-kicker">
-      <span className="jl-kicker-mark" aria-hidden />
-      {children}
-    </p>
-  );
+  return <p className="jl-kicker">{children}</p>;
 }
 
 /** Podnožje javnih stranica jelovnika: nenametljivo, s poveznicom na privatnost. Bez prefetcha: gost ne treba da mu mobilni promet troše tuđe stranice. */

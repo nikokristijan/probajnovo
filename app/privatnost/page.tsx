@@ -137,7 +137,7 @@ export default function PrivacyPolicyPage() {
       </p>
       <p>
         Jelovnik možete otvoriti i bez unosa broja mobitela: ispod polja za broj je poveznica „Pogledaj
-        jelovnik bez unosa broja”; tada broj ne tražimo i ne spremamo ništa. (Ta je mogućnost zadano uključena;
+        jelovnik bez unosa broja”; tada broj ne tražimo i ništa ne spremamo. (Ta je mogućnost zadano uključena;
         lokal je može isključiti.) Ako broj upišete, spremamo:
       </p>
       <ul>

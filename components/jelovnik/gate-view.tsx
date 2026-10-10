@@ -2,12 +2,13 @@ import Link from "next/link";
 import type { GateResult } from "@/app/jelovnik/[slug]/actions";
 import { guestGateExplanation } from "@/lib/recenzije/guest-consent";
 import type { PublicMenuInfo } from "@/lib/recenzije/services/menus";
+import { Brand } from "./brand";
 import { Footer, Kicker } from "./chrome";
 import { GateForm } from "./gate-form";
 
 /**
- * Vrata: naziv lokala, kratko objašnjenje, broj mobitela i privola. Ako lokal dopušta pregled bez broja, ispod obrasca
- * je jasna sporedna poveznica koja otvara jelovnik bez ikakvog spremanja.
+ * Vrata: logo ili naziv lokala, kratko objašnjenje, broj mobitela i privola. Ako lokal dopušta pregled bez broja (zadano),
+ * ispod obrasca je sitna, mirna poveznica koja otvara jelovnik bez ikakvog spremanja.
  */
 export function GateView({
   menu,
@@ -28,18 +29,18 @@ export function GateView({
     <>
       <main className="jl-main">
         <div className="jl-wrap jl-gate">
+          <Brand name={menu.venueName} logoUrl={menu.logoUrl} />
           <Kicker>{menu.title}</Kicker>
-          <h1 className="jl-title">{menu.venueName}</h1>
           <p className="jl-lead">{guestGateExplanation(menu.venueName)}</p>
 
           <GateForm slug={menu.slug} table={table} consentText={consentText} initial={initialNotice} />
 
           {skipHref && (
-            <div className="jl-skip">
-              <Link href={skipHref} prefetch={false} className="jl-btn jl-btn-2">
+            <p className="jl-skip">
+              <Link href={skipHref} prefetch={false} className="jl-skip-link">
                 Pogledaj jelovnik bez unosa broja
               </Link>
-            </div>
+            </p>
           )}
         </div>
       </main>

@@ -1,31 +1,29 @@
-/** Kostur dok se jelovnik učitava: ista visina kao stvarni sadržaj (naslov, traka kategorija, nekoliko stavki), bez skakanja. */
+/** Kostur dok se jelovnik učitava: iste mjere kao stvarni sadržaj (znak, uvod, traka kategorija, nekoliko stavki), bez skakanja. */
 export default function Loading() {
   return (
     <div className="jl-menu" data-lang="hr" aria-busy="true">
       <main className="jl-main">
         <div className="jl-wrap jl-head" role="status" aria-label="Učitavanje jelovnika">
-          <div className="jl-head-top">
-            <span className="jl-skel jl-skel-shimmer" style={{ width: 96, height: 12 }} />
-          </div>
-          <span className="jl-skel jl-skel-shimmer" style={{ width: "72%", height: 40, marginTop: 8 }} />
-          <span className="jl-skel jl-skel-shimmer" style={{ width: "92%", height: 16, marginTop: 18 }} />
-          <span className="jl-skel jl-skel-shimmer" style={{ width: "64%", height: 16, marginTop: 8 }} />
+          <span className="jl-skel jl-skel-shimmer jl-skel-brand" />
+          <span className="jl-skel jl-skel-shimmer" style={{ width: 96, height: 12, margin: "20px auto 0" }} />
+          <span className="jl-skel jl-skel-shimmer" style={{ width: "86%", height: 14, margin: "22px auto 0" }} />
+          <span className="jl-skel jl-skel-shimmer" style={{ width: "58%", height: 14, margin: "10px auto 0" }} />
         </div>
         <div className="jl-nav" aria-hidden>
           <div className="jl-nav-in">
             <div className="jl-chips">
               {[88, 104, 72, 96].map((w, i) => (
-                <span key={i} className="jl-skel jl-skel-shimmer" style={{ width: w, height: 44, flex: "none" }} />
+                <span key={i} className="jl-skel jl-skel-shimmer" style={{ width: w, height: 20, flex: "none", margin: "12px 14px" }} />
               ))}
             </div>
           </div>
         </div>
         <div className="jl-wrap" aria-hidden>
-          <span className="jl-skel jl-skel-shimmer" style={{ width: "40%", height: 28, marginTop: 28 }} />
+          <span className="jl-skel jl-skel-shimmer" style={{ width: "46%", height: 30, margin: "48px auto 0" }} />
           {[0, 1, 2, 3, 4].map((i) => (
-            <div key={i} style={{ padding: "16px 0", borderBottom: "1px solid #e6e6e6" }}>
-              <span className="jl-skel jl-skel-shimmer" style={{ width: `${60 - i * 6}%`, height: 18 }} />
-              <span className="jl-skel jl-skel-shimmer" style={{ width: "86%", height: 14, marginTop: 10 }} />
+            <div key={i} className="jl-skel-row">
+              <span className="jl-skel jl-skel-shimmer" style={{ width: `${62 - i * 6}%`, height: 18 }} />
+              <span className="jl-skel jl-skel-shimmer" style={{ width: "86%", height: 13, marginTop: 10 }} />
             </div>
           ))}
         </div>
