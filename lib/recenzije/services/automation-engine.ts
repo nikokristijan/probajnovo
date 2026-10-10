@@ -6,16 +6,24 @@ import {
   automations,
   campaigns,
   clients,
+  organizations,
   services,
   type AutomationRun,
   type RunLogEntry,
 } from "@/lib/recenzije/db/schema";
+import { VENUE_REVIEW_TEMPLATE_KEY } from "@/lib/recenzije/automation/templates";
 import type { AutomationStep } from "@/lib/recenzije/automation/types";
+import { isQuietHour, safeTimeZone, shiftOutOfQuietHours } from "@/lib/recenzije/quiet-hours";
 import { fullName } from "@/lib/recenzije/utils";
 import { logActivity } from "./activity";
 import { sendClientMessage } from "./messaging";
 
 const MAX_STEPS_PER_TICK = 20;
+/**
+ * Poruka gostu s jelovnika koja je kasnila više od ovoga (cron nije radio, nitko nije otvorio stranicu) više se ne
+ * šalje: "Hvala što ste svratili" nakon dva dana je neugodna, a privola je bila za poruku otprilike sat i pol nakon posjeta.
+ */
+export const VENUE_MAX_LATE_MS = 24 * 60 * 60_000;
 const TRIGGER_TEXT = { SERVICE_COMPLETED: "završena usluga", CLIENT_CREATED: "novi klijent", MANUAL: "ručno" } as const;
 
 function entry(stepIndex: number, type: string, message: string): RunLogEntry {
@@ -125,14 +133,16 @@ export function campaignSteps(c: typeof campaigns.$inferSelect): AutomationStep[
   return steps;
 }
 
-async function stepsForRun(run: AutomationRun): Promise<AutomationStep[] | null> {
+type RunPlan = { steps: AutomationStep[]; /** Automatizacija jelovnika: za nju vrijedi noćna pauza. */ venue: boolean; enabled: boolean };
+
+async function planForRun(run: AutomationRun): Promise<RunPlan | null> {
   if (run.automationId) {
     const [a] = await db.select().from(automations).where(eq(automations.id, run.automationId)).limit(1);
-    return a ? a.steps : null;
+    return a ? { steps: a.steps, venue: a.templateKey === VENUE_REVIEW_TEMPLATE_KEY, enabled: a.enabled } : null;
   }
   if (run.campaignId) {
     const [c] = await db.select().from(campaigns).where(eq(campaigns.id, run.campaignId)).limit(1);
-    return c ? campaignSteps(c) : null;
+    return c ? { steps: campaignSteps(c), venue: false, enabled: true } : null;
   }
   return null;
 }
@@ -142,7 +152,7 @@ async function stepsForRun(run: AutomationRun): Promise<AutomationStep[] | null>
  * repeatedly: a run is claimed with an UPDATE … WHERE status/nextRunAt guard so
  * two workers can't execute the same step.
  */
-export async function processRun(runId: string): Promise<void> {
+export async function processRun(runId: string, now: Date = new Date()): Promise<void> {
   const [claimed] = await db
     .update(automationRuns)
     .set({ status: "RUNNING" })
@@ -150,14 +160,15 @@ export async function processRun(runId: string): Promise<void> {
       and(
         eq(automationRuns.id, runId),
         inArray(automationRuns.status, ["RUNNING", "WAITING"]),
-        lte(automationRuns.nextRunAt, new Date())
+        lte(automationRuns.nextRunAt, now)
       )
     )
     .returning();
   if (!claimed) return;
 
   const run = claimed;
-  const steps = await stepsForRun(run);
+  const plan = await planForRun(run);
+  const steps = plan?.steps ?? null;
   const log: RunLogEntry[] = [...(run.log ?? [])];
   let index = run.stepIndex;
 
@@ -171,6 +182,26 @@ export async function processRun(runId: string): Promise<void> {
   if (!steps) {
     log.push(entry(index, "error", "Automatizacija više ne postoji"));
     return finish("CANCELLED");
+  }
+
+  // Jelovnik: isključena automatizacija ne šalje, kasno pokretanje se ne šalje, a noću se čeka do 09:00.
+  if (plan?.venue) {
+    if (!plan.enabled) {
+      log.push(entry(index, "end", "Automatizacija je isključena, poruka se ne šalje"));
+      return finish("CANCELLED");
+    }
+    if (now.getTime() - run.nextRunAt.getTime() > VENUE_MAX_LATE_MS) {
+      log.push(entry(index, "error", "Prekasno za slanje: poruka je trebala otići prije više od 24 sata"));
+      return finish("CANCELLED");
+    }
+    const [org] = await db.select({ timezone: organizations.timezone }).from(organizations).where(eq(organizations.id, run.organizationId)).limit(1);
+    const tz = safeTimeZone(org?.timezone);
+    if (isQuietHour(now, tz)) {
+      const resumeAt = shiftOutOfQuietHours(now, tz);
+      log.push(entry(index, "wait", `Noćna pauza (22:00 do 09:00): slanje je pomaknuto na ${resumeAt.toISOString()}`));
+      await db.update(automationRuns).set({ status: "WAITING", nextRunAt: resumeAt, log }).where(eq(automationRuns.id, run.id));
+      return;
+    }
   }
 
   // Paused campaigns / disabled automations hold their runs instead of sending.
@@ -295,14 +326,14 @@ export async function processRun(runId: string): Promise<void> {
 }
 
 /** Called by /api/recenzije/cron/automations. Processes runs whose wait has elapsed. */
-export async function processDueRuns(limit = 50) {
+export async function processDueRuns(limit = 50, now: Date = new Date()) {
   const due = await db
     .select({ id: automationRuns.id })
     .from(automationRuns)
     .where(
       and(
         inArray(automationRuns.status, ["RUNNING", "WAITING"]),
-        lte(automationRuns.nextRunAt, new Date()),
+        lte(automationRuns.nextRunAt, now),
         // Demo workspaces never send; their sample runs stay as seeded.
         sql`not exists (select 1 from nr_organizations o where o.id = "nr_automation_runs"."organization_id" and o.is_demo)`
       )
@@ -312,7 +343,7 @@ export async function processDueRuns(limit = 50) {
   let processed = 0;
   for (const r of due) {
     try {
-      await processRun(r.id);
+      await processRun(r.id, now);
       processed++;
     } catch (e) {
       await db

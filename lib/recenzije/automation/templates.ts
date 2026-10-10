@@ -25,6 +25,33 @@ export const DEFAULT_REQUEST =
 export const DEFAULT_FOLLOW_UP =
   "Bok {first_name}, samo kratki podsjetnik od {business_name}: ako ste bili zadovoljni, podijelite iskustvo u par rijeci {review_link} Za odjavu napišite STOP.";
 
+/*
+ * Ugostiteljstvo (gost je skenirao QR kod na jelovniku i upisao broj): ime gosta nije poznato, pa poruka NE koristi
+ * {first_name}. Predložak je i bez dijakritika (GSM-7) kao i ostali. Odjavu stavlja sastavljač, kao i inače.
+ */
+export const VENUE_REQUEST =
+  "Hvala sto ste svratili u {business_name}! Ako vam je bilo lijepo, ostavite nam kratku Google recenziju: {review_link}";
+/** Neobavezan podsjetnik za goste s jelovnika (zadano isključen: dodaje ga tim u koracima automatizacije). */
+export const VENUE_FOLLOW_UP =
+  "Mali podsjetnik od {business_name}: ako ste bili zadovoljni, ostavite nam kratku Google recenziju: {review_link}";
+
+/** Ključ automatizacije koju koristi jelovnik (services/guests.ts). Po njemu motor prepoznaje i noćnu pauzu. */
+export const VENUE_REVIEW_TEMPLATE_KEY = "venue_menu_review";
+
+/**
+ * Jedna poruka po gostu s jelovnika. Nema koraka čekanja: vrijeme slanja je upisano u pokretanje (nextRunAt) pri
+ * unosu broja, jer ovisi o postavci jelovnika (60 do 240 minuta) i o noćnoj pauzi. NIJE u AUTOMATION_TEMPLATES
+ * (galerija predložaka) jer je stvara sustav, a okidač je MANUAL pa se nikad sama ne pokreće za druge klijente.
+ */
+export const VENUE_REVIEW_AUTOMATION: AutomationTemplate = {
+  key: VENUE_REVIEW_TEMPLATE_KEY,
+  name: "Jelovnik: zahtjev za recenziju gostu",
+  description:
+    "Jednom po gostu koji je upisao broj na jelovniku: zahtjev za Google recenziju otprilike 90 minuta nakon unosa (vrijeme se podešava u postavkama jelovnika), nikad noću (22:00 do 09:00). Podsjetnik je isključen.",
+  trigger: "MANUAL",
+  steps: [{ type: "send_review_request", template: VENUE_REQUEST }],
+};
+
 export const AUTOMATION_TEMPLATES: AutomationTemplate[] = [
   {
     key: "post_service_review",

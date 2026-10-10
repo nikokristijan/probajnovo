@@ -2,12 +2,12 @@
 
 import { useState } from "react";
 import { Download, ExternalLink, Printer, QrCode } from "lucide-react";
-import { toast } from "sonner";
 import { Button } from "@/components/recenzije/ui/button";
 import { Card, CardBody, CardHeader, hitArea } from "@/components/recenzije/ui/primitives";
 import { cn } from "@/lib/recenzije/utils";
 import type { QrMatrix } from "@/lib/recenzije/services/qr";
 import { POSTER_VARIANTS, posterFileName, qrOnlySvg, variantInfo, type PosterVariant } from "./poster-layout";
+import { CopyLinkButton, saveSvg } from "./poster-shared";
 import { buildPosterSvg } from "./poster-svg";
 
 const PRINT_ID = "nr-poster-print";
@@ -29,41 +29,6 @@ function printCss(v: ReturnType<typeof variantInfo>) {
   ${sel} svg { display: block !important; width: 100% !important; height: 100% !important; }
   ${sel}, ${sel} * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
 }`;
-}
-
-function saveSvg(fileName: string, svg: string) {
-  try {
-    const url = URL.createObjectURL(new Blob([svg], { type: "image/svg+xml;charset=utf-8" }));
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = fileName;
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
-    setTimeout(() => URL.revokeObjectURL(url), 1000);
-    toast.success(`Preuzeto: ${fileName}`);
-  } catch {
-    toast.error("Preuzimanje nije uspjelo. Pokušajte ponovno ili koristite Ispiši.");
-  }
-}
-
-function CopyLinkButton({ value }: { value: string }) {
-  return (
-    <Button
-      size="sm"
-      variant="ghost"
-      onClick={async () => {
-        try {
-          await navigator.clipboard.writeText(value);
-          toast.success("Kopirano");
-        } catch {
-          toast.error("Kopiranje nije uspjelo. Označite tekst i kopirajte ručno.");
-        }
-      }}
-    >
-      Kopiraj
-    </Button>
-  );
 }
 
 const TIPS = [

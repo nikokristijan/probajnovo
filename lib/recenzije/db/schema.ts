@@ -147,6 +147,11 @@ export const organizations = pgTable("nr_organizations", {
   contactPhone: text("contact_phone"),
   internalNote: text("internal_note"),
   isDemo: boolean("is_demo").notNull().default(false),
+  /**
+   * Ugostiteljstvo (kafić, restoran, konoba ...). Samo takve tvrtke imaju digitalni jelovnik na
+   * /jelovnik/<slug> (tablice nr_menus*) i hvataju brojeve gostiju za zahtjev za recenziju.
+   */
+  isVenue: boolean("is_venue").notNull().default(false),
   /** Where tracking links redirect. Set manually or from the Google connection. */
   googleReviewUrl: text("google_review_url"),
   googlePlaceId: text("google_place_id"),
@@ -208,6 +213,8 @@ export const clients = pgTable(
     notes: text("notes"),
     reviewStatus: reviewStatus("review_status").notNull().default("NOT_CONTACTED"),
     smsOptOut: boolean("sms_opt_out").notNull().default(false),
+    /** Odakle je klijent došao: "menu" = gost s digitalnog jelovnika (bez imena, retencija 12 mjeseci); null = unio ga je tim. */
+    source: text("source").$type<ClientSource>(),
     lastMessageAt: timestamp("last_message_at", { withTimezone: true }),
     nextFollowUpAt: timestamp("next_follow_up_at", { withTimezone: true }),
     reviewReceivedAt: timestamp("review_received_at", { withTimezone: true }),
@@ -218,6 +225,7 @@ export const clients = pgTable(
     uniqueIndex("nr_client_org_phone").on(t.organizationId, t.phone),
     index("nr_client_org_status").on(t.organizationId, t.reviewStatus),
     index("nr_client_org_created").on(t.organizationId, t.createdAt),
+    index("nr_client_source_created").on(t.source, t.createdAt),
   ]
 );
 
@@ -455,9 +463,134 @@ export const subscriptions = pgTable("nr_subscriptions", {
   updatedAt: updatedAt(),
 });
 
+// --- Digitalni jelovnik (samo za tvrtke s is_venue) ---
+
+/** Jedan jelovnik po ugostiteljskoj tvrtki. `slug` je javna adresa /jelovnik/<slug>. */
+export const menus = pgTable(
+  "nr_menus",
+  {
+    id: id(),
+    organizationId: orgRef().unique(),
+    slug: text("slug").notNull().unique(),
+    title: text("title").notNull().default("Jelovnik"),
+    intro: text("intro"),
+    introEn: text("intro_en"),
+    /** Vlastiti jelovnik lokala (PDF ili stranica): gost se nakon unosa broja šalje na tu adresu umjesto na naš prikaz. */
+    externalUrl: text("external_url"),
+    /** Dopusti pregled jelovnika bez broja (GDPR: privola mora biti dobrovoljna). Zadano isključeno. */
+    allowSkip: boolean("allow_skip").notNull().default(false),
+    /** Koliko minuta nakon unosa broja stiže zahtjev za recenziju (60 do 240). */
+    delayMinutes: integer("delay_minutes").notNull().default(90),
+    enabled: boolean("enabled").notNull().default(true),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
+  },
+  (t) => [check("nr_menus_delay_range", sql`${t.delayMinutes} >= 60 and ${t.delayMinutes} <= 240`)]
+);
+
+export const menuCategories = pgTable(
+  "nr_menu_categories",
+  {
+    id: id(),
+    menuId: text("menu_id")
+      .notNull()
+      .references(() => menus.id, { onDelete: "cascade" }),
+    organizationId: orgRef(),
+    name: text("name").notNull(),
+    nameEn: text("name_en"),
+    position: integer("position").notNull().default(0),
+    createdAt: createdAt(),
+  },
+  (t) => [index("nr_menu_cat_menu_pos").on(t.menuId, t.position), index("nr_menu_cat_org").on(t.organizationId)]
+);
+
+export const menuItems = pgTable(
+  "nr_menu_items",
+  {
+    id: id(),
+    menuId: text("menu_id")
+      .notNull()
+      .references(() => menus.id, { onDelete: "cascade" }),
+    categoryId: text("category_id")
+      .notNull()
+      .references(() => menuCategories.id, { onDelete: "cascade" }),
+    organizationId: orgRef(),
+    name: text("name").notNull(),
+    nameEn: text("name_en"),
+    description: text("description"),
+    descriptionEn: text("description_en"),
+    /** Cijena u centima (EUR); novac se nikad ne drži kao decimalni broj. */
+    priceCents: integer("price_cents").notNull().default(0),
+    allergens: text("allergens"),
+    available: boolean("available").notNull().default(true),
+    position: integer("position").notNull().default(0),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
+  },
+  (t) => [
+    check("nr_menu_items_price_min", sql`${t.priceCents} >= 0`),
+    index("nr_menu_item_cat_pos").on(t.categoryId, t.position),
+    index("nr_menu_item_menu").on(t.menuId),
+    index("nr_menu_item_org").on(t.organizationId),
+  ]
+);
+
+/**
+ * Jedan unos broja na vratima jelovnika (dokaz privole + što se dogodilo). Telefon je E.164. IP se nikad ne
+ * sprema sirov (HMAC), a user agent samo skraćen. Briše se nakon 12 mjeseci (purgeOldGuestData).
+ */
+export const menuGuests = pgTable(
+  "nr_menu_guests",
+  {
+    id: id(),
+    menuId: text("menu_id")
+      .notNull()
+      .references(() => menus.id, { onDelete: "cascade" }),
+    organizationId: orgRef(),
+    clientId: text("client_id").references(() => clients.id, { onDelete: "set null" }),
+    phone: text("phone").notNull(),
+    /** Informativno, iz ?stol=<n>; nikad se ne koristi ni za što drugo. */
+    tableLabel: text("table_label"),
+    consentAt: timestamp("consent_at", { withTimezone: true }).notNull(),
+    consentVersion: text("consent_version").notNull(),
+    /** Točan tekst privole koji je gost vidio (naziv lokala i razmak su u njemu). */
+    consentText: text("consent_text").notNull(),
+    ipHash: text("ip_hash"),
+    userAgent: text("user_agent"),
+    outcome: text("outcome").$type<GuestOutcome>().notNull().default("scheduled"),
+    runId: text("run_id").references(() => automationRuns.id, { onDelete: "set null" }),
+    /** Kad je poruka zakazana (nakon odgode i noćne pauze); null kad ništa nije zakazano. */
+    sendAt: timestamp("send_at", { withTimezone: true }),
+    createdAt: createdAt(),
+  },
+  (t) => [
+    index("nr_menu_guest_menu_created").on(t.menuId, t.createdAt),
+    index("nr_menu_guest_phone_created").on(t.phone, t.createdAt),
+    index("nr_menu_guest_ip_created").on(t.ipHash, t.createdAt),
+    index("nr_menu_guest_created").on(t.createdAt),
+  ]
+);
+
 // --- Types ---
 
 export type ReviewStatus = (typeof reviewStatus.enumValues)[number];
+export type ClientSource = "menu";
+/**
+ * Što se dogodilo s unosom broja: scheduled = zakazan zahtjev za recenziju; ostalo su razlozi zašto nije
+ * (deduped: isti broj je već dobio zahtjev u 30 dana; opted_out: broj se odjavio negdje; inactive: pretplata nije
+ * aktivna; sms_limit: potrošen mjesečni limit; no_review_url: lokal nema link za Google recenzije; automation_off:
+ * automatizacija je isključena; already_reviewed: gost je već ostavio recenziju; demo: demo se ne šalje).
+ */
+export type GuestOutcome =
+  | "scheduled"
+  | "deduped"
+  | "opted_out"
+  | "inactive"
+  | "sms_limit"
+  | "no_review_url"
+  | "automation_off"
+  | "already_reviewed"
+  | "demo";
 export type MessageKind = (typeof messageKind.enumValues)[number];
 export type MessageStatus = (typeof messageStatus.enumValues)[number];
 export type CampaignAudience = { serviceWithinDays: number; statuses: ReviewStatus[]; service?: string };
@@ -490,6 +623,10 @@ export type ActivityEvent = typeof activityEvents.$inferSelect;
 export type Plan = typeof plans.$inferSelect;
 export type Subscription = typeof subscriptions.$inferSelect;
 export type MessageTemplate = typeof messageTemplates.$inferSelect;
+export type Menu = typeof menus.$inferSelect;
+export type MenuCategory = typeof menuCategories.$inferSelect;
+export type MenuItem = typeof menuItems.$inferSelect;
+export type MenuGuest = typeof menuGuests.$inferSelect;
 
 // --- Relations ---
 

@@ -22,7 +22,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
 
   return (
     <div className="min-h-dvh">
-      <Sidebar orgName={ctx.org.name} plan={plan.chip} showAccount={!isOperator && !ctx.org.isDemo} />
+      <Sidebar orgName={ctx.org.name} plan={plan.chip} showAccount={!isOperator && !ctx.org.isDemo} isVenue={ctx.org.isVenue} />
       <div className="lg:pl-60">
         {isOperator && (
           <div className="flex flex-wrap items-center justify-center gap-x-4 gap-y-1 bg-foreground px-4 py-2 text-center text-[13px] text-white">
@@ -59,7 +59,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
           </div>
         )}
         <header className="sticky top-0 z-20 flex h-16 items-center gap-3 border-b border-border bg-white/95 px-4 backdrop-blur sm:px-6">
-          <MobileNav orgName={ctx.org.name} plan={plan.chip} showAccount={!isOperator && !ctx.org.isDemo} />
+          <MobileNav orgName={ctx.org.name} plan={plan.chip} showAccount={!isOperator && !ctx.org.isDemo} isVenue={ctx.org.isVenue} />
           <p className="min-w-0 truncate text-sm font-bold lg:hidden">{ctx.org.name}</p>
           <div className="ml-auto">
             <UserMenu

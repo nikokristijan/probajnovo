@@ -1,15 +1,23 @@
 import Link from "next/link";
 import { CircleAlert, Plug } from "lucide-react";
+import { MenuPosterStudio } from "@/components/recenzije/poster/menu-poster-studio";
+import { PosterModeNav } from "@/components/recenzije/poster/poster-mode-nav";
 import { PosterStudio } from "@/components/recenzije/poster/poster-studio";
 import { Button } from "@/components/recenzije/ui/button";
 import { Alert, Card, EmptyState, PageHeader } from "@/components/recenzije/ui/primitives";
 import { requireOrg } from "@/lib/recenzije/session";
+import { getVenueMenuForOperator } from "@/lib/recenzije/services/menus";
 import { buildQrMatrix, parseReviewUrl, type QrMatrix } from "@/lib/recenzije/services/qr";
 
 export const metadata = { title: "QR plakat" };
 
-export default async function PosterPage() {
+type SP = Record<string, string | undefined>;
+
+export default async function PosterPage({ searchParams }: { searchParams: Promise<SP> }) {
+  const sp = await searchParams;
   const ctx = await requireOrg();
+  // Način "Jelovnik" postoji samo za ugostiteljske tvrtke; za ostale stranica ostaje kakva je bila.
+  if (ctx.org.isVenue && sp.nacin === "jelovnik") return <MenuPoster />;
   const raw = ctx.org.googleReviewUrl?.trim() || null;
   const reviewUrl = parseReviewUrl(raw);
 
@@ -27,6 +35,7 @@ export default async function PosterPage() {
 
   return (
     <>
+      {ctx.org.isVenue && <PosterModeNav active="recenzija" />}
       <PageHeader
         kicker="QR plakat"
         title="Plakat za Google recenziju"
@@ -72,6 +81,74 @@ export default async function PosterPage() {
                   <Link href="/recenzije/postavke">Zalijepi link</Link>
                 </Button>
               </div>
+            }
+          />
+        </Card>
+      )}
+    </>
+  );
+}
+
+/** QR plakat za digitalni jelovnik ugostiteljske tvrtke: kod vodi na /jelovnik/<slug>, adresa se uzima iz baze za aktivnu tvrtku. */
+async function MenuPoster() {
+  const ctx = await requireOrg();
+  const view = await getVenueMenuForOperator(ctx.org.id);
+  let qr: QrMatrix | null = null;
+  let qrFailed = false;
+  if (view) {
+    try {
+      qr = buildQrMatrix(view.publicUrl);
+    } catch (e) {
+      console.error("[recenzije] QR jelovnika", e);
+      qrFailed = true;
+    }
+  }
+
+  return (
+    <>
+      <PosterModeNav active="jelovnik" />
+      <PageHeader
+        kicker="QR plakat"
+        title="QR kod za jelovnik"
+        description="Ispišite plakat, stolnu karticu ili ploču sa svim stolovima. Gost skenira kod mobitelom, upiše broj i otvara jelovnik."
+        actions={
+          <Button variant="secondary" asChild>
+            <Link href="/recenzije/jelovnik">Uredi jelovnik</Link>
+          </Button>
+        }
+      />
+      {view && qr ? (
+        <div className="space-y-6">
+          {!view.menu.enabled && (
+            <Alert
+              tone="amber"
+              icon={CircleAlert}
+              title="Jelovnik je isključen"
+              action={
+                <Button size="sm" variant="secondary" asChild>
+                  <Link href="/recenzije/jelovnik">Uključi</Link>
+                </Button>
+              }
+            >
+              Gost koji skenira kod vidi stranicu s greškom. Uključite jelovnik prije ispisa.
+            </Alert>
+          )}
+          <MenuPosterStudio orgName={ctx.org.name} baseUrl={view.publicUrl} initialQr={qr} allowSkip={view.menu.allowSkip} />
+        </div>
+      ) : (
+        <Card>
+          <EmptyState
+            icon={CircleAlert}
+            title={qrFailed ? "QR kod se nije mogao napraviti" : "Jelovnik nije dostupan"}
+            description={
+              qrFailed
+                ? "Adresa jelovnika je predugačka za QR kod. Skratite je u Postavkama jelovnika."
+                : "Ova tvrtka nema digitalni jelovnik. Vrstu poslovanja mijenja NOVO tim u adminu."
+            }
+            action={
+              <Button asChild>
+                <Link href="/recenzije/jelovnik?tab=postavke">Postavke jelovnika</Link>
+              </Button>
             }
           />
         </Card>

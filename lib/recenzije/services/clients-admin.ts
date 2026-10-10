@@ -22,6 +22,8 @@ import {
   paidPeriodValues,
 } from "@/lib/recenzije/services/novo-admin";
 import { slugify } from "@/lib/recenzije/utils";
+import { ensureVenueAutomation } from "@/lib/recenzije/services/guests";
+import { ensureVenueMenu } from "@/lib/recenzije/services/menus";
 
 /**
  * Klijenti koje NOVO vodi kao uslugu (/admin/recenzije): otvaranje klijenta bez računa,
@@ -41,6 +43,8 @@ export type NewManagedClient = {
   /** > 0: besplatno razdoblje; 0: plaćeni paket na `paidMonths`. */
   freeDays: number;
   paidMonths: number;
+  /** Ugostiteljstvo (kafić, restoran, konoba ...): uključuje digitalni jelovnik i unos brojeva gostiju. Zadano false. */
+  isVenue?: boolean;
 };
 
 /**
@@ -73,6 +77,7 @@ export async function createManagedClient(input: NewManagedClient) {
       contactName: input.contactName,
       contactEmail: input.contactEmail,
       contactPhone: input.contactPhone,
+      isVenue: input.isVenue === true,
     });
     await tx.insert(automations).values({
       organizationId: orgId,
@@ -85,6 +90,13 @@ export async function createManagedClient(input: NewManagedClient) {
     });
     await tx.insert(subscriptions).values({ organizationId: orgId, ...subscription });
   });
+
+  if (input.isVenue === true) {
+    // Jelovnik i njegova automatizacija nastaju odmah (operater ih odmah vidi); ako ovdje nešto pođe po zlu,
+    // nastaju pri prvom otvaranju jelovnika, pa to ne smije srušiti otvaranje klijenta.
+    await ensureVenueMenu(orgId).catch((e) => console.error("[recenzije] jelovnik klijenta", e));
+    await ensureVenueAutomation(orgId).catch((e) => console.error("[recenzije] automatizacija jelovnika", e));
+  }
 
   const until = formatAdminDate(subscription.currentPeriodEnd);
   return {
@@ -102,6 +114,8 @@ export type ClientDetails = {
   contactEmail: string;
   contactPhone: string | null;
   internalNote: string | null;
+  /** Vrsta poslovanja: true = ugostiteljstvo (jelovnik). Izostavljeno = ne mijenja se. */
+  isVenue?: boolean;
 };
 
 /** Kontakt klijenta (na njega ide tjedni izvještaj) i interna bilješka koju vidi samo NOVO tim. */
@@ -121,6 +135,7 @@ export async function updateClientDetails(organizationId: string, details: Clien
       contactEmail: details.contactEmail,
       contactPhone: details.contactPhone,
       internalNote: details.internalNote,
+      ...(details.isVenue === undefined ? {} : { isVenue: details.isVenue }),
     })
     .where(eq(organizations.id, organizationId));
   return org.name;

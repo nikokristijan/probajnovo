@@ -9,7 +9,7 @@ import { db } from "./index";
  * da se dva serverless pokretanja ne sudare. Kad se shema promijeni:
  * dodaj ALTER TABLE ... ADD COLUMN IF NOT EXISTS na kraj i povećaj SCHEMA_VERSION.
  */
-export const SCHEMA_VERSION = 3;
+export const SCHEMA_VERSION = 4;
 
 const DDL = `
 CREATE TABLE IF NOT EXISTS "nr_meta" ("key" text PRIMARY KEY NOT NULL, "value" text NOT NULL);
@@ -333,6 +333,88 @@ ALTER TABLE "nr_organizations" ADD COLUMN IF NOT EXISTS "contact_email" text;
 ALTER TABLE "nr_organizations" ADD COLUMN IF NOT EXISTS "contact_phone" text;
 ALTER TABLE "nr_organizations" ADD COLUMN IF NOT EXISTS "internal_note" text;
 ALTER TABLE "nr_subscriptions" ADD COLUMN IF NOT EXISTS "free_period_ends_at" timestamp with time zone;
+ALTER TABLE "nr_organizations" ADD COLUMN IF NOT EXISTS "is_venue" boolean DEFAULT false NOT NULL;
+ALTER TABLE "nr_clients" ADD COLUMN IF NOT EXISTS "source" text;
+CREATE TABLE IF NOT EXISTS "nr_menus" (
+	"id" text PRIMARY KEY NOT NULL,
+	"organization_id" text NOT NULL,
+	"slug" text NOT NULL,
+	"title" text DEFAULT 'Jelovnik' NOT NULL,
+	"intro" text,
+	"intro_en" text,
+	"external_url" text,
+	"allow_skip" boolean DEFAULT false NOT NULL,
+	"delay_minutes" integer DEFAULT 90 NOT NULL,
+	"enabled" boolean DEFAULT true NOT NULL,
+	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
+	"updated_at" timestamp with time zone DEFAULT now() NOT NULL,
+	CONSTRAINT "nr_menus_organization_id_unique" UNIQUE("organization_id"),
+	CONSTRAINT "nr_menus_slug_unique" UNIQUE("slug"),
+	CONSTRAINT "nr_menus_delay_range" CHECK ("delay_minutes" >= 60 AND "delay_minutes" <= 240)
+);
+CREATE TABLE IF NOT EXISTS "nr_menu_categories" (
+	"id" text PRIMARY KEY NOT NULL,
+	"menu_id" text NOT NULL,
+	"organization_id" text NOT NULL,
+	"name" text NOT NULL,
+	"name_en" text,
+	"position" integer DEFAULT 0 NOT NULL,
+	"created_at" timestamp with time zone DEFAULT now() NOT NULL
+);
+CREATE TABLE IF NOT EXISTS "nr_menu_items" (
+	"id" text PRIMARY KEY NOT NULL,
+	"menu_id" text NOT NULL,
+	"category_id" text NOT NULL,
+	"organization_id" text NOT NULL,
+	"name" text NOT NULL,
+	"name_en" text,
+	"description" text,
+	"description_en" text,
+	"price_cents" integer DEFAULT 0 NOT NULL,
+	"allergens" text,
+	"available" boolean DEFAULT true NOT NULL,
+	"position" integer DEFAULT 0 NOT NULL,
+	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
+	"updated_at" timestamp with time zone DEFAULT now() NOT NULL,
+	CONSTRAINT "nr_menu_items_price_min" CHECK ("price_cents" >= 0)
+);
+CREATE TABLE IF NOT EXISTS "nr_menu_guests" (
+	"id" text PRIMARY KEY NOT NULL,
+	"menu_id" text NOT NULL,
+	"organization_id" text NOT NULL,
+	"client_id" text,
+	"phone" text NOT NULL,
+	"table_label" text,
+	"consent_at" timestamp with time zone NOT NULL,
+	"consent_version" text NOT NULL,
+	"consent_text" text NOT NULL,
+	"ip_hash" text,
+	"user_agent" text,
+	"outcome" text DEFAULT 'scheduled' NOT NULL,
+	"run_id" text,
+	"send_at" timestamp with time zone,
+	"created_at" timestamp with time zone DEFAULT now() NOT NULL
+);
+DO $$ BEGIN ALTER TABLE "nr_menus" ADD CONSTRAINT "nr_menus_organization_id_nr_organizations_id_fk" FOREIGN KEY ("organization_id") REFERENCES "public"."nr_organizations"("id") ON DELETE cascade ON UPDATE no action; EXCEPTION WHEN duplicate_object THEN null; END $$;
+DO $$ BEGIN ALTER TABLE "nr_menu_categories" ADD CONSTRAINT "nr_menu_categories_menu_id_nr_menus_id_fk" FOREIGN KEY ("menu_id") REFERENCES "public"."nr_menus"("id") ON DELETE cascade ON UPDATE no action; EXCEPTION WHEN duplicate_object THEN null; END $$;
+DO $$ BEGIN ALTER TABLE "nr_menu_categories" ADD CONSTRAINT "nr_menu_categories_organization_id_nr_organizations_id_fk" FOREIGN KEY ("organization_id") REFERENCES "public"."nr_organizations"("id") ON DELETE cascade ON UPDATE no action; EXCEPTION WHEN duplicate_object THEN null; END $$;
+DO $$ BEGIN ALTER TABLE "nr_menu_items" ADD CONSTRAINT "nr_menu_items_menu_id_nr_menus_id_fk" FOREIGN KEY ("menu_id") REFERENCES "public"."nr_menus"("id") ON DELETE cascade ON UPDATE no action; EXCEPTION WHEN duplicate_object THEN null; END $$;
+DO $$ BEGIN ALTER TABLE "nr_menu_items" ADD CONSTRAINT "nr_menu_items_category_id_nr_menu_categories_id_fk" FOREIGN KEY ("category_id") REFERENCES "public"."nr_menu_categories"("id") ON DELETE cascade ON UPDATE no action; EXCEPTION WHEN duplicate_object THEN null; END $$;
+DO $$ BEGIN ALTER TABLE "nr_menu_items" ADD CONSTRAINT "nr_menu_items_organization_id_nr_organizations_id_fk" FOREIGN KEY ("organization_id") REFERENCES "public"."nr_organizations"("id") ON DELETE cascade ON UPDATE no action; EXCEPTION WHEN duplicate_object THEN null; END $$;
+DO $$ BEGIN ALTER TABLE "nr_menu_guests" ADD CONSTRAINT "nr_menu_guests_menu_id_nr_menus_id_fk" FOREIGN KEY ("menu_id") REFERENCES "public"."nr_menus"("id") ON DELETE cascade ON UPDATE no action; EXCEPTION WHEN duplicate_object THEN null; END $$;
+DO $$ BEGIN ALTER TABLE "nr_menu_guests" ADD CONSTRAINT "nr_menu_guests_organization_id_nr_organizations_id_fk" FOREIGN KEY ("organization_id") REFERENCES "public"."nr_organizations"("id") ON DELETE cascade ON UPDATE no action; EXCEPTION WHEN duplicate_object THEN null; END $$;
+DO $$ BEGIN ALTER TABLE "nr_menu_guests" ADD CONSTRAINT "nr_menu_guests_client_id_nr_clients_id_fk" FOREIGN KEY ("client_id") REFERENCES "public"."nr_clients"("id") ON DELETE set null ON UPDATE no action; EXCEPTION WHEN duplicate_object THEN null; END $$;
+DO $$ BEGIN ALTER TABLE "nr_menu_guests" ADD CONSTRAINT "nr_menu_guests_run_id_nr_automation_runs_id_fk" FOREIGN KEY ("run_id") REFERENCES "public"."nr_automation_runs"("id") ON DELETE set null ON UPDATE no action; EXCEPTION WHEN duplicate_object THEN null; END $$;
+CREATE INDEX IF NOT EXISTS "nr_menu_cat_menu_pos" ON "nr_menu_categories" USING btree ("menu_id","position");
+CREATE INDEX IF NOT EXISTS "nr_menu_cat_org" ON "nr_menu_categories" USING btree ("organization_id");
+CREATE INDEX IF NOT EXISTS "nr_menu_item_cat_pos" ON "nr_menu_items" USING btree ("category_id","position");
+CREATE INDEX IF NOT EXISTS "nr_menu_item_menu" ON "nr_menu_items" USING btree ("menu_id");
+CREATE INDEX IF NOT EXISTS "nr_menu_item_org" ON "nr_menu_items" USING btree ("organization_id");
+CREATE INDEX IF NOT EXISTS "nr_menu_guest_menu_created" ON "nr_menu_guests" USING btree ("menu_id","created_at");
+CREATE INDEX IF NOT EXISTS "nr_menu_guest_phone_created" ON "nr_menu_guests" USING btree ("phone","created_at");
+CREATE INDEX IF NOT EXISTS "nr_menu_guest_ip_created" ON "nr_menu_guests" USING btree ("ip_hash","created_at");
+CREATE INDEX IF NOT EXISTS "nr_menu_guest_created" ON "nr_menu_guests" USING btree ("created_at");
+CREATE INDEX IF NOT EXISTS "nr_client_source_created" ON "nr_clients" USING btree ("source","created_at");
 `;
 
 let ready: Promise<void> | null = null;
