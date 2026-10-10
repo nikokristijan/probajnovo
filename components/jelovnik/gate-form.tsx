@@ -2,15 +2,17 @@
 
 import { useRef, useState, useTransition, type FormEvent } from "react";
 import { enterMenuAction, submitMenuGate, type GateResult } from "@/app/jelovnik/[slug]/actions";
+import { menuNoun, type MenuKind } from "@/lib/recenzije/menu-noun";
 import { GATE_LIMITS, GATE_MESSAGES } from "./constants";
 
-const PHONE_HINT = "Hrvatski broj upišite ovako: 091 234 5678. Strani broj počnite s + i pozivnim brojem, npr. +49 151 2345678.";
+const PHONE_HINT = "Strani broj upišite s + i pozivnim brojem, npr. +49 151 2345678.";
 
-function SubmitButton({ pending }: { pending: boolean }) {
+function SubmitButton({ pending, kind }: { pending: boolean; kind: MenuKind }) {
+  const noun = menuNoun(kind);
   return (
     <button type="submit" className="jl-btn" disabled={pending} aria-busy={pending}>
       {pending && <span className="jl-spin" aria-hidden />}
-      {pending ? "Otvaramo jelovnik…" : "Otvori jelovnik"}
+      {pending ? `Otvaramo ${noun.acc}…` : `Otvori ${noun.acc}`}
     </button>
   );
 }
@@ -26,12 +28,18 @@ function SubmitButton({ pending }: { pending: boolean }) {
 export function GateForm({
   slug,
   table,
+  menuKind,
+  noticesEnabled,
   consentSummary,
   consentDetails,
   initial,
 }: {
   slug: string;
   table: string | null;
+  /** Vrsta stranice (jelovnik ili meni) za tekst gumba. */
+  menuKind: MenuKind;
+  /** Koju varijantu privole stranica prikazuje; šalje se uz obrazac, pa poslužitelj zna što je gost zaista vidio. */
+  noticesEnabled: boolean;
   consentSummary: string;
   consentDetails: string;
   initial: GateResult | null;
@@ -77,6 +85,7 @@ export function GateForm({
     <form action={enterMenuAction} onSubmit={onSubmit} noValidate className="jl-form">
       <input type="hidden" name="slug" value={slug} />
       {table && <input type="hidden" name="stol" value={table} />}
+      <input type="hidden" name="notices" value={noticesEnabled ? "1" : "0"} />
 
       {/* Polje za botove: ljudima je nevidljivo i izvan tab-redoslijeda. Ispunjeno polje = lažni uspjeh bez spremanja. */}
       <div className="jl-hp" aria-hidden="true">
@@ -87,7 +96,7 @@ export function GateForm({
       </div>
 
       <div className="jl-field">
-        <label htmlFor="jl-phone" className="jl-label">
+        <label htmlFor="jl-phone" className="jl-sr">
           Broj mobitela
         </label>
         <input
@@ -148,7 +157,7 @@ export function GateForm({
           <summary>Pročitaj više</summary>
           <p>{consentDetails}</p>
           <p>
-            Više o tome kako čuvamo podatke:{" "}
+            Više o čuvanju podataka:{" "}
             <a href="/privatnost" target="_blank" rel="noopener">
               Politika privatnosti
             </a>
@@ -168,7 +177,7 @@ export function GateForm({
         </p>
       )}
 
-      <SubmitButton pending={pending} />
+      <SubmitButton pending={pending} kind={menuKind} />
     </form>
   );
 }

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState, type MouseEvent } from "react";
+import { menuNoun, type MenuKind } from "@/lib/recenzije/menu-noun";
 import { Bi } from "./bilingual";
 
 export type NavCategory = { id: string; name: string; nameEn: string | null };
@@ -19,7 +20,7 @@ const reducedMotion = () => typeof window !== "undefined" && window.matchMedia("
  * uz JavaScript klik glatko skrola (osim kod smanjenog kretanja), a traka prati što gost trenutno čita (scroll-spy)
  * i drži aktivnu kategoriju u vidu.
  */
-export function CategoryNav({ categories }: { categories: NavCategory[] }) {
+export function CategoryNav({ categories, kind }: { categories: NavCategory[]; kind: MenuKind }) {
   const [active, setActive] = useState(categories[0]?.id ?? "");
   const listRef = useRef<HTMLUListElement>(null);
   // Nakon klika scroll-spy ne smije prepisati odabir dok traje skrolanje do cilja.
@@ -83,7 +84,7 @@ export function CategoryNav({ categories }: { categories: NavCategory[] }) {
   }
 
   return (
-    <nav className="jl-nav" aria-label="Kategorije jelovnika">
+    <nav className="jl-nav" aria-label={`Kategorije ${menuNoun(kind).gen}`}>
       <div className="jl-nav-in">
         <ul ref={listRef} className="jl-chips">
           {categories.map((c) => (

@@ -7,7 +7,7 @@ import { useEffect, useRef, useState } from "react";
  * (logo nosi naziv lokala u alt-u). Okvir logotipa je stalne veličine (200 x 64), pa učitavanje slike ne pomiče stranicu.
  * Ako se slika ne može učitati (neispravna adresa, slika obrisana), tiho se prikazuje naziv lokala.
  */
-export function Brand({ name, logoUrl }: { name: string; logoUrl: string | null }) {
+export function Brand({ name, logoUrl, id }: { name: string; logoUrl: string | null; id?: string }) {
   const [failed, setFailed] = useState(false);
   const ref = useRef<HTMLImageElement>(null);
 
@@ -20,7 +20,7 @@ export function Brand({ name, logoUrl }: { name: string; logoUrl: string | null 
 
   if (logoUrl && !failed) {
     return (
-      <h1 className="jl-brand jl-brand-logo">
+      <h1 id={id} className="jl-brand jl-brand-logo">
         {/* Običan <img>: adresa može biti bilo koja https slika, pa next/image (popis dopuštenih domena) ne dolazi u obzir. */}
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
@@ -37,5 +37,7 @@ export function Brand({ name, logoUrl }: { name: string; logoUrl: string | null 
       </h1>
     );
   }
-  return <h1 className="jl-brand jl-brand-name">{name}</h1>;
+  return <h1 id={id} className="jl-brand jl-brand-name">
+      {name}
+    </h1>;
 }

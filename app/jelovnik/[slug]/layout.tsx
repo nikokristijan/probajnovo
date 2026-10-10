@@ -2,6 +2,7 @@ import { cookies } from "next/headers";
 import { notFound } from "next/navigation";
 import { guestCookieName, verifyGuestCookie } from "@/lib/recenzije/guest-cookie";
 import { safeExternalUrl } from "@/components/jelovnik/lang";
+import { MenuKindProvider } from "@/components/jelovnik/kind-context";
 import { loadMenuContent, loadMenuInfo } from "./data";
 
 /**
@@ -18,5 +19,5 @@ export default async function MenuSlugLayout({ children, params }: { children: R
   const jar = await cookies();
   const maySeeMenu = info.allowSkip || verifyGuestCookie(info.id, jar.get(guestCookieName(info.id))?.value);
   if (maySeeMenu && !safeExternalUrl(info.externalUrl)) await loadMenuContent(slug);
-  return children;
+  return <MenuKindProvider kind={info.menuKind}>{children}</MenuKindProvider>;
 }
