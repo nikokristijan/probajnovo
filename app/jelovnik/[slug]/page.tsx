@@ -8,6 +8,7 @@ import { resolveLang, safeExternalUrl } from "@/components/jelovnik/lang";
 import { ExternalMenuView, MenuView } from "@/components/jelovnik/menu-view";
 import { cleanTable } from "@/components/jelovnik/table";
 import { guestCookieName } from "@/lib/recenzije/guest-cookie";
+import { menuNoun } from "@/lib/recenzije/menu-noun";
 import { kickDueRuns } from "@/lib/recenzije/services/automation-kick";
 import { decideAccess, loadMenuContent, loadMenuInfo } from "./data";
 
@@ -42,7 +43,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const info = await loadMenuInfo(slug);
   // Ne indeksirati nikad (ni 404, ni jelovnik): vidi i layout.tsx.
   const robots = { index: false, follow: false, nocache: true } as const;
-  if (!info) return { title: { absolute: "Jelovnik nije dostupan" }, robots };
+  if (!info) return { title: { absolute: "Stranica nije dostupna" }, robots };
   return { title: { absolute: `${info.venueName} · ${info.title}` }, robots };
 }
 
@@ -62,7 +63,9 @@ export default async function MenuPage({ params, searchParams }: Props) {
   if (access === "gate") {
     const table = cleanTable(first(sp.stol));
     const skipHref = info.allowSkip ? `/jelovnik/${info.slug}?pregled=1${table ? `&stol=${encodeURIComponent(table)}` : ""}` : null;
-    return <GateView menu={info} table={table} skipHref={skipHref} initialNotice={noticeFromQuery(first(sp.greska))} />;
+    // Pozadina iza vrata: stvarni početak jelovnika samo ako je pregled bez broja dopušten (javno je ionako dostupan); inače neutralan kostur.
+    const backdrop = info.allowSkip && !safeExternalUrl(info.externalUrl) ? ((await loadMenuContent(slug))?.categories ?? null) : null;
+    return <GateView menu={info} table={table} skipHref={skipHref} initialNotice={noticeFromQuery(first(sp.greska))} backdropCategories={backdrop} />;
   }
 
   // Kratka potvrda nakon unosa broja (postavlja je akcija; maskirani broj ili "-" kad nema što pokazati).
@@ -73,7 +76,7 @@ export default async function MenuPage({ params, searchParams }: Props) {
       : MASKED_PHONE_PATTERN.test(flashRaw)
         ? `Hvala. Broj ${flashRaw} je zaprimljen.`
         : flashRaw === "-"
-          ? "Hvala. Jelovnik je otvoren."
+          ? `Hvala. ${menuNoun(info.menuKind).Nom} je otvoren.`
           : null;
 
   const external = safeExternalUrl(info.externalUrl);

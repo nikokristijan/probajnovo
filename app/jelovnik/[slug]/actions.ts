@@ -45,12 +45,13 @@ const formSchema = z.object({
   phone: z.string().max(GATE_LIMITS.phone),
   consent: z.string().max(10).optional(),
   stol: z.string().max(GATE_LIMITS.table).optional(),
+  notices: z.string().max(10).optional(),
   web: z.string().max(GATE_LIMITS.honeypot).optional(),
 });
 
 function readForm(formData: FormData) {
   const raw: Record<string, string> = {};
-  for (const key of ["slug", "phone", "consent", "stol", "web"]) {
+  for (const key of ["slug", "phone", "consent", "stol", "notices", "web"]) {
     const v = formData.get(key);
     if (typeof v === "string") raw[key] = v;
   }
@@ -95,6 +96,7 @@ async function run(formData: FormData): Promise<Outcome> {
       slug,
       phone: d.phone,
       consent,
+      noticesShown: d.notices === "1",
       table,
       ip,
       userAgent: h.get("user-agent"),

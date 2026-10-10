@@ -6,6 +6,7 @@ import { buildMenuQrAction, buildMenuTableQrsAction } from "@/lib/recenzije/acti
 import { MAX_TABLES, plural } from "@/components/recenzije/app/menu/menu-types";
 import { Button } from "@/components/recenzije/ui/button";
 import { Card, CardBody, CardHeader, Field, Input, hitArea } from "@/components/recenzije/ui/primitives";
+import type { MenuKind } from "@/lib/recenzije/menu-noun";
 import { cn } from "@/lib/recenzije/utils";
 import type { QrMatrix } from "@/lib/recenzije/services/qr";
 import { POSTER_VARIANTS, menuPosterFileName, qrOnlySvg, tableSheetFileName, variantInfo, type PosterVariant } from "./poster-layout";
@@ -77,11 +78,13 @@ export function MenuPosterStudio({
   baseUrl,
   initialQr,
   allowSkip,
+  menuKind,
 }: {
   orgName: string;
   baseUrl: string;
   initialQr: QrMatrix;
   allowSkip: boolean;
+  menuKind?: MenuKind;
 }) {
   const [mode, setMode] = useState<Mode>("single");
   const [variant, setVariant] = useState<PosterVariant>("a4");
@@ -112,8 +115,8 @@ export function MenuPosterStudio({
 
   const typed = tableInput.replace(/\s+/g, " ").trim();
   const inSync = typed === current.table && !qrPending;
-  const preview = buildPosterSvg({ orgName, qr: current.qr, variant, inline: true, kind: "menu", menu: { table: current.table, allowSkip } });
-  const sheetPages = useMemo(() => (sheetItems ? buildTableSheetPages({ orgName, tables: sheetItems, inline: true }) : []), [orgName, sheetItems]);
+  const preview = buildPosterSvg({ orgName, qr: current.qr, variant, inline: true, kind: "menu", menu: { table: current.table, allowSkip, menuKind } });
+  const sheetPages = useMemo(() => (sheetItems ? buildTableSheetPages({ orgName, tables: sheetItems, inline: true, menuKind }) : []), [orgName, sheetItems, menuKind]);
   const pageIndex = Math.min(sheetPage, Math.max(0, sheetPages.length - 1));
 
   function onTableChange(raw: string) {
@@ -262,7 +265,7 @@ export function MenuPosterStudio({
                     onClick={() =>
                       saveSvg(
                         menuPosterFileName(orgName, variant, "plakat", current.table),
-                        buildPosterSvg({ orgName, qr: current.qr, variant, kind: "menu", menu: { table: current.table, allowSkip } })
+                        buildPosterSvg({ orgName, qr: current.qr, variant, kind: "menu", menu: { table: current.table, allowSkip, menuKind } })
                       )
                     }
                   >
@@ -307,7 +310,7 @@ export function MenuPosterStudio({
                         variant="secondary"
                         className="sm:flex-1 lg:flex-none xl:flex-1"
                         onClick={() => {
-                          const files = buildTableSheetPages({ orgName, tables: sheetItems });
+                          const files = buildTableSheetPages({ orgName, tables: sheetItems, menuKind });
                           saveSvg(tableSheetFileName(orgName, pageIndex + 1), files[pageIndex] ?? files[0]);
                         }}
                       >

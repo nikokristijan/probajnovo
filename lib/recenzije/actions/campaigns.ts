@@ -9,6 +9,7 @@ import { automationRuns, campaigns } from "@/lib/recenzije/db/schema";
 import type { ActionState } from "@/lib/recenzije/action";
 import { requireOrg, requireWritableOrg } from "@/lib/recenzije/session";
 import { REVIEW_STATUS_ORDER } from "@/lib/recenzije/status";
+import { skippedNote } from "@/lib/recenzije/menu-send-rules";
 import { audienceClients, launchCampaign } from "@/lib/recenzije/services/campaigns";
 
 const schema = z.object({
@@ -68,7 +69,7 @@ export async function saveCampaignAction(input: CampaignInput, launch = false): 
     message =
       r.enrolled === 0
         ? "Kampanja je aktivna. Trenutno nijedan klijent ne odgovara publici."
-        : `Kampanja pokrenuta za ${r.enrolled} klijenata${r.failed ? `. Neuspjelo: ${r.failed} (${r.firstError})` : ""}`;
+        : `Kampanja pokrenuta za ${r.enrolled} klijenata${r.failed ? `. Neuspjelo: ${r.failed} (${r.firstError})` : ""}${skippedNote(r.skipped)}`;
   }
   revalidatePath("/recenzije/kampanje");
   return { ok: true, message, data: { id } };
@@ -100,7 +101,7 @@ export async function setCampaignStatusAction(id: string, status: "ACTIVE" | "PA
   if (status === "ACTIVE" && c.status === "DRAFT") {
     const r = await launchCampaign(ctx.org.id, id);
     revalidatePath("/recenzije/kampanje");
-    return { ok: true, message: `Pokrenuto za ${r.enrolled} klijenata${r.failed ? `. Neuspjelo: ${r.failed} (${r.firstError})` : ""}` };
+    return { ok: true, message: `Pokrenuto za ${r.enrolled} klijenata${r.failed ? `. Neuspjelo: ${r.failed} (${r.firstError})` : ""}${skippedNote(r.skipped)}` };
   }
   await db.update(campaigns).set({ status }).where(eq(campaigns.id, id));
   if (status === "COMPLETED") {

@@ -1,5 +1,6 @@
 import type { PublicCategory, PublicItem, PublicMenu, PublicMenuInfo } from "@/lib/recenzije/services/menus";
 import { formatPriceCents } from "@/lib/recenzije/menu-format";
+import { menuNoun } from "@/lib/recenzije/menu-noun";
 import { Bi } from "./bilingual";
 import { Brand } from "./brand";
 import { CategoryNav } from "./category-nav";
@@ -93,7 +94,7 @@ export function MenuView({ menu, lang, flash }: { menu: PublicMenu; lang: Lang; 
         <Header menu={menu} lang={lang} />
         {cats.length > 0 ? (
           <>
-            <CategoryNav categories={cats.map((c) => ({ id: c.id, name: c.name, nameEn: c.nameEn }))} />
+            <CategoryNav categories={cats.map((c) => ({ id: c.id, name: c.name, nameEn: c.nameEn }))} kind={menu.menuKind} />
             <div className="jl-wrap jl-secs">
               {cats.map((c) => (
                 <Section key={c.id} category={c} />
@@ -103,12 +104,12 @@ export function MenuView({ menu, lang, flash }: { menu: PublicMenu; lang: Lang; 
         ) : (
           <div className="jl-wrap">
             <p className="jl-empty">
-              <Bi hr="Jelovnik se još priprema. Pitajte osoblje, rado će vam pomoći." en="The menu is being prepared. Please ask our staff." />
+              <Bi hr={`${menuNoun(menu.menuKind).Nom} se još priprema. Pitajte osoblje, rado će vam pomoći.`} en="The menu is being prepared. Please ask our staff." />
             </p>
           </div>
         )}
       </main>
-      <Footer />
+      <Footer kind={menu.menuKind} />
       {flash && <FlashNotice text={flash} />}
     </div>
   );
@@ -119,18 +120,19 @@ export function MenuView({ menu, lang, flash }: { menu: PublicMenu; lang: Lang; 
  * Adresa je prethodno provjerena (samo https).
  */
 export function ExternalMenuView({ menu, href, flash }: { menu: PublicMenuInfo; href: string; flash: string | null }) {
+  const noun = menuNoun(menu.menuKind);
   return (
     <div className="jl-menu" data-lang="hr">
       <main className="jl-main">
         <Header menu={{ ...menu, hasEnglish: false }} lang="hr" />
         <div className="jl-wrap jl-external">
           <a href={href} target="_blank" rel="noopener noreferrer" className="jl-btn">
-            Otvori jelovnik
+            Otvori {noun.acc}
           </a>
-          <p className="jl-hint">Jelovnik se otvara u novoj kartici.</p>
+          <p className="jl-hint">{noun.Nom} se otvara u novoj kartici.</p>
         </div>
       </main>
-      <Footer />
+      <Footer kind={menu.menuKind} />
       {flash && <FlashNotice text={flash} />}
     </div>
   );

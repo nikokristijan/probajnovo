@@ -136,9 +136,9 @@ export default function PrivacyPolicyPage() {
         kao i u odjeljku 10. Podaci jednog lokala logički su odvojeni od podataka drugih.
       </p>
       <p>
-        Jelovnik možete otvoriti i bez unosa broja mobitela: ispod polja za broj je poveznica „Pogledaj
-        jelovnik bez unosa broja”; tada broj ne tražimo i ništa ne spremamo. (Ta je mogućnost zadano uključena;
-        lokal je može isključiti.) Ako broj upišete, spremamo:
+        Jelovnik (ili meni, kako ga lokal naziva) možete otvoriti i bez unosa broja mobitela: ispod polja za broj je poveznica
+        „Pogledaj jelovnik bez unosa broja” (ili „Pogledaj meni bez unosa broja”); tada broj ne tražimo i ništa ne
+        spremamo. (Ta je mogućnost zadano uključena; lokal je može isključiti.) Ako broj upišete, spremamo:
       </p>
       <ul>
         <li>broj mobitela (u međunarodnom obliku),</li>
@@ -148,23 +148,31 @@ export default function PrivacyPolicyPage() {
           tehničke podatke u obliku sažetaka: nepovratni sažetak IP adrese (samu IP adresu ne spremamo) i
           skraćenu oznaku preglednika, samo radi zaštite od zlouporabe,
         </li>
+        <li>
+          odgovara li lokal na privolu s obavijestima (vidi niže), tj. koju ste od dvije varijante teksta privole
+          vidjeli,
+        </li>
         <li>zapis o poslanoj poruci (tekst, status isporuke i klik na poveznicu za recenziju).</li>
       </ul>
       <p>
-        <strong>Svrha:</strong> isključivo da vam lokal preko NOVO Recenzija jednom pošalje SMS s molbom za
-        Google recenziju, otprilike u vremenu navedenom uz polje za broj (obično sat i pol nakon unosa,
-        najmanje sat, najviše četiri sata). Između 22:00 i 9:00 poruka se ne šalje, nego stiže ujutro.
-        Isti lokal istom broju ne šalje novi zahtjev unutar 30 dana. Broj se ne koristi ni za što drugo, ni za
-        oglašavanje ni za druge poruke. Sažetke IP adrese koristimo za ograničavanje broja unosa i
-        sprječavanje zlouporabe (naš legitimni interes).
+        <strong>Svrha:</strong> uvijek jedna poruka: SMS s molbom za Google recenziju, otprilike u vremenu navedenom
+        uz polje za broj (obično sat i pol nakon unosa, najmanje sat, najviše četiri sata). Isti lokal istom broju ne
+        šalje novi zahtjev unutar 30 dana. Ako lokal to odabere, uz tu poruku šalje vam i povremene obavijesti o
+        novostima, događanjima i ponudama; to je izričito napisano u tekstu privole koji vidite uz polje za broj
+        (kratka rečenica uz kvačicu i „Pročitaj više”), pa na obavijesti pristajete samo ako ste taj tekst vidjeli i
+        potvrdili. Ako lokal obavijesti ne šalje, tekst privole kaže da ćete dobiti samo jednu poruku i broj se ne
+        koristi ni za što drugo. Između 22:00 i 9:00 poruke se ne šalju (molba za recenziju tada stiže ujutro).
+        Broj se u oba slučaja koristi samo za poruke tog lokala preko NOVO Recenzija, nikad za oglašavanje drugih
+        poduzeća. Sažetke IP adrese koristimo za ograničavanje broja unosa i sprječavanje zlouporabe (naš legitimni
+        interes).
       </p>
       <p>
         <strong>Pravna osnova:</strong> vaša privola (čl. 6. st. 1. t. (a) Opće uredbe o zaštiti podataka),
-        koju dajete potvrdom polja uz unos broja. Privola je dobrovoljna: jelovnik je zadano moguće
+        koju dajete potvrdom polja uz unos broja. Privola je dobrovoljna: jelovnik (meni) je zadano moguće
         otvoriti i bez broja. Privolu možete povući u svakom trenutku odgovorom
         „STOP” (uputa je u poruci) ili, gdje mreža ne omogućuje odgovore, poveznicom za odjavu u poruci;
-        povlačenje ne utječe na zakonitost obrade prije povlačenja. Vrijedi i pravilo iz odjeljka 10: odjava
-        vrijedi za sva poduzeća koja koriste NOVO Recenzije.
+        povlačenje ne utječe na zakonitost obrade prije povlačenja. Odjava je u svakoj poruci, pa vrijedi i za
+        obavijesti lokala. Vrijedi i pravilo iz odjeljka 10: odjava vrijedi za sva poduzeća koja koriste NOVO Recenzije.
       </p>
       <p>
         <strong>Rok čuvanja:</strong> broj i ostale podatke o unosu čuvamo najviše 12 mjeseci od unosa, a

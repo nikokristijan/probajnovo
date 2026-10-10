@@ -1,5 +1,5 @@
 import "server-only";
-import { and, desc, eq, inArray, like, ne, notInArray } from "drizzle-orm";
+import { and, desc, eq, inArray, isNotNull, like, ne, notInArray } from "drizzle-orm";
 import { db } from "@/lib/recenzije/db";
 import { clients, messages, organizations, type Client, type MessageStatus } from "@/lib/recenzije/db/schema";
 import { toE164 } from "@/lib/recenzije/phone";
@@ -221,6 +221,12 @@ export async function handleSharedPhoneInbound(input: {
   body: string;
   providerSid?: string | null;
   channel?: SharedChannel;
+  /**
+   * Samo TextBee. `organizationId`: webhook mobitela jedne tvrtke, pa se odgovor pripisuje ISKLJUČIVO njoj (nikad tvrtki koja je istom
+   * broju slala s drugog mobitela). `excludeOwnPhoneOrgs`: zajednički TextBee webhook, pa se preskaču tvrtke koje imaju vlastiti
+   * TextBee mobitel (njihovi odgovori stižu na njihov webhook). STOP u oba slučaja svejedno odjavljuje broj u svim tvrtkama.
+   */
+  scope?: { organizationId?: string; excludeOwnPhoneOrgs?: boolean };
 }) {
   const result = { recorded: false, optedOut: 0 };
   const numbers = [...new Set((Array.isArray(input.from) ? input.from : [input.from]).filter(Boolean))];
@@ -232,7 +238,20 @@ export async function handleSharedPhoneInbound(input: {
   const [last] = await db
     .select({ organizationId: messages.organizationId, toNumber: messages.toNumber })
     .from(messages)
-    .where(and(inArray(messages.toNumber, numbers), eq(messages.direction, "OUTBOUND"), channelMatch(channel)))
+    .where(
+      and(
+        inArray(messages.toNumber, numbers),
+        eq(messages.direction, "OUTBOUND"),
+        channelMatch(channel),
+        input.scope?.organizationId ? eq(messages.organizationId, input.scope.organizationId) : undefined,
+        input.scope?.excludeOwnPhoneOrgs
+          ? notInArray(
+              messages.organizationId,
+              db.select({ id: organizations.id }).from(organizations).where(isNotNull(organizations.textbeeApiKeyEnc))
+            )
+          : undefined
+      )
+    )
     .orderBy(desc(messages.createdAt))
     .limit(1);
   // Nepoznat pošiljatelj koji nije tražio odjavu: ništa se ne sprema.

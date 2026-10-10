@@ -23,7 +23,14 @@ import { ensureVenueMenu } from "@/lib/recenzije/services/menus";
 import { registerNovoWebhooks } from "@/lib/recenzije/services/novo-phone";
 import { checkTestSmsStatus, sendTestSms } from "@/lib/recenzije/services/sms-status";
 import { listTextbeeDevices } from "@/lib/recenzije/services/textbee";
-import { scrubSecrets } from "@/lib/recenzije/textbee";
+import { TEXTBEE_API_KEY_PATTERN, TEXTBEE_DEVICE_ID_PATTERN, scrubSecrets } from "@/lib/recenzije/textbee";
+import {
+  checkOrgTextbee,
+  clearOrgTextbee,
+  regenerateOrgWebhookSecret,
+  revealOrgWebhookSecret,
+  saveOrgTextbee,
+} from "@/lib/recenzije/services/org-textbee";
 import { estimateTwilioCostUsd, formatUsd } from "@/lib/recenzije/sms-format";
 import { activatePlanManually, AdminError, changePlan, deactivate, extendFreePeriod } from "@/lib/recenzije/services/novo-admin";
 
@@ -48,8 +55,8 @@ function safeMessage(e: unknown, fallback = "Nije uspjelo. Pokušajte ponovno.")
  * Greška vanjske usluge (Twilio, NOVO mobitel, TextBee): admin mora vidjeti pravi razlog (s uputom), ali ograničene duljine
  * i nikad s API ključem ili tajnom (scrubSecrets), čak i kad bi ih neka biblioteka ili odgovor slučajno uključili u poruku.
  */
-function providerMessage(e: unknown) {
-  const m = e instanceof Error ? scrubSecrets(e.message.trim(), [env.textbeeApiKey, env.textbeeWebhookSecret, env.twilioToken]) : "";
+function providerMessage(e: unknown, extraSecrets: Array<string | null | undefined> = []) {
+  const m = e instanceof Error ? scrubSecrets(e.message.trim(), [env.textbeeApiKey, env.textbeeWebhookSecret, env.twilioToken, ...extraSecrets]) : "";
   return m ? m.slice(0, 700) : "Nepoznata greška.";
 }
 
@@ -465,4 +472,174 @@ export async function registerWebhooksAction(): Promise<ActionState> {
   } catch (e) {
     return { error: `Povezivanje nije uspjelo: ${providerMessage(e)}` };
   }
+}
+
+// --- TextBee mobitel jednog klijenta (poruke tog klijenta odlaze s njegova broja) ---
+
+const textbeeDeviceId = z
+  .string()
+  .trim()
+  .min(1, "Upišite ID uređaja")
+  .max(100, "ID uređaja je predug")
+  .regex(TEXTBEE_DEVICE_ID_PATTERN, "ID uređaja smije imati samo slova, brojke, „-” i „_”");
+
+/** Prazan ključ = zadrži spremljeni (ključ se nikad ne prikazuje u formi). */
+const textbeeApiKey = z
+  .string()
+  .trim()
+  .refine((v) => v === "" || TEXTBEE_API_KEY_PATTERN.test(v), "API ključ mora imati 8 do 200 znakova bez razmaka");
+
+/** U formu se vraća samo ID uređaja; API ključ se nikad ne vraća, ni pri grešci. */
+const echoDevice = (fd: FormData) => ({ deviceId: String(fd.get("deviceId") ?? "") });
+
+const saveTextbeeSchema = z.object({ orgId, apiKey: textbeeApiKey.optional().default(""), deviceId: textbeeDeviceId });
+
+/**
+ * Sprema TextBee mobitel klijenta (API ključ šifriran, ID uređaja). Pri prvom spremanju nastaje i tajna webhooka, koju vraća `data.secret`
+ * da je admin odmah može upisati u TextBee. Od tog trenutka poruke tog klijenta idu s TOG mobitela (pa Provjeri vezu i probni SMS prije prave pošiljke).
+ */
+export async function saveOrgTextbeeAction(_: ActionState, fd: FormData): Promise<ActionState> {
+  const admin = await requireSuperAdmin();
+  const parsed = saveTextbeeSchema.safeParse(formObject(fd));
+  if (!parsed.success) return { values: echoDevice(fd), fieldErrors: zodErrors(parsed.error) };
+  const d = parsed.data;
+  try {
+    const res = await saveOrgTextbee(d.orgId, { apiKey: d.apiKey || null, deviceId: d.deviceId });
+    await logActivity({
+      adminEmail: admin.email,
+      action: "Recenzije: spremljen TextBee mobitel klijenta",
+      targetLabel: res.name,
+      propertyId: null,
+    }).catch(() => undefined);
+    revalidatePath("/admin/recenzije");
+    revalidatePath("/recenzije", "layout");
+    return {
+      ok: true,
+      message: res.secretCreated
+        ? "Spremljeno. Poruke ovog klijenta od sada idu s ovog mobitela. Napravite webhook u TextBeeu (koraci ispod) da STOP i isporuka rade."
+        : "Spremljeno.",
+      values: { deviceId: d.deviceId },
+    };
+  } catch (e) {
+    if (!(e instanceof AdminError)) console.error("[recenzije] TextBee mobitel klijenta", e instanceof Error ? e.name : typeof e);
+    return { values: echoDevice(fd), error: safeMessage(e, "Nije spremljeno. Pokušajte ponovno.") };
+  }
+}
+
+const checkTextbeeSchema = z.object({
+  orgId,
+  apiKey: textbeeApiKey.optional().default(""),
+  deviceId: z.string().trim().max(100, "ID uređaja je predug").optional().default(""),
+});
+
+/**
+ * Provjera veze (samo čitanje, nikakav SMS): TextBee vrati popis uređaja računa, a ovdje se vidi postoji li među njima upisani ID. Koristi
+ * ključ upisan u formi, a ako je prazan, spremljeni.
+ */
+export async function checkOrgTextbeeAction(_: ActionState, fd: FormData): Promise<ActionState> {
+  await requireSuperAdmin();
+  const parsed = checkTextbeeSchema.safeParse(formObject(fd));
+  if (!parsed.success) return { values: echoDevice(fd), fieldErrors: zodErrors(parsed.error) };
+  const d = parsed.data;
+  try {
+    const r = await checkOrgTextbee(d.orgId, { apiKey: d.apiKey || null, deviceId: d.deviceId || null });
+    if (!r.found) {
+      return {
+        values: echoDevice(fd),
+        error:
+          r.total === 0
+            ? "Ključ radi, ali TextBee ne vidi nijedan uređaj na tom računu. U aplikaciji na mobitelu prijavite se istim računom i uključite Gateway."
+            : `Ključ radi, ali uređaj s tim ID-om nije na računu. Uređaji na računu: ${r.others.map((o) => `${o.name} (ID: ${o.id})`).join("; ")}.`,
+      };
+    }
+    const dev = r.device!;
+    const state = [
+      dev.enabled === true ? "uključen" : dev.enabled === false ? "isključen (uključite Gateway u aplikaciji na mobitelu)" : null,
+      dev.online === true ? "vjerojatno online" : dev.online === false ? "dugo bez signala" : null,
+    ].filter(Boolean);
+    return {
+      ok: true,
+      message: `Veza radi. Uređaj „${dev.name}” je pronađen${state.length ? ` (${state.join(", ")})` : ""}. Nijedna poruka nije poslana.`,
+      values: echoDevice(fd),
+    };
+  } catch (e) {
+    return { values: echoDevice(fd), error: `Provjera nije uspjela: ${providerMessage(e, [String(fd.get("apiKey") ?? "")])}` };
+  }
+}
+
+const orgTestSchema = z.object({ orgId, to: z.string().trim().min(1, "Upišite broj telefona").max(30, "Najviše 30 znakova") });
+
+/** Probni SMS preko pružatelja OVOG klijenta (njegov TextBee mobitel ima prednost; nema vraćanja na drugi broj). */
+export async function sendOrgTestSmsAction(_: ActionState, fd: FormData): Promise<ActionState> {
+  await requireSuperAdmin();
+  const parsed = orgTestSchema.safeParse(formObject(fd));
+  if (!parsed.success) return { values: { to: String(fd.get("to") ?? "") }, fieldErrors: zodErrors(parsed.error) };
+  const to = toE164(parsed.data.to);
+  if (!to) return { values: { to: parsed.data.to }, fieldErrors: { to: "Upišite ispravan broj telefona" } };
+  try {
+    await ensureReviewsDb();
+    const [org] = await db.select().from(organizations).where(eq(organizations.id, parsed.data.orgId)).limit(1);
+    if (!org) return { values: { to: parsed.data.to }, error: "Klijent nije pronađen." };
+    if (org.isDemo) return { values: { to: parsed.data.to }, error: "Demo je samo za razgledavanje: stvarni SMS se ne šalje." };
+    const res = await sendTestSms(to, org);
+    const via = `${res.providerLabel}${res.senderLabel ? `, pošiljatelj: ${res.senderLabel}` : ""}`;
+    const next =
+      res.provider === "textbee"
+        ? " Poruku prvo preuzima TextBee, a mobitel je šalje preko svog SIM-a: provjerite stiže li na primateljev mobitel."
+        : "";
+    return { ok: true, message: `Poslano na ${to} (${via}). Status: ${res.status}.${next}`, values: { to: parsed.data.to } };
+  } catch (e) {
+    return { values: { to: parsed.data.to }, error: `Slanje nije uspjelo: ${providerMessage(e)}` };
+  }
+}
+
+/** Nova tajna webhooka (stara odmah prestaje vrijediti: novu treba upisati u TextBee). Tajna je namijenjena adminu i vraća se u `data.secret`. */
+export async function regenerateOrgSecretAction(_: ActionState, fd: FormData): Promise<ActionState> {
+  const admin = await requireSuperAdmin();
+  const parsed = z.object({ orgId }).safeParse(formObject(fd));
+  if (!parsed.success) return { error: firstIssue(parsed.error) };
+  try {
+    const res = await regenerateOrgWebhookSecret(parsed.data.orgId);
+    await logActivity({
+      adminEmail: admin.email,
+      action: "Recenzije: nova tajna webhooka (TextBee klijenta)",
+      targetLabel: res.name,
+      propertyId: null,
+    }).catch(() => undefined);
+    revalidatePath("/admin/recenzije");
+    return { ok: true, message: "Nova tajna je spremljena. Upišite je u webhook u TextBeeu, inače odgovori i isporuka ne stižu.", data: { secret: res.secret } };
+  } catch (e) {
+    if (!(e instanceof AdminError)) console.error("[recenzije] nova tajna webhooka", e instanceof Error ? e.name : typeof e);
+    return { error: safeMessage(e) };
+  }
+}
+
+/** Prikaz tajne webhooka za kopiranje u TextBee (tajna nije u HTML-u stranice dok je admin ne zatraži). */
+export async function revealOrgSecretAction(_: ActionState, fd: FormData): Promise<ActionState> {
+  await requireSuperAdmin();
+  const parsed = z.object({ orgId }).safeParse(formObject(fd));
+  if (!parsed.success) return { error: firstIssue(parsed.error) };
+  try {
+    return { ok: true, data: { secret: await revealOrgWebhookSecret(parsed.data.orgId) } };
+  } catch (e) {
+    if (!(e instanceof AdminError)) console.error("[recenzije] prikaz tajne webhooka", e instanceof Error ? e.name : typeof e);
+    return { error: safeMessage(e) };
+  }
+}
+
+/** Ukloni mobitel klijenta: njegove poruke od sada idu sljedećim pružateljem (zajednički NOVO mobitel, TextBee ili Twilio). */
+export async function removeOrgTextbeeAction(formData: FormData) {
+  const admin = await requireSuperAdmin();
+  const raw = formObject(formData);
+  await run(
+    async () => {
+      const d = z.object({ orgId }).safeParse(raw);
+      if (!d.success) throw new AdminError(firstIssue(d.error));
+      const name = await clearOrgTextbee(d.data.orgId);
+      return `Mobitel klijenta ${name} je uklonjen. Njegove poruke od sada idu zajedničkim pošiljateljem.`;
+    },
+    admin.email,
+    "Recenzije: uklonjen TextBee mobitel klijenta",
+    raw.orgId
+  );
 }

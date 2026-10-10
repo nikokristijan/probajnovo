@@ -16,7 +16,7 @@ import type { SmsSenderStatus } from "@/lib/recenzije/services/sms-status";
 
 export type SmsSenderView = { available: true; status: SmsSenderStatus } | { available: false; error: string };
 
-function SubmitButton({ children, pendingLabel, className, disabled }: { children: string; pendingLabel: string; className: string; disabled?: boolean }) {
+export function SubmitButton({ children, pendingLabel, className, disabled }: { children: string; pendingLabel: string; className: string; disabled?: boolean }) {
   const { pending } = useFormStatus();
   return (
     <button type="submit" disabled={pending || disabled} className={className + " disabled:opacity-50 disabled:cursor-not-allowed"}>
@@ -25,7 +25,7 @@ function SubmitButton({ children, pendingLabel, className, disabled }: { childre
   );
 }
 
-function Notice({ ok, children }: { ok: boolean; children: React.ReactNode }) {
+export function Notice({ ok, children }: { ok: boolean; children: React.ReactNode }) {
   return (
     <div
       role={ok ? "status" : "alert"}
@@ -39,7 +39,7 @@ function Notice({ ok, children }: { ok: boolean; children: React.ReactNode }) {
   );
 }
 
-function CopyButton({ text }: { text: string }) {
+export function CopyButton({ text }: { text: string }) {
   const [copied, setCopied] = useState(false);
   return (
     <button
@@ -163,7 +163,8 @@ export default function RecenzijeSmsCard({ sms }: { sms: SmsSenderView }) {
             SMS pošiljatelj
           </h2>
           <p className="text-xs text-black/55 mt-0.5 max-w-[60ch]">
-            Jedan zajednički pošiljatelj šalje poruke svih klijenata. Tekst poruke sadrži naziv klijentove tvrtke.
+            Jedan zajednički pošiljatelj šalje poruke svih klijenata. Tekst poruke sadrži naziv klijentove tvrtke. Pojedini klijent može imati vlastiti mobitel
+            (TextBee): postavlja se u kartici tog klijenta, ispod i ima prednost.
           </p>
         </div>
         <span className={"text-[11px] font-semibold px-2.5 py-1 rounded-full shrink-0 " + badgeCls}>{badge}</span>

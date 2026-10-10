@@ -91,11 +91,14 @@ export default function TermsPage() {
       <p>
         Ugostiteljski lokali (kafići, restorani, konobe) uz NOVO Recenzije mogu koristiti digitalni jelovnik
         koji za njih izrađujemo i hostamo na probajnovo.com/jelovnik/… Lokal QR kod s adresom jelovnika
-        stavlja na stolove. Gost prije jelovnika može upisati broj mobitela i potvrditi privolu te nakon
-        posjeta dobiva jednu SMS poruku s molbom za Google recenziju, u vremenu navedenom uz polje za broj
-        (zadano otprilike sat i pol, najmanje sat, najviše četiri sata) i nikad između 22:00 i 9:00.
-        Odjavljenim brojevima ne šaljemo ništa. Brojeve koristimo samo za tu jednu poruku i brišemo ih
-        najkasnije nakon 12 mjeseci (osim oznake odjave, koju čuvamo da broj ne bi ponovno dobivao poruke).
+        stavlja na stolove. Lokal stranicu može nazvati „jelovnik” ili „meni”. Gost prije jelovnika može upisati
+        broj mobitela i potvrditi privolu te nakon posjeta uvijek dobiva jednu SMS poruku s molbom za Google
+        recenziju, u vremenu navedenom uz polje za broj (zadano otprilike sat i pol, najmanje sat, najviše četiri
+        sata). Ako lokal u postavkama uključi obavijesti, gost vidi drugi tekst privole i uz tu poruku može dobivati
+        povremene obavijesti o novostima, događanjima i ponudama tog lokala; bez te privole gost dobiva samo jednu
+        poruku. Poruke gostima s jelovnika nikad ne odlaze između 22:00 i 9:00. Odjavljenim brojevima ne šaljemo
+        ništa. Brojeve koristimo samo za poruke tog lokala opisane u privoli i brišemo ih najkasnije nakon 12
+        mjeseci (osim oznake odjave, koju čuvamo da broj ne bi ponovno dobivao poruke).
       </p>
       <p>Ako koristite jelovnik, vi kao lokal:</p>
       <ul>
@@ -112,6 +115,13 @@ export default function TermsPage() {
           kao voditelj obrade odgovarate za postavku pregleda jelovnika bez broja. Ona je zadano uključena (gost
           ispod polja za broj vidi sitnu poveznicu). Privola mora biti dobrovoljna, pa preporučujemo da
           tako i ostane; ako to isključite, odgovornost za takvu postavku je vaša;
+        </li>
+        <li>
+          o slanju obavijesti odlučujete vi, a odgovarate za njihov sadržaj i učestalost. Obavijesti smiju biti samo
+          ono što piše u privoli koju gost vidi (novosti, događanja i ponude vašeg lokala), moraju biti istinite, ne
+          smiju zavaravati niti se slati prečesto ili gostu koji se odjavio, a poruke se šalju samo gostima koji su
+          prihvatili tu varijantu privole. Preporučujemo da tekst privole prije uključivanja obavijesti pregleda
+          pravnik;
         </li>
         <li>
           sami ispisujete i postavljate QR kodove. Ako na vaš zahtjev promijenimo adresu jelovnika, već

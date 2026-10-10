@@ -22,9 +22,17 @@ import {
  * TextBee (textbee.dev) kao SMS pružatelj: poruke odlaze s vlastitog mobitela i vlastite SIM kartice (aplikacija na mobitelu
  * + oblak s REST API-jem). Sve pretpostavke o tuđem API-ju su u lib/recenzije/textbee.ts.
  *
- * API ključ dolazi ISKLJUČIVO iz env varijable TEXTBEE_API_KEY. Ovdje se nikad ne ispisuje, ne logira i ne ulazi u poruke grešaka
- * (sve što dolazi od TextBeea prolazi kroz scrubSecrets). Modul namjerno ne uvozi ./sms (izbjegava kružni uvoz): sms.ts zove ovaj modul.
+ * API ključ dolazi iz env varijable TEXTBEE_API_KEY (zajednički mobitel) ILI se predaje u `creds` (mobitel jedne tvrtke; ključ
+ * je u bazi šifriran, a ovdje stiže već dešifriran). Ovdje se nikad ne ispisuje, ne logira i ne ulazi u poruke grešaka
+ * (sve što dolazi od TextBeea prolazi kroz scrubSecrets, i s ključem i s tajnom tvrtke). Modul namjerno ne uvozi ./sms
+ * (izbjegava kružni uvoz): sms.ts zove ovaj modul.
  */
+
+/**
+ * Vjerodajnice jednog TextBee mobitela. Bez njih se koristi zajednički mobitel iz env varijabli (kao i prije). S njima se
+ * NIKAD ne koristi zajednički: ako ovaj mobitel ne uspije, poruka ne smije otići s tuđeg broja (greška ide pozivatelju).
+ */
+export type TextbeeCreds = { apiKey: string; deviceId: string; webhookSecret?: string | null };
 
 /** Greška TextBee API-ja; `message` je već čitljiva hrvatska poruka bez ključa. */
 export class TextbeeApiError extends Error {
@@ -40,16 +48,19 @@ export class TextbeeApiError extends Error {
 export const TEXTBEE_NOT_CONFIGURED =
   "TextBee nije postavljen: u postavkama servera treba postaviti TEXTBEE_API_KEY i TEXTBEE_DEVICE_ID.";
 
+export const TEXTBEE_ORG_NOT_CONFIGURED =
+  "TextBee (mobitel klijenta) nije potpun: u kartici klijenta treba upisati API ključ i ID uređaja.";
+
 export type TextbeeSendResult = { sid: string; status: string; from: string };
 
-const secretsToScrub = () => [env.textbeeApiKey, env.textbeeWebhookSecret];
+const secretsToScrub = (creds?: TextbeeCreds) => [env.textbeeApiKey, env.textbeeWebhookSecret, creds?.apiKey, creds?.webhookSecret];
 
-async function textbeeFetch(path: string, init: { method: "GET" | "POST"; body?: unknown }): Promise<Response> {
+async function textbeeFetch(path: string, init: { method: "GET" | "POST"; body?: unknown }, creds?: TextbeeCreds): Promise<Response> {
   try {
     return await fetch(`${env.textbeeApiBase}${path}`, {
       method: init.method,
       headers: {
-        [TEXTBEE_KEY_HEADER]: env.textbeeApiKey,
+        [TEXTBEE_KEY_HEADER]: creds ? creds.apiKey : env.textbeeApiKey,
         Accept: "application/json",
         ...(init.body !== undefined ? { "Content-Type": "application/json" } : {}),
       },
@@ -70,9 +81,9 @@ async function readJson(res: Response): Promise<unknown> {
   return res.json().catch(() => null);
 }
 
-function httpError(res: Response, json: unknown) {
-  const message = cleanServerMessage(errorMessageFromBody(json), secretsToScrub());
-  return new TextbeeApiError(describeTextbeeError(res.status, message), res.status);
+function httpError(res: Response, json: unknown, creds?: TextbeeCreds) {
+  const message = cleanServerMessage(errorMessageFromBody(json), secretsToScrub(creds));
+  return new TextbeeApiError(describeTextbeeError(res.status, message, creds ? "org" : "global"), res.status);
 }
 
 /**
@@ -80,47 +91,54 @@ function httpError(res: Response, json: unknown) {
  * slanja imaju isti tekst za sve, a naše poruke su personalizirane). Uspjeh (HTTP 2xx) znači "TextBee je prihvatio poruku",
  * ne "isporučeno": isporuka stiže webhookom (TEXTBEE_WEBHOOK_SECRET). `sid` je ID za uparivanje tih potvrda.
  */
-export async function sendViaTextbee(params: { to: string; body: string }): Promise<TextbeeSendResult> {
-  if (!integrations.textbee()) throw new TextbeeApiError(TEXTBEE_NOT_CONFIGURED, null);
+export async function sendViaTextbee(params: { to: string; body: string }, creds?: TextbeeCreds): Promise<TextbeeSendResult> {
+  const apiKey = creds ? creds.apiKey : env.textbeeApiKey;
+  const deviceId = creds ? creds.deviceId : env.textbeeDeviceId;
+  if (creds ? !apiKey || !deviceId : !integrations.textbee()) {
+    throw new TextbeeApiError(creds ? TEXTBEE_ORG_NOT_CONFIGURED : TEXTBEE_NOT_CONFIGURED, null);
+  }
   const to = toE164(params.to);
   if (!to) throw new TextbeeApiError("TextBee: broj primatelja nije ispravan. Upišite ga u obliku +385 91 234 5678.", null);
 
   const recipients = [to];
-  let res = await textbeeFetch(TEXTBEE_PATHS.sendSms, {
-    method: "POST",
-    body: { deviceId: env.textbeeDeviceId, recipients, message: params.body },
-  });
+  let res = await textbeeFetch(
+    TEXTBEE_PATHS.sendSms,
+    { method: "POST", body: { deviceId, recipients, message: params.body } },
+    creds
+  );
   if (res.status === 404) {
     // Trenutni put ne postoji (starija ili samostalno postavljena inačica TextBeea): pri 404 poruka nije poslana, pa je
     // sigurno probati zastarjeli put s ID-om uređaja u adresi. Za nepoznat uređaj i on vrati 404, pa se vidi ista greška.
     await res.body?.cancel().catch(() => undefined);
-    res = await textbeeFetch(TEXTBEE_PATHS.sendSmsLegacy(env.textbeeDeviceId), {
-      method: "POST",
-      body: { recipients, message: params.body },
-    });
+    res = await textbeeFetch(TEXTBEE_PATHS.sendSmsLegacy(deviceId), { method: "POST", body: { recipients, message: params.body } }, creds);
   }
   const json = await readJson(res);
-  if (!res.ok) throw httpError(res, json);
+  if (!res.ok) throw httpError(res, json, creds);
 
   const parsed = parseTextbeeSendResponse(json);
   if (parsed.rejected) {
-    const reason = cleanServerMessage(errorMessageFromBody(json), secretsToScrub());
+    const reason = cleanServerMessage(errorMessageFromBody(json), secretsToScrub(creds));
     throw new TextbeeApiError(`TextBee nije prihvatio poruku${reason ? `: ${reason}` : "."}`, res.status);
   }
   return {
     // Bez ID-a u odgovoru poruka je svejedno poslana; lokalni ID samo drži jedinstvenost provider_sid, isporuka se tada ne prati.
     sid: parsed.id ?? `tb-${randomUUID()}`,
     status: parsed.status ?? "queued",
-    from: textbeeSenderMarker(env.textbeeDeviceId),
+    from: textbeeSenderMarker(deviceId),
   };
 }
 
-/** Uređaji računa (GET /gateway/devices), samo čitanje. Ključ se ne vraća. */
-export async function listTextbeeDevices(): Promise<TextbeeDevice[]> {
-  if (!env.textbeeApiKey) throw new TextbeeApiError("TextBee nije postavljen: u postavkama servera treba postaviti TEXTBEE_API_KEY.", null);
-  const res = await textbeeFetch(TEXTBEE_PATHS.devices, { method: "GET" });
+/** Uređaji računa (GET /gateway/devices), samo čitanje. Ključ se ne vraća. Uz `creds` to je račun mobitela jedne tvrtke. */
+export async function listTextbeeDevices(creds?: TextbeeCreds): Promise<TextbeeDevice[]> {
+  if (creds ? !creds.apiKey : !env.textbeeApiKey) {
+    throw new TextbeeApiError(
+      creds ? "TextBee (mobitel klijenta): API ključ nije upisan." : "TextBee nije postavljen: u postavkama servera treba postaviti TEXTBEE_API_KEY.",
+      null
+    );
+  }
+  const res = await textbeeFetch(TEXTBEE_PATHS.devices, { method: "GET" }, creds);
   const json = await readJson(res);
-  if (!res.ok) throw httpError(res, json);
+  if (!res.ok) throw httpError(res, json, creds);
   return parseTextbeeDevices(json);
 }
 

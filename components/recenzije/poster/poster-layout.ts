@@ -7,6 +7,7 @@
  * da ostanu čitljivi.
  */
 
+import { menuNoun, type MenuKind } from "@/lib/recenzije/menu-noun";
 import { slugify } from "@/lib/recenzije/utils";
 
 export type PosterVariant = "a4" | "a6";
@@ -56,6 +57,10 @@ export type PosterKind = "review" | "menu";
 
 export const MENU_KICKER = "DIGITALNI JELOVNIK";
 export const MENU_HEADLINE = ["Skenirajte", "i otvorite", "jelovnik"] as const;
+
+/** Isto, ali prema nazivu koji lokal odabere za stranicu ("jelovnik" ili "meni", lib/recenzije/menu-noun.ts). */
+export const menuKicker = (kind?: MenuKind | null) => `DIGITALNI ${menuNoun(kind).nom.toUpperCase()}`;
+export const menuHeadline = (kind?: MenuKind | null) => ["Skenirajte", "i otvorite", menuNoun(kind).acc] as const;
 
 /**
  * Koraci na plakatu jelovnika. Drugi korak ovisi o postavci lokala: ako gost smije pogledati jelovnik bez broja,

@@ -8,19 +8,21 @@ import ImageUploader from "@/components/admin/ImageUploader";
 import { Button } from "@/components/recenzije/ui/button";
 import { Dialog, DialogContent, Switch } from "@/components/recenzije/ui/dialog";
 import { Card, CardBody, CardHeader, Field, Input, Select, Textarea } from "@/components/recenzije/ui/primitives";
+import { guestConsentDetails, guestConsentSummary } from "@/lib/recenzije/guest-consent";
+import { defaultMenuTitle, MENU_KIND_LABELS, MENU_KINDS, menuNoun, type MenuKind } from "@/lib/recenzije/menu-noun";
 import { validateMenuSlug } from "@/lib/recenzije/menu-slug";
 import { cn } from "@/lib/recenzije/utils";
 import { DELAY_OPTIONS, type MenuSettingsDTO } from "./menu-types";
 
 /** Polja uz koja se greška prikazuje u obrascu; za sve ostalo greška ide u obavijest. */
-const SHOWN_FIELDS = ["slug", "title", "intro", "introEn", "externalUrl", "logoUrl", "delayMinutes"];
+const SHOWN_FIELDS = ["slug", "title", "intro", "introEn", "externalUrl", "logoUrl", "delayMinutes", "menuKind"];
 
 type SlugState = { kind: "idle" } | { kind: "checking" } | { kind: "free" } | { kind: "error"; message: string };
 
 /** Postavke jelovnika: tekstovi, vanjska adresa, odgoda poruke, pregled bez broja i javna adresa (slug). */
 export function MenuSettingsForm({ settings, host, readOnly }: { settings: MenuSettingsDTO; host: string; readOnly: boolean }) {
   // Nakon spremanja poslužitelj vraća nove postavke; ključ ponovno postavlja obrazac na spremljene vrijednosti.
-  const key = [settings.slug, settings.title, settings.intro, settings.introEn, settings.externalUrl, settings.logoUrl, settings.allowSkip, settings.delayMinutes].join("\u0001");
+  const key = [settings.slug, settings.title, settings.intro, settings.introEn, settings.externalUrl, settings.logoUrl, settings.allowSkip, settings.delayMinutes, settings.menuKind, settings.noticesEnabled].join("\u0001");
   return <SettingsFormInner key={key} settings={settings} host={host} readOnly={readOnly} />;
 }
 
@@ -34,6 +36,8 @@ function SettingsFormInner({ settings, host, readOnly }: { settings: MenuSetting
   const [logoBroken, setLogoBroken] = useState(false);
   const [delay, setDelay] = useState(settings.delayMinutes);
   const [allowSkip, setAllowSkip] = useState(settings.allowSkip);
+  const [menuKind, setMenuKind] = useState<MenuKind>(settings.menuKind);
+  const [notices, setNotices] = useState(settings.noticesEnabled);
   const [slug, setSlug] = useState(settings.slug);
   const [slugState, setSlugState] = useState<SlugState>({ kind: "idle" });
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -57,7 +61,9 @@ function SettingsFormInner({ settings, host, readOnly }: { settings: MenuSetting
     externalUrl.trim() !== (settings.externalUrl ?? "") ||
     logoUrl.trim() !== (settings.logoUrl ?? "") ||
     delay !== settings.delayMinutes ||
-    allowSkip !== settings.allowSkip;
+    allowSkip !== settings.allowSkip ||
+    menuKind !== settings.menuKind ||
+    notices !== settings.noticesEnabled;
   const slugOk = !slugChanged || slugState.kind === "free";
 
   function onSlugChange(raw: string) {
@@ -89,6 +95,8 @@ function SettingsFormInner({ settings, host, readOnly }: { settings: MenuSetting
         externalUrl: externalUrl.trim() || null,
         logoUrl: logoUrl.trim() || null,
         allowSkip,
+        menuKind,
+        noticesEnabled: notices,
         delayMinutes: delay,
       });
       if (r.ok) toast.success(r.message);
@@ -119,7 +127,31 @@ function SettingsFormInner({ settings, host, readOnly }: { settings: MenuSetting
           }}
         >
           <fieldset disabled={readOnly || pending} className="min-w-0 space-y-5">
-            <Field label="Naslov" htmlFor="m-title" error={errors.title} hint="Prikazuje se gostima iznad jelovnika, npr. Jelovnik ili Karta pića.">
+            <Field
+              label="Naziv na stranici"
+              htmlFor="m-kind"
+              error={errors.menuKind}
+              hint="Kako gost zove stranicu: na gumbima, u naslovu, u podnožju i u tekstu privole piše „jelovnik” ili „meni”. Zadani naslov se prilagodi, a vlastiti naslov ostaje."
+            >
+              <Select
+                id="m-kind"
+                value={menuKind}
+                onChange={(e) => {
+                  const next = e.target.value as MenuKind;
+                  // Zadani naslov prati odabir; vlastiti naslov se ne dira.
+                  if (MENU_KINDS.some((k) => title.trim().toLowerCase() === defaultMenuTitle(k).toLowerCase())) setTitle(defaultMenuTitle(next));
+                  setMenuKind(next);
+                }}
+              >
+                {MENU_KINDS.map((k) => (
+                  <option key={k} value={k}>
+                    {MENU_KIND_LABELS[k]}
+                  </option>
+                ))}
+              </Select>
+            </Field>
+
+            <Field label="Naslov" htmlFor="m-title" error={errors.title} hint="Prikazuje se gostima iznad stranice, npr. Jelovnik, Meni ili Karta pića.">
               <Input id="m-title" value={title} maxLength={80} onChange={(e) => setTitle(e.target.value)} aria-invalid={errors.title ? true : undefined} />
             </Field>
 
@@ -238,12 +270,12 @@ function SettingsFormInner({ settings, host, readOnly }: { settings: MenuSetting
             <div className="border border-border bg-surface-2 p-4">
               <div className="flex items-start justify-between gap-4">
                 <div className="min-w-0">
-                  <p className="text-sm font-bold">Dopusti pregled jelovnika bez broja</p>
+                  <p className="text-sm font-bold">Dopusti pregled bez broja</p>
                   <p className="mt-1 text-[13px] text-muted">
-                    Zadano uključeno. Ispod polja za broj gost vidi sitnu poveznicu „Pogledaj jelovnik bez unosa broja”. Takav pregled ništa ne sprema i ne šalje.
+                    Zadano uključeno. Ispod polja za broj gost vidi sitnu poveznicu „Pogledaj {menuNoun(menuKind).acc} bez unosa broja”. Takav pregled ništa ne sprema i ne šalje.
                   </p>
                 </div>
-                <Switch checked={allowSkip} onCheckedChange={setAllowSkip} label="Dopusti pregled jelovnika bez broja" />
+                <Switch checked={allowSkip} onCheckedChange={setAllowSkip} label="Dopusti pregled bez broja" />
               </div>
               <div
                 className={cn(
@@ -256,16 +288,46 @@ function SettingsFormInner({ settings, host, readOnly }: { settings: MenuSetting
                 <p className="text-foreground/80">
                   {allowSkip ? (
                     <>
-                      <b>Zadano i preporučeno stanje.</b> Gost uvijek može otvoriti jelovnik i bez broja (sitna poveznica ispod polja), pa je privola dobrovoljna.
+                      <b>Zadano i preporučeno stanje.</b> Gost uvijek može otvoriti {menuNoun(menuKind).acc} i bez broja (sitna poveznica ispod polja), pa je privola dobrovoljna.
                     </>
                   ) : (
                     <>
-                      <b>Upozorenje (GDPR):</b> poveznica je uklonjena pa je broj mobitela obavezan za jelovnik. To može biti u sukobu s GDPR-om jer privola mora biti
+                      <b>Upozorenje (GDPR):</b> poveznica je uklonjena pa je broj mobitela obavezan za {menuNoun(menuKind).acc}. To može biti u sukobu s GDPR-om jer privola mora biti
                       dobrovoljna, a odgovornost za takvu postavku je vaša. Preporuka: ostavite pregled bez broja uključen.
                     </>
                   )}
                 </p>
               </div>
+            </div>
+
+            <div className="border border-border bg-surface-2 p-4">
+              <div className="flex items-start justify-between gap-4">
+                <div className="min-w-0">
+                  <p className="text-sm font-bold">Lokal šalje i povremene obavijesti o novostima, događanjima i ponudama</p>
+                  <p className="mt-1 text-[13px] text-muted">
+                    Zadano isključeno: gost pristaje samo na jednu poruku s molbom za Google recenziju. Uključeno: gost vidi drugi tekst privole koji
+                    spominje obavijesti o novostima, događanjima i ponudama, a samo gosti koji su ga prihvatili mogu dobiti više od te jedne poruke
+                    (ručne poruke, podsjetnike i kampanje). Promjena vrijedi za nove goste; svatko zadržava privolu koju je dao.
+                  </p>
+                </div>
+                <Switch checked={notices} onCheckedChange={setNotices} label="Lokal šalje i povremene obavijesti o novostima, događanjima i ponudama" />
+              </div>
+              <div className="mt-3 border-l-[3px] border-border-strong bg-surface p-3 text-[13px]" role="note">
+                <p className="label text-muted">Tekst privole koji gost vidi</p>
+                <p className="mt-1.5 text-foreground">
+                  {guestConsentSummary(settings.venueName, delay, { noticesEnabled: notices, menuKind, allowSkip })}
+                </p>
+                <p className="mt-1.5 text-muted">{guestConsentDetails(delay, { noticesEnabled: notices, menuKind, allowSkip })}</p>
+              </div>
+              {notices && (
+                <p className="mt-3 flex items-start gap-2.5 border-l-[3px] border-orange bg-orange-soft p-3 text-[13px] text-foreground/80" role="note">
+                  <TriangleAlert className="mt-0.5 size-4 shrink-0 text-warning" aria-hidden />
+                  <span>
+                    <b>Vi odgovarate za sadržaj i učestalost obavijesti.</b> Šaljite samo ono što piše u privoli, rijetko i bez obmanjujućih poruka. Noću
+                    (22:00 do 09:00) poruke gostima s jelovnika ne odlaze. Preporučujemo da pravnik pregleda tekst privole prije uključivanja.
+                  </span>
+                </p>
+              )}
             </div>
 
             <div>

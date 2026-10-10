@@ -48,8 +48,8 @@ export async function refreshGoogleLocationAction(): Promise<ActionState> {
 export async function removeSmsGatewayAction(): Promise<ActionState> {
   const { ctx, deny } = await admin();
   if (deny) return deny;
-  // Bez zajedničkog pošiljatelja odspajanje starog ostavilo bi tvrtku bez ikakvog slanja.
-  if (smsProvider(null) === null) return { error: "NOVO SMS pošiljatelj još nije postavljen, pa se stari mobitel zasad ne odspaja. Javite se NOVO-u." };
+  // Bez zajedničkog pošiljatelja (ili vlastitog TextBee mobitela tvrtke) odspajanje starog ostavilo bi tvrtku bez ikakvog slanja.
+  if (smsProvider({ ...ctx.org, smsGatewayUser: null, smsGatewayPassEnc: null }) === null) return { error: "NOVO SMS pošiljatelj još nije postavljen, pa se stari mobitel zasad ne odspaja. Javite se NOVO-u." };
   await db
     .update(organizations)
     .set({ smsGatewayUser: null, smsGatewayPassEnc: null, smsGatewaySigningKeyEnc: null })

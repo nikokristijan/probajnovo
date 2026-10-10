@@ -1,9 +1,18 @@
-/** Kostur dok se jelovnik učitava: iste mjere kao stvarni sadržaj (znak, uvod, traka kategorija, nekoliko stavki), bez skakanja. */
+"use client";
+
+import { useMenuKind } from "@/components/jelovnik/kind-context";
+import { menuNoun } from "@/lib/recenzije/menu-noun";
+
+/**
+ * Kostur dok se jelovnik učitava: iste mjere kao stvarni sadržaj (znak, uvod, traka kategorija, nekoliko stavki), bez skakanja.
+ * Vrsta stranice (jelovnik ili meni) dolazi iz layouta [slug] (kind-context.tsx).
+ */
 export default function Loading() {
+  const kind = useMenuKind();
   return (
     <div className="jl-menu" data-lang="hr" aria-busy="true">
       <main className="jl-main">
-        <div className="jl-wrap jl-head" role="status" aria-label="Učitavanje jelovnika">
+        <div className="jl-wrap jl-head" role="status" aria-label={kind ? `Učitavanje ${menuNoun(kind).gen}` : "Učitavanje"}>
           <span className="jl-skel jl-skel-shimmer jl-skel-brand" />
           <span className="jl-skel jl-skel-shimmer" style={{ width: 96, height: 12, margin: "20px auto 0" }} />
           <span className="jl-skel jl-skel-shimmer" style={{ width: "86%", height: 14, margin: "22px auto 0" }} />

@@ -28,6 +28,7 @@ import { formatPhone } from "@/lib/recenzije/phone";
 import { requireOrg } from "@/lib/recenzije/session";
 import { MESSAGE_STATUS, REVIEW_STATUS, formatDate, timeAgo } from "@/lib/recenzije/status";
 import { trackingUrl } from "@/lib/recenzije/services/tracking";
+import { mayMessageClient, menuGuestBadge } from "@/lib/recenzije/menu-send-rules";
 import { getClientDetail } from "@/lib/recenzije/services/clients";
 
 export const metadata = { title: "Klijent" };
@@ -76,6 +77,7 @@ export default async function ClientPage({
               <Badge tone={st.tone} dot>
                 {st.label}
               </Badge>
+              {client.source === "menu" && <Badge tone="neutral">{menuGuestBadge(d.noticesConsent)}</Badge>}
               {client.smsOptOut && (
                 <Badge tone="red">
                   <Ban className="size-3" /> Odjavljen od SMS-a
@@ -89,6 +91,7 @@ export default async function ClientPage({
           clientId={client.id}
           reviewed={reviewed}
           optOut={client.smsOptOut}
+          canSend={mayMessageClient({ source: client.source, hasService: d.services.length > 0, noticesConsent: d.noticesConsent })}
           client={{ firstName: client.firstName, lastName: client.lastName, phone: client.phone, email: client.email, notes: client.notes }}
         />
       </div>

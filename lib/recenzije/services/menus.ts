@@ -16,6 +16,7 @@ import { env } from "@/lib/recenzije/env";
 import { createId } from "@/lib/recenzije/id";
 import { MENU_DELAY_MAX, MENU_DELAY_MIN } from "@/lib/recenzije/guest-consent";
 import { MAX_PRICE_CENTS } from "@/lib/recenzije/menu-format";
+import { displayMenuTitle, parseMenuKind, type MenuKind } from "@/lib/recenzije/menu-noun";
 import { IMPORT_LIMITS, parseMenuText, type ParsedMenu } from "@/lib/recenzije/menu-import";
 import { suggestMenuSlug, validateMenuSlug } from "@/lib/recenzije/menu-slug";
 
@@ -93,6 +94,8 @@ const settingsSchema = z.object({
   /** Logo lokala: https adresa slike; prazno/null = ukloni. */
   logoUrl: z.union([z.null(), z.literal(""), logoHttpsUrl]).optional(),
   allowSkip: z.boolean().optional(),
+  menuKind: z.enum(["jelovnik", "meni"], { error: "Naziv na stranici mora biti Jelovnik ili Meni." }).optional(),
+  noticesEnabled: z.boolean({ error: "Neispravan unos." }).optional(),
   delayMinutes: z
     .number({ error: `Odgoda mora biti između ${MENU_DELAY_MIN} i ${MENU_DELAY_MAX} minuta.` })
     .int(`Odgoda mora biti cijeli broj minuta.`)
@@ -268,6 +271,10 @@ export type MenuSettingsInput = {
   /** Logo lokala (https adresa slike). Prazno/null = ukloni. */
   logoUrl?: string | null;
   allowSkip?: boolean;
+  /** Kako se stranica zove gostu: "jelovnik" ili "meni". */
+  menuKind?: MenuKind;
+  /** Lokal šalje i povremene obavijesti (mijenja tekst privole koji gost vidi). */
+  noticesEnabled?: boolean;
   /** 60 do 240 minuta. */
   delayMinutes?: number;
   enabled?: boolean;
@@ -301,6 +308,8 @@ export async function upsertMenuSettings(organizationId: string, input: MenuSett
   if (d.externalUrl !== undefined) patch.externalUrl = orNull(d.externalUrl);
   if (d.logoUrl !== undefined) patch.logoUrl = orNull(d.logoUrl);
   if (d.allowSkip !== undefined) patch.allowSkip = d.allowSkip;
+  if (d.menuKind !== undefined) patch.menuKind = d.menuKind;
+  if (d.noticesEnabled !== undefined) patch.noticesEnabled = d.noticesEnabled;
   if (d.delayMinutes !== undefined) patch.delayMinutes = d.delayMinutes;
   if (d.enabled !== undefined) patch.enabled = d.enabled;
   if (Object.keys(patch).length === 0) return ok(m.menu);
@@ -705,6 +714,7 @@ export type PublicMenuInfo = {
   slug: string;
   /** Naziv lokala (naziv tvrtke). */
   venueName: string;
+  /** Naslov koji gost vidi: zadani naslov druge vrste je već zamijenjen zadanim naslovom odabrane vrste (displayMenuTitle). */
   title: string;
   intro: string | null;
   introEn: string | null;
@@ -713,6 +723,10 @@ export type PublicMenuInfo = {
   logoUrl: string | null;
   allowSkip: boolean;
   delayMinutes: number;
+  /** "jelovnik" ili "meni": svaki javni tekst uzima oblik iz lib/recenzije/menu-noun.ts. */
+  menuKind: MenuKind;
+  /** Lokal šalje i povremene obavijesti: gost vidi drugu varijantu privole (guest-consent.ts). */
+  noticesEnabled: boolean;
   /** True kad ima ijedan engleski tekst: tek tada stranica prikazuje HR/EN prekidač. */
   hasEnglish: boolean;
 };
@@ -764,6 +778,8 @@ export async function getPublicMenuInfoBySlug(rawSlug: string): Promise<PublicMe
       logoUrl: menus.logoUrl,
       allowSkip: menus.allowSkip,
       delayMinutes: menus.delayMinutes,
+      menuKind: menus.menuKind,
+      noticesEnabled: menus.noticesEnabled,
       hasEnglish: sql<boolean>`(
         coalesce(${menus.introEn}, '') <> ''
         or exists (select 1 from nr_menu_categories c where c.menu_id = ${menus.id} and coalesce(c.name_en, '') <> '')
@@ -774,7 +790,9 @@ export async function getPublicMenuInfoBySlug(rawSlug: string): Promise<PublicMe
     .innerJoin(organizations, eq(organizations.id, menus.organizationId))
     .where(and(eq(menus.slug, slug), eq(menus.enabled, true), eq(organizations.isVenue, true)))
     .limit(1);
-  return row ?? null;
+  if (!row) return null;
+  const menuKind = parseMenuKind(row.menuKind);
+  return { ...row, menuKind, title: displayMenuTitle(menuKind, row.title) };
 }
 
 /**

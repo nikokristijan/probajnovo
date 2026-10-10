@@ -5,6 +5,7 @@ import { parseMenuTab, toGuestView, type CategoryDTO } from "@/components/recenz
 import { Button } from "@/components/recenzije/ui/button";
 import { Card, EmptyState, PageHeader } from "@/components/recenzije/ui/primitives";
 import { delayWording } from "@/lib/recenzije/guest-consent";
+import { parseMenuKind } from "@/lib/recenzije/menu-noun";
 import { requireOrg } from "@/lib/recenzije/session";
 import { getGuestSummary, listRecentGuests } from "@/lib/recenzije/services/guests";
 import { getVenueMenuForOperator } from "@/lib/recenzije/services/menus";
@@ -73,7 +74,7 @@ export default async function MenuPage({ searchParams }: { searchParams: Promise
       <PageHeader
         kicker="Jelovnik"
         title="Digitalni jelovnik"
-        description={`Gost skenira QR kod i otvara jelovnik. Ako upiše broj mobitela, broj se sprema, a otprilike nakon ${delayWording(m.delayMinutes)} gostu stiže poruka s molbom za Google recenziju.${m.allowSkip ? " Gost jelovnik može otvoriti i bez broja: tada se ništa ne sprema ni ne šalje." : ""}`}
+        description={`Gost skenira QR kod i otvara jelovnik. Ako upiše broj mobitela, broj se sprema, a otprilike nakon ${delayWording(m.delayMinutes)} gostu stiže poruka s molbom za Google recenziju.${m.noticesEnabled ? " Gost je pristao i na povremene obavijesti o novostima, događanjima i ponudama lokala (to piše u privoli koju vidi)." : " Gost pristaje samo na tu jednu poruku."}${m.allowSkip ? " Gost jelovnik može otvoriti i bez broja: tada se ništa ne sprema ni ne šalje." : ""}`}
         actions={
           <>
             <Button variant="secondary" asChild>
@@ -103,6 +104,9 @@ export default async function MenuPage({ searchParams }: { searchParams: Promise
           logoUrl: m.logoUrl,
           allowSkip: m.allowSkip,
           delayMinutes: m.delayMinutes,
+          menuKind: parseMenuKind(m.menuKind),
+          noticesEnabled: m.noticesEnabled,
+          venueName: view.venueName,
         }}
         categories={categories}
         hasReviewUrl={Boolean(ctx.org.googleReviewUrl?.trim())}

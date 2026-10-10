@@ -56,8 +56,6 @@ export default async function AdminRecenzijePage({
   const sum = summarize(rows);
   const venues = await readVenues(rows.map((r) => r.id));
   const sms = readSms();
-  const smsReady = sms.available ? sms.status.ready : null;
-  const smsProvider = sms.available ? sms.status.active : null;
 
   const planOptions: PlanOption[] = plans.map((p) => ({
     key: p.key,
@@ -133,8 +131,6 @@ export default async function AdminRecenzijePage({
               key={r.id}
               row={r}
               plans={plans}
-              smsReady={smsReady}
-              smsProvider={smsProvider}
               flash={flashText && flashClientId === r.id ? { kind: flashKind, text: flashText } : null}
               venue={venues?.get(r.id) ?? null}
             />

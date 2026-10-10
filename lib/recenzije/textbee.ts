@@ -23,6 +23,16 @@ export const TEXTBEE_SENDER_PREFIX = "textbee:";
 /** Adresa našeg webhooka (apsolutni URL = env.appUrl + ovo) koju vlasnik upisuje u TextBee nadzornu ploču. */
 export const TEXTBEE_WEBHOOK_PATH = "/api/recenzije/webhooks/textbee";
 
+/** Webhook za mobitel jedne tvrtke (tajna je ta tvrtka, ne globalna): TEXTBEE_WEBHOOK_PATH/<id tvrtke>. */
+export const textbeeOrgWebhookPath = (organizationId: string) => `${TEXTBEE_WEBHOOK_PATH}/${encodeURIComponent(organizationId)}`;
+
+// --- Unos za TextBee mobitel tvrtke (provjera oblika; stvarnu ispravnost zna samo TextBee) ---
+
+/** ID uređaja: slova, brojke, "_" i "-" (stvarni ID-evi su MongoDB ObjectId, ali oblik nije potvrđen pa se ne zahtijeva). */
+export const TEXTBEE_DEVICE_ID_PATTERN = /^[A-Za-z0-9_-]{1,100}$/;
+/** API ključ: vidljivi ASCII znakovi bez razmaka, 8 do 200 znakova (oblik ključa nije potvrđen pa je provjera namjerno široka). */
+export const TEXTBEE_API_KEY_PATTERN = /^[\x21-\x7e]{8,200}$/;
+
 /**
  * UNCONFIRMED (jedan izvor): potpisna tajna webhooka mora imati barem 20 znakova. Služi samo za upozorenje u adminu;
  * nikad ne blokira slanje ni primanje.
@@ -103,16 +113,23 @@ export function cleanServerMessage(raw: unknown, secrets: Array<string | null | 
  * samo kao dodatna informacija. Statusi: 401 CONFIRMED, 400 CONFIRMED ("no enabled device"), 429 CONFIRMED (savjet "pričekaj i ponovi"),
  * 403 i 404 UNCONFIRMED (404 za nepoznat uređaj je pretpostavka iz zadatka).
  */
-export function describeTextbeeError(status: number | null, serverMessage = ""): string {
+export function describeTextbeeError(status: number | null, serverMessage = "", scope: "global" | "org" = "global"): string {
   const extra = serverMessage ? ` (${serverMessage})` : "";
+  const org = scope === "org";
   if (status === 401 || status === 403) {
-    return `TextBee: pogrešan ili ugašen API ključ (TEXTBEE_API_KEY). U TextBee nadzornoj ploči napravite novi ključ i upišite ga u postavke servera.${extra}`;
+    return org
+      ? `TextBee (mobitel klijenta): pogrešan ili ugašen API ključ. U TextBee nadzornoj ploči tog računa napravite novi ključ i upišite ga u kartici klijenta.${extra}`
+      : `TextBee: pogrešan ili ugašen API ključ (TEXTBEE_API_KEY). U TextBee nadzornoj ploči napravite novi ključ i upišite ga u postavke servera.${extra}`;
   }
   if (status === 404) {
-    return `TextBee: uređaj nije pronađen. Provjerite TEXTBEE_DEVICE_ID (gumb „Provjeri uređaje” pokazuje ispravan ID).${extra}`;
+    return org
+      ? `TextBee (mobitel klijenta): uređaj nije pronađen. Provjerite ID uređaja u kartici klijenta (gumb „Provjeri vezu” pokazuje ispravan ID).${extra}`
+      : `TextBee: uređaj nije pronađen. Provjerite TEXTBEE_DEVICE_ID (gumb „Provjeri uređaje” pokazuje ispravan ID).${extra}`;
   }
   if (status === 400) {
-    return `TextBee je odbio poruku. Najčešći razlog je isključen uređaj: u aplikaciji na mobitelu uključite Gateway, a provjerite i TEXTBEE_DEVICE_ID.${extra}`;
+    return org
+      ? `TextBee (mobitel klijenta) je odbio poruku. Najčešći razlog je isključen uređaj: u aplikaciji na tom mobitelu uključite Gateway, a provjerite i ID uređaja u kartici klijenta.${extra}`
+      : `TextBee je odbio poruku. Najčešći razlog je isključen uređaj: u aplikaciji na mobitelu uključite Gateway, a provjerite i TEXTBEE_DEVICE_ID.${extra}`;
   }
   if (status === 429) return "TextBee: previše zahtjeva odjednom, pokušajte za nekoliko minuta.";
   if (status !== null && status >= 500) return `TextBee: poslužitelj trenutno ne radi (greška ${status}). Pokušajte ponovno za nekoliko minuta.`;

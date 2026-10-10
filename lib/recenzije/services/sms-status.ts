@@ -7,7 +7,7 @@ import { TEXTBEE_SECRET_MIN_LENGTH, TEXTBEE_WEBHOOK_PATH, textbeeSenderMarker } 
 import { publicHttpsProblem, resolveTwilioSender, senderLabel, twilioHint } from "@/lib/recenzije/twilio";
 import { getNovoPhoneStatus, type NovoPhoneStatus } from "./novo-phone";
 import { needsOptOutLink } from "@/lib/recenzije/sms-format";
-import { fetchTwilioMessage, sendSms, SmsNotConfiguredError, smsProvider } from "./sms";
+import { fetchTwilioMessage, sendSms, SmsNotConfiguredError, smsProvider, smsSenderKind, type OrgSms } from "./sms";
 
 /**
  * Stanje SMS pošiljatelja za NOVO admin: koji je pružatelj AKTIVAN (isti redoslijed kao smsProvider:
@@ -90,7 +90,7 @@ export const TEXTBEE_NO_WEBHOOK_HINT =
   "Poruke nose poveznicu za odjavu. Za ljepšu poruku (odjava odgovorom STOP) uključite webhook i postavite TEXTBEE_WEBHOOK_SECRET.";
 
 /** Događaji koje treba označiti u TextBee nadzornoj ploči (UNCONFIRMED imena su u lib/recenzije/textbee.ts). */
-const TEXTBEE_EVENTS = ["MESSAGE_RECEIVED", "MESSAGE_SENT", "MESSAGE_DELIVERED", "MESSAGE_FAILED"];
+export const TEXTBEE_EVENTS = ["MESSAGE_RECEIVED", "MESSAGE_SENT", "MESSAGE_DELIVERED", "MESSAGE_FAILED"];
 
 export function getTextbeeStatus(): TextbeeStatus {
   const missing: string[] = [];
@@ -252,7 +252,7 @@ export function getSmsSenderStatus(): SmsSenderStatus {
 // --- Probni SMS ---
 
 export type TestSmsResult = {
-  provider: "novo" | "textbee" | "twilio";
+  provider: "novo" | "textbee" | "twilio" | "gateway";
   providerLabel: string;
   sid: string;
   status: string;
@@ -260,38 +260,46 @@ export type TestSmsResult = {
   from: string | null;
   senderLabel: string | null;
   segments: number;
+  /** Šalje li se s mobitela same tvrtke (TextBee ili Android), a ne sa zajedničkog pošiljatelja. */
+  ownPhone: boolean;
 };
 
 const TEST_BODY = "NOVO: probna poruka. Ako vidite ovu poruku, slanje SMS-a radi.";
 
 /**
- * Pošalje probni SMS preko AKTIVNOG pružatelja (Android mobitel, TextBee ili Twilio), samo za glavnog admina.
+ * Pošalje probni SMS preko AKTIVNOG pružatelja (Android mobitel, TextBee ili Twilio), samo za glavnog admina. Bez `org` to je zajednički
+ * pošiljatelj; s `org` pružatelj te tvrtke (njezin TextBee mobitel ima prednost i nema vraćanja na drugi pružatelj).
  * Prava Twilio greška (npr. 21408, 21612, 21614) vraća se čitljivo, s hrvatskom uputom.
  */
-export async function sendTestSms(to: string): Promise<TestSmsResult> {
+export async function sendTestSms(to: string, org: OrgSms | null = null): Promise<TestSmsResult> {
   const phone = toE164(to);
   if (!phone) throw new Error("Neispravan broj telefona. Upišite broj u obliku +385 91 234 5678.");
-  const provider = smsProvider(null);
-  if (!provider) {
+  const kind = smsSenderKind(org);
+  if (kind === "none") {
     const tw = getTwilioStatus();
     throw new SmsNotConfiguredError(
       tw.senderError ? `Twilio pošiljatelj nije ispravan: ${tw.senderError}` : undefined
     );
   }
-  const res = await sendSms(null, { to: phone, body: TEST_BODY });
+  const res = await sendSms(org, { to: phone, body: TEST_BODY });
   const tw = getTwilioStatus();
   const shown =
-    provider === "twilio"
+    kind === "twilio"
       ? { provider: "twilio" as const, providerLabel: "Twilio", senderLabel: tw.senderLabel }
-      : provider === "textbee"
-        ? { provider: "textbee" as const, providerLabel: "TextBee", senderLabel: "vaš mobitel i SIM (TextBee)" }
-        : { provider: "novo" as const, providerLabel: "NOVO mobitel", senderLabel: "NOVO mobitel (Android)" };
+      : kind === "org_textbee"
+        ? { provider: "textbee" as const, providerLabel: "TextBee (mobitel klijenta)", senderLabel: "mobitel i SIM ovog klijenta (TextBee)" }
+        : kind === "textbee"
+          ? { provider: "textbee" as const, providerLabel: "TextBee", senderLabel: "vaš mobitel i SIM (TextBee)" }
+          : kind === "org_gateway"
+            ? { provider: "gateway" as const, providerLabel: "Android mobitel klijenta", senderLabel: "mobitel ovog klijenta (Android)" }
+            : { provider: "novo" as const, providerLabel: "NOVO mobitel", senderLabel: "NOVO mobitel (Android)" };
   return {
     ...shown,
     sid: res.sid,
     status: res.status,
     from: res.from,
     segments: smsSegments(TEST_BODY).segments,
+    ownPhone: kind === "org_textbee" || kind === "org_gateway",
   };
 }
 
