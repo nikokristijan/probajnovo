@@ -21,6 +21,7 @@ export function MenuStatus({
   hasExternalUrl,
   hasReviewUrl,
   delayMinutes,
+  activeButtons,
   summary,
 }: {
   publicUrl: string;
@@ -31,6 +32,8 @@ export function MenuStatus({
   hasExternalUrl: boolean;
   hasReviewUrl: boolean;
   delayMinutes: number;
+  /** Tipke koje gost stvarno vidi u jelovniku (Ocijeni nas, Wi-Fi, Kontakt). */
+  activeButtons: string[];
   summary: GuestSummaryDTO;
 }) {
   const [pending, start] = useTransition();
@@ -87,6 +90,11 @@ export function MenuStatus({
             <Fact label="Gosti (7 dana)" value={summary.last7d} />
             <Fact label="Poruka nakon" value={`${delayMinutes} min`} />
           </dl>
+
+          <p className="text-[13px] text-muted">
+            <span className="label">Tipke u jelovniku</span>{" "}
+            <span className="text-foreground">{activeButtons.length ? activeButtons.join(", ") : "nema (Postavke, neobavezno)"}</span>
+          </p>
 
           <div className="flex flex-wrap gap-2">
             <Button variant="secondary" size="sm" asChild>

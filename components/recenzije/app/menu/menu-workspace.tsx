@@ -8,6 +8,7 @@ import { MenuImport } from "./menu-import";
 import { MenuSettingsForm } from "./menu-settings-form";
 import { MenuStatus } from "./menu-status";
 import {
+  activeButtonLabels,
   MENU_TABS,
   type CategoryDTO,
   type GuestSummaryDTO,
@@ -67,6 +68,7 @@ export function MenuWorkspace(p: MenuWorkspaceProps) {
         hasExternalUrl={Boolean(p.settings.externalUrl)}
         hasReviewUrl={p.hasReviewUrl}
         delayMinutes={p.settings.delayMinutes}
+        activeButtons={activeButtonLabels(p.settings, p.hasReviewUrl)}
         summary={p.summary}
       />
 
@@ -102,7 +104,7 @@ export function MenuWorkspace(p: MenuWorkspaceProps) {
         <MenuImport readOnly={p.readOnly} onSaved={() => select("stavke")} />
       </div>
       <div id="menu-panel-postavke" role="tabpanel" aria-labelledby="menu-tab-postavke" hidden={tab !== "postavke"}>
-        <MenuSettingsForm settings={p.settings} host={p.host} readOnly={p.readOnly} />
+        <MenuSettingsForm settings={p.settings} host={p.host} readOnly={p.readOnly} hasReviewUrl={p.hasReviewUrl} />
       </div>
       <div id="menu-panel-gosti" role="tabpanel" aria-labelledby="menu-tab-gosti" hidden={tab !== "gosti"}>
         <MenuGuests summary={p.summary} rows={p.guests} hasMore={p.guestsHasMore} delayMinutes={p.settings.delayMinutes} />

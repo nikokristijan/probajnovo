@@ -31,7 +31,6 @@ export function znakova(n: number): string {
 }
 export const maxChars = (n: number) => `najviše ${znakova(n)}`;
 
-// eslint-disable-next-line no-control-regex
 const CONTROL = /[\u0000-\u001f\u007f-\u009f\u2028\u2029]/;
 const ANGLE = /[<>]/;
 

@@ -1,4 +1,5 @@
 import type { PublicCategory, PublicItem, PublicMenu, PublicMenuInfo } from "@/lib/recenzije/services/menus";
+import { hasQuickActions } from "@/lib/recenzije/menu-buttons";
 import { formatPriceCents } from "@/lib/recenzije/menu-format";
 import { menuNoun } from "@/lib/recenzije/menu-noun";
 import { Bi } from "./bilingual";
@@ -8,6 +9,7 @@ import { Footer, Kicker } from "./chrome";
 import { FlashNotice } from "./flash-notice";
 import type { Lang } from "./lang";
 import { LangSwitch } from "./lang-switch";
+import { QuickActions } from "./quick-actions";
 
 function Header({ menu, lang }: { menu: PublicMenuInfo; lang: Lang }) {
   const intro = menu.intro ?? menu.introEn;
@@ -25,6 +27,7 @@ function Header({ menu, lang }: { menu: PublicMenuInfo; lang: Lang }) {
           <Bi hr={intro} en={menu.intro ? menu.introEn : null} />
         </p>
       )}
+      {hasQuickActions(menu.quickActions) && <QuickActions actions={menu.quickActions} />}
     </header>
   );
 }

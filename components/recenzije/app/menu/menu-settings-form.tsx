@@ -8,25 +8,64 @@ import ImageUploader from "@/components/admin/ImageUploader";
 import { Button } from "@/components/recenzije/ui/button";
 import { Dialog, DialogContent, Switch } from "@/components/recenzije/ui/dialog";
 import { Card, CardBody, CardHeader, Field, Input, Select, Textarea } from "@/components/recenzije/ui/primitives";
+import { instagramDisplay } from "@/lib/recenzije/menu-buttons";
 import { guestConsentDetails, guestConsentSummary } from "@/lib/recenzije/guest-consent";
 import { defaultMenuTitle, MENU_KIND_LABELS, MENU_KINDS, menuNoun, type MenuKind } from "@/lib/recenzije/menu-noun";
 import { validateMenuSlug } from "@/lib/recenzije/menu-slug";
 import { cn } from "@/lib/recenzije/utils";
+import { MenuButtonsSection, type ButtonsValue } from "./menu-buttons-section";
 import { DELAY_OPTIONS, type MenuSettingsDTO } from "./menu-types";
 
 /** Polja uz koja se greška prikazuje u obrascu; za sve ostalo greška ide u obavijest. */
-const SHOWN_FIELDS = ["slug", "title", "intro", "introEn", "externalUrl", "logoUrl", "delayMinutes", "menuKind"];
+const SHOWN_FIELDS = [
+  "slug",
+  "title",
+  "intro",
+  "introEn",
+  "externalUrl",
+  "logoUrl",
+  "delayMinutes",
+  "menuKind",
+  "showReviewButton",
+  "wifiName",
+  "wifiPassword",
+  "contactPhone",
+  "contactEmail",
+  "contactAddress",
+  "contactInstagram",
+];
+
+/** Početne vrijednosti polja tipki iz spremljenih postavki (Instagram se prikazuje kao @ime). */
+const buttonsOf = (s: MenuSettingsDTO): ButtonsValue => ({
+  review: s.showReviewButton,
+  wifiName: s.wifiName ?? "",
+  wifiPassword: s.wifiPassword ?? "",
+  phone: s.contactPhone ?? "",
+  email: s.contactEmail ?? "",
+  address: s.contactAddress ?? "",
+  instagram: instagramDisplay(s.contactInstagram),
+});
 
 type SlugState = { kind: "idle" } | { kind: "checking" } | { kind: "free" } | { kind: "error"; message: string };
 
 /** Postavke jelovnika: tekstovi, vanjska adresa, odgoda poruke, pregled bez broja i javna adresa (slug). */
-export function MenuSettingsForm({ settings, host, readOnly }: { settings: MenuSettingsDTO; host: string; readOnly: boolean }) {
+export function MenuSettingsForm({
+  settings,
+  host,
+  readOnly,
+  hasReviewUrl,
+}: {
+  settings: MenuSettingsDTO;
+  host: string;
+  readOnly: boolean;
+  hasReviewUrl: boolean;
+}) {
   // Nakon spremanja poslužitelj vraća nove postavke; ključ ponovno postavlja obrazac na spremljene vrijednosti.
-  const key = [settings.slug, settings.title, settings.intro, settings.introEn, settings.externalUrl, settings.logoUrl, settings.allowSkip, settings.delayMinutes, settings.menuKind, settings.noticesEnabled].join("\u0001");
-  return <SettingsFormInner key={key} settings={settings} host={host} readOnly={readOnly} />;
+  const key = [settings.slug, settings.title, settings.intro, settings.introEn, settings.externalUrl, settings.logoUrl, settings.allowSkip, settings.delayMinutes, settings.menuKind, settings.noticesEnabled, ...Object.values(buttonsOf(settings))].join("\u0001");
+  return <SettingsFormInner key={key} settings={settings} host={host} readOnly={readOnly} hasReviewUrl={hasReviewUrl} />;
 }
 
-function SettingsFormInner({ settings, host, readOnly }: { settings: MenuSettingsDTO; host: string; readOnly: boolean }) {
+function SettingsFormInner({ settings, host, readOnly, hasReviewUrl }: { settings: MenuSettingsDTO; host: string; readOnly: boolean; hasReviewUrl: boolean }) {
   const [pending, start] = useTransition();
   const [title, setTitle] = useState(settings.title);
   const [intro, setIntro] = useState(settings.intro ?? "");
@@ -38,6 +77,8 @@ function SettingsFormInner({ settings, host, readOnly }: { settings: MenuSetting
   const [allowSkip, setAllowSkip] = useState(settings.allowSkip);
   const [menuKind, setMenuKind] = useState<MenuKind>(settings.menuKind);
   const [notices, setNotices] = useState(settings.noticesEnabled);
+  const initialButtons = buttonsOf(settings);
+  const [btn, setBtn] = useState<ButtonsValue>(initialButtons);
   const [slug, setSlug] = useState(settings.slug);
   const [slugState, setSlugState] = useState<SlugState>({ kind: "idle" });
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -63,7 +104,14 @@ function SettingsFormInner({ settings, host, readOnly }: { settings: MenuSetting
     delay !== settings.delayMinutes ||
     allowSkip !== settings.allowSkip ||
     menuKind !== settings.menuKind ||
-    notices !== settings.noticesEnabled;
+    notices !== settings.noticesEnabled ||
+    btn.review !== initialButtons.review ||
+    btn.wifiName.trim() !== initialButtons.wifiName ||
+    btn.wifiPassword.trim() !== initialButtons.wifiPassword ||
+    btn.phone.trim() !== initialButtons.phone ||
+    btn.email.trim() !== initialButtons.email ||
+    btn.address.trim() !== initialButtons.address ||
+    btn.instagram.trim() !== initialButtons.instagram;
   const slugOk = !slugChanged || slugState.kind === "free";
 
   function onSlugChange(raw: string) {
@@ -97,6 +145,13 @@ function SettingsFormInner({ settings, host, readOnly }: { settings: MenuSetting
         allowSkip,
         menuKind,
         noticesEnabled: notices,
+        showReviewButton: btn.review,
+        wifiName: btn.wifiName.trim() || null,
+        wifiPassword: btn.wifiPassword.trim() || null,
+        contactPhone: btn.phone.trim() || null,
+        contactEmail: btn.email.trim() || null,
+        contactAddress: btn.address.trim() || null,
+        contactInstagram: btn.instagram.trim() || null,
         delayMinutes: delay,
       });
       if (r.ok) toast.success(r.message);
@@ -329,6 +384,8 @@ function SettingsFormInner({ settings, host, readOnly }: { settings: MenuSetting
                 </p>
               )}
             </div>
+
+            <MenuButtonsSection value={btn} onChange={(p) => setBtn((v) => ({ ...v, ...p }))} errors={errors} hasReviewUrl={hasReviewUrl} />
 
             <div>
               <label htmlFor="m-slug" className="label mb-2 block text-muted">

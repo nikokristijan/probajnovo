@@ -134,6 +134,7 @@ const RESERVED_SLUGS = new Set([
   "nfc", // /nfc/[slug] — gost-facing WiFi stranice za NFC pločice, vidi lib/db/schema.ts nfcTags
   "proizvodi", // /proizvodi i /proizvodi/[slug] — javne stranice proizvoda, vidi lib/db/schema.ts products
   "jelovnik", // /jelovnik/[slug] — javni QR jelovnici ugostiteljskih klijenata NOVO Recenzija, vidi app/jelovnik
+  "digitalni-jelovnik", // /digitalni-jelovnik — ponuda digitalnog jelovnika za kafiće i restorane, vidi app/digitalni-jelovnik
 ]);
 
 /** Postgres 42P01 ("relation does not exist") — kod živi na `.cause` kod Drizzle grešaka, ne na samoj grešci. */
