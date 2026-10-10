@@ -21,17 +21,19 @@ function SubmitButton({ pending }: { pending: boolean }) {
  * Bez JavaScripta (i prije hidracije) obrazac se šalje izvorno na akciju poslužitelja, koja pri grešci vraća
  * stranicu s ?greska=... (to dolazi kao `initial`). Uz JavaScript šaljemo sami: provjera u pregledniku, greške
  * odmah ispod polja, fokus na polje s greškom, stanje "Otvaramo jelovnik" i bez ponovnog učitavanja stranice.
- * `consentText` je točno onaj tekst koji poslužitelj sprema kao dokaz privole.
+ * Privola je u dva sloja (kratka rečenica uz kvačicu + "Pročitaj više"); zajedno čine točno onaj tekst koji poslužitelj sprema kao dokaz.
  */
 export function GateForm({
   slug,
   table,
-  consentText,
+  consentSummary,
+  consentDetails,
   initial,
 }: {
   slug: string;
   table: string | null;
-  consentText: string;
+  consentSummary: string;
+  consentDetails: string;
   initial: GateResult | null;
 }) {
   const [phone, setPhone] = useState("");
@@ -140,15 +142,19 @@ export function GateForm({
               setNotice(null);
             }}
           />
-          <span className="jl-check-text">{consentText}</span>
+          <span className="jl-check-text">{consentSummary}</span>
         </label>
-        <p className="jl-privacy">
-          Više o tome kako čuvamo podatke:{" "}
-          <a href="/privatnost" target="_blank" rel="noopener">
-            Politika privatnosti
-          </a>
-          .
-        </p>
+        <details className="jl-more">
+          <summary>Pročitaj više</summary>
+          <p>{consentDetails}</p>
+          <p>
+            Više o tome kako čuvamo podatke:{" "}
+            <a href="/privatnost" target="_blank" rel="noopener">
+              Politika privatnosti
+            </a>
+            .
+          </p>
+        </details>
         {consentError && (
           <p id="jl-consent-error" role="alert" className="jl-error">
             {consentError}

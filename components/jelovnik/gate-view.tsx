@@ -1,6 +1,6 @@
 import Link from "next/link";
 import type { GateResult } from "@/app/jelovnik/[slug]/actions";
-import { guestGateExplanation } from "@/lib/recenzije/guest-consent";
+import { guestConsentDetails, guestConsentSummary, guestGateExplanation } from "@/lib/recenzije/guest-consent";
 import type { PublicMenuInfo } from "@/lib/recenzije/services/menus";
 import { Brand } from "./brand";
 import { Footer, Kicker } from "./chrome";
@@ -12,13 +12,11 @@ import { GateForm } from "./gate-form";
  */
 export function GateView({
   menu,
-  consentText,
   table,
   skipHref,
   initialNotice,
 }: {
   menu: PublicMenuInfo;
-  consentText: string;
   table: string | null;
   /** Adresa za pregled bez broja; null kad lokal to ne dopušta. */
   skipHref: string | null;
@@ -33,7 +31,7 @@ export function GateView({
           <Kicker>{menu.title}</Kicker>
           <p className="jl-lead">{guestGateExplanation(menu.venueName)}</p>
 
-          <GateForm slug={menu.slug} table={table} consentText={consentText} initial={initialNotice} />
+          <GateForm slug={menu.slug} table={table} consentSummary={guestConsentSummary(menu.venueName, menu.delayMinutes)} consentDetails={guestConsentDetails()} initial={initialNotice} />
 
           {skipHref && (
             <p className="jl-skip">

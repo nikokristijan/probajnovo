@@ -4,7 +4,7 @@
  * a `GUEST_CONSENT_VERSION` se POVEĆA svaki put kad se značenje teksta promijeni (ne zbog tipfelera), da se zna
  * koju je verziju koji gost prihvatio. Čisto (bez baze i bez server-only): smiju ga koristiti i komponente u pregledniku.
  */
-export const GUEST_CONSENT_VERSION = "2026-10-1";
+export const GUEST_CONSENT_VERSION = "2026-10-2";
 
 /** Koliko se dugo čuva broj gosta s jelovnika (mjeseci). Tekst privole i purgeOldGuestData koriste istu brojku. */
 export const GUEST_RETENTION_MONTHS = 12;
@@ -37,17 +37,26 @@ export function delayWording(minutes: number): string {
 }
 
 /**
- * Tekst privole za lokal. Obuhvaća: tko šalje (lokal preko NOVO Recenzija), što (jedan SMS s molbom za Google recenziju),
- * kada (otprilike N nakon posjeta; noću se ne šalje), koliko se čuva broj i da se ne koristi ni za što drugo te kako se odjaviti.
+ * Privola je u dva sloja: kratka rečenica uz kvačicu (tko šalje, što i otprilike kada) i "Pročitaj više" s ostalim pojedinostima
+ * (noćna pauza, rok čuvanja, odjava). Gost vidi oba sloja, a poslužitelj uz unos sprema OBA zajedno (`guestConsentText`),
+ * pa dokaz privole sadrži cijeli tekst. Pristaje se na konkretnu poruku, ne na politiku privatnosti (ona samo informira).
  */
-export function guestConsentText(venueName: string, delayMinutes: number): string {
+export function guestConsentSummary(venueName: string, delayMinutes: number): string {
   const name = venueName.trim() || "lokal";
+  return `Pristajem da mi ${name} preko NOVO Recenzija jednom pošalje SMS s molbom za Google recenziju otprilike ${delayWording(delayMinutes)} nakon posjeta.`;
+}
+
+export function guestConsentDetails(): string {
   return (
-    `Unosom broja pristajem da mi ${name} preko NOVO Recenzija jednom pošalje SMS s molbom za Google recenziju ` +
-    `otprilike ${delayWording(delayMinutes)} nakon posjeta (noću se poruke ne šalju, pa može stići idućeg jutra). ` +
+    `Noću se poruke ne šalju, pa može stići idućeg jutra. ` +
     `Broj se čuva najviše ${GUEST_RETENTION_MONTHS} mjeseci i ne koristi se ni za što drugo. ` +
     `Odjava: odgovor STOP ili poveznica u poruci.`
   );
+}
+
+/** Cijeli tekst privole kakav se sprema kao dokaz (oba sloja). */
+export function guestConsentText(venueName: string, delayMinutes: number): string {
+  return `${guestConsentSummary(venueName, delayMinutes)} ${guestConsentDetails()}`;
 }
 
 /** Kratko objašnjenje iznad polja za broj (ne zamjenjuje privolu). */

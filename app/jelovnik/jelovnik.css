@@ -286,6 +286,37 @@ body:has(.jl) {
   line-height: 1.65;
   color: var(--jl-soft);
 }
+.jl-more {
+  margin: 4px 0 10px 38px;
+  font-size: 13px;
+  line-height: 1.6;
+  color: var(--jl-muted);
+}
+.jl-more summary {
+  display: inline-block;
+  padding: 8px 0;
+  cursor: pointer;
+  color: var(--jl-soft);
+  text-decoration: underline;
+  text-decoration-color: var(--jl-hair);
+  text-underline-offset: 4px;
+  list-style: none;
+}
+.jl-more summary::-webkit-details-marker {
+  display: none;
+}
+.jl-more summary:focus-visible {
+  outline: 1px solid var(--jl-gold);
+  outline-offset: 3px;
+}
+.jl-more p {
+  margin: 0 0 8px;
+}
+.jl-more a {
+  text-decoration: underline;
+  text-decoration-color: var(--jl-hair);
+  text-underline-offset: 4px;
+}
 .jl-privacy {
   margin: 8px 0 0 38px;
   font-size: 13px;
@@ -376,7 +407,7 @@ body:has(.jl) {
 .jl-skip-link {
   display: inline-block;
   padding: 15px 20px;
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 400;
   line-height: 1.4;
   letter-spacing: 0.06em;
