@@ -105,7 +105,7 @@ export function MenuStatus({
       )}
       {on && items === 0 && !hasExternalUrl && (
         <Alert tone="amber" icon={CircleAlert} title="Jelovnik nema stavki">
-          Gost nakon unosa broja vidi prazan jelovnik. Dodajte stavke (ručno ili Brzim uvozom) ili upišite adresu vlastitog jelovnika u Postavkama, prije nego ispišete QR kodove.
+          Gost vidi prazan jelovnik. Dodajte stavke (ručno ili Brzim uvozom) ili upišite adresu vlastitog jelovnika u Postavkama, prije nego ispišete QR kodove.
         </Alert>
       )}
       {!hasReviewUrl && (
@@ -124,7 +124,7 @@ export function MenuStatus({
       )}
       {hasExternalUrl && (
         <Alert tone="blue" icon={CircleAlert} title="Gosti vide vaš vanjski jelovnik">
-          Nakon unosa broja gost se šalje na adresu vašeg jelovnika (Postavke). Stavke koje ovdje uredite ne prikazuju se dok je ta adresa upisana.
+          Gost se šalje na adresu vašeg jelovnika (Postavke). Stavke koje ovdje uredite ne prikazuju se dok je ta adresa upisana.
         </Alert>
       )}
     </div>

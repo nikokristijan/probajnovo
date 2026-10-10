@@ -109,9 +109,9 @@ export default function TermsPage() {
           zaobilaziti, niti smijete upisivati brojeve umjesto gostiju;
         </li>
         <li>
-          kao voditelj obrade odlučujete smije li gost vidjeti jelovnik bez broja. Privola mora biti
-          dobrovoljna, pa preporučujemo da pregled bez broja bude dopušten; ako to isključite, odgovornost
-          za takvu postavku je vaša;
+          kao voditelj obrade odgovarate za postavku pregleda jelovnika bez broja. Ona je zadano uključena (gost
+          ispod polja za broj vidi sitnu poveznicu). Privola mora biti dobrovoljna, pa preporučujemo da
+          tako i ostane; ako to isključite, odgovornost za takvu postavku je vaša;
         </li>
         <li>
           sami ispisujete i postavljate QR kodove. Ako na vaš zahtjev promijenimo adresu jelovnika, već

@@ -84,6 +84,7 @@ const settingsSchema = z.object({
   intro: optionalText(3000),
   introEn: optionalText(3000),
   externalUrl: optionalText(1200),
+  logoUrl: optionalText(1200),
   allowSkip: z.boolean({ error: "Neispravan unos." }).optional(),
   delayMinutes: z.number({ error: "Odgoda mora biti broj minuta." }).int("Odgoda mora biti cijeli broj minuta.").optional(),
   enabled: z.boolean({ error: "Neispravan unos." }).optional(),

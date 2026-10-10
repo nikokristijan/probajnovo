@@ -86,7 +86,7 @@ function NewClientFields({ plans, v, e }: { plans: PlanOption[]; v: FieldValues;
           error={e.businessType}
           hint={
             businessType === "venue"
-              ? "Uključuje digitalni jelovnik s QR kodom: gost upiše broj i dobije jednu poruku za recenziju."
+              ? "Uključuje digitalni jelovnik s QR kodom: gost može upisati broj i dobiti jednu poruku za recenziju."
               : "Poruke za recenziju šaljemo nakon završenog posla, kako je i dosad."
           }
         >

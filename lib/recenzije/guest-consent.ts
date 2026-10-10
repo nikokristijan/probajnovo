@@ -53,5 +53,5 @@ export function guestConsentText(venueName: string, delayMinutes: number): strin
 /** Kratko objašnjenje iznad polja za broj (ne zamjenjuje privolu). */
 export function guestGateExplanation(venueName: string): string {
   const name = venueName.trim() || "lokal";
-  return `Upišite broj mobitela da otvorite jelovnik. ${name} će vam nakon posjeta poslati jednu kratku poruku s molbom za recenziju.`;
+  return `Jelovnik otvarate unosom broja mobitela. ${name} će vam nakon posjeta poslati jednu kratku poruku s molbom za recenziju.`;
 }

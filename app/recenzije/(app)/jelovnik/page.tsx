@@ -73,7 +73,7 @@ export default async function MenuPage({ searchParams }: { searchParams: Promise
       <PageHeader
         kicker="Jelovnik"
         title="Digitalni jelovnik"
-        description={`Gost skenira QR kod, upiše broj mobitela i otvara jelovnik. Broj se sprema, a otprilike nakon ${delayWording(m.delayMinutes)} gostu stiže poruka s molbom za Google recenziju.`}
+        description={`Gost skenira QR kod i otvara jelovnik. Ako upiše broj mobitela, broj se sprema, a otprilike nakon ${delayWording(m.delayMinutes)} gostu stiže poruka s molbom za Google recenziju.${m.allowSkip ? " Gost jelovnik može otvoriti i bez broja: tada se ništa ne sprema ni ne šalje." : ""}`}
         actions={
           <>
             <Button variant="secondary" asChild>
@@ -100,6 +100,7 @@ export default async function MenuPage({ searchParams }: { searchParams: Promise
           intro: m.intro,
           introEn: m.introEn,
           externalUrl: m.externalUrl,
+          logoUrl: m.logoUrl,
           allowSkip: m.allowSkip,
           delayMinutes: m.delayMinutes,
         }}

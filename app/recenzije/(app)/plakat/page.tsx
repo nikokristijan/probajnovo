@@ -110,7 +110,7 @@ async function MenuPoster() {
       <PageHeader
         kicker="QR plakat"
         title="QR kod za jelovnik"
-        description="Ispišite plakat, stolnu karticu ili ploču sa svim stolovima. Gost skenira kod mobitelom, upiše broj i otvara jelovnik."
+        description="Ispišite plakat, stolnu karticu ili ploču sa svim stolovima. Gost skenira kod mobitelom i otvara jelovnik."
         actions={
           <Button variant="secondary" asChild>
             <Link href="/recenzije/jelovnik">Uredi jelovnik</Link>
