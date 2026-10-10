@@ -16,7 +16,22 @@ import { env } from "@/lib/recenzije/env";
 import { createId } from "@/lib/recenzije/id";
 import { MENU_DELAY_MAX, MENU_DELAY_MIN } from "@/lib/recenzije/guest-consent";
 import { MAX_PRICE_CENTS } from "@/lib/recenzije/menu-format";
+import {
+  BUTTON_LIMITS,
+  buildPublicActions,
+  maxChars,
+  parseContactAddress,
+  parseContactEmail,
+  parseContactInstagram,
+  parseContactPhone,
+  parseWifiName,
+  parseWifiPassword,
+  safeHttpUrl,
+  type Parsed,
+  type PublicMenuActions,
+} from "@/lib/recenzije/menu-buttons";
 import { displayMenuTitle, parseMenuKind, type MenuKind } from "@/lib/recenzije/menu-noun";
+import { defaultCountryCode } from "@/lib/recenzije/phone";
 import { IMPORT_LIMITS, parseMenuText, type ParsedMenu } from "@/lib/recenzije/menu-import";
 import { suggestMenuSlug, validateMenuSlug } from "@/lib/recenzije/menu-slug";
 
@@ -40,6 +55,8 @@ export const MENU_LIMITS = {
   url: 500,
   logoUrl: 1000,
   importChars: IMPORT_LIMITS.maxChars,
+  /** Neobavezne tipke na javnom jelovniku (menu-buttons.ts). */
+  buttons: BUTTON_LIMITS,
 } as const;
 
 export type MenuResult<T> = { ok: true; value: T } | { ok: false; error: string; field?: string };
@@ -59,6 +76,13 @@ const oneLine = (label: string, maxChars: number) =>
 const requiredLine = (label: string, maxChars: number) => oneLine(label, maxChars).pipe(z.string().min(1, `${label}: obavezno polje`));
 /** Prazan tekst znači "obriši" (null); undefined znači "ne diraj". */
 const optionalLine = (label: string, maxChars: number) => oneLine(label, maxChars).nullish();
+
+/** Tekst bez preoblikovanja (pročišćuje ga menu-buttons.ts); prazno/null = obriši, undefined = ne diraj. */
+const rawText = (label: string, maxChars_: number) =>
+  z
+    .string({ error: `${label}: neispravan unos` })
+    .max(maxChars_ + 300, `${label}: ${maxChars(maxChars_)}`)
+    .nullish();
 
 /** https adresa (bez korisničkog imena i lozinke, s točkom u nazivu domene). Bez sheme se dodaje https://. */
 const httpsUrlOf = (label: string, maxChars: number, example: string) =>
@@ -96,6 +120,14 @@ const settingsSchema = z.object({
   allowSkip: z.boolean().optional(),
   menuKind: z.enum(["jelovnik", "meni"], { error: "Naziv na stranici mora biti Jelovnik ili Meni." }).optional(),
   noticesEnabled: z.boolean({ error: "Neispravan unos." }).optional(),
+  showReviewButton: z.boolean({ error: "Tipka Ocijeni nas: neispravan unos." }).optional(),
+  /** Tipke: ovdje samo oblik i granica duljine; sadržaj (broj, e-mail, profil...) provjerava menu-buttons.ts. */
+  wifiName: rawText("Wi-Fi naziv", BUTTON_LIMITS.wifiName),
+  wifiPassword: rawText("Wi-Fi lozinka", BUTTON_LIMITS.wifiPassword),
+  contactPhone: rawText("Telefon", BUTTON_LIMITS.phone),
+  contactEmail: rawText("E-mail", BUTTON_LIMITS.email),
+  contactAddress: rawText("Adresa", BUTTON_LIMITS.address),
+  contactInstagram: rawText("Instagram", BUTTON_LIMITS.instagram),
   delayMinutes: z
     .number({ error: `Odgoda mora biti između ${MENU_DELAY_MIN} i ${MENU_DELAY_MAX} minuta.` })
     .int(`Odgoda mora biti cijeli broj minuta.`)
@@ -147,11 +179,18 @@ export function menuPublicUrl(slug: string, table?: string | number | null): str
   return t ? `${base}?stol=${encodeURIComponent(t.slice(0, 20))}` : base;
 }
 
-type VenueOrg = { id: string; name: string; isVenue: boolean; isDemo: boolean };
+type VenueOrg = { id: string; name: string; isVenue: boolean; isDemo: boolean; googleReviewUrl: string | null; timezone: string };
 
 async function loadOrg(organizationId: string): Promise<VenueOrg | null> {
   const [org] = await db
-    .select({ id: organizations.id, name: organizations.name, isVenue: organizations.isVenue, isDemo: organizations.isDemo })
+    .select({
+      id: organizations.id,
+      name: organizations.name,
+      isVenue: organizations.isVenue,
+      isDemo: organizations.isDemo,
+      googleReviewUrl: organizations.googleReviewUrl,
+      timezone: organizations.timezone,
+    })
     .from(organizations)
     .where(eq(organizations.id, organizationId))
     .limit(1);
@@ -275,6 +314,16 @@ export type MenuSettingsInput = {
   menuKind?: MenuKind;
   /** Lokal šalje i povremene obavijesti (mijenja tekst privole koji gost vidi). */
   noticesEnabled?: boolean;
+  /** Tipka "Ocijeni nas" (Google link tvrtke). Uključiti se može samo kad tvrtka ima ispravan link. */
+  showReviewButton?: boolean;
+  /** Tipka "Wi-Fi": naziv mreže (prazno = nema tipke) i neobavezna lozinka. */
+  wifiName?: string | null;
+  wifiPassword?: string | null;
+  /** Tipka "Kontakt": ispunjena polja se prikazuju gostu, prazna se izostavljaju. */
+  contactPhone?: string | null;
+  contactEmail?: string | null;
+  contactAddress?: string | null;
+  contactInstagram?: string | null;
   /** 60 do 240 minuta. */
   delayMinutes?: number;
   enabled?: boolean;
@@ -312,6 +361,37 @@ export async function upsertMenuSettings(organizationId: string, input: MenuSett
   if (d.noticesEnabled !== undefined) patch.noticesEnabled = d.noticesEnabled;
   if (d.delayMinutes !== undefined) patch.delayMinutes = d.delayMinutes;
   if (d.enabled !== undefined) patch.enabled = d.enabled;
+
+  // Neobavezne tipke. Isključivanje je uvijek dopušteno; uključivanje "Ocijeni nas" traži ispravan Google link tvrtke.
+  if (d.showReviewButton !== undefined) {
+    if (d.showReviewButton && !m.menu.showReviewButton && !safeHttpUrl(m.org.googleReviewUrl)) {
+      return fail("Tipka Ocijeni nas: najprije upišite Google link za recenzije u Postavkama.", "showReviewButton");
+    }
+    patch.showReviewButton = d.showReviewButton;
+  }
+  const cc = defaultCountryCode(m.org.timezone);
+  const fields: [string, Parsed<string | null> | undefined][] = [
+    ["wifiName", d.wifiName === undefined ? undefined : parseWifiName(d.wifiName)],
+    ["wifiPassword", d.wifiPassword === undefined ? undefined : parseWifiPassword(d.wifiPassword)],
+    ["contactPhone", d.contactPhone === undefined ? undefined : parseContactPhone(d.contactPhone, cc)],
+    ["contactEmail", d.contactEmail === undefined ? undefined : parseContactEmail(d.contactEmail)],
+    ["contactAddress", d.contactAddress === undefined ? undefined : parseContactAddress(d.contactAddress)],
+    ["contactInstagram", d.contactInstagram === undefined ? undefined : parseContactInstagram(d.contactInstagram)],
+  ];
+  for (const [field, r] of fields) {
+    if (!r) continue;
+    if (!r.ok) return fail(r.error, field);
+    (patch as Record<string, string | null>)[field] = r.value;
+  }
+  // Lozinka bez naziva mreže nema smisla: brisanje naziva briše i lozinku, a samu lozinku nije moguće upisati bez naziva.
+  if ("wifiName" in patch || "wifiPassword" in patch) {
+    const finalName = "wifiName" in patch ? patch.wifiName : m.menu.wifiName;
+    if (!finalName) {
+      if (typeof patch.wifiPassword === "string") return fail("Wi-Fi lozinka: najprije upišite naziv mreže.", "wifiPassword");
+      patch.wifiName = null;
+      patch.wifiPassword = null;
+    }
+  }
   if (Object.keys(patch).length === 0) return ok(m.menu);
 
   try {
@@ -729,6 +809,8 @@ export type PublicMenuInfo = {
   noticesEnabled: boolean;
   /** True kad ima ijedan engleski tekst: tek tada stranica prikazuje HR/EN prekidač. */
   hasEnglish: boolean;
+  /** Neobavezne tipke (Ocijeni nas, Wi-Fi, Kontakt): samo ono što je ispunjeno i ispravno; sve prazno = stranica kao i prije. */
+  quickActions: PublicMenuActions;
 };
 export type PublicItem = {
   id: string;
@@ -780,6 +862,15 @@ export async function getPublicMenuInfoBySlug(rawSlug: string): Promise<PublicMe
       delayMinutes: menus.delayMinutes,
       menuKind: menus.menuKind,
       noticesEnabled: menus.noticesEnabled,
+      showReviewButton: menus.showReviewButton,
+      orgReviewUrl: organizations.googleReviewUrl,
+      timezone: organizations.timezone,
+      wifiName: menus.wifiName,
+      wifiPassword: menus.wifiPassword,
+      contactPhone: menus.contactPhone,
+      contactEmail: menus.contactEmail,
+      contactAddress: menus.contactAddress,
+      contactInstagram: menus.contactInstagram,
       hasEnglish: sql<boolean>`(
         coalesce(${menus.introEn}, '') <> ''
         or exists (select 1 from nr_menu_categories c where c.menu_id = ${menus.id} and coalesce(c.name_en, '') <> '')
@@ -792,7 +883,19 @@ export async function getPublicMenuInfoBySlug(rawSlug: string): Promise<PublicMe
     .limit(1);
   if (!row) return null;
   const menuKind = parseMenuKind(row.menuKind);
-  return { ...row, menuKind, title: displayMenuTitle(menuKind, row.title) };
+  const { showReviewButton, orgReviewUrl, timezone, wifiName, wifiPassword, contactPhone, contactEmail, contactAddress, contactInstagram, ...pub } = row;
+  const quickActions = buildPublicActions({
+    showReviewButton,
+    orgReviewUrl,
+    timezone,
+    wifiName,
+    wifiPassword,
+    contactPhone,
+    contactEmail,
+    contactAddress,
+    contactInstagram,
+  });
+  return { ...pub, menuKind, title: displayMenuTitle(menuKind, row.title), quickActions };
 }
 
 /**

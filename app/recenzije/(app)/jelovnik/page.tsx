@@ -106,6 +106,13 @@ export default async function MenuPage({ searchParams }: { searchParams: Promise
           delayMinutes: m.delayMinutes,
           menuKind: parseMenuKind(m.menuKind),
           noticesEnabled: m.noticesEnabled,
+          showReviewButton: m.showReviewButton,
+          wifiName: m.wifiName,
+          wifiPassword: m.wifiPassword,
+          contactPhone: m.contactPhone,
+          contactEmail: m.contactEmail,
+          contactAddress: m.contactAddress,
+          contactInstagram: m.contactInstagram,
           venueName: view.venueName,
         }}
         categories={categories}

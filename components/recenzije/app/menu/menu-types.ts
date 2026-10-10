@@ -41,9 +41,30 @@ export type MenuSettingsDTO = {
   menuKind: MenuKind;
   /** Lokal šalje i povremene obavijesti (mijenja tekst privole). */
   noticesEnabled: boolean;
+  /** Neobavezne tipke na javnom jelovniku (lib/recenzije/menu-buttons.ts). Prazno = tipke nema. */
+  showReviewButton: boolean;
+  wifiName: string | null;
+  wifiPassword: string | null;
+  contactPhone: string | null;
+  contactEmail: string | null;
+  contactAddress: string | null;
+  /** Spremljena normalizirana adresa profila (https://instagram.com/ime). */
+  contactInstagram: string | null;
   /** Naziv lokala: za pregled teksta privole u postavkama. */
   venueName: string;
 };
+
+/**
+ * Koje tipke gost stvarno vidi (za jednoredni pregled u kartici stanja): "Ocijeni nas" samo uz ispravan Google link tvrtke,
+ * "Wi-Fi" uz naziv mreže, "Kontakt" kad je ijedno kontakt polje ispunjeno.
+ */
+export function activeButtonLabels(s: Pick<MenuSettingsDTO, "showReviewButton" | "wifiName" | "contactPhone" | "contactEmail" | "contactAddress" | "contactInstagram">, hasReviewUrl: boolean): string[] {
+  const out: string[] = [];
+  if (s.showReviewButton && hasReviewUrl) out.push("Ocijeni nas");
+  if (s.wifiName?.trim()) out.push("Wi-Fi");
+  if ([s.contactPhone, s.contactEmail, s.contactAddress, s.contactInstagram].some((v) => v?.trim())) out.push("Kontakt");
+  return out;
+}
 
 export type GuestSummaryDTO = {
   total: number;

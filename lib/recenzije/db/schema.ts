@@ -500,6 +500,18 @@ export const menus = pgTable(
      * gost vidi; privola se pamti po gostu (nr_menu_guests.notices_consent) u trenutku unosa broja.
      */
     noticesEnabled: boolean("notices_enabled").notNull().default(false),
+    /**
+     * Neobavezne brze tipke na javnom jelovniku (lib/recenzije/menu-buttons.ts). "Ocijeni nas" vodi svakog gosta na Google link za
+     * recenzije tvrtke (nr_organizations.google_review_url), bez ikakvog filtriranja; Wi-Fi i kontakt vide svi koji otvore jelovnik.
+     * Prazno (null) = tipke nema.
+     */
+    showReviewButton: boolean("show_review_button").notNull().default(false),
+    wifiName: text("wifi_name"),
+    wifiPassword: text("wifi_password"),
+    contactPhone: text("contact_phone"),
+    contactEmail: text("contact_email"),
+    contactAddress: text("contact_address"),
+    contactInstagram: text("contact_instagram"),
     enabled: boolean("enabled").notNull().default(true),
     createdAt: createdAt(),
     updatedAt: updatedAt(),

@@ -88,6 +88,13 @@ const settingsSchema = z.object({
   allowSkip: z.boolean({ error: "Neispravan unos." }).optional(),
   menuKind: z.enum(["jelovnik", "meni"], { error: "Neispravan unos." }).optional(),
   noticesEnabled: z.boolean({ error: "Neispravan unos." }).optional(),
+  showReviewButton: z.boolean({ error: "Neispravan unos." }).optional(),
+  wifiName: optionalText(500),
+  wifiPassword: optionalText(500),
+  contactPhone: optionalText(500),
+  contactEmail: optionalText(500),
+  contactAddress: optionalText(500),
+  contactInstagram: optionalText(500),
   delayMinutes: z.number({ error: "Odgoda mora biti broj minuta." }).int("Odgoda mora biti cijeli broj minuta.").optional(),
   enabled: z.boolean({ error: "Neispravan unos." }).optional(),
 });

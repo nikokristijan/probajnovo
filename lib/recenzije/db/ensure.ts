@@ -9,7 +9,7 @@ import { db } from "./index";
  * da se dva serverless pokretanja ne sudare. Kad se shema promijeni:
  * dodaj ALTER TABLE ... ADD COLUMN IF NOT EXISTS na kraj i povećaj SCHEMA_VERSION.
  */
-export const SCHEMA_VERSION = 7;
+export const SCHEMA_VERSION = 8;
 
 const DDL = `
 CREATE TABLE IF NOT EXISTS "nr_meta" ("key" text PRIMARY KEY NOT NULL, "value" text NOT NULL);
@@ -424,6 +424,13 @@ ALTER TABLE "nr_menus" ADD COLUMN IF NOT EXISTS "menu_kind" text DEFAULT 'jelovn
 ALTER TABLE "nr_menus" ADD COLUMN IF NOT EXISTS "notices_enabled" boolean DEFAULT false NOT NULL;
 ALTER TABLE "nr_menu_guests" ADD COLUMN IF NOT EXISTS "notices_consent" boolean DEFAULT false NOT NULL;
 DO $$ BEGIN ALTER TABLE "nr_menus" ADD CONSTRAINT "nr_menus_kind_check" CHECK ("menu_kind" in ('jelovnik', 'meni')); EXCEPTION WHEN duplicate_object THEN null; END $$;
+ALTER TABLE "nr_menus" ADD COLUMN IF NOT EXISTS "show_review_button" boolean DEFAULT false NOT NULL;
+ALTER TABLE "nr_menus" ADD COLUMN IF NOT EXISTS "wifi_name" text;
+ALTER TABLE "nr_menus" ADD COLUMN IF NOT EXISTS "wifi_password" text;
+ALTER TABLE "nr_menus" ADD COLUMN IF NOT EXISTS "contact_phone" text;
+ALTER TABLE "nr_menus" ADD COLUMN IF NOT EXISTS "contact_email" text;
+ALTER TABLE "nr_menus" ADD COLUMN IF NOT EXISTS "contact_address" text;
+ALTER TABLE "nr_menus" ADD COLUMN IF NOT EXISTS "contact_instagram" text;
 `;
 
 /**
