@@ -49,6 +49,26 @@ export const STEPS = [
   { n: "03", text: "Hvala" },
 ] as const;
 
+/* ---------- Plakat jelovnika (QR vodi na /jelovnik/<slug>) ---------- */
+
+/** "review" = QR za Google recenziju (izvorni plakat), "menu" = QR za digitalni jelovnik lokala. */
+export type PosterKind = "review" | "menu";
+
+export const MENU_KICKER = "DIGITALNI JELOVNIK";
+export const MENU_HEADLINE = ["Skenirajte", "i otvorite", "jelovnik"] as const;
+
+/**
+ * Koraci na plakatu jelovnika. Drugi korak ovisi o postavci lokala: ako gost smije pogledati jelovnik bez broja,
+ * plakat ne smije tvrditi da je broj obavezan.
+ */
+export function menuSteps(allowSkip: boolean) {
+  return [
+    { n: "01", text: "Skenirajte", note: "kamerom mobitela" },
+    allowSkip ? { n: "02", text: "Otvorite", note: "bez aplikacije" } : { n: "02", text: "Upišite broj", note: "u par sekundi" },
+    { n: "03", text: "Birajte", note: "i prijatno" },
+  ] as const;
+}
+
 /** Oblik zvjezdice iz primitives.Stars (kutija 20 x 20). */
 export const STAR_PATH = "M10 1.5l2.6 5.5 6 .7-4.5 4.1 1.2 5.9L10 14.8l-5.3 2.9 1.2-5.9L1.4 7.7l6-.7z";
 
@@ -107,7 +127,7 @@ function wrapWords(words: string[], fontSize: number, maxWidth: number, hard: bo
   return lines;
 }
 
-function ellipsize(line: string, fontSize: number, maxWidth: number): string {
+export function ellipsize(line: string, fontSize: number, maxWidth: number): string {
   let s = line;
   while (s.length > 1 && textWidth(`${s}…`, fontSize) > maxWidth) s = s.slice(0, -1).trimEnd();
   return `${s}…`;
@@ -138,13 +158,24 @@ export function posterFileName(orgName: string, variant: PosterVariant, part: "p
   return part === "qr" ? `qr-${slug}.svg` : `plakat-${slug}-${variant}.svg`;
 }
 
+/** Datoteke plakata jelovnika: jelovnik-<lokal>[-stol-<n>]-a4.svg, samo QR: jelovnik-qr-<lokal>[-stol-<n>].svg. */
+export function menuPosterFileName(orgName: string, variant: PosterVariant, part: "plakat" | "qr" = "plakat", table?: string | null): string {
+  const slug = slugify(orgName) || "lokal";
+  const t = table ? `-stol-${slugify(table) || "x"}` : "";
+  return part === "qr" ? `jelovnik-qr-${slug}${t}.svg` : `jelovnik-${slug}${t}-${variant}.svg`;
+}
+
+export function tableSheetFileName(orgName: string, page: number): string {
+  return `jelovnik-stolovi-${slugify(orgName) || "lokal"}-str-${page}.svg`;
+}
+
 /** Samo QR (s mirnom zonom od 4 modula), kao samostalan SVG za dizajnere ili tiskare. */
-export function qrOnlySvg(qr: { size: number; path: string }): string {
+export function qrOnlySvg(qr: { size: number; path: string }, title = "QR kod za Google recenziju"): string {
   const total = qr.size + 8;
   return [
     '<?xml version="1.0" encoding="UTF-8"?>',
     `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${total} ${total}" width="60mm" height="60mm" shape-rendering="crispEdges">`,
-    '<title>QR kod za Google recenziju</title>',
+    `<title>${title}</title>`,
     `<rect width="${total}" height="${total}" fill="${COLORS.paper}"/>`,
     `<path transform="translate(4 4)" fill="${COLORS.ink}" d="${qr.path}"/>`,
     "</svg>",

@@ -3,16 +3,29 @@ import { db } from "@/lib/recenzije/db";
 import { googleConnections, organizations } from "@/lib/recenzije/db/schema";
 import { integrations } from "@/lib/recenzije/env";
 import { syncReviews } from "@/lib/recenzije/services/google";
+import { purgeOldGuestData } from "@/lib/recenzije/services/guests";
 import { cronAuthorized } from "../_auth";
 import { ensureReviewsDb } from "@/lib/recenzije/db/ensure";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 300;
 
-/** Pulls new Google reviews for every connected organization and matches them to clients. */
+/**
+ * Pulls new Google reviews for every connected organization and matches them to clients.
+ * Prije toga (dnevno) briše brojeve gostiju s jelovnika starije od 12 mjeseci (purgeOldGuestData, idempotentno);
+ * greška u tome ne smije spriječiti sinkronizaciju recenzija pa se samo prijavi u odgovoru.
+ */
 export async function GET(req: Request) {
   if (!cronAuthorized(req)) return new Response("Unauthorized", { status: 401 });
   await ensureReviewsDb();
+  let guestRetention: { visits: number; clients: number; messages: number } | { error: string };
+  try {
+    const purged = await purgeOldGuestData();
+    guestRetention = { visits: purged.visits, clients: purged.clients, messages: purged.messages };
+  } catch (e) {
+    console.error("[recenzije] brisanje starih podataka gostiju", e);
+    guestRetention = { error: "Brisanje starih podataka gostiju nije uspjelo." };
+  }
   const orgs = await db
     .selectDistinct({ id: organizations.id })
     .from(organizations)
@@ -35,5 +48,5 @@ export async function GET(req: Request) {
       results.push({ id: o.id, ok: false, error: e instanceof Error ? e.message : String(e) });
     }
   }
-  return Response.json({ organizations: orgs.length, results });
+  return Response.json({ organizations: orgs.length, results, guestRetention });
 }

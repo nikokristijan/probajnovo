@@ -6,16 +6,27 @@ import {
   automations,
   campaigns,
   clients,
+  messages,
+  organizations,
   services,
   type AutomationRun,
   type RunLogEntry,
 } from "@/lib/recenzije/db/schema";
+import { VENUE_REVIEW_TEMPLATE_KEY } from "@/lib/recenzije/automation/templates";
 import type { AutomationStep } from "@/lib/recenzije/automation/types";
+import { isQuietHour, safeTimeZone, shiftOutOfQuietHours } from "@/lib/recenzije/quiet-hours";
 import { fullName } from "@/lib/recenzije/utils";
 import { logActivity } from "./activity";
 import { sendClientMessage } from "./messaging";
 
 const MAX_STEPS_PER_TICK = 20;
+/**
+ * Poruka gostu s jelovnika koja je kasnila više od ovoga (cron nije radio, nitko nije otvorio stranicu) više se ne
+ * šalje: "Hvala što ste svratili" nakon dva dana je neugodna, a privola je bila za poruku otprilike sat i pol nakon posjeta.
+ */
+export const VENUE_MAX_LATE_MS = 24 * 60 * 60_000;
+/** Koliko dugo preuzeto pokretanje pripada jednom radniku (vidi processRun). Obrada jednog pokretanja traje sekunde. */
+export const RUN_CLAIM_LEASE_MS = 10 * 60_000;
 const TRIGGER_TEXT = { SERVICE_COMPLETED: "završena usluga", CLIENT_CREATED: "novi klijent", MANUAL: "ručno" } as const;
 
 function entry(stepIndex: number, type: string, message: string): RunLogEntry {
@@ -125,14 +136,16 @@ export function campaignSteps(c: typeof campaigns.$inferSelect): AutomationStep[
   return steps;
 }
 
-async function stepsForRun(run: AutomationRun): Promise<AutomationStep[] | null> {
+type RunPlan = { steps: AutomationStep[]; /** Automatizacija jelovnika: za nju vrijedi noćna pauza. */ venue: boolean; enabled: boolean };
+
+async function planForRun(run: AutomationRun): Promise<RunPlan | null> {
   if (run.automationId) {
     const [a] = await db.select().from(automations).where(eq(automations.id, run.automationId)).limit(1);
-    return a ? a.steps : null;
+    return a ? { steps: a.steps, venue: a.templateKey === VENUE_REVIEW_TEMPLATE_KEY, enabled: a.enabled } : null;
   }
   if (run.campaignId) {
     const [c] = await db.select().from(campaigns).where(eq(campaigns.id, run.campaignId)).limit(1);
-    return c ? campaignSteps(c) : null;
+    return c ? { steps: campaignSteps(c), venue: false, enabled: true } : null;
   }
   return null;
 }
@@ -142,22 +155,29 @@ async function stepsForRun(run: AutomationRun): Promise<AutomationStep[] | null>
  * repeatedly: a run is claimed with an UPDATE … WHERE status/nextRunAt guard so
  * two workers can't execute the same step.
  */
-export async function processRun(runId: string): Promise<void> {
+export async function processRun(runId: string, now: Date = new Date()): Promise<void> {
+  // Kad je pokretanje dospjelo (vrijeme prije zahtjeva za zakup), pamtimo ga za provjeru kašnjenja niže.
+  const [pre] = await db.select({ dueAt: automationRuns.nextRunAt }).from(automationRuns).where(eq(automationRuns.id, runId)).limit(1);
+  // Zakup: preuzimanje pomiče nextRunAt u budućnost, pa istodobni radnik (drugi poziv processDueRuns iz posjeta stranici
+  // jelovnika, crona ili druge instance) ne može preuzeti isto pokretanje i poslati istu poruku još jednom. Zaglavljeno
+  // pokretanje (proces je stao usred slanja) opet postaje dospjelo kad zakup istekne.
   const [claimed] = await db
     .update(automationRuns)
-    .set({ status: "RUNNING" })
+    .set({ status: "RUNNING", nextRunAt: new Date(now.getTime() + RUN_CLAIM_LEASE_MS) })
     .where(
       and(
         eq(automationRuns.id, runId),
         inArray(automationRuns.status, ["RUNNING", "WAITING"]),
-        lte(automationRuns.nextRunAt, new Date())
+        lte(automationRuns.nextRunAt, now)
       )
     )
     .returning();
   if (!claimed) return;
 
   const run = claimed;
-  const steps = await stepsForRun(run);
+  const dueAt = pre?.dueAt ?? now;
+  const plan = await planForRun(run);
+  const steps = plan?.steps ?? null;
   const log: RunLogEntry[] = [...(run.log ?? [])];
   let index = run.stepIndex;
 
@@ -171,6 +191,26 @@ export async function processRun(runId: string): Promise<void> {
   if (!steps) {
     log.push(entry(index, "error", "Automatizacija više ne postoji"));
     return finish("CANCELLED");
+  }
+
+  // Jelovnik: isključena automatizacija ne šalje, kasno pokretanje se ne šalje, a noću se čeka do 09:00.
+  if (plan?.venue) {
+    if (!plan.enabled) {
+      log.push(entry(index, "end", "Automatizacija je isključena, poruka se ne šalje"));
+      return finish("CANCELLED");
+    }
+    if (now.getTime() - dueAt.getTime() > VENUE_MAX_LATE_MS) {
+      log.push(entry(index, "error", "Prekasno za slanje: poruka je trebala otići prije više od 24 sata"));
+      return finish("CANCELLED");
+    }
+    const [org] = await db.select({ timezone: organizations.timezone }).from(organizations).where(eq(organizations.id, run.organizationId)).limit(1);
+    const tz = safeTimeZone(org?.timezone);
+    if (isQuietHour(now, tz)) {
+      const resumeAt = shiftOutOfQuietHours(now, tz);
+      log.push(entry(index, "wait", `Noćna pauza (22:00 do 09:00): slanje je pomaknuto na ${resumeAt.toISOString()}`));
+      await db.update(automationRuns).set({ status: "WAITING", nextRunAt: resumeAt, log }).where(eq(automationRuns.id, run.id));
+      return;
+    }
   }
 
   // Paused campaigns / disabled automations hold their runs instead of sending.
@@ -266,6 +306,20 @@ export async function processRun(runId: string): Promise<void> {
         : step.type === "send_follow_up"
           ? "FOLLOW_UP"
           : "MANUAL";
+    if (plan?.venue) {
+      // Gost je pristao na JEDNU poruku: ako je za ovaj korak poruka već krenula (npr. proces je stao nakon slanja, pa je
+      // zakup istekao), ne šalje se ponovno.
+      const [already] = await db
+        .select({ id: messages.id })
+        .from(messages)
+        .where(and(eq(messages.automationRunId, run.id), eq(messages.kind, kind), inArray(messages.status, ["QUEUED", "SENT", "DELIVERED"])))
+        .limit(1);
+      if (already) {
+        log.push(entry(index, step.type, "Poruka je već poslana, ne šalje se ponovno"));
+        index++;
+        continue;
+      }
+    }
     const out = await sendClientMessage({
       organizationId: run.organizationId,
       clientId: client.id,
@@ -295,14 +349,14 @@ export async function processRun(runId: string): Promise<void> {
 }
 
 /** Called by /api/recenzije/cron/automations. Processes runs whose wait has elapsed. */
-export async function processDueRuns(limit = 50) {
+export async function processDueRuns(limit = 50, now: Date = new Date()) {
   const due = await db
     .select({ id: automationRuns.id })
     .from(automationRuns)
     .where(
       and(
         inArray(automationRuns.status, ["RUNNING", "WAITING"]),
-        lte(automationRuns.nextRunAt, new Date()),
+        lte(automationRuns.nextRunAt, now),
         // Demo workspaces never send; their sample runs stay as seeded.
         sql`not exists (select 1 from nr_organizations o where o.id = "nr_automation_runs"."organization_id" and o.is_demo)`
       )
@@ -312,7 +366,7 @@ export async function processDueRuns(limit = 50) {
   let processed = 0;
   for (const r of due) {
     try {
-      await processRun(r.id);
+      await processRun(r.id, now);
       processed++;
     } catch (e) {
       await db

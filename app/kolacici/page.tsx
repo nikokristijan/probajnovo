@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import LegalPage from "@/components/LegalPage";
 import ConsentReset from "@/components/novo/ConsentReset";
 
@@ -11,7 +12,7 @@ export const metadata: Metadata = {
 
 export default function CookiePolicyPage() {
   return (
-    <LegalPage title="Politika kolačića" updated="5. listopada 2026.">
+    <LegalPage title="Politika kolačića" updated="10. listopada 2026.">
       <p>
         Ova stranica namjerno koristi vrlo malo kolačića — evo potpunog popisa, temeljenog na pregledu
         koda stranice, ne generičkog predloška.
@@ -38,6 +39,31 @@ export default function CookiePolicyPage() {
         Ovaj kolačić je nužan da bi prijava uopće funkcionirala i ne koristi se za praćenje niti oglašavanje
         — po ePrivacy pravilima spada u izuzetak &bdquo;strogo neophodni kolačići&ldquo; za koji nije
         potreban poseban pristanak.
+      </p>
+
+      <h2>2a. Jelovnik za goste (probajnovo.com/jelovnik/…)</h2>
+      <p>
+        Stranice digitalnog jelovnika ugostiteljskih lokala postavljaju samo funkcionalne kolačiće koji
+        su vam potrebni za ono što ste sami zatražili. Ne koriste se za praćenje ni oglašavanje, a nijedan
+        ne sadrži osobne podatke:
+      </p>
+      <ul>
+        <li>
+          <strong>Kolačić prolaska vrata jelovnika</strong> (httpOnly, potpisan): pamti da ste već upisali
+          broj i potvrdili privolu, pa vas nekoliko tjedana ne pitamo ponovno (do 30 dana). Postavlja se
+          tek nakon unosa broja.
+        </li>
+        <li>
+          <strong>Kratka potvrda</strong> (httpOnly, 30 sekundi): jednokratno prikazuje poruku &bdquo;Broj je
+          zaprimljen&ldquo; s djelomično skrivenim brojem.
+        </li>
+        <li>
+          <strong>Kolačić jezika</strong> (do godinu dana): pamti hrvatski ili engleski jelovnik, samo ako
+          sami odaberete jezik.
+        </li>
+      </ul>
+      <p>
+        Što se sprema kad upišete broj, opisano je u <Link href="/privatnost">politici privatnosti</Link>.
       </p>
 
       <h2>3. Kolačići trećih strana</h2>

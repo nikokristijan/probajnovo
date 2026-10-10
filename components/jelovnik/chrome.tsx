@@ -1,0 +1,27 @@
+import Link from "next/link";
+
+/** Mala oznaka iznad naslova, u NOVO stilu (mono, velika slova, narančasti kvadratić). */
+export function Kicker({ children }: { children: React.ReactNode }) {
+  return (
+    <p className="jl-kicker">
+      <span className="jl-kicker-mark" aria-hidden />
+      {children}
+    </p>
+  );
+}
+
+/** Podnožje javnih stranica jelovnika: nenametljivo, s poveznicom na privatnost. Bez prefetcha: gost ne treba da mu mobilni promet troše tuđe stranice. */
+export function Footer() {
+  return (
+    <footer className="jl-foot">
+      <div className="jl-wrap jl-foot-in">
+        <Link href="/recenzije" prefetch={false} className="jl-foot-link">
+          Jelovnik: NOVO
+        </Link>
+        <Link href="/privatnost" prefetch={false} className="jl-foot-link">
+          Privatnost
+        </Link>
+      </div>
+    </footer>
+  );
+}

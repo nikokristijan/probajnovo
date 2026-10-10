@@ -21,6 +21,16 @@ const MAIN = [
   { href: "/recenzije/analitika", label: "Analitika" },
   { href: "/recenzije/postavke", label: "Postavke", exact: true },
 ];
+/* Samo za ugostiteljstvo (organizations.is_venue): digitalni jelovnik, odmah ispred QR plakata. */
+const MENU_ITEM = { href: "/recenzije/jelovnik", label: "Jelovnik" };
+const POSTER_HREF = "/recenzije/plakat";
+
+function mainItems(isVenue: boolean) {
+  if (!isVenue) return MAIN;
+  const at = MAIN.findIndex((n) => n.href === POSTER_HREF);
+  return at === -1 ? [...MAIN, MENU_ITEM] : [...MAIN.slice(0, at), MENU_ITEM, ...MAIN.slice(at)];
+}
+
 /* Klijenti nemaju prijavu: "Račun" je samo za stare korisnike s lozinkom, a NOVO tim ga ne vidi. */
 const BOTTOM = [{ href: "/recenzije/postavke/pretplata", label: "Paket i razdoblje" }];
 const ACCOUNT = { href: "/recenzije/postavke/racun", label: "Račun" };
@@ -32,6 +42,7 @@ function NavList({
   orgName,
   plan,
   showAccount,
+  isVenue,
 }: {
   onNavigate?: () => void;
   /** Samo u mobilnoj ladici: gumb za zatvaranje živi u istom retku kao logo. */
@@ -40,6 +51,7 @@ function NavList({
   orgName: string;
   plan: string;
   showAccount: boolean;
+  isVenue: boolean;
 }) {
   const path = usePathname();
   const isActive = (href: string, exact?: boolean) => (exact ? path === href : path === href || path.startsWith(href + "/"));
@@ -85,7 +97,7 @@ function NavList({
         <p className="label mt-1 truncate text-accent">{plan}</p>
       </div>
       <nav aria-label="Glavni izbornik" className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-3 py-4">
-        <ul className="space-y-0.5">{MAIN.map(item)}</ul>
+        <ul className="space-y-0.5">{mainItems(isVenue).map(item)}</ul>
       </nav>
       <nav aria-label="Paket i račun" className="shrink-0 border-t border-border px-3 py-4">
         <ul className="space-y-0.5">{(showAccount ? [...BOTTOM, ACCOUNT] : BOTTOM).map(item)}</ul>
@@ -94,10 +106,20 @@ function NavList({
   );
 }
 
-export function Sidebar({ orgName, plan, showAccount = false }: { orgName: string; plan: string; showAccount?: boolean }) {
+export function Sidebar({
+  orgName,
+  plan,
+  showAccount = false,
+  isVenue = false,
+}: {
+  orgName: string;
+  plan: string;
+  showAccount?: boolean;
+  isVenue?: boolean;
+}) {
   return (
     <aside className="fixed inset-y-0 left-0 z-30 hidden w-60 border-r border-border bg-white lg:block">
-      <NavList orgName={orgName} plan={plan} showAccount={showAccount} />
+      <NavList orgName={orgName} plan={plan} showAccount={showAccount} isVenue={isVenue} />
     </aside>
   );
 }
@@ -110,7 +132,17 @@ const FOCUSABLE = 'a[href], button:not([disabled]), input:not([disabled]), [tabi
  * zaglavlja zato nije pokrivala ekran, nego se skupila na visinu zaglavlja (64px) i izrezala.
  * Renderiranjem u .nr korijen (izvan zaglavlja) fixed opet znači "cijeli viewport".
  */
-export function MobileNav({ orgName, plan, showAccount = false }: { orgName: string; plan: string; showAccount?: boolean }) {
+export function MobileNav({
+  orgName,
+  plan,
+  showAccount = false,
+  isVenue = false,
+}: {
+  orgName: string;
+  plan: string;
+  showAccount?: boolean;
+  isVenue?: boolean;
+}) {
   const path = usePathname();
   // Ladica je otvorena samo za putanju na kojoj je otvorena: svaka navigacija (i "natrag") je zatvara.
   const [openAt, setOpenAt] = useState<string | null>(null);
@@ -190,7 +222,15 @@ export function MobileNav({ orgName, plan, showAccount = false }: { orgName: str
               ref={panelRef}
               className="absolute inset-y-0 left-0 h-dvh w-[min(320px,85vw)] animate-slide-in overflow-hidden border-r border-foreground bg-white pb-[env(safe-area-inset-bottom)] pl-[env(safe-area-inset-left)] pt-[env(safe-area-inset-top)]"
             >
-              <NavList onNavigate={close} onClose={close} closeRef={closeRef} orgName={orgName} plan={plan} showAccount={showAccount} />
+              <NavList
+                onNavigate={close}
+                onClose={close}
+                closeRef={closeRef}
+                orgName={orgName}
+                plan={plan}
+                showAccount={showAccount}
+                isVenue={isVenue}
+              />
             </div>
           </div>,
           host!

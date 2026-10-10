@@ -20,6 +20,8 @@ export type ClientTableRow = {
   phone: string;
   reviewStatus: ReviewStatus;
   smsOptOut: boolean;
+  /** 'menu' = gost s jelovnika (privola vrijedi samo za jednu poruku koju šalje automatizacija). */
+  source?: string | null;
   lastMessageAt: Date | null;
   nextFollowUpAt: Date | null;
   service: string | null;
@@ -72,6 +74,17 @@ function SendButton({ row, compact }: { row: ClientTableRow; compact?: boolean }
     );
   }
   if (row.reviewStatus === "REVIEW_RECEIVED" || row.reviewStatus === "COMPLETED") return null;
+  // Gost s jelovnika bez usluge: ručno slanje je isključeno (poslužitelj ga ionako odbija), pa gumb ne nudimo.
+  if (row.source === "menu" && !row.service) {
+    return (
+      <span
+        className="inline-flex items-center gap-1 text-xs text-subtle"
+        title="Gost s jelovnika pristao je samo na jednu poruku s molbom za recenziju, koju šalje automatizacija jelovnika."
+      >
+        Gost jelovnika
+      </span>
+    );
+  }
   return (
     <Button
       size="sm"

@@ -11,7 +11,7 @@ export const metadata: Metadata = {
 
 export default function PrivacyPolicyPage() {
   return (
-    <LegalPage title="Politika privatnosti" updated="9. listopada 2026.">
+    <LegalPage title="Politika privatnosti" updated="10. listopada 2026.">
       <p>
         Vaša privatnost nam je važna. Ova politika objašnjava koje osobne podatke prikupljamo kad
         koristite stranicu probajnovo.com i naše usluge, zašto ih obrađujemo i koja prava imate.
@@ -128,7 +128,67 @@ export default function PrivacyPolicyPage() {
         poslana.
       </p>
 
-      <h2>11. Izmjene ove politike</h2>
+      <h2>11. Jelovnik s QR kodom (kafići i restorani)</h2>
+      <p>
+        Ugostiteljskim lokalima koji koriste NOVO Recenzije možemo izraditi digitalni jelovnik na adresi
+        probajnovo.com/jelovnik/… s nazivom lokala. Lokal QR kod stavlja na stolove. Za podatke gostiju
+        u toj usluzi voditelj obrade je ugostiteljski lokal, a NOVO je <strong>izvršitelj obrade</strong>,
+        kao i u odjeljku 10. Podaci jednog lokala logički su odvojeni od podataka drugih.
+      </p>
+      <p>
+        Prije jelovnika lokal od gosta može tražiti broj mobitela. Ako lokal dopušta pregled bez broja,
+        na stranici je poveznica „Pogledaj jelovnik bez unosa broja”; tada broj ne tražimo i ne spremamo.
+        Ako broj upišete, spremamo:
+      </p>
+      <ul>
+        <li>broj mobitela (u međunarodnom obliku),</li>
+        <li>vrijeme unosa i privole te verziju i točan tekst privole koji ste vidjeli (dokaz privole),</li>
+        <li>broj stola, ako je naveden u adresi QR koda,</li>
+        <li>
+          tehničke podatke u obliku sažetaka: nepovratni sažetak IP adrese (samu IP adresu ne spremamo) i
+          skraćenu oznaku preglednika, samo radi zaštite od zlouporabe,
+        </li>
+        <li>zapis o poslanoj poruci (tekst, status isporuke i klik na poveznicu za recenziju).</li>
+      </ul>
+      <p>
+        <strong>Svrha:</strong> isključivo da vam lokal preko NOVO Recenzija jednom pošalje SMS s molbom za
+        Google recenziju, otprilike u vremenu navedenom uz polje za broj (obično sat i pol nakon unosa,
+        najmanje sat, najviše četiri sata). Između 22:00 i 9:00 poruka se ne šalje, nego stiže ujutro.
+        Isti lokal istom broju ne šalje novi zahtjev unutar 30 dana. Broj se ne koristi ni za što drugo, ni za
+        oglašavanje ni za druge poruke. Sažetke IP adrese koristimo za ograničavanje broja unosa i
+        sprječavanje zlouporabe (naš legitimni interes).
+      </p>
+      <p>
+        <strong>Pravna osnova:</strong> vaša privola (čl. 6. st. 1. t. (a) Opće uredbe o zaštiti podataka),
+        koju dajete potvrdom polja uz unos broja. Privola mora biti dobrovoljna, pa lokalu preporučujemo da
+        gostima omogući pregled jelovnika i bez broja. Privolu možete povući u svakom trenutku odgovorom
+        „STOP” (uputa je u poruci) ili, gdje mreža ne omogućuje odgovore, poveznicom za odjavu u poruci;
+        povlačenje ne utječe na zakonitost obrade prije povlačenja. Vrijedi i pravilo iz odjeljka 10: odjava
+        vrijedi za sva poduzeća koja koriste NOVO Recenzije.
+      </p>
+      <p>
+        <strong>Rok čuvanja:</strong> broj i ostale podatke o unosu čuvamo najviše 12 mjeseci od unosa, a
+        zatim ih automatski brišemo zajedno s pripadajućim zapisima o poslanoj poruci. Iznimka je odjava:
+        ako ste se odjavili, i dalje čuvamo samo broj s oznakom da se odjavio, isključivo da vam poruke
+        ne bismo ponovno slali (nakon ponovnog unosa broja), i ne koristimo ga ni za što drugo.
+      </p>
+      <p>
+        <strong>Kolačići:</strong> nakon unosa broja preglednik dobiva potpisani kolačić koji samo pamti
+        da ste već prošli vrata jelovnika, kako vas ne bismo ponovno pitali za broj (do 30 dana). U njemu nema
+        osobnih podataka. Uz njega se na 30 sekundi sprema kratka potvrda s djelomično skrivenim brojem
+        (prikazuje se samo vama, odmah nakon unosa). Ako odaberete jezik jelovnika, pamti se i taj izbor
+        (kolačić jezika, do godinu dana). Svi se brišu brisanjem kolačića u pregledniku. Popis kolačića
+        je i u <Link href="/kolacici">politici kolačića</Link>.
+      </p>
+      <p>
+        <strong>Vaša prava i primjedbe:</strong> za uvid, ispravak ili brisanje obratite se lokalu ili nama na{" "}
+        <a href="mailto:hello@novo.studio">hello@novo.studio</a>. Broj je moguće upisati i bez provjere, pa ako
+        ste primili poruku iako niste skenirali kod, odgovorite „STOP” ili nam se javite i broj brišemo.
+        Pritužbu možete podnijeti i Agenciji za zaštitu osobnih podataka (azop.hr). Podizvršitelji su isti kao
+        u odjeljku 10.
+      </p>
+
+      <h2>12. Izmjene ove politike</h2>
       <p>
         Ovu politiku možemo povremeno ažurirati — datum zadnje izmjene naveden je na vrhu stranice.
         Veće izmjene ćemo istaknuti na stranici.

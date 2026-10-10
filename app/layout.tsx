@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Space_Grotesk, JetBrains_Mono, Zilla_Slab, Karla, Caveat, Inter, Fraunces, Baloo_2, Nunito } from "next/font/google";
 import { Analytics } from "@vercel/analytics/next";
 import "./globals.css";
+import AutomationKick from "@/components/AutomationKick";
 
 const spaceGrotesk = Space_Grotesk({
   variable: "--font-space-grotesk",
@@ -125,6 +126,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       />
       {children}
       <Analytics />
+      <AutomationKick />
     </body>
     </html>
     );
