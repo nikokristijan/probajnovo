@@ -477,8 +477,13 @@ export const menus = pgTable(
     introEn: text("intro_en"),
     /** Vlastiti jelovnik lokala (PDF ili stranica): gost se nakon unosa broja šalje na tu adresu umjesto na naš prikaz. */
     externalUrl: text("external_url"),
-    /** Dopusti pregled jelovnika bez broja (GDPR: privola mora biti dobrovoljna). Zadano isključeno. */
-    allowSkip: boolean("allow_skip").notNull().default(false),
+    /**
+     * Dopusti pregled jelovnika bez broja (GDPR: privola mora biti dobrovoljna). Zadano UKLJUČENO: gost uvijek može
+     * otvoriti jelovnik sitnom poveznicom ispod vrata; operater to može isključiti u postavkama.
+     */
+    allowSkip: boolean("allow_skip").notNull().default(true),
+    /** Neobavezan logo lokala (https adresa slike, npr. s Vercel Bloba). Prikazuje se na vrhu vrata i jelovnika. */
+    logoUrl: text("logo_url"),
     /** Koliko minuta nakon unosa broja stiže zahtjev za recenziju (60 do 240). */
     delayMinutes: integer("delay_minutes").notNull().default(90),
     enabled: boolean("enabled").notNull().default(true),

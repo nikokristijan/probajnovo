@@ -88,7 +88,7 @@ const FAQ = [
   },
   {
     q: "Imam kafić ili restoran. Kako to radi s jelovnikom?",
-    a: "Jelovnik izrađujemo i vodimo na našoj stranici, a vi QR kod stavite na stolove. Gost skenira kod, upiše broj mobitela uz privolu i otvara jelovnik. Otprilike sat i pol do dva sata kasnije dobije jednu poruku s molbom za Google recenziju; noću (22:00 do 9:00) ne šaljemo, pa tada poruka stiže ujutro. Broj čuvamo najviše 12 mjeseci i koristimo samo za tu poruku, a odjava je odgovorom STOP ili poveznicom u poruci. Ako želite, gost jelovnik može pogledati i bez unosa broja.",
+    a: "Jelovnik izrađujemo i vodimo na našoj stranici, a vi QR kod stavite na stolove. Gost skenira kod i otvara jelovnik. Ako upiše broj mobitela uz privolu, otprilike sat i pol do dva sata kasnije dobije jednu poruku s molbom za Google recenziju; noću (22:00 do 9:00) ne šaljemo, pa tada poruka stiže ujutro. Broj čuvamo najviše 12 mjeseci i koristimo samo za tu poruku, a odjava je odgovorom STOP ili poveznicom u poruci. Gost jelovnik uvijek može pogledati i bez unosa broja (sitna poveznica ispod polja); tada ništa ne spremamo ni ne šaljemo.",
   },
   { q: "Mogu li otkazati?", a: "Da, bilo kad. Plaća se mjesečno, bez ugovorne obveze." },
 ];
@@ -120,8 +120,8 @@ const VENUE_STEPS = [
     text: "Dobivate QR kodove spremne za ispis, po želji s brojem stola. Ispisujete ih i postavljate vi.",
   },
   {
-    title: "Gost upiše broj, pa vidi jelovnik",
-    text: "Prije jelovnika gost upiše broj mobitela i potvrdi privolu. Uz polje piše točno što dobiva. Po dogovoru jelovnik može pogledati i bez broja.",
+    title: "Gost otvori jelovnik, po želji uz broj",
+    text: "Gost može upisati broj mobitela i potvrditi privolu; uz polje piše točno što dobiva. Jelovnik može pogledati i bez broja.",
   },
   {
     title: "Jedna poruka nakon posjeta",
@@ -378,8 +378,8 @@ export default async function RecenzijeLanding({ searchParams }: { searchParams:
           <div className="mt-6 grid items-start gap-6 lg:grid-cols-[1.2fr_0.8fr]">
             <p className="min-w-0 border-l-[3px] border-orange bg-orange-soft p-4 text-[15px] leading-relaxed">
               <strong>Pošteno o brojevima:</strong> broj služi samo za tu jednu poruku i čuva se najviše 12 mjeseci. Istom gostu ne šaljemo novi zahtjev unutar 30 dana, a tko se odjavi
-              (odgovorom STOP ili poveznicom u poruci), više ne dobiva poruke ni od jednog lokala. Privola mora biti dobrovoljna, pa preporučujemo da gost jelovnik može pogledati i bez
-              unosa broja; to postavljamo po dogovoru s vama.
+              (odgovorom STOP ili poveznicom u poruci), više ne dobiva poruke ni od jednog lokala. Privola je dobrovoljna: gost jelovnik uvijek može pogledati i bez
+              unosa broja, a tada ništa ne spremamo.
             </p>
             <figure className="min-w-0 border border-border bg-white p-5" aria-label="Primjer poruke gostu s izmišljenim lokalom">
               <p className="label flex flex-wrap items-center justify-between gap-2 text-muted">

@@ -9,7 +9,7 @@ import { db } from "./index";
  * da se dva serverless pokretanja ne sudare. Kad se shema promijeni:
  * dodaj ALTER TABLE ... ADD COLUMN IF NOT EXISTS na kraj i povećaj SCHEMA_VERSION.
  */
-export const SCHEMA_VERSION = 4;
+export const SCHEMA_VERSION = 5;
 
 const DDL = `
 CREATE TABLE IF NOT EXISTS "nr_meta" ("key" text PRIMARY KEY NOT NULL, "value" text NOT NULL);
@@ -343,7 +343,7 @@ CREATE TABLE IF NOT EXISTS "nr_menus" (
 	"intro" text,
 	"intro_en" text,
 	"external_url" text,
-	"allow_skip" boolean DEFAULT false NOT NULL,
+	"allow_skip" boolean DEFAULT true NOT NULL,
 	"delay_minutes" integer DEFAULT 90 NOT NULL,
 	"enabled" boolean DEFAULT true NOT NULL,
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
@@ -415,19 +415,39 @@ CREATE INDEX IF NOT EXISTS "nr_menu_guest_phone_created" ON "nr_menu_guests" USI
 CREATE INDEX IF NOT EXISTS "nr_menu_guest_ip_created" ON "nr_menu_guests" USING btree ("ip_hash","created_at");
 CREATE INDEX IF NOT EXISTS "nr_menu_guest_created" ON "nr_menu_guests" USING btree ("created_at");
 CREATE INDEX IF NOT EXISTS "nr_client_source_created" ON "nr_clients" USING btree ("source","created_at");
+ALTER TABLE "nr_menus" ALTER COLUMN "allow_skip" SET DEFAULT true;
+ALTER TABLE "nr_menus" ADD COLUMN IF NOT EXISTS "logo_url" text;
 `;
+
+/**
+ * Jednokratna promjena (verzija 5): pregled jelovnika bez broja je od sada zadano uključen, pa se i već postojeći
+ * jelovnici (koji su nastali sa zadanim "isključeno") jednom prebacuju na uključeno. Zapis u nr_meta pamti da je to
+ * učinjeno: kasnije izmjene operatera (isključivanje pregleda bez broja) više se nikad ne prepisuju, ni pri idućim
+ * podizanjima verzije sheme. Izvršava se unutar iste transakcije i pod istim advisory lockom kao DDL.
+ */
+const SKIP_DEFAULT_MARKER = "menus_allow_skip_default_true";
 
 let ready: Promise<void> | null = null;
 
 async function run() {
-  const current = await db
-    .execute<{ value: string }>(sql`select value from nr_meta where key = 'schema_version'`)
-    .then((r) => Array.from(r)[0]?.value)
-    .catch(() => undefined);
+  const readVersion = (runner: Pick<typeof db, "execute">) =>
+    runner
+      .execute<{ value: string }>(sql`select value from nr_meta where key = 'schema_version'`)
+      .then((r) => Array.from(r)[0]?.value)
+      .catch(() => undefined);
+  const current = await readVersion(db);
   if (current !== String(SCHEMA_VERSION)) {
     await db.transaction(async (tx) => {
       await tx.execute(sql`select pg_advisory_xact_lock(7316230)`);
+      // Drugo serverless pokretanje je možda već završilo isti posao dok smo čekali na lock. (Upit na nr_meta koji ne
+      // uspije bi u transakciji ostavio sve iza sebe neizvedivim, pa se tablica prvo provjeri.)
+      const hasMeta = Array.from(await tx.execute<{ t: string | null }>(sql`select to_regclass('public.nr_meta') as t`))[0]?.t;
+      if (hasMeta && (await readVersion(tx)) === String(SCHEMA_VERSION)) return;
       await tx.execute(sql.raw(DDL));
+      const marked = await tx.execute<{ key: string }>(
+        sql`insert into nr_meta (key, value) values (${SKIP_DEFAULT_MARKER}, '1') on conflict (key) do nothing returning key`
+      );
+      if (Array.from(marked).length > 0) await tx.execute(sql`update nr_menus set allow_skip = true where allow_skip = false`);
       await tx.execute(
         sql`insert into nr_meta (key, value) values ('schema_version', ${String(SCHEMA_VERSION)})
             on conflict (key) do update set value = excluded.value`

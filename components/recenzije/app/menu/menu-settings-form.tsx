@@ -1,9 +1,10 @@
 "use client";
 
 import { useEffect, useRef, useState, useTransition } from "react";
-import { ShieldAlert, ShieldCheck, TriangleAlert } from "lucide-react";
+import { ImageOff, ShieldAlert, ShieldCheck, TriangleAlert } from "lucide-react";
 import { toast } from "sonner";
 import { checkMenuSlugAction, saveMenuSettingsAction } from "@/lib/recenzije/actions/menu";
+import ImageUploader from "@/components/admin/ImageUploader";
 import { Button } from "@/components/recenzije/ui/button";
 import { Dialog, DialogContent, Switch } from "@/components/recenzije/ui/dialog";
 import { Card, CardBody, CardHeader, Field, Input, Select, Textarea } from "@/components/recenzije/ui/primitives";
@@ -12,14 +13,14 @@ import { cn } from "@/lib/recenzije/utils";
 import { DELAY_OPTIONS, type MenuSettingsDTO } from "./menu-types";
 
 /** Polja uz koja se greška prikazuje u obrascu; za sve ostalo greška ide u obavijest. */
-const SHOWN_FIELDS = ["slug", "title", "intro", "introEn", "externalUrl", "delayMinutes"];
+const SHOWN_FIELDS = ["slug", "title", "intro", "introEn", "externalUrl", "logoUrl", "delayMinutes"];
 
 type SlugState = { kind: "idle" } | { kind: "checking" } | { kind: "free" } | { kind: "error"; message: string };
 
 /** Postavke jelovnika: tekstovi, vanjska adresa, odgoda poruke, pregled bez broja i javna adresa (slug). */
 export function MenuSettingsForm({ settings, host, readOnly }: { settings: MenuSettingsDTO; host: string; readOnly: boolean }) {
   // Nakon spremanja poslužitelj vraća nove postavke; ključ ponovno postavlja obrazac na spremljene vrijednosti.
-  const key = [settings.slug, settings.title, settings.intro, settings.introEn, settings.externalUrl, settings.allowSkip, settings.delayMinutes].join("\u0001");
+  const key = [settings.slug, settings.title, settings.intro, settings.introEn, settings.externalUrl, settings.logoUrl, settings.allowSkip, settings.delayMinutes].join("\u0001");
   return <SettingsFormInner key={key} settings={settings} host={host} readOnly={readOnly} />;
 }
 
@@ -29,6 +30,8 @@ function SettingsFormInner({ settings, host, readOnly }: { settings: MenuSetting
   const [intro, setIntro] = useState(settings.intro ?? "");
   const [introEn, setIntroEn] = useState(settings.introEn ?? "");
   const [externalUrl, setExternalUrl] = useState(settings.externalUrl ?? "");
+  const [logoUrl, setLogoUrl] = useState(settings.logoUrl ?? "");
+  const [logoBroken, setLogoBroken] = useState(false);
   const [delay, setDelay] = useState(settings.delayMinutes);
   const [allowSkip, setAllowSkip] = useState(settings.allowSkip);
   const [slug, setSlug] = useState(settings.slug);
@@ -52,6 +55,7 @@ function SettingsFormInner({ settings, host, readOnly }: { settings: MenuSetting
     intro.trim() !== (settings.intro ?? "") ||
     introEn.trim() !== (settings.introEn ?? "") ||
     externalUrl.trim() !== (settings.externalUrl ?? "") ||
+    logoUrl.trim() !== (settings.logoUrl ?? "") ||
     delay !== settings.delayMinutes ||
     allowSkip !== settings.allowSkip;
   const slugOk = !slugChanged || slugState.kind === "free";
@@ -83,6 +87,7 @@ function SettingsFormInner({ settings, host, readOnly }: { settings: MenuSetting
         intro: intro.trim() || null,
         introEn: introEn.trim() || null,
         externalUrl: externalUrl.trim() || null,
+        logoUrl: logoUrl.trim() || null,
         allowSkip,
         delayMinutes: delay,
       });
@@ -134,11 +139,74 @@ function SettingsFormInner({ settings, host, readOnly }: { settings: MenuSetting
               </Field>
             </details>
 
+            <div className="border border-border bg-surface-2 p-4">
+              <p className="text-sm font-bold">Logo lokala</p>
+              <p className="mt-1 text-[13px] text-muted">
+                Neobavezno. Prikazuje se na vrhu jelovnika i vrata, na crnoj podlozi. Najbolje izgleda logo s prozirnom pozadinom i svijetlim ili zlatnim
+                crtežom; bez logotipa gost vidi naziv lokala.
+              </p>
+              <div className="mt-3 flex min-w-0 flex-col gap-3 sm:flex-row sm:items-start">
+                <div
+                  className="flex h-24 w-full shrink-0 items-center justify-center border border-border-strong bg-[#0a0a0a] p-3 sm:w-56"
+                  aria-label="Pregled logotipa na crnoj podlozi"
+                >
+                  {logoUrl.trim() && !logoBroken ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={logoUrl.trim()} alt="Logo lokala" className="max-h-full max-w-full object-contain" onError={() => setLogoBroken(true)} />
+                  ) : (
+                    <span className="flex items-center gap-2 text-[12px] text-[#a8a29a]">
+                      <ImageOff className="size-4" aria-hidden />
+                      {logoUrl.trim() ? "Slika se ne može učitati" : "Nema logotipa"}
+                    </span>
+                  )}
+                </div>
+                <div className="min-w-0 flex-1 space-y-3">
+                  <ImageUploader
+                    label="Učitaj sliku"
+                    helpText="PNG, WebP ili JPG, do 10 MB."
+                    value={[]}
+                    onChange={(urls) => {
+                      setLogoUrl(urls[0] ?? "");
+                      setLogoBroken(false);
+                    }}
+                  />
+                  <Field label="ili adresa slike (https)" htmlFor="m-logo" error={errors.logoUrl} hint="Ako učitavanje nije dostupno, zalijepite https adresu slike.">
+                    <Input
+                      id="m-logo"
+                      type="url"
+                      inputMode="url"
+                      value={logoUrl}
+                      maxLength={1000}
+                      placeholder="https://www.konoba.hr/logo.png"
+                      onChange={(e) => {
+                        setLogoUrl(e.target.value);
+                        setLogoBroken(false);
+                      }}
+                      aria-invalid={errors.logoUrl ? true : undefined}
+                    />
+                  </Field>
+                  {logoUrl.trim() && (
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => {
+                        setLogoUrl("");
+                        setLogoBroken(false);
+                      }}
+                    >
+                      Ukloni logo
+                    </Button>
+                  )}
+                </div>
+              </div>
+            </div>
+
             <Field
               label="Vlastiti jelovnik (adresa)"
               htmlFor="m-url"
               error={errors.externalUrl}
-              hint="Neobavezno. Ako lokal već ima jelovnik (stranica ili PDF), upišite https adresu: gost ga otvara nakon unosa broja umjesto našeg prikaza."
+              hint="Neobavezno. Ako lokal već ima jelovnik (stranica ili PDF), upišite https adresu: gost ga otvara umjesto našeg prikaza."
             >
               <Input
                 id="m-url"
@@ -172,7 +240,7 @@ function SettingsFormInner({ settings, host, readOnly }: { settings: MenuSetting
                 <div className="min-w-0">
                   <p className="text-sm font-bold">Dopusti pregled jelovnika bez broja</p>
                   <p className="mt-1 text-[13px] text-muted">
-                    Gost uz polje za broj vidi i poveznicu „Pogledaj jelovnik bez unosa broja”. Takav pregled ništa ne sprema i ne šalje.
+                    Zadano uključeno. Ispod polja za broj gost vidi sitnu poveznicu „Pogledaj jelovnik bez unosa broja”. Takav pregled ništa ne sprema i ne šalje.
                   </p>
                 </div>
                 <Switch checked={allowSkip} onCheckedChange={setAllowSkip} label="Dopusti pregled jelovnika bez broja" />
@@ -188,12 +256,12 @@ function SettingsFormInner({ settings, host, readOnly }: { settings: MenuSetting
                 <p className="text-foreground/80">
                   {allowSkip ? (
                     <>
-                      <b>Preporučeno stanje.</b> Gost može otvoriti jelovnik i bez broja, pa je privola dobrovoljna.
+                      <b>Zadano i preporučeno stanje.</b> Gost uvijek može otvoriti jelovnik i bez broja (sitna poveznica ispod polja), pa je privola dobrovoljna.
                     </>
                   ) : (
                     <>
-                      <b>Upozorenje (GDPR):</b> obavezan broj mobitela može biti u sukobu s GDPR-om jer privola mora biti dobrovoljna. Preporuka: dopustite pregled
-                      jelovnika bez broja.
+                      <b>Upozorenje (GDPR):</b> poveznica je uklonjena pa je broj mobitela obavezan za jelovnik. To može biti u sukobu s GDPR-om jer privola mora biti
+                      dobrovoljna, a odgovornost za takvu postavku je vaša. Preporuka: ostavite pregled bez broja uključen.
                     </>
                   )}
                 </p>

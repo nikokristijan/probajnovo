@@ -136,9 +136,9 @@ export default function PrivacyPolicyPage() {
         kao i u odjeljku 10. Podaci jednog lokala logički su odvojeni od podataka drugih.
       </p>
       <p>
-        Prije jelovnika lokal od gosta može tražiti broj mobitela. Ako lokal dopušta pregled bez broja,
-        na stranici je poveznica „Pogledaj jelovnik bez unosa broja”; tada broj ne tražimo i ne spremamo.
-        Ako broj upišete, spremamo:
+        Jelovnik možete otvoriti i bez unosa broja mobitela: ispod polja za broj je poveznica „Pogledaj
+        jelovnik bez unosa broja”; tada broj ne tražimo i ništa ne spremamo. (Ta je mogućnost zadano uključena;
+        lokal je može isključiti.) Ako broj upišete, spremamo:
       </p>
       <ul>
         <li>broj mobitela (u međunarodnom obliku),</li>
@@ -160,8 +160,8 @@ export default function PrivacyPolicyPage() {
       </p>
       <p>
         <strong>Pravna osnova:</strong> vaša privola (čl. 6. st. 1. t. (a) Opće uredbe o zaštiti podataka),
-        koju dajete potvrdom polja uz unos broja. Privola mora biti dobrovoljna, pa lokalu preporučujemo da
-        gostima omogući pregled jelovnika i bez broja. Privolu možete povući u svakom trenutku odgovorom
+        koju dajete potvrdom polja uz unos broja. Privola je dobrovoljna: jelovnik je zadano moguće
+        otvoriti i bez broja. Privolu možete povući u svakom trenutku odgovorom
         „STOP” (uputa je u poruci) ili, gdje mreža ne omogućuje odgovore, poveznicom za odjavu u poruci;
         povlačenje ne utječe na zakonitost obrade prije povlačenja. Vrijedi i pravilo iz odjeljka 10: odjava
         vrijedi za sva poduzeća koja koriste NOVO Recenzije.

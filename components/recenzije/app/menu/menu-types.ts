@@ -33,6 +33,7 @@ export type MenuSettingsDTO = {
   intro: string | null;
   introEn: string | null;
   externalUrl: string | null;
+  logoUrl: string | null;
   allowSkip: boolean;
   delayMinutes: number;
 };

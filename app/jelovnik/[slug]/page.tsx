@@ -8,7 +8,6 @@ import { resolveLang, safeExternalUrl } from "@/components/jelovnik/lang";
 import { ExternalMenuView, MenuView } from "@/components/jelovnik/menu-view";
 import { cleanTable } from "@/components/jelovnik/table";
 import { guestCookieName } from "@/lib/recenzije/guest-cookie";
-import { guestConsentText } from "@/lib/recenzije/guest-consent";
 import { kickDueRuns } from "@/lib/recenzije/services/automation-kick";
 import { decideAccess, loadMenuContent, loadMenuInfo } from "./data";
 
@@ -63,7 +62,7 @@ export default async function MenuPage({ params, searchParams }: Props) {
   if (access === "gate") {
     const table = cleanTable(first(sp.stol));
     const skipHref = info.allowSkip ? `/jelovnik/${info.slug}?pregled=1${table ? `&stol=${encodeURIComponent(table)}` : ""}` : null;
-    return <GateView menu={info} consentText={guestConsentText(info.venueName, info.delayMinutes)} table={table} skipHref={skipHref} initialNotice={noticeFromQuery(first(sp.greska))} />;
+    return <GateView menu={info} table={table} skipHref={skipHref} initialNotice={noticeFromQuery(first(sp.greska))} />;
   }
 
   // Kratka potvrda nakon unosa broja (postavlja je akcija; maskirani broj ili "-" kad nema što pokazati).

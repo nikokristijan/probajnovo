@@ -37,6 +37,7 @@ export const MENU_LIMITS = {
   description: IMPORT_LIMITS.descriptionChars,
   allergens: 200,
   url: 500,
+  logoUrl: 1000,
   importChars: IMPORT_LIMITS.maxChars,
 } as const;
 
@@ -58,25 +59,30 @@ const requiredLine = (label: string, maxChars: number) => oneLine(label, maxChar
 /** Prazan tekst znači "obriši" (null); undefined znači "ne diraj". */
 const optionalLine = (label: string, maxChars: number) => oneLine(label, maxChars).nullish();
 
-const httpsUrl = z
-  .string({ error: "Adresa jelovnika: neispravan unos" })
-  .transform((s) => {
-    const v = s.trim();
-    return v && !/^[a-z][a-z0-9+.-]*:/i.test(v) ? `https://${v}` : v;
-  })
-  .pipe(
-    z
-      .string()
-      .max(MENU_LIMITS.url, `Adresa jelovnika: najviše ${MENU_LIMITS.url} znakova`)
-      .refine((v) => {
-        try {
-          const u = new URL(v);
-          return u.protocol === "https:" && !u.username && !u.password && u.hostname.includes(".");
-        } catch {
-          return false;
-        }
-      }, "Adresa jelovnika mora biti ispravna https adresa (npr. https://www.konoba.hr/jelovnik.pdf).")
-  );
+/** https adresa (bez korisničkog imena i lozinke, s točkom u nazivu domene). Bez sheme se dodaje https://. */
+const httpsUrlOf = (label: string, maxChars: number, example: string) =>
+  z
+    .string({ error: `${label}: neispravan unos` })
+    .transform((s) => {
+      const v = s.trim();
+      return v && !/^[a-z][a-z0-9+.-]*:/i.test(v) ? `https://${v}` : v;
+    })
+    .pipe(
+      z
+        .string()
+        .max(maxChars, `${label}: najviše ${maxChars} znakova`)
+        .refine((v) => {
+          try {
+            const u = new URL(v);
+            return u.protocol === "https:" && !u.username && !u.password && u.hostname.includes(".");
+          } catch {
+            return false;
+          }
+        }, `${label} mora biti ispravna https adresa (npr. ${example}).`)
+    );
+
+const httpsUrl = httpsUrlOf("Adresa jelovnika", MENU_LIMITS.url, "https://www.konoba.hr/jelovnik.pdf");
+const logoHttpsUrl = httpsUrlOf("Adresa logotipa", MENU_LIMITS.logoUrl, "https://www.konoba.hr/logo.png");
 
 const settingsSchema = z.object({
   slug: z.string({ error: "Adresa: neispravan unos" }).optional(),
@@ -84,6 +90,8 @@ const settingsSchema = z.object({
   intro: optionalLine("Uvod", MENU_LIMITS.intro),
   introEn: optionalLine("Uvod (engleski)", MENU_LIMITS.intro),
   externalUrl: z.union([z.null(), z.literal(""), httpsUrl]).optional(),
+  /** Logo lokala: https adresa slike; prazno/null = ukloni. */
+  logoUrl: z.union([z.null(), z.literal(""), logoHttpsUrl]).optional(),
   allowSkip: z.boolean().optional(),
   delayMinutes: z
     .number({ error: `Odgoda mora biti između ${MENU_DELAY_MIN} i ${MENU_DELAY_MAX} minuta.` })
@@ -184,7 +192,8 @@ async function ensureMenu(organizationId: string): Promise<{ menu: Menu; org: Ve
   for (let attempt = 0; attempt < 8; attempt++) {
     const slug = attempt < 6 ? suggestMenuSlug(org.name, attempt) : `${suggestMenuSlug(org.name, 0).slice(0, 30)}-${createId().slice(-6)}`;
     if (await slugTaken(slug)) continue;
-    await db.insert(menus).values({ organizationId, slug }).onConflictDoNothing();
+    // Pregled bez broja je zadano uključen (sitna poveznica ispod vrata); operater ga može isključiti u postavkama.
+    await db.insert(menus).values({ organizationId, slug, allowSkip: true }).onConflictDoNothing();
     const created = await loadMenu(organizationId);
     if (created) return { menu: created, org };
   }
@@ -256,6 +265,8 @@ export type MenuSettingsInput = {
   introEn?: string | null;
   /** Vlastiti jelovnik lokala (https). Prazno/null = koristi naš prikaz. */
   externalUrl?: string | null;
+  /** Logo lokala (https adresa slike). Prazno/null = ukloni. */
+  logoUrl?: string | null;
   allowSkip?: boolean;
   /** 60 do 240 minuta. */
   delayMinutes?: number;
@@ -271,7 +282,8 @@ export async function upsertMenuSettings(organizationId: string, input: MenuSett
   if (!w.ok) return w;
   const m = w.value;
   // Razmaci umjesto adrese znače "obriši", kao i prazan tekst.
-  const raw = typeof input.externalUrl === "string" && !input.externalUrl.trim() ? { ...input, externalUrl: "" } : input;
+  const blank = (v: unknown) => typeof v === "string" && !v.trim();
+  const raw = { ...input, ...(blank(input.externalUrl) ? { externalUrl: "" } : {}), ...(blank(input.logoUrl) ? { logoUrl: "" } : {}) };
   const parsed = settingsSchema.safeParse(raw);
   if (!parsed.success) return zodFail(parsed.error);
   const d = parsed.data;
@@ -287,6 +299,7 @@ export async function upsertMenuSettings(organizationId: string, input: MenuSett
   if (d.intro !== undefined) patch.intro = orNull(d.intro);
   if (d.introEn !== undefined) patch.introEn = orNull(d.introEn);
   if (d.externalUrl !== undefined) patch.externalUrl = orNull(d.externalUrl);
+  if (d.logoUrl !== undefined) patch.logoUrl = orNull(d.logoUrl);
   if (d.allowSkip !== undefined) patch.allowSkip = d.allowSkip;
   if (d.delayMinutes !== undefined) patch.delayMinutes = d.delayMinutes;
   if (d.enabled !== undefined) patch.enabled = d.enabled;
@@ -696,6 +709,8 @@ export type PublicMenuInfo = {
   intro: string | null;
   introEn: string | null;
   externalUrl: string | null;
+  /** Logo lokala (https adresa) ili null: tada se prikazuje naziv lokala. */
+  logoUrl: string | null;
   allowSkip: boolean;
   delayMinutes: number;
   /** True kad ima ijedan engleski tekst: tek tada stranica prikazuje HR/EN prekidač. */
@@ -746,6 +761,7 @@ export async function getPublicMenuInfoBySlug(rawSlug: string): Promise<PublicMe
       intro: menus.intro,
       introEn: menus.introEn,
       externalUrl: menus.externalUrl,
+      logoUrl: menus.logoUrl,
       allowSkip: menus.allowSkip,
       delayMinutes: menus.delayMinutes,
       hasEnglish: sql<boolean>`(
