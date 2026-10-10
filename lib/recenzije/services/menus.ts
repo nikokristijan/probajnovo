@@ -120,6 +120,7 @@ const settingsSchema = z.object({
   allowSkip: z.boolean().optional(),
   menuKind: z.enum(["jelovnik", "meni"], { error: "Naziv na stranici mora biti Jelovnik ili Meni." }).optional(),
   noticesEnabled: z.boolean({ error: "Neispravan unos." }).optional(),
+  captureEnabled: z.boolean({ error: "Skupljanje brojeva: neispravan unos." }).optional(),
   showReviewButton: z.boolean({ error: "Tipka Ocijeni nas: neispravan unos." }).optional(),
   /** Tipke: ovdje samo oblik i granica duljine; sadržaj (broj, e-mail, profil...) provjerava menu-buttons.ts. */
   wifiName: rawText("Wi-Fi naziv", BUTTON_LIMITS.wifiName),
@@ -314,6 +315,8 @@ export type MenuSettingsInput = {
   menuKind?: MenuKind;
   /** Lokal šalje i povremene obavijesti (mijenja tekst privole koji gost vidi). */
   noticesEnabled?: boolean;
+  /** Skupljanje brojeva gostiju. False = "samo jelovnik": izravan prikaz bez vrata, ništa se ne sprema. */
+  captureEnabled?: boolean;
   /** Tipka "Ocijeni nas" (Google link tvrtke). Uključiti se može samo kad tvrtka ima ispravan link. */
   showReviewButton?: boolean;
   /** Tipka "Wi-Fi": naziv mreže (prazno = nema tipke) i neobavezna lozinka. */
@@ -359,6 +362,7 @@ export async function upsertMenuSettings(organizationId: string, input: MenuSett
   if (d.allowSkip !== undefined) patch.allowSkip = d.allowSkip;
   if (d.menuKind !== undefined) patch.menuKind = d.menuKind;
   if (d.noticesEnabled !== undefined) patch.noticesEnabled = d.noticesEnabled;
+  if (d.captureEnabled !== undefined) patch.captureEnabled = d.captureEnabled;
   if (d.delayMinutes !== undefined) patch.delayMinutes = d.delayMinutes;
   if (d.enabled !== undefined) patch.enabled = d.enabled;
 
@@ -807,6 +811,8 @@ export type PublicMenuInfo = {
   menuKind: MenuKind;
   /** Lokal šalje i povremene obavijesti: gost vidi drugu varijantu privole (guest-consent.ts). */
   noticesEnabled: boolean;
+  /** False = paket "samo jelovnik": stranica se otvara izravno (bez vrata, privole i broja), ništa o gostu se ne sprema. */
+  captureEnabled: boolean;
   /** True kad ima ijedan engleski tekst: tek tada stranica prikazuje HR/EN prekidač. */
   hasEnglish: boolean;
   /** Neobavezne tipke (Ocijeni nas, Wi-Fi, Kontakt): samo ono što je ispunjeno i ispravno; sve prazno = stranica kao i prije. */
@@ -862,6 +868,7 @@ export async function getPublicMenuInfoBySlug(rawSlug: string): Promise<PublicMe
       delayMinutes: menus.delayMinutes,
       menuKind: menus.menuKind,
       noticesEnabled: menus.noticesEnabled,
+      captureEnabled: menus.captureEnabled,
       showReviewButton: menus.showReviewButton,
       orgReviewUrl: organizations.googleReviewUrl,
       timezone: organizations.timezone,

@@ -71,7 +71,7 @@ export default async function MenuPage({ params, searchParams }: Props) {
   // Kratka potvrda nakon unosa broja (postavlja je akcija; maskirani broj ili "-" kad nema što pokazati).
   const flashRaw = jar.get(`${guestCookieName(info.id)}_ok`)?.value;
   const flash =
-    flashRaw === undefined
+    flashRaw === undefined || access === "open"
       ? null
       : MASKED_PHONE_PATTERN.test(flashRaw)
         ? `Hvala. Broj ${flashRaw} je zaprimljen.`

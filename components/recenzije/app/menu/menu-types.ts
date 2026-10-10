@@ -41,6 +41,8 @@ export type MenuSettingsDTO = {
   menuKind: MenuKind;
   /** Lokal šalje i povremene obavijesti (mijenja tekst privole). */
   noticesEnabled: boolean;
+  /** Skupljanje brojeva gostiju (Recenzije). False = "samo jelovnik": bez vrata, privole i poruka. */
+  captureEnabled: boolean;
   /** Neobavezne tipke na javnom jelovniku (lib/recenzije/menu-buttons.ts). Prazno = tipke nema. */
   showReviewButton: boolean;
   wifiName: string | null;

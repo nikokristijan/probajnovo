@@ -17,7 +17,7 @@ export default async function MenuSlugLayout({ children, params }: { children: R
   const info = await loadMenuInfo(slug);
   if (!info) notFound();
   const jar = await cookies();
-  const maySeeMenu = info.allowSkip || verifyGuestCookie(info.id, jar.get(guestCookieName(info.id))?.value);
+  const maySeeMenu = !info.captureEnabled || info.allowSkip || verifyGuestCookie(info.id, jar.get(guestCookieName(info.id))?.value);
   if (maySeeMenu && !safeExternalUrl(info.externalUrl)) await loadMenuContent(slug);
   return <MenuKindProvider kind={info.menuKind}>{children}</MenuKindProvider>;
 }

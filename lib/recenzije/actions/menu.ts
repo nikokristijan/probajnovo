@@ -88,6 +88,7 @@ const settingsSchema = z.object({
   allowSkip: z.boolean({ error: "Neispravan unos." }).optional(),
   menuKind: z.enum(["jelovnik", "meni"], { error: "Neispravan unos." }).optional(),
   noticesEnabled: z.boolean({ error: "Neispravan unos." }).optional(),
+  captureEnabled: z.boolean({ error: "Neispravan unos." }).optional(),
   showReviewButton: z.boolean({ error: "Neispravan unos." }).optional(),
   wifiName: optionalText(500),
   wifiPassword: optionalText(500),

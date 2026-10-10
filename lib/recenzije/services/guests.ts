@@ -87,7 +87,9 @@ export type CaptureResult =
   | { status: "consent_required" }
   | { status: "rate_limited"; scope: "ip" | "phone"; retryAfterSeconds: number }
   | { status: "cap_reached" }
-  | { status: "menu_not_found" };
+  | { status: "menu_not_found" }
+  /** Lokal ima paket "samo jelovnik" (capture_enabled = false): ništa se ne sprema ni ne zakazuje, jelovnik je otvoren svima. */
+  | { status: "capture_off"; menuId: string };
 
 const cleanTable = (v: string | null | undefined) => {
   const t = (v ?? "").trim();
@@ -198,6 +200,8 @@ export async function captureGuest(input: CaptureInput): Promise<CaptureResult> 
 
   const menu = await getPublicMenuInfoBySlug(d.slug);
   if (!menu) return { status: "menu_not_found" };
+  // Paket "samo jelovnik": nikakvog unosa, privole ni zakazivanja, ni kad netko izravno pošalje obrazac vrata.
+  if (!menu.captureEnabled) return { status: "capture_off", menuId: menu.id };
   if (d.honeypot && d.honeypot.trim()) return { status: "ok", menuId: menu.id, visitId: null, outcome: "ignored", sendAt: null };
   if (!d.consent) return { status: "consent_required" };
   const phone = normalizeGuestPhone(d.phone);
@@ -370,7 +374,7 @@ function retryAfter(oldest: Date | null, windowMs: number, now: Date): number {
 export type MenuAccess =
   | { kind: "not_found" }
   | { kind: "gate"; menu: PublicMenuInfo; consentText: string }
-  | { kind: "menu"; menu: PublicMenuInfo; via: "cookie" | "skip" };
+  | { kind: "menu"; menu: PublicMenuInfo; via: "cookie" | "skip" | "open" };
 
 /**
  * Odlučuje što stranica /jelovnik/<slug> prikazuje: 404, vrata (unos broja) ili jelovnik.
@@ -380,6 +384,7 @@ export type MenuAccess =
 export async function resolveMenuAccess(input: { slug: string; cookieValue?: string | null; skip?: boolean; now?: Date }): Promise<MenuAccess> {
   const menu = await getPublicMenuInfoBySlug(input.slug);
   if (!menu) return { kind: "not_found" };
+  if (!menu.captureEnabled) return { kind: "menu", menu, via: "open" };
   if (verifyGuestCookie(menu.id, input.cookieValue, (input.now ?? new Date()).getTime())) return { kind: "menu", menu, via: "cookie" };
   if (menu.allowSkip && input.skip) return { kind: "menu", menu, via: "skip" };
   return { kind: "gate", menu, consentText: guestConsentText(menu.venueName, menu.delayMinutes, menu) };

@@ -68,6 +68,7 @@ export function MenuWorkspace(p: MenuWorkspaceProps) {
         hasExternalUrl={Boolean(p.settings.externalUrl)}
         hasReviewUrl={p.hasReviewUrl}
         delayMinutes={p.settings.delayMinutes}
+        captureEnabled={p.settings.captureEnabled}
         activeButtons={activeButtonLabels(p.settings, p.hasReviewUrl)}
         summary={p.summary}
       />
@@ -107,7 +108,7 @@ export function MenuWorkspace(p: MenuWorkspaceProps) {
         <MenuSettingsForm settings={p.settings} host={p.host} readOnly={p.readOnly} hasReviewUrl={p.hasReviewUrl} />
       </div>
       <div id="menu-panel-gosti" role="tabpanel" aria-labelledby="menu-tab-gosti" hidden={tab !== "gosti"}>
-        <MenuGuests summary={p.summary} rows={p.guests} hasMore={p.guestsHasMore} delayMinutes={p.settings.delayMinutes} />
+        <MenuGuests summary={p.summary} rows={p.guests} hasMore={p.guestsHasMore} delayMinutes={p.settings.delayMinutes} captureEnabled={p.settings.captureEnabled} />
       </div>
     </div>
   );

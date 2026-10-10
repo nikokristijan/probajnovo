@@ -98,6 +98,49 @@
   }
 }
 
+/* ---------- cijene: mjesečno/godišnje bez JavaScripta ---------- */
+
+/* Zadano (mjesečno): godišnji tekstovi skriveni. Uz odabrano "Godišnje" obrnuto. Preglednik bez :has() vidi oboje, što je i dalje točno. */
+.dj-bill .dj-a {
+  display: none;
+}
+.dj-bill:has(#bill-annual:checked) .dj-a {
+  display: revert;
+}
+.dj-bill:has(#bill-annual:checked) .dj-m {
+  display: none;
+}
+.dj-bill-opt {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 118px;
+  min-height: 48px;
+  padding: 0 20px;
+  border: 1px solid #000;
+  background: #fff;
+  color: #000;
+  font-family: var(--font-mono);
+  font-size: 13px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  cursor: pointer;
+  user-select: none;
+}
+.dj-bill-opt + .dj-bill-opt {
+  margin-left: -1px;
+}
+.dj-bill:has(#bill-monthly:checked) label[for="bill-monthly"],
+.dj-bill:has(#bill-annual:checked) label[for="bill-annual"] {
+  background: #000;
+  color: #fff;
+}
+.dj-bill:has(#bill-monthly:focus-visible) label[for="bill-monthly"],
+.dj-bill:has(#bill-annual:focus-visible) label[for="bill-annual"] {
+  outline: 3px solid var(--color-accent);
+  outline-offset: 2px;
+}
+
 /* ---------- mobitel s crnim jelovnikom (ukras, ne radi) ---------- */
 
 .djp {

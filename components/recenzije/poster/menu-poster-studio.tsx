@@ -59,14 +59,22 @@ function sheetPrintCss() {
 }`;
 }
 
-const TIPS = [
+const tips = (capture: boolean) => [
   <>
     Ispišite u mjerilu <b>100 %</b> (isključite „Prilagodi stranici”) i bez zaglavlja i podnožja. Format papira se postavlja sam.
   </>,
-  <>Prije ispisa isprobajte kod vlastitim mobitelom: skenirajte, upišite svoj broj i provjerite da se jelovnik otvara.</>,
-  <>
-    U načinu „Svi stolovi” svaki kod nosi broj stola, pa u popisu gostiju vidite s kojeg su stola došli. Izrežite kartice po isprekidanoj crti.
-  </>,
+  capture ? (
+    <>Prije ispisa isprobajte kod vlastitim mobitelom: skenirajte, upišite svoj broj i provjerite da se jelovnik otvara.</>
+  ) : (
+    <>Prije ispisa isprobajte kod vlastitim mobitelom: skenirajte i provjerite da se jelovnik odmah otvara.</>
+  ),
+  capture ? (
+    <>
+      U načinu „Svi stolovi” svaki kod nosi broj stola, pa u popisu gostiju vidite s kojeg su stola došli. Izrežite kartice po isprekidanoj crti.
+    </>
+  ) : (
+    <>U načinu „Svi stolovi” svaki kod nosi broj stola. Izrežite kartice po isprekidanoj crti.</>
+  ),
   <>Ako promijenite adresu jelovnika u Postavkama, već ispisani kodovi prestaju raditi. Tada ispišite nove.</>,
 ];
 
@@ -79,13 +87,17 @@ export function MenuPosterStudio({
   initialQr,
   allowSkip,
   menuKind,
+  captureEnabled = true,
 }: {
   orgName: string;
   baseUrl: string;
   initialQr: QrMatrix;
   allowSkip: boolean;
   menuKind?: MenuKind;
+  /** False = paket "samo jelovnik": gost odmah vidi jelovnik, plakat i tekstovi ne spominju broj. */
+  captureEnabled?: boolean;
 }) {
+  const TIPS = tips(captureEnabled);
   const [mode, setMode] = useState<Mode>("single");
   const [variant, setVariant] = useState<PosterVariant>("a4");
   const info = variantInfo(variant);
@@ -239,7 +251,11 @@ export function MenuPosterStudio({
                   label="Broj stola (neobavezno)"
                   htmlFor="mp-table"
                   error={tableError ?? undefined}
-                  hint="Ako upišete broj, kod vodi na isti jelovnik s oznakom stola (?stol=). Oznaka je samo informativna: vidite je u popisu gostiju."
+                  hint={
+                    captureEnabled
+                      ? "Ako upišete broj, kod vodi na isti jelovnik s oznakom stola (?stol=). Oznaka je samo informativna: vidite je u popisu gostiju."
+                      : "Ako upišete broj, kod vodi na isti jelovnik s oznakom stola (?stol=). Oznaka je samo informativna."
+                  }
                 >
                   <Input
                     id="mp-table"
@@ -336,7 +352,7 @@ export function MenuPosterStudio({
                 </Button>
               </div>
               <p className="mt-2 text-xs text-muted">
-                Kod vodi na jelovnik na našoj stranici. {allowSkip ? "Gost može otvoriti jelovnik i bez broja." : "Gost prvo upisuje broj mobitela, pa tek onda vidi jelovnik."}
+                Kod vodi na jelovnik na našoj stranici. {!captureEnabled ? "Gost odmah vidi jelovnik, bez upisa broja." : allowSkip ? "Gost može otvoriti jelovnik i bez broja." : "Gost prvo upisuje broj mobitela, pa tek onda vidi jelovnik."}
               </p>
             </div>
           </CardBody>

@@ -367,7 +367,7 @@ export default async function RecenzijeLanding({ searchParams }: { searchParams:
             dobije poruku s molbom za Google recenziju.
           </p>
           <p className="mt-3 max-w-2xl border-l-[3px] border-orange bg-orange-soft p-4 text-[15px] leading-relaxed">
-            <strong>Samo jelovnik ili jelovnik s recenzijama?</strong> Za kafiće i restorane imamo i posebnu ponudu s paketima Jelovnik, Jelovnik + Recenzije i Plus, uključujući tiskane stalke i
+            <strong>Samo jelovnik ili jelovnik s recenzijama?</strong> Za kafiće i restorane imamo i posebnu ponudu s paketima Jelovnik, Jelovnik + Recenzije i Sve uključeno, uključujući tiskane stalke i
             unos jelovnika.{" "}
             <Link href="/digitalni-jelovnik" className="font-bold underline underline-offset-4">
               Pogledajte digitalni jelovnik

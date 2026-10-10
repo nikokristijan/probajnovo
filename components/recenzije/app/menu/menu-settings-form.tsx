@@ -1,14 +1,14 @@
 "use client";
 
 import { useEffect, useRef, useState, useTransition } from "react";
-import { ImageOff, ShieldAlert, ShieldCheck, TriangleAlert } from "lucide-react";
+import { ImageOff, Info, ShieldAlert, ShieldCheck, TriangleAlert } from "lucide-react";
 import { toast } from "sonner";
 import { checkMenuSlugAction, saveMenuSettingsAction } from "@/lib/recenzije/actions/menu";
 import ImageUploader from "@/components/admin/ImageUploader";
 import { Button } from "@/components/recenzije/ui/button";
 import { Dialog, DialogContent, Switch } from "@/components/recenzije/ui/dialog";
 import { Card, CardBody, CardHeader, Field, Input, Select, Textarea } from "@/components/recenzije/ui/primitives";
-import { instagramDisplay } from "@/lib/recenzije/menu-buttons";
+import { instagramDisplay, instagramOf, oneLineText } from "@/lib/recenzije/menu-buttons";
 import { guestConsentDetails, guestConsentSummary } from "@/lib/recenzije/guest-consent";
 import { defaultMenuTitle, MENU_KIND_LABELS, MENU_KINDS, menuNoun, type MenuKind } from "@/lib/recenzije/menu-noun";
 import { validateMenuSlug } from "@/lib/recenzije/menu-slug";
@@ -34,6 +34,20 @@ const SHOWN_FIELDS = [
   "contactAddress",
   "contactInstagram",
 ];
+
+/**
+ * Vrijednosti polja tipki onako kako ih poslužitelj sprema (razmaci skupljeni, Instagram kao @ime). Dirty se računa na ovome, pa
+ * unos koji se normalizira u isto što je već spremljeno (npr. adresa profila umjesto @imena) ne ostavlja "nespremljene izmjene".
+ */
+const normalizedButtons = (b: ButtonsValue): ButtonsValue => ({
+  review: b.review,
+  wifiName: oneLineText(b.wifiName),
+  wifiPassword: b.wifiPassword.trim(),
+  phone: oneLineText(b.phone),
+  email: b.email.trim(),
+  address: oneLineText(b.address),
+  instagram: instagramOf(b.instagram) ? instagramDisplay(instagramOf(b.instagram)!.url) : b.instagram.trim(),
+});
 
 /** Početne vrijednosti polja tipki iz spremljenih postavki (Instagram se prikazuje kao @ime). */
 const buttonsOf = (s: MenuSettingsDTO): ButtonsValue => ({
@@ -61,7 +75,7 @@ export function MenuSettingsForm({
   hasReviewUrl: boolean;
 }) {
   // Nakon spremanja poslužitelj vraća nove postavke; ključ ponovno postavlja obrazac na spremljene vrijednosti.
-  const key = [settings.slug, settings.title, settings.intro, settings.introEn, settings.externalUrl, settings.logoUrl, settings.allowSkip, settings.delayMinutes, settings.menuKind, settings.noticesEnabled, ...Object.values(buttonsOf(settings))].join("\u0001");
+  const key = [settings.slug, settings.title, settings.intro, settings.introEn, settings.externalUrl, settings.logoUrl, settings.allowSkip, settings.delayMinutes, settings.menuKind, settings.noticesEnabled, settings.captureEnabled, ...Object.values(buttonsOf(settings))].join("\u0001");
   return <SettingsFormInner key={key} settings={settings} host={host} readOnly={readOnly} hasReviewUrl={hasReviewUrl} />;
 }
 
@@ -77,6 +91,7 @@ function SettingsFormInner({ settings, host, readOnly, hasReviewUrl }: { setting
   const [allowSkip, setAllowSkip] = useState(settings.allowSkip);
   const [menuKind, setMenuKind] = useState<MenuKind>(settings.menuKind);
   const [notices, setNotices] = useState(settings.noticesEnabled);
+  const [capture, setCapture] = useState(settings.captureEnabled);
   const initialButtons = buttonsOf(settings);
   const [btn, setBtn] = useState<ButtonsValue>(initialButtons);
   const [slug, setSlug] = useState(settings.slug);
@@ -105,13 +120,8 @@ function SettingsFormInner({ settings, host, readOnly, hasReviewUrl }: { setting
     allowSkip !== settings.allowSkip ||
     menuKind !== settings.menuKind ||
     notices !== settings.noticesEnabled ||
-    btn.review !== initialButtons.review ||
-    btn.wifiName.trim() !== initialButtons.wifiName ||
-    btn.wifiPassword.trim() !== initialButtons.wifiPassword ||
-    btn.phone.trim() !== initialButtons.phone ||
-    btn.email.trim() !== initialButtons.email ||
-    btn.address.trim() !== initialButtons.address ||
-    btn.instagram.trim() !== initialButtons.instagram;
+    capture !== settings.captureEnabled ||
+    JSON.stringify(normalizedButtons(btn)) !== JSON.stringify(initialButtons);
   const slugOk = !slugChanged || slugState.kind === "free";
 
   function onSlugChange(raw: string) {
@@ -145,6 +155,7 @@ function SettingsFormInner({ settings, host, readOnly, hasReviewUrl }: { setting
         allowSkip,
         menuKind,
         noticesEnabled: notices,
+        captureEnabled: capture,
         showReviewButton: btn.review,
         wifiName: btn.wifiName.trim() || null,
         wifiPassword: btn.wifiPassword.trim() || null,
@@ -154,8 +165,11 @@ function SettingsFormInner({ settings, host, readOnly, hasReviewUrl }: { setting
         contactInstagram: btn.instagram.trim() || null,
         delayMinutes: delay,
       });
-      if (r.ok) toast.success(r.message);
-      else {
+      if (r.ok) {
+        toast.success(r.message);
+        // Prikaz odmah poprima ono što je spremljeno (poslužitelj je razmake skupio, a Instagram sveo na @ime).
+        setBtn((v) => normalizedButtons(v));
+      } else {
         if (!r.field || !SHOWN_FIELDS.includes(r.field)) toast.error(r.error);
         setErrors({ [r.field ?? "form"]: r.error });
         if (r.field === "slug") setSlugState({ kind: "error", message: r.error });
@@ -307,83 +321,117 @@ function SettingsFormInner({ settings, host, readOnly, hasReviewUrl }: { setting
               />
             </Field>
 
-            <Field
-              label="Poruka za recenziju stiže nakon"
-              htmlFor="m-delay"
-              error={errors.delayMinutes}
-              hint="Računa se od unosa broja. Poruke se ne šalju između 22:00 i 09:00: takva poruka ide u 09:00 idućeg jutra."
-            >
-              <Select id="m-delay" value={delay} onChange={(e) => setDelay(Number(e.target.value))}>
-                {delayOptions.map((o) => (
-                  <option key={o.value} value={o.value}>
-                    {o.label}
-                  </option>
-                ))}
-              </Select>
-            </Field>
-
             <div className="border border-border bg-surface-2 p-4">
               <div className="flex items-start justify-between gap-4">
                 <div className="min-w-0">
-                  <p className="text-sm font-bold">Dopusti pregled bez broja</p>
+                  <p className="text-sm font-bold">Skupljanje brojeva gostiju (Recenzije)</p>
                   <p className="mt-1 text-[13px] text-muted">
-                    Zadano uključeno. Ispod polja za broj gost vidi sitnu poveznicu „Pogledaj {menuNoun(menuKind).acc} bez unosa broja”. Takav pregled ništa ne sprema i ne šalje.
+                    Zadano uključeno: gost prije {menuNoun(menuKind).gen} upisuje broj mobitela i prima jednu poruku s molbom za Google recenziju. Isključeno
+                    je za lokal koji ima samo {menuNoun(menuKind).acc}.
                   </p>
                 </div>
-                <Switch checked={allowSkip} onCheckedChange={setAllowSkip} label="Dopusti pregled bez broja" />
+                <Switch checked={capture} onCheckedChange={setCapture} label="Skupljanje brojeva gostiju (Recenzije)" />
               </div>
-              <div
-                className={cn(
-                  "mt-3 flex items-start gap-2.5 border-l-[3px] p-3 text-[13px]",
-                  allowSkip ? "border-success bg-success-soft text-success" : "border-orange bg-orange-soft text-warning"
-                )}
-                role="note"
-              >
-                {allowSkip ? <ShieldCheck className="mt-0.5 size-4 shrink-0" aria-hidden /> : <ShieldAlert className="mt-0.5 size-4 shrink-0" aria-hidden />}
-                <p className="text-foreground/80">
-                  {allowSkip ? (
-                    <>
-                      <b>Zadano i preporučeno stanje.</b> Gost uvijek može otvoriti {menuNoun(menuKind).acc} i bez broja (sitna poveznica ispod polja), pa je privola dobrovoljna.
-                    </>
-                  ) : (
-                    <>
-                      <b>Upozorenje (GDPR):</b> poveznica je uklonjena pa je broj mobitela obavezan za {menuNoun(menuKind).acc}. To može biti u sukobu s GDPR-om jer privola mora biti
-                      dobrovoljna, a odgovornost za takvu postavku je vaša. Preporuka: ostavite pregled bez broja uključen.
-                    </>
-                  )}
-                </p>
-              </div>
-            </div>
-
-            <div className="border border-border bg-surface-2 p-4">
-              <div className="flex items-start justify-between gap-4">
-                <div className="min-w-0">
-                  <p className="text-sm font-bold">Lokal šalje i povremene obavijesti o novostima, događanjima i ponudama</p>
-                  <p className="mt-1 text-[13px] text-muted">
-                    Zadano isključeno: gost pristaje samo na jednu poruku s molbom za Google recenziju. Uključeno: gost vidi drugi tekst privole koji
-                    spominje obavijesti o novostima, događanjima i ponudama, a samo gosti koji su ga prihvatili mogu dobiti više od te jedne poruke
-                    (ručne poruke, podsjetnike i kampanje). Promjena vrijedi za nove goste; svatko zadržava privolu koju je dao.
-                  </p>
-                </div>
-                <Switch checked={notices} onCheckedChange={setNotices} label="Lokal šalje i povremene obavijesti o novostima, događanjima i ponudama" />
-              </div>
-              <div className="mt-3 border-l-[3px] border-border-strong bg-surface p-3 text-[13px]" role="note">
-                <p className="label text-muted">Tekst privole koji gost vidi</p>
-                <p className="mt-1.5 text-foreground">
-                  {guestConsentSummary(settings.venueName, delay, { noticesEnabled: notices, menuKind, allowSkip })}
-                </p>
-                <p className="mt-1.5 text-muted">{guestConsentDetails(delay, { noticesEnabled: notices, menuKind, allowSkip })}</p>
-              </div>
-              {notices && (
-                <p className="mt-3 flex items-start gap-2.5 border-l-[3px] border-orange bg-orange-soft p-3 text-[13px] text-foreground/80" role="note">
-                  <TriangleAlert className="mt-0.5 size-4 shrink-0 text-warning" aria-hidden />
+              {!capture && (
+                <p className="mt-3 flex items-start gap-2.5 border-l-[3px] border-border-strong bg-surface p-3 text-[13px] text-foreground/80" role="note">
+                  <Info className="mt-0.5 size-4 shrink-0 text-muted" aria-hidden />
                   <span>
-                    <b>Vi odgovarate za sadržaj i učestalost obavijesti.</b> Šaljite samo ono što piše u privoli, rijetko i bez obmanjujućih poruka. Noću
-                    (22:00 do 09:00) poruke gostima s jelovnika ne odlaze. Preporučujemo da pravnik pregleda tekst privole prije uključivanja.
+                    <b>Gosti odmah vide {menuNoun(menuKind).acc}, ne pitamo za broj i ne šaljemo poruke.</b> Nema vrata, privole ni spremanja podataka o gostu.
+                    Postavke ispod (pregled bez broja, obavijesti i odgoda poruke) tada ne vrijede.
                   </span>
                 </p>
               )}
             </div>
+
+            <fieldset
+              disabled={!capture}
+              aria-describedby={!capture ? "m-capture-off" : undefined}
+              className={cn("min-w-0 space-y-5 transition-opacity", !capture && "pointer-events-none opacity-45")}
+            >
+              {!capture && (
+                <legend id="m-capture-off" className="sr-only">
+                  Isključeno dok je skupljanje brojeva isključeno
+                </legend>
+              )}
+              <Field
+                label="Poruka za recenziju stiže nakon"
+                htmlFor="m-delay"
+                error={errors.delayMinutes}
+                hint="Računa se od unosa broja. Poruke se ne šalju između 22:00 i 09:00: takva poruka ide u 09:00 idućeg jutra."
+              >
+                <Select id="m-delay" value={delay} onChange={(e) => setDelay(Number(e.target.value))}>
+                  {delayOptions.map((o) => (
+                    <option key={o.value} value={o.value}>
+                      {o.label}
+                    </option>
+                  ))}
+                </Select>
+              </Field>
+
+              <div className="border border-border bg-surface-2 p-4">
+                <div className="flex items-start justify-between gap-4">
+                  <div className="min-w-0">
+                    <p className="text-sm font-bold">Dopusti pregled bez broja</p>
+                    <p className="mt-1 text-[13px] text-muted">
+                      Zadano uključeno. Ispod polja za broj gost vidi sitnu poveznicu „Pogledaj {menuNoun(menuKind).acc} bez unosa broja”. Takav pregled ništa ne sprema i ne šalje.
+                    </p>
+                  </div>
+                  <Switch checked={allowSkip} onCheckedChange={setAllowSkip} label="Dopusti pregled bez broja" />
+                </div>
+                <div
+                  className={cn(
+                    "mt-3 flex items-start gap-2.5 border-l-[3px] p-3 text-[13px]",
+                    allowSkip ? "border-success bg-success-soft text-success" : "border-orange bg-orange-soft text-warning"
+                  )}
+                  role="note"
+                >
+                  {allowSkip ? <ShieldCheck className="mt-0.5 size-4 shrink-0" aria-hidden /> : <ShieldAlert className="mt-0.5 size-4 shrink-0" aria-hidden />}
+                  <p className="text-foreground/80">
+                    {allowSkip ? (
+                      <>
+                        <b>Zadano i preporučeno stanje.</b> Gost uvijek može otvoriti {menuNoun(menuKind).acc} i bez broja (sitna poveznica ispod polja), pa je privola dobrovoljna.
+                      </>
+                    ) : (
+                      <>
+                        <b>Upozorenje (GDPR):</b> poveznica je uklonjena pa je broj mobitela obavezan za {menuNoun(menuKind).acc}. To može biti u sukobu s GDPR-om jer privola mora biti
+                        dobrovoljna, a odgovornost za takvu postavku je vaša. Preporuka: ostavite pregled bez broja uključen.
+                      </>
+                    )}
+                  </p>
+                </div>
+              </div>
+
+              <div className="border border-border bg-surface-2 p-4">
+                <div className="flex items-start justify-between gap-4">
+                  <div className="min-w-0">
+                    <p className="text-sm font-bold">Lokal šalje i povremene obavijesti o novostima, događanjima i ponudama</p>
+                    <p className="mt-1 text-[13px] text-muted">
+                      Zadano isključeno: gost pristaje samo na jednu poruku s molbom za Google recenziju. Uključeno: gost vidi drugi tekst privole koji
+                      spominje obavijesti o novostima, događanjima i ponudama, a samo gosti koji su ga prihvatili mogu dobiti više od te jedne poruke
+                      (ručne poruke, podsjetnike i kampanje). Promjena vrijedi za nove goste; svatko zadržava privolu koju je dao.
+                    </p>
+                  </div>
+                  <Switch checked={notices} onCheckedChange={setNotices} label="Lokal šalje i povremene obavijesti o novostima, događanjima i ponudama" />
+                </div>
+                <div className="mt-3 border-l-[3px] border-border-strong bg-surface p-3 text-[13px]" role="note">
+                  <p className="label text-muted">Tekst privole koji gost vidi</p>
+                  <p className="mt-1.5 text-foreground">
+                    {guestConsentSummary(settings.venueName, delay, { noticesEnabled: notices, menuKind, allowSkip })}
+                  </p>
+                  <p className="mt-1.5 text-muted">{guestConsentDetails(delay, { noticesEnabled: notices, menuKind, allowSkip })}</p>
+                </div>
+                {notices && (
+                  <p className="mt-3 flex items-start gap-2.5 border-l-[3px] border-orange bg-orange-soft p-3 text-[13px] text-foreground/80" role="note">
+                    <TriangleAlert className="mt-0.5 size-4 shrink-0 text-warning" aria-hidden />
+                    <span>
+                      <b>Vi odgovarate za sadržaj i učestalost obavijesti.</b> Šaljite samo ono što piše u privoli, rijetko i bez obmanjujućih poruka. Noću
+                      (22:00 do 09:00) poruke gostima s jelovnika ne odlaze. Preporučujemo da pravnik pregleda tekst privole prije uključivanja.
+                    </span>
+                  </p>
+                )}
+              </div>
+
+            </fieldset>
 
             <MenuButtonsSection value={btn} onChange={(p) => setBtn((v) => ({ ...v, ...p }))} errors={errors} hasReviewUrl={hasReviewUrl} />
 

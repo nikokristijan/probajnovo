@@ -8,10 +8,15 @@ import { GatePhone, MenuPhone, QrGlyph } from "@/components/digitalni-jelovnik/p
 import { getAgencyContact } from "@/lib/novoHomeData";
 import { telHref, whatsappUrl } from "@/lib/phone";
 import {
+  ANNUAL_FREE_MONTHS,
   ANNUAL_PAID_MONTHS,
+  FULL_PLAN_KEY,
+  HOSPITALITY_ADDONS,
   HOSPITALITY_PLANS,
   SETUP_FEE_EUR,
   annualPriceEur,
+  bundleSavingEur,
+  everythingSeparatelyEur,
   findHospitalityPlan,
   formatEur,
 } from "@/lib/hospitality-plans";
@@ -20,6 +25,7 @@ export const dynamic = "force-dynamic";
 
 const BASE_URL = "https://www.probajnovo.com";
 const PAGE_URL = `${BASE_URL}/digitalni-jelovnik`;
+const FULL_PRICE = HOSPITALITY_PLANS.find((p) => p.key === FULL_PLAN_KEY)?.priceMonthlyEur ?? 0;
 const CHEAPEST = Math.min(...HOSPITALITY_PLANS.map((p) => p.priceMonthlyEur));
 
 const TITLE = "Digitalni jelovnik za kafiće i restorane – NOVO";
@@ -48,11 +54,11 @@ const GUEST_STEPS = [
   },
   {
     title: "Otvara se jelovnik",
-    text: "Jelovnik se otvara na našoj stranici, uredno složen za mobitel. Gost može upisati broj mobitela uz privolu, ali ne mora: jelovnik se može otvoriti i bez broja.",
+    text: "Jelovnik se otvara na našoj stranici, uredno složen za mobitel. U paketu Jelovnik gosti ga vide odmah, bez unosa broja. U paketima s recenzijama gost može upisati broj uz privolu, ali ne mora: jelovnik se može otvoriti i bez broja.",
   },
   {
     title: "Nakon posjeta stiže jedna poruka",
-    text: "Samo gostu koji je ostavio broj i pristao, otprilike sat i pol nakon posjeta stiže jedna SMS poruka s molbom za Google recenziju. Paket Jelovnik ne šalje poruke.",
+    text: "Samo gostu koji je ostavio broj i pristao, otprilike sat i pol nakon posjeta stiže jedna SMS poruka s molbom za Google recenziju. Paket Jelovnik ne šalje poruke gostima.",
   },
 ];
 
@@ -71,11 +77,11 @@ const FEATURES = [
   },
   {
     title: "Prijevodi",
-    text: "Engleski prijevod je u svakom paketu, njemački i talijanski u paketu Plus. Gost jednim dodirom bira jezik.",
+    text: "Engleski prijevod je u svakom paketu, njemački i talijanski u paketu Sve uključeno ili kao dodatak. Gost jednim dodirom bira jezik.",
   },
   {
     title: "Tjedni izvještaj",
-    text: "U paketima s recenzijama jednom tjedno dobivate kratak izvještaj u jednoj rečenici, bez tablica i grafikona.",
+    text: "U paketu Sve uključeno (ili uz dodatak Izvještaj i statistika) jednom tjedno dobivate kratak izvještaj u jednoj rečenici, bez tablica i grafikona.",
   },
   {
     title: "Tipke Ocijeni nas, Wi-Fi, Kontakt",
@@ -148,7 +154,7 @@ const FAQ = [
   },
   {
     q: "Koliko poruka gost dobiva?",
-    a: "Zadano jednu: molbu za Google recenziju, otprilike sat i pol nakon posjeta (noću, od 22:00 do 9:00, ne šaljemo, pa tada stiže ujutro). Istom gostu ne šaljemo novi zahtjev unutar 30 dana. Povremene obavijesti o novostima, događanjima i ponudama šaljemo samo u paketu Plus, samo ako ih uključite i samo gostima koji su na njih izričito pristali.",
+    a: "Zadano jednu: molbu za Google recenziju, otprilike sat i pol nakon posjeta (noću, od 22:00 do 9:00, ne šaljemo, pa tada stiže ujutro). Istom gostu ne šaljemo novi zahtjev unutar 30 dana. Povremene obavijesti o novostima, događanjima i ponudama šaljemo samo u paketu Sve uključeno (ili uz dodatak Obavijesti gostima), samo ako ih uključite i samo gostima koji su na njih izričito pristali.",
   },
   {
     q: "Kako otkazati?",
@@ -164,7 +170,7 @@ const FAQ = [
   },
   {
     q: "Imam goste iz inozemstva. Je li jelovnik na više jezika?",
-    a: "Da. Engleski prijevod je uključen u svaki paket, a njemački i talijanski u paketu Plus. Gost jezik bira jednim dodirom.",
+    a: "Da. Engleski prijevod je uključen u svaki paket, a njemački i talijanski u paketu Sve uključeno ili kao dodatak. Gost jezik bira jednim dodirom.",
   },
 ];
 
@@ -276,13 +282,12 @@ export default async function DigitalniJelovnikPage({ searchParams }: { searchPa
           <figure className="relative mx-auto w-full max-w-[340px] min-w-0 lg:mx-0 lg:justify-self-center">
             <MenuPhone />
             <div
-              className="absolute -bottom-5 -left-[68px] hidden w-[112px] rotate-[-4deg] border border-foreground bg-white p-2 shadow-[5px_5px_0_0_rgb(0_0_0/0.9)] sm:block"
+              className="absolute bottom-16 -left-[84px] hidden w-[84px] rotate-[-4deg] border border-foreground bg-white p-1.5 shadow-[4px_4px_0_0_rgb(0_0_0/0.9)] lg:block"
               aria-hidden="true"
             >
               <QrGlyph className="block w-full" />
-              <p className="label mt-2 text-center text-[10px] leading-snug">Skenirajte i pogledajte jelovnik</p>
             </div>
-            <figcaption className="mt-9 text-center text-[15px] leading-relaxed text-muted sm:mt-16">
+            <figcaption className="mt-9 text-center text-[15px] leading-relaxed text-muted">
               Primjer kako jelovnik izgleda na mobitelu. Lokal i cijene su izmišljeni.
             </figcaption>
           </figure>
@@ -314,7 +319,7 @@ export default async function DigitalniJelovnikPage({ searchParams }: { searchPa
             <figure className="mx-auto w-full max-w-[340px] min-w-0">
               <GatePhone />
               <figcaption className="mt-5 text-center text-[15px] leading-relaxed text-muted">
-                Ulazni prozor nakon skeniranja: broj je moguć, ali jelovnik se otvara i bez njega.
+                Ulazni prozor u paketima s recenzijama: broj je moguć, ali jelovnik se otvara i bez njega.
               </figcaption>
             </figure>
           </div>
@@ -388,50 +393,126 @@ export default async function DigitalniJelovnikPage({ searchParams }: { searchPa
         </section>
 
         {/* Cijene */}
-        <section className="scroll-mt-6 border-t border-border py-14" aria-labelledby="cijene" id="cijene">
+        <section className="scroll-mt-6 border-t border-border py-14" aria-labelledby="cijene-naslov" id="cijene">
           <Eyebrow>Cijene</Eyebrow>
-          <h2 id="cijene" className={H2}>
-            Jasne mjesečne cijene
+          <h2 id="cijene-naslov" className={H2}>
+            Jasne cijene, tri paketa
           </h2>
-          <p className={LEAD}>Cijene su mjesečne i bez PDV-a. Otkaz bilo kad, bez ugovorne obveze.</p>
-          <div className="mt-9 grid gap-5 lg:grid-cols-3">
-            {HOSPITALITY_PLANS.map((p) => {
-              const featured = p.badge != null;
-              return (
-                <div key={p.key} className={"flex min-w-0 flex-col border bg-white p-6 " + (featured ? "border-2 border-foreground" : "border-border")}>
-                  <div className="lg:min-h-7">{p.badge && <span className="label inline-block rounded-full bg-orange px-3 py-1 text-black">{p.badge}</span>}</div>
-                  <h3 className="label mt-2 text-[14px] text-foreground">{p.name}</h3>
-                  <p className="mt-4 flex items-baseline gap-2">
-                    <span className="tabular text-[46px] font-bold leading-none">{formatEur(p.priceMonthlyEur)}</span>
-                    <span className="text-[17px] text-ink-soft">/ mjesec</span>
-                  </p>
-                  <p className="mt-1 text-[16px] text-muted">bez PDV-a</p>
-                  <p className="mt-3 text-[16px] leading-snug text-ink-soft">
-                    Godišnje {formatEur(annualPriceEur(p.priceMonthlyEur))}, plaća se {ANNUAL_PAID_MONTHS} mjeseci umjesto 12.
-                  </p>
-                  <p className="mt-4 text-[17px] leading-relaxed text-ink-soft">{p.summary}</p>
-                  <ul className="mt-5 flex-1 space-y-3 text-[17px] leading-snug">
-                    {p.features.map((f) => (
-                      <li key={f} className="flex gap-3">
-                        <Check className="mt-1 size-5 shrink-0 text-orange" aria-hidden /> <span>{f}</span>
-                      </li>
-                    ))}
-                  </ul>
-                  <Button asChild className="mt-7 h-14 text-[14px]" variant={featured ? "primary" : "secondary"}>
-                    <Link href={`/digitalni-jelovnik?paket=${p.key}#upit`} aria-label={`Pošaljite upit za paket ${p.name}`}>
-                      Pošaljite upit
-                    </Link>
-                  </Button>
-                </div>
-              );
-            })}
+          <p className={LEAD}>Cijene su bez PDV-a. Otkaz bilo kad, bez ugovorne obveze.</p>
+
+          {/* Mjesečno/godišnje bez JavaScripta: radio gumbi + CSS :has() (vidi .dj-bill u digitalni-jelovnik.css). */}
+          <div className="dj-bill mt-9">
+            <fieldset className="flex flex-wrap items-center gap-x-5 gap-y-3 border-0 p-0">
+              <legend className="sr-only">Način plaćanja</legend>
+              <input type="radio" name="billing" id="bill-monthly" value="monthly" defaultChecked className="sr-only" />
+              <input type="radio" name="billing" id="bill-annual" value="annual" className="sr-only" />
+              <div className="flex">
+                <label htmlFor="bill-monthly" className="dj-bill-opt">
+                  Mjesečno
+                </label>
+                <label htmlFor="bill-annual" className="dj-bill-opt">
+                  Godišnje
+                </label>
+              </div>
+              <p className="text-[18px] font-bold">
+                Godišnje plaćanje: {ANNUAL_FREE_MONTHS} mjeseca gratis<span className="font-normal text-ink-soft">, plaća se {ANNUAL_PAID_MONTHS} mjeseci.</span>
+              </p>
+            </fieldset>
+
+            <div className="mt-6 grid gap-5 lg:grid-cols-3">
+              {HOSPITALITY_PLANS.map((p) => {
+                const dark = p.highlight;
+                const soft = dark ? "text-white/80" : "text-ink-soft";
+                return (
+                  <div
+                    key={p.key}
+                    className={
+                      "flex min-w-0 flex-col border p-6 " +
+                      (dark ? "border-foreground bg-foreground text-white" : p.badge ? "border-2 border-foreground bg-white" : "border-border bg-white")
+                    }
+                  >
+                    <div className="lg:min-h-7">
+                      {p.badge && (
+                        <span className={"label inline-block rounded-full bg-orange px-3 py-1 text-black"}>{p.badge}</span>
+                      )}
+                    </div>
+                    <h3 className="label mt-2 text-[14px]">{p.name}</h3>
+                    <p className="mt-4 flex flex-wrap items-baseline gap-x-2">
+                      <span className="dj-m tabular text-[46px] font-bold leading-none">{formatEur(p.priceMonthlyEur)}</span>
+                      <span className={"dj-m text-[17px] " + soft}>/ mjesec</span>
+                      <span className="dj-a tabular text-[46px] font-bold leading-none">{formatEur(annualPriceEur(p.priceMonthlyEur))}</span>
+                      <span className={"dj-a text-[17px] " + soft}>/ godina</span>
+                    </p>
+                    <p className={"mt-2 text-[16px] leading-snug " + (dark ? "text-white/80" : "text-muted")}>
+                      <span className="dj-m">bez PDV-a</span>
+                      <span className="dj-a">
+                        bez PDV-a. Plaćate {ANNUAL_PAID_MONTHS} mjeseci, {ANNUAL_FREE_MONTHS} su gratis (umjesto {formatEur(p.priceMonthlyEur * 12)}).
+                      </span>
+                    </p>
+                    <p className={"mt-4 text-[17px] leading-relaxed " + soft}>{p.summary}</p>
+                    <ul className="mt-5 flex-1 space-y-3 text-[17px] leading-snug">
+                      {p.features.map((f) => (
+                        <li key={f} className="flex gap-3">
+                          <Check className="mt-1 size-5 shrink-0 text-orange" aria-hidden /> <span>{f}</span>
+                        </li>
+                      ))}
+                    </ul>
+                    {dark && (
+                      <p className="mt-5 border-l-[3px] border-orange pl-3 text-[16px] leading-snug text-white">
+                        Ušteda {formatEur(bundleSavingEur())} mjesečno u odnosu na pojedinačne dodatke.
+                      </p>
+                    )}
+                    <Button
+                      asChild
+                      className={"mt-7 h-14 text-[14px] " + (dark ? "bg-orange text-black hover:bg-white" : "")}
+                      variant={p.badge && !dark ? "primary" : dark ? "primary" : "secondary"}
+                    >
+                      <Link href={`/digitalni-jelovnik?paket=${p.key}#upit`} aria-label={`Pošaljite upit za paket ${p.name}`}>
+                        Pošaljite upit
+                      </Link>
+                    </Button>
+                  </div>
+                );
+              })}
+            </div>
+
+            <div className="mt-5 border border-border bg-surface-2 p-6">
+              <p className="label text-ink-soft">Jednokratno postavljanje</p>
+              <p className="mt-3 text-[18px] leading-relaxed">
+                <span className="dj-m">
+                  <strong className="tabular text-[26px]">{formatEur(SETUP_FEE_EUR)}</strong> bez PDV-a.{" "}
+                </span>
+                <span className="dj-a">
+                  <strong className="tabular text-[26px]">Besplatno</strong> uz godišnju uplatu (inače {formatEur(SETUP_FEE_EUR)} bez PDV-a).{" "}
+                </span>
+                Uključuje tisak stalaka, naljepnicu za vrata i unos jelovnika s fotografije.
+              </p>
+            </div>
+
+            <div className="mt-5 border border-border p-6">
+              <h3 className="text-[22px] font-bold leading-snug">Želite samo dio? Dodaci uz Jelovnik</h3>
+              <p className="mt-2 text-[17px] leading-relaxed text-ink-soft">Uz paket Jelovnik možete dodati samo ono što vam treba.</p>
+              <ul className="mt-4 divide-y divide-border border-y border-border">
+                {HOSPITALITY_ADDONS.map((a) => (
+                  <li key={a.key} className="flex flex-wrap items-baseline justify-between gap-x-6 gap-y-1 py-4">
+                    <div className="min-w-0 flex-1 basis-64">
+                      <p className="text-[18px] font-bold leading-snug">{a.name}</p>
+                      <p className="text-[16px] leading-snug text-ink-soft">{a.note}</p>
+                    </div>
+                    <p className="tabular shrink-0 text-[20px] font-bold">
+                      <span className="dj-m">+{formatEur(a.priceMonthlyEur)} / mj</span>
+                      <span className="dj-a">+{formatEur(annualPriceEur(a.priceMonthlyEur))} / god</span>
+                    </p>
+                  </li>
+                ))}
+              </ul>
+              <p className="mt-4 text-[17px] leading-relaxed">
+                Jelovnik i svi dodaci pojedinačno: <strong>{formatEur(everythingSeparatelyEur())} mjesečno</strong>. Paket Sve uključeno je{" "}
+                <strong>{formatEur(FULL_PRICE)} mjesečno</strong>, ušteda {formatEur(bundleSavingEur())} mjesečno u odnosu na pojedinačne dodatke.
+              </p>
+            </div>
           </div>
-          <div className="mt-5 border border-border bg-surface-2 p-6">
-            <p className="label text-ink-soft">Jednokratno postavljanje</p>
-            <p className="mt-3 text-[18px] leading-relaxed">
-              <strong className="tabular text-[26px]">{formatEur(SETUP_FEE_EUR)}</strong> bez PDV-a. Uključuje tisak stalaka, naljepnicu za vrata i unos jelovnika s fotografije. Uz godišnju uplatu postavljanje ne naplaćujemo.
-            </p>
-          </div>
+
           <ul className="mt-6 max-w-3xl list-disc space-y-2 pl-6 text-[17px] leading-relaxed text-ink-soft marker:text-orange">
             <li>Sve cijene su bez PDV-a.</li>
             <li>Otkaz je moguć bilo kad, bez ugovorne obveze; vrijedi do kraja tekućeg mjeseca.</li>

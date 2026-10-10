@@ -21,6 +21,7 @@ export function MenuStatus({
   hasExternalUrl,
   hasReviewUrl,
   delayMinutes,
+  captureEnabled,
   activeButtons,
   summary,
 }: {
@@ -32,6 +33,8 @@ export function MenuStatus({
   hasExternalUrl: boolean;
   hasReviewUrl: boolean;
   delayMinutes: number;
+  /** False = paket "samo jelovnik": nema gostiju ni poruka. */
+  captureEnabled: boolean;
   /** Tipke koje gost stvarno vidi u jelovniku (Ocijeni nas, Wi-Fi, Kontakt). */
   activeButtons: string[];
   summary: GuestSummaryDTO;
@@ -87,8 +90,17 @@ export function MenuStatus({
           <dl className="grid grid-cols-2 gap-x-4 gap-y-3 border-t border-border pt-4 sm:grid-cols-4">
             <Fact label="Kategorije" value={categories} />
             <Fact label="Stavke" value={items} />
-            <Fact label="Gosti (7 dana)" value={summary.last7d} />
-            <Fact label="Poruka nakon" value={`${delayMinutes} min`} />
+            {captureEnabled ? (
+              <>
+                <Fact label="Gosti (7 dana)" value={summary.last7d} />
+                <Fact label="Poruka nakon" value={`${delayMinutes} min`} />
+              </>
+            ) : (
+              <>
+                <Fact label="Gosti (7 dana)" value="isključeno" />
+                <Fact label="Poruke gostima" value="isključeno" />
+              </>
+            )}
           </dl>
 
           <p className="text-[13px] text-muted">
@@ -116,7 +128,12 @@ export function MenuStatus({
           Gost vidi prazan jelovnik. Dodajte stavke (ručno ili Brzim uvozom) ili upišite adresu vlastitog jelovnika u Postavkama, prije nego ispišete QR kodove.
         </Alert>
       )}
-      {!hasReviewUrl && (
+      {!captureEnabled && (
+        <Alert tone="blue" icon={CircleAlert} title="Skupljanje brojeva je isključeno">
+          Gosti odmah vide jelovnik, ne pitamo za broj i ne šaljemo poruke. Uključite ga u Postavkama ako želite zahtjeve za Google recenzije.
+        </Alert>
+      )}
+      {captureEnabled && !hasReviewUrl && (
         <Alert
           tone="red"
           icon={CircleAlert}

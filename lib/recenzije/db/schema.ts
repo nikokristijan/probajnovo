@@ -505,6 +505,11 @@ export const menus = pgTable(
      * recenzije tvrtke (nr_organizations.google_review_url), bez ikakvog filtriranja; Wi-Fi i kontakt vide svi koji otvore jelovnik.
      * Prazno (null) = tipke nema.
      */
+    /**
+     * Skupljanje brojeva gostiju (Recenzije). Isključeno = lokal ima paket "samo jelovnik": jelovnik se otvara izravno, bez vrata,
+     * privole i broja, ništa o gostu se ne sprema i ništa se ne zakazuje (postavke ulaza, obavijesti i odgode tada ne vrijede).
+     */
+    captureEnabled: boolean("capture_enabled").notNull().default(true),
     showReviewButton: boolean("show_review_button").notNull().default(false),
     wifiName: text("wifi_name"),
     wifiPassword: text("wifi_password"),

@@ -74,7 +74,7 @@ export default async function MenuPage({ searchParams }: { searchParams: Promise
       <PageHeader
         kicker="Jelovnik"
         title="Digitalni jelovnik"
-        description={`Gost skenira QR kod i otvara jelovnik. Ako upiše broj mobitela, broj se sprema, a otprilike nakon ${delayWording(m.delayMinutes)} gostu stiže poruka s molbom za Google recenziju.${m.noticesEnabled ? " Gost je pristao i na povremene obavijesti o novostima, događanjima i ponudama lokala (to piše u privoli koju vidi)." : " Gost pristaje samo na tu jednu poruku."}${m.allowSkip ? " Gost jelovnik može otvoriti i bez broja: tada se ništa ne sprema ni ne šalje." : ""}`}
+        description={m.captureEnabled ? `Gost skenira QR kod i otvara jelovnik. Ako upiše broj mobitela, broj se sprema, a otprilike nakon ${delayWording(m.delayMinutes)} gostu stiže poruka s molbom za Google recenziju.${m.noticesEnabled ? " Gost je pristao i na povremene obavijesti o novostima, događanjima i ponudama lokala (to piše u privoli koju vidi)." : " Gost pristaje samo na tu jednu poruku."}${m.allowSkip ? " Gost jelovnik može otvoriti i bez broja: tada se ništa ne sprema ni ne šalje." : ""}` : "Gost skenira QR kod i odmah vidi jelovnik. Ne pitamo za broj mobitela i ne šaljemo poruke."}
         actions={
           <>
             <Button variant="secondary" asChild>
@@ -106,6 +106,7 @@ export default async function MenuPage({ searchParams }: { searchParams: Promise
           delayMinutes: m.delayMinutes,
           menuKind: parseMenuKind(m.menuKind),
           noticesEnabled: m.noticesEnabled,
+          captureEnabled: m.captureEnabled,
           showReviewButton: m.showReviewButton,
           wifiName: m.wifiName,
           wifiPassword: m.wifiPassword,
