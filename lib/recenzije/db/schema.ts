@@ -493,11 +493,21 @@ export const menus = pgTable(
     logoUrl: text("logo_url"),
     /** Koliko minuta nakon unosa broja stiže zahtjev za recenziju (60 do 240). */
     delayMinutes: integer("delay_minutes").notNull().default(90),
+    /** Kako se stranica zove gostu: "jelovnik" ili "meni" (lib/recenzije/menu-noun.ts). Samo nazivlje, ne mijenja ništa drugo. */
+    menuKind: text("menu_kind").$type<"jelovnik" | "meni">().notNull().default("jelovnik"),
+    /**
+     * Lokal šalje i povremene obavijesti i pozive u lokal (ne samo jednu molbu za recenziju). Uključeno mijenja tekst privole koji
+     * gost vidi; privola se pamti po gostu (nr_menu_guests.notices_consent) u trenutku unosa broja.
+     */
+    noticesEnabled: boolean("notices_enabled").notNull().default(false),
     enabled: boolean("enabled").notNull().default(true),
     createdAt: createdAt(),
     updatedAt: updatedAt(),
   },
-  (t) => [check("nr_menus_delay_range", sql`${t.delayMinutes} >= 60 and ${t.delayMinutes} <= 240`)]
+  (t) => [
+    check("nr_menus_delay_range", sql`${t.delayMinutes} >= 60 and ${t.delayMinutes} <= 240`),
+    check("nr_menus_kind_check", sql`${t.menuKind} in ('jelovnik', 'meni')`),
+  ]
 );
 
 export const menuCategories = pgTable(
@@ -567,6 +577,8 @@ export const menuGuests = pgTable(
     consentVersion: text("consent_version").notNull(),
     /** Točan tekst privole koji je gost vidio (naziv lokala i razmak su u njemu). */
     consentText: text("consent_text").notNull(),
+    /** Je li gost pristao i na povremene obavijesti i pozive u lokal (privola s popisom obavijesti, vidi guest-consent.ts). */
+    noticesConsent: boolean("notices_consent").notNull().default(false),
     ipHash: text("ip_hash"),
     userAgent: text("user_agent"),
     outcome: text("outcome").$type<GuestOutcome>().notNull().default("scheduled"),

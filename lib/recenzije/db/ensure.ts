@@ -9,7 +9,7 @@ import { db } from "./index";
  * da se dva serverless pokretanja ne sudare. Kad se shema promijeni:
  * dodaj ALTER TABLE ... ADD COLUMN IF NOT EXISTS na kraj i povećaj SCHEMA_VERSION.
  */
-export const SCHEMA_VERSION = 6;
+export const SCHEMA_VERSION = 7;
 
 const DDL = `
 CREATE TABLE IF NOT EXISTS "nr_meta" ("key" text PRIMARY KEY NOT NULL, "value" text NOT NULL);
@@ -420,6 +420,10 @@ ALTER TABLE "nr_menus" ADD COLUMN IF NOT EXISTS "logo_url" text;
 ALTER TABLE "nr_organizations" ADD COLUMN IF NOT EXISTS "textbee_api_key_enc" text;
 ALTER TABLE "nr_organizations" ADD COLUMN IF NOT EXISTS "textbee_device_id" text;
 ALTER TABLE "nr_organizations" ADD COLUMN IF NOT EXISTS "textbee_webhook_secret_enc" text;
+ALTER TABLE "nr_menus" ADD COLUMN IF NOT EXISTS "menu_kind" text DEFAULT 'jelovnik' NOT NULL;
+ALTER TABLE "nr_menus" ADD COLUMN IF NOT EXISTS "notices_enabled" boolean DEFAULT false NOT NULL;
+ALTER TABLE "nr_menu_guests" ADD COLUMN IF NOT EXISTS "notices_consent" boolean DEFAULT false NOT NULL;
+DO $$ BEGIN ALTER TABLE "nr_menus" ADD CONSTRAINT "nr_menus_kind_check" CHECK ("menu_kind" in ('jelovnik', 'meni')); EXCEPTION WHEN duplicate_object THEN null; END $$;
 `;
 
 /**
