@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { pageMetadata } from "@/lib/seo";
 import Link from "next/link";
 import { ArrowRight, Check } from "lucide-react";
 import NovoShell from "@/components/novo/NovoShell";
@@ -15,12 +16,13 @@ export const dynamic = "force-dynamic";
 
 const BASE_URL = "https://www.probajnovo.com";
 
-export const metadata: Metadata = {
-  title: { absolute: "Google recenzije za vašu tvrtku – NOVO" },
+export const metadata: Metadata = pageMetadata({
+  title: "Google recenzije za vašu tvrtku – NOVO",
+  absoluteTitle: true,
   description:
-    "Mi vam skupljamo Google recenzije, vi ne radite ništa. Nakon svakog posla klijent dobije SMS potpisan imenom vaše tvrtke, mi pratimo klikove i šaljemo podsjetnike, a vi tjedno dobivate izvještaj emailom.",
-  alternates: { canonical: `${BASE_URL}/recenzije` },
-};
+    "Mi vam skupljamo Google recenzije: nakon svakog posla klijent dobije SMS s imenom vaše tvrtke, a vi tjedno izvještaj. Bez aplikacije, otkaz bilo kad.",
+  path: "/recenzije",
+});
 
 const STEPS = [
   {
