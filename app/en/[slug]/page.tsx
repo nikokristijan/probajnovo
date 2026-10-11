@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { DEFAULT_OG_IMAGE } from "@/lib/seo";
 import { redirect, notFound } from "next/navigation";
 import { getPropertyBySlug, getCompanyBySlug, getAgency } from "@/lib/db/queries";
 import { getEnglishPropertyContent, type PropertyTranslationFields } from "@/lib/translate";
@@ -55,7 +56,7 @@ export async function generateMetadata({
     icons: { icon: property.faviconUrl || "/favicon-orange.png" },
     alternates: {
       canonical: url,
-      languages: { hr: `https://www.probajnovo.com/${slug}`, en: url },
+      languages: { hr: `https://www.probajnovo.com/${slug}`, en: url, "x-default": `https://www.probajnovo.com/${slug}` },
     },
     openGraph: {
       title,
@@ -63,14 +64,15 @@ export async function generateMetadata({
       url,
       siteName: "NOVO",
       locale: "en_US",
+      alternateLocale: ["hr_HR"],
       type: "website",
-      ...(image ? { images: [{ url: image }] } : {}),
+      images: image ? [{ url: image, alt: property.name }] : [DEFAULT_OG_IMAGE],
     },
     twitter: {
       card: "summary_large_image",
       title,
       description: tagline,
-      ...(image ? { images: [image] } : {}),
+      images: [image || DEFAULT_OG_IMAGE.url],
     },
   };
 }
