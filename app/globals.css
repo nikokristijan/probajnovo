@@ -4293,6 +4293,62 @@ a.owner-glass:active,
   .pl-card-go { display: none; }
 }
 
+/* ---- motivi kartica bez fotografije (components/novo/SystemTile.tsx) ---- */
+.sys-tile { position: absolute; inset: 0; display: grid; place-items: center; overflow: hidden; }
+.sys-tile svg { width: 100%; height: 100%; display: block; }
+.sys-tile--jelovnik { background: var(--novo-orange); }
+.sys-tile--nfc, .sys-tile--slova { background: #0b0b10; }
+.sys-tile--recenzije { background: #0000c3; }
+.sys-arcs { stroke: #000; transition: stroke 0.2s ease; }
+.sys-plate { fill: #000; }
+.sys-plate-dot { fill: var(--novo-orange); }
+.sys-phone { fill: #0b0b10; }
+.sys-qr rect, .sys-lines rect { fill: #0b0b10; }
+.sys-tile--nfc .sys-arcs { stroke: var(--novo-orange); }
+.sys-tile--nfc .sys-plate { fill: #fff; }
+.sys-tile--nfc .sys-plate-dot { fill: #0b0b10; }
+.sys-stars { color: #fff; font-size: clamp(28px, 4vw, 44px); letter-spacing: 0.08em; transition: color 0.2s ease; }
+.sys-word {
+  font-family: var(--font-space-grotesk), sans-serif; font-weight: 700; font-size: clamp(40px, 7vw, 64px);
+  letter-spacing: -0.03em; color: #fff; text-shadow: 3px 3px 0 var(--novo-orange); transition: text-shadow 0.25s ease;
+}
+.pl-card:hover .sys-arcs, .ro-card:hover .sys-arcs { stroke: #fff; }
+.pl-card:hover .sys-stars, .ro-card:hover .sys-stars { color: var(--novo-orange); }
+.pl-card:hover .sys-word, .ro-card:hover .sys-word { text-shadow: 6px 6px 0 var(--novo-orange); }
+
+/* ---- povezane ponude: "Uz ovo ide i" (/proizvodi/<slug>) i "Možda vam treba i" (/digitalni-jelovnik) ---- */
+.ro { container: ro / inline-size; }
+.ro-list { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: minmax(0, 1fr); gap: 12px; }
+.ro-item { display: flex; min-width: 0; }
+.ro-card {
+  display: grid; grid-template-columns: 112px minmax(0, 1fr); width: 100%; background: #fff; color: #000; text-decoration: none;
+  border: 1px solid rgba(0,0,0,0.12); overflow: hidden; text-align: left;
+  transition: transform 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+}
+.ro-card:hover { transform: translateY(-2px); border-color: var(--novo-orange); box-shadow: 0 12px 26px rgba(0,0,0,0.1); }
+.ro-card:focus-visible { outline: 2px solid var(--novo-blue); outline-offset: 2px; }
+.ro-tile { position: relative; background: #efefef; border-right: 1px solid rgba(0,0,0,0.1); min-height: 112px; }
+.ro-img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+.ro-body { display: flex; flex-direction: column; gap: 4px; padding: 14px; min-width: 0; }
+.ro-kicker { font-size: 12px; letter-spacing: 0.12em; color: var(--novo-blue); }
+.ro-name { margin: 0; font-size: 18px; font-weight: 600; line-height: 1.25; letter-spacing: -0.01em; overflow-wrap: anywhere; }
+.ro-benefit { font-size: 16px; line-height: 1.45; color: rgba(0,0,0,0.72); }
+.ro-foot { margin-top: auto; padding-top: 8px; display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 4px 12px; }
+.ro-price { font-size: 13px; color: var(--novo-blue); }
+.ro-go { margin-left: auto; font-size: 16px; font-weight: 600; text-underline-offset: 4px; text-decoration-thickness: 2px; text-decoration-color: transparent; text-decoration-line: underline; transition: text-decoration-color 0.15s ease; }
+.ro-card:hover .ro-go, .ro-card:focus-visible .ro-go { text-decoration-color: var(--novo-orange); }
+.ro-tile .sys-stars { font-size: 15px; letter-spacing: 0.02em; }
+.ro-tile .sys-word { font-size: 32px; }
+/* Širina odjeljka (ne ekrana) odlučuje o rasporedu: uz bočne trake na tabletu je odjeljak uzak pa kartice ostaju u retku. */
+@container ro (min-width: 640px) {
+  .ro-list { grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; }
+  .ro-card { grid-template-columns: minmax(0, 1fr); grid-template-rows: auto 1fr; }
+  .ro-tile { aspect-ratio: 16 / 10; min-height: 0; border-right: 0; border-bottom: 1px solid rgba(0,0,0,0.1); }
+  .ro-tile .sys-stars { font-size: clamp(24px, 3vw, 40px); letter-spacing: 0.08em; }
+  .ro-tile .sys-word { font-size: clamp(36px, 5vw, 56px); }
+}
+@media (prefers-reduced-motion: reduce) { .ro-card, .ro-card:hover { transition: none; transform: none; } }
+
 /* ---- stranica proizvoda: okvir ---- */
 .novo-os--detail .novo-os-main { padding-bottom: 0; }
 @media (max-width: 720px) {

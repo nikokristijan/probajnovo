@@ -4,6 +4,8 @@ import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { eur } from "@/lib/pricing";
 import NovoShell, { VIEW_HREF } from "@/components/novo/NovoShell";
+import SystemTile from "@/components/novo/SystemTile";
+import type { SystemListing } from "@/lib/system-products";
 
 /* ------------------------------------------------------------------ */
 /* Tipovi                                                              */
@@ -44,6 +46,9 @@ export type ProductCard = {
   slug: string | null;
   featured: boolean;
   category: string | null;
+  /** Sistemska ponuda iz koda (npr. digitalni jelovnik, vidi lib/system-products.ts): kartica ima motiv umjesto
+      fotografije i vodi na vlastitu stranicu (system.href), ne na /proizvodi/<slug>. */
+  system?: SystemListing;
 };
 
 const SERVICES = ["BREND IDENTITET", "DIGITALNI DIZAJN", "WEB & PRODUKT", "FILM & MOTION", "MARKETING"];
@@ -541,6 +546,27 @@ function ProductsView({
       <div className="products-scroll">
         <div className="pl-grid">
           {visible.map((p) => {
+            // Sistemska ponuda (npr. digitalni jelovnik): motiv umjesto fotografije, poveznica na vlastitu stranicu.
+            if (p.system) {
+              return (
+                <Link key={p.id} href={p.system.href} className="pl-card">
+                  <div className="pl-card-img">
+                    <SystemTile kind={p.system.tile} />
+                  </div>
+                  <div className="pl-card-body">
+                    <span className="pl-card-cat mono">{p.system.kicker}</span>
+                    <span className="pl-card-name">{p.name}</span>
+                    <span className="pl-card-tagline">{p.tagline}</span>
+                    <span className="pl-card-foot">
+                      <span className="pl-card-price mono">{p.system.priceText}</span>
+                      <span className="pl-card-go mono" aria-hidden="true">
+                        {p.system.goLabel}
+                      </span>
+                    </span>
+                  </div>
+                </Link>
+              );
+            }
             const inner = (
               <>
                 <div className="pl-card-img">
@@ -617,7 +643,7 @@ function ProductsView({
             </Link>
           )}
         </div>
-        {products.length === 0 && (
+        {products.every((p) => p.system) && (
           <p className="studies-empty">Uskoro još proizvoda — NFC pločice za vikendice i firme.</p>
         )}
       </div>
