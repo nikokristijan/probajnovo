@@ -1,12 +1,11 @@
 import type { Metadata } from "next";
+import { pageMetadata } from "@/lib/seo";
 import Link from "next/link";
 import LegalPage from "@/components/LegalPage";
 
 export const metadata: Metadata = {
-  title: "Uvjeti korištenja",
-  description: "Uvjeti korištenja probajnovo.com i usluga koje NOVO nudi.",
+  ...pageMetadata({ title: "Uvjeti korištenja", description: "Uvjeti korištenja probajnovo.com i usluga koje NOVO nudi.", path: "/uvjeti" }),
   robots: { index: true, follow: true },
-  alternates: { canonical: "https://www.probajnovo.com/uvjeti" },
 };
 
 export default function TermsPage() {

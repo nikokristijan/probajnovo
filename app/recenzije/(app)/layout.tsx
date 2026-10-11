@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import { after } from "next/server";
 import Link from "next/link";
 import { FlaskConical, UserCog } from "lucide-react";
@@ -9,6 +10,9 @@ import { describePlan } from "@/lib/recenzije/plan-view";
 import { requireOrg } from "@/lib/recenzije/session";
 import { processDueRuns } from "@/lib/recenzije/services/automation-engine";
 import { usage } from "@/lib/recenzije/services/billing";
+
+/** Prijavljeni dio NOVO Recenzija nije za tražilice. */
+export const metadata: Metadata = { robots: { index: false, follow: false } };
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
   const ctx = await requireOrg();

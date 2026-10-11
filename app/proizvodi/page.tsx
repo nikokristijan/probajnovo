@@ -1,21 +1,17 @@
 import type { Metadata } from "next";
+import { pageMetadata } from "@/lib/seo";
 import NovoHome from "@/components/NovoHome";
 import { loadNovoHomeData } from "@/lib/novoHomeData";
 import ConsentTracking from "@/components/novo/ConsentTracking";
 
 export const revalidate = 0;
 
-export const metadata: Metadata = {
-  title: "Proizvodi",
+export const metadata: Metadata = pageMetadata({
+  title: "Proizvodi: NFC pločice, digitalni jelovnik, recenzije i slova",
   description:
-    "NFC pločice za WiFi, prostorna slova i ostali proizvodi za vikendice, apartmane i firme — izrađeni po mjeri u NOVO studiju.",
-  alternates: { canonical: "https://www.probajnovo.com/proizvodi" },
-  openGraph: {
-    title: "Proizvodi — NOVO",
-    description: "NFC pločice za WiFi, prostorna slova i ostali proizvodi za vikendice, apartmane i firme.",
-    url: "https://www.probajnovo.com/proizvodi",
-  },
-};
+    "NFC pločice za WiFi, digitalni jelovnik, Google recenzije i prostorna slova po mjeri za vikendice, apartmane, restorane i firme. Izrađuje NOVO studio.",
+  path: "/proizvodi",
+});
 
 /**
  * /proizvodi — ista NOVO naslovnica, otvorena na tabu PROIZVODI, ali s

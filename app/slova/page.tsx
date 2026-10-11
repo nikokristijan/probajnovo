@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { pageMetadata } from "@/lib/seo";
 import Link from "next/link";
 import Image from "next/image";
 import {
@@ -53,17 +54,15 @@ const FONT_VARS = [
 ].join(" ");
 
 export const metadata: Metadata = {
-  title: { absolute: "Prostorna slova po mjeri — NOVO" },
-  description:
-    "Izradimo vam prostorna slova po mjeri, u fontu, veličini i boji koju odaberete. Ispišite tekst, pogledajte uživo prije narudžbe i pošaljite upit.",
-  robots: { index: true, follow: true },
-  alternates: { canonical: "https://www.probajnovo.com/slova" },
-  icons: { icon: "/favicon-orange.png" },
-  openGraph: {
+  ...pageMetadata({
     title: "Prostorna slova po mjeri — NOVO",
-    description: "Font, veličina i boja po vašem izboru. Pogledajte uživo prije narudžbe.",
-    url: "https://www.probajnovo.com/slova",
-  },
+    absoluteTitle: true,
+    description:
+      "Izradimo vam prostorna slova po mjeri, u fontu, veličini i boji koju odaberete. Složite tekst, pogledajte ga uživo i pošaljite upit.",
+    path: "/slova",
+  }),
+  robots: { index: true, follow: true },
+  icons: { icon: "/favicon-orange.png" },
 };
 
 export default function SlovaPage() {

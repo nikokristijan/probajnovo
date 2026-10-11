@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { DEFAULT_OG_IMAGE } from "@/lib/seo";
 import "./stay.css";
 import Image from "next/image";
 import Link from "next/link";
@@ -35,21 +36,26 @@ export async function generateMetadata({
       // Kanonski URL + Open Graph/Twitter: pomaže Googleu i društvenim mrežama
       // da OVU stranicu (naslov = ime vikendice, ne "NOVO") prepoznaju kao
       // zaseban entitet, umjesto da signal razvodne apex/www/poddomena varijante.
-      alternates: { canonical: url },
+      // hreflang: hrvatska i engleska inačica (app/en/[slug]) najavljuju jedna drugu.
+      alternates: {
+        canonical: url,
+        languages: { hr: url, en: `https://www.probajnovo.com/en/${slug}`, "x-default": url },
+      },
       openGraph: {
         title,
         description: property.tagline,
         url,
         siteName: "NOVO",
         locale: "hr_HR",
+        alternateLocale: ["en_US"],
         type: "website",
-        ...(image ? { images: [{ url: image }] } : {}),
+        images: image ? [{ url: image, alt: property.name }] : [DEFAULT_OG_IMAGE],
       },
       twitter: {
         card: "summary_large_image",
         title,
         description: property.tagline,
-        ...(image ? { images: [image] } : {}),
+        images: [image || DEFAULT_OG_IMAGE.url],
       },
     };
   }
@@ -70,13 +76,13 @@ export async function generateMetadata({
         siteName: "NOVO",
         locale: "hr_HR",
         type: "website",
-        ...(image ? { images: [{ url: image }] } : {}),
+        images: image ? [{ url: image, alt: company.name }] : [DEFAULT_OG_IMAGE],
       },
       twitter: {
         card: "summary_large_image",
         title,
         description: company.tagline,
-        ...(image ? { images: [image] } : {}),
+        images: [image || DEFAULT_OG_IMAGE.url],
       },
     };
   }
@@ -457,7 +463,7 @@ export async function PropertyView({
             <div className="stay-grand-intro-media">
               <Image
                 src={effectiveBanner}
-                alt=""
+                alt={`${property.name} — ${property.location}`}
                 fill
                 sizes="100vw"
                 priority
@@ -987,7 +993,7 @@ function CompanyView({ company, agency }: { company: Company; agency: Agency | n
         <section className="stay-grand-intro">
           {effectiveBanner && (
             <div className="stay-grand-intro-media">
-              <Image src={effectiveBanner} alt="" fill sizes="100vw" priority fetchPriority="high" data-parallax />
+              <Image src={effectiveBanner} alt={`${company.name} — ${company.location}`} fill sizes="100vw" priority fetchPriority="high" data-parallax />
             </div>
           )}
           <div className="stay-grand-intro-scrim" aria-hidden="true" />

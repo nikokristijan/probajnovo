@@ -1,12 +1,11 @@
 import type { Metadata } from "next";
+import { pageMetadata } from "@/lib/seo";
 import Link from "next/link";
 import LegalPage from "@/components/LegalPage";
 
 export const metadata: Metadata = {
-  title: "Politika privatnosti",
-  description: "Kako NOVO prikuplja, koristi i štiti osobne podatke posjetitelja i klijenata.",
+  ...pageMetadata({ title: "Politika privatnosti", description: "Kako NOVO prikuplja, koristi i štiti osobne podatke posjetitelja i klijenata.", path: "/privatnost" }),
   robots: { index: true, follow: true },
-  alternates: { canonical: "https://www.probajnovo.com/privatnost" },
 };
 
 export default function PrivacyPolicyPage() {

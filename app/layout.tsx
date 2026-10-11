@@ -3,6 +3,7 @@ import { Space_Grotesk, JetBrains_Mono, Zilla_Slab, Karla, Caveat, Inter, Fraunc
 import { Analytics } from "@vercel/analytics/next";
 import "./globals.css";
 import AutomationKick from "@/components/AutomationKick";
+import { DEFAULT_OG_IMAGE } from "@/lib/seo";
 
 /*
  * Fontovi: svih devet obitelji ostaje dostupno na svim rutama (CSS varijable se koriste u globals.css,
@@ -73,34 +74,36 @@ const nunito = Nunito({
 });
 
 const SITE_URL = "https://www.probajnovo.com";
+const DEFAULT_TITLE = "NOVO — web stranice, brending i digitalni proizvodi | Slavonski Brod";
+const DEFAULT_DESCRIPTION =
+  "NOVO je kreativni studio iz Slavonskog Broda: web stranice, brend identitet, NFC pločice, digitalni jelovnik, Google recenzije i prostorna slova po mjeri.";
 
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
   title: {
-    default: "NOVO — kreativni studio iz Slavonskog Broda",
+    default: DEFAULT_TITLE,
     template: "%s — NOVO",
   },
-  description:
-    "NOVO je kreativni studio iz Slavonskog Broda — brend identitet, digitalni dizajn, web stranice za vikendice i firme, NFC pločice i prostorna slova po mjeri.",
+  description: DEFAULT_DESCRIPTION,
+  applicationName: "NOVO",
   icons: {
     icon: "/favicon-orange.png",
   },
+  formatDetection: { telephone: false, email: false, address: false },
   openGraph: {
-    title: "NOVO — kreativni studio iz Slavonskog Broda",
-    description:
-      "Brend identitet, digitalni dizajn, web stranice za vikendice i firme, NFC pločice i prostorna slova po mjeri.",
+    title: DEFAULT_TITLE,
+    description: DEFAULT_DESCRIPTION,
     url: SITE_URL,
     siteName: "NOVO",
     locale: "hr_HR",
     type: "website",
-    images: [{ url: "/novo-logo.png", width: 1474, height: 497 }],
+    images: [DEFAULT_OG_IMAGE],
   },
   twitter: {
     card: "summary_large_image",
-    title: "NOVO — kreativni studio iz Slavonskog Broda",
-    description:
-      "Brend identitet, digitalni dizajn, web stranice za vikendice i firme, NFC pločice i prostorna slova po mjeri.",
-    images: ["/novo-logo.png"],
+    title: DEFAULT_TITLE,
+    description: DEFAULT_DESCRIPTION,
+    images: [DEFAULT_OG_IMAGE.url],
   },
 };
 
@@ -115,8 +118,10 @@ export const metadata: Metadata = {
 const ORGANIZATION_JSON_LD = {
   "@context": "https://schema.org",
   "@type": "Organization",
+  "@id": `${SITE_URL}/#organization`,
   name: "NOVO",
   url: SITE_URL,
+  description: DEFAULT_DESCRIPTION,
   logo: `${SITE_URL}/novo-logo.png`,
   email: "hello@novo.studio",
   sameAs: ["https://instagram.com/novo.hr"],
@@ -125,6 +130,19 @@ const ORGANIZATION_JSON_LD = {
     addressLocality: "Slavonski Brod",
     addressCountry: "HR",
   },
+  areaServed: { "@type": "Country", name: "Hrvatska" },
+};
+
+/** WebSite JSON-LD — naziv stranice u Google rezultatima ("NOVO" umjesto domene). */
+const WEBSITE_JSON_LD = {
+  "@context": "https://schema.org",
+  "@type": "WebSite",
+  "@id": `${SITE_URL}/#website`,
+  name: "NOVO",
+  alternateName: "probajnovo.com",
+  url: SITE_URL,
+  inLanguage: "hr-HR",
+  publisher: { "@id": `${SITE_URL}/#organization` },
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
@@ -138,6 +156,10 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(ORGANIZATION_JSON_LD) }}
+      />
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(WEBSITE_JSON_LD) }}
       />
       {children}
       <Analytics />
