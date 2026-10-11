@@ -39,8 +39,9 @@ function RealPreview({ menu, categories, all }: { menu: PublicMenuInfo; categori
         </div>
       </div>
       <div className="jl-wrap jl-secs">
-        {categories.map((c) => (
+        {categories.map((c, i) => (
           <div key={c.id} className="jl-sec">
+            <div className="jl-sec-n">{String(i + 1).padStart(2, "0")}</div>
             <div className="jl-sec-h">{c.name}</div>
             <ul className="jl-items">
               {c.items.slice(0, BACKDROP_ITEMS).map((it) => (

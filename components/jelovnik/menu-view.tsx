@@ -11,7 +11,6 @@ import type { Lang } from "./lang";
 import { switchLanguages } from "@/lib/recenzije/menu-lang";
 import { LangSwitch } from "./lang-switch";
 import { QuickActions } from "./quick-actions";
-import { Reveal } from "./reveal";
 
 function Header({ menu, lang }: { menu: PublicMenuInfo; lang: Lang }) {
   const intro = menu.intro ?? menu.introEn ?? menu.introDe ?? menu.introIt;
@@ -71,10 +70,13 @@ function Item({ item }: { item: PublicItem }) {
   );
 }
 
-function Section({ category }: { category: PublicCategory }) {
+function Section({ category, index }: { category: PublicCategory; index: number }) {
   const headingId = `jl-h-${category.id}`;
   return (
     <section id={`jl-c-${category.id}`} className="jl-sec" aria-labelledby={headingId}>
+      <p className="jl-sec-n" aria-hidden="true">
+        {String(index + 1).padStart(2, "0")}
+      </p>
       <h2 id={headingId} className="jl-sec-h">
         <Bi hr={category.name} en={category.nameEn} de={category.nameDe} it={category.nameIt} />
       </h2>
@@ -101,11 +103,10 @@ export function MenuView({ menu, lang, flash }: { menu: PublicMenu; lang: Lang; 
           <>
             <CategoryNav categories={cats.map((c) => ({ id: c.id, name: c.name, nameEn: c.nameEn, nameDe: c.nameDe, nameIt: c.nameIt }))} kind={menu.menuKind} />
             <div className="jl-wrap jl-secs">
-              {cats.map((c) => (
-                <Section key={c.id} category={c} />
+              {cats.map((c, i) => (
+                <Section key={c.id} category={c} index={i} />
               ))}
             </div>
-            <Reveal />
           </>
         ) : (
           <div className="jl-wrap">

@@ -12,6 +12,14 @@
  * Ovo je odvojeno od paketa NOVO Recenzije (lib/recenzije), koji služe obrtima i tvrtkama bez jelovnika.
  */
 
+/**
+ * Fizički komplet koji ide uz svaki paket: stolni stalci s QR kodom i NFC pločica (gost prisloni mobitel ili skenira kod,
+ * oba otvaraju isti jelovnik) te naljepnica za vrata. Jedan tekst na jednom mjestu, da se stranica, paketi i JSON-LD ne razilaze.
+ * VAŽNO: nigdje se ne navodi broj komada ni cijena opreme; koliko stolova pokriva jednokratno postavljanje odlučuje vlasnik.
+ */
+export const KIT_SHORT = "Stolni stalci s QR kodom i NFC pločica";
+export const KIT_NOTE = "Komplet za jelovnik: stalci i pločice za sve stolove prema dogovoru.";
+
 export type HospitalityPlanKey = "jelovnik" | "jelovnik-recenzije" | "sve";
 
 export type HospitalityPlan = {
@@ -38,13 +46,13 @@ export const HOSPITALITY_PLANS: HospitalityPlan[] = [
     priceMonthlyEur: 25,
     badge: null,
     highlight: false,
-    summary: "Digitalni jelovnik na QR kodu. Gosti ga odmah vide, bez unosa broja i bez poruka.",
+    summary: "Digitalni jelovnik na NFC pločici i QR kodu. Gosti ga odmah vide, bez unosa broja i bez poruka.",
     smsMonthly: 0,
     features: [
-      "Digitalni jelovnik na QR kodu",
+      "Digitalni jelovnik: gost prisloni mobitel na NFC pločicu ili skenira QR kod",
+      `${KIT_SHORT} (komplet za jelovnik) i naljepnica za vrata`,
       "Unos jelovnika i izmjene cijena i stavki radimo mi",
       "Engleski prijevod osnovnog teksta",
-      "Jedan komplet stolnih stalaka i naljepnica za vrata",
       "Tipke Wi-Fi, Kontakt i Ocijeni nas kad ih želite",
       "Gosti odmah vide jelovnik, bez unosa broja i bez poruka",
     ],
@@ -58,7 +66,7 @@ export const HOSPITALITY_PLANS: HospitalityPlan[] = [
     summary: "Jelovnik i jedna poruka gostu s molbom za Google recenziju, uz njegovu privolu.",
     smsMonthly: 200,
     features: [
-      "Sve iz paketa Jelovnik",
+      "Sve iz paketa Jelovnik, uključujući stolne stalke s QR kodom i NFC pločicu",
       "Upis broja gosta uz privolu",
       "Jedna poruka za Google recenziju nakon posjeta (do 200 SMS-ova mjesečno)",
     ],
@@ -72,7 +80,7 @@ export const HOSPITALITY_PLANS: HospitalityPlan[] = [
     summary: "Sve iz prethodna dva paketa i još sve ostalo, jedna cijena.",
     smsMonthly: 500,
     features: [
-      "Sve iz paketa Jelovnik i Jelovnik + Recenzije",
+      "Sve iz paketa Jelovnik i Jelovnik + Recenzije, uključujući stolne stalke s QR kodom i NFC pločicu",
       "Povremene obavijesti gostima koji su pristali (novosti, događanja, ponude)",
       "Tjedni izvještaj e-mailom sa sažetkom u jednoj rečenici i statistika po stolu (iz gostiju koji ostave broj)",
       "Upozorenje e-mailom na novu lošu Google recenziju (ocjena 3 ili manje), s prijedlogom odgovora",
@@ -103,7 +111,7 @@ export const HOSPITALITY_ADDONS: HospitalityAddon[] = [
 export const FULL_PLAN_KEY: HospitalityPlanKey = "sve";
 export const BASE_PLAN_KEY: HospitalityPlanKey = "jelovnik";
 
-/** Jednokratno postavljanje, EUR bez PDV-a. Uključuje tisak stalaka, naljepnicu za vrata i upis jelovnika s fotografije. */
+/** Jednokratno postavljanje, EUR bez PDV-a. Uključuje tisak stalaka, NFC pločice s upisanom adresom, naljepnicu za vrata i upis jelovnika s fotografije. */
 export const SETUP_FEE_EUR = 79;
 
 /** Broj plaćenih mjeseci kod godišnje uplate (umjesto 12). */

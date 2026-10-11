@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { CircleAlert, Plug } from "lucide-react";
-import { MenuPosterStudio, type PosterMode } from "@/components/recenzije/poster/menu-poster-studio";
+import { MenuPosterStudio, type MenuPosterMode } from "@/components/recenzije/poster/menu-poster-studio";
 import { PosterModeNav } from "@/components/recenzije/poster/poster-mode-nav";
 import { PosterStudio } from "@/components/recenzije/poster/poster-studio";
 import { Button } from "@/components/recenzije/ui/button";
@@ -93,7 +93,7 @@ export default async function PosterPage({ searchParams }: { searchParams: Promi
  * QR plakat i NFC pločice za digitalni jelovnik ugostiteljske tvrtke: i kod i pločica vode na /jelovnik/<slug>,
  * adresa se uzima iz baze za aktivnu tvrtku.
  */
-async function MenuPoster({ initialMode }: { initialMode: PosterMode }) {
+async function MenuPoster({ initialMode }: { initialMode: MenuPosterMode }) {
   const ctx = await requireOrg();
   const view = await getVenueMenuForOperator(ctx.org.id);
   let qr: QrMatrix | null = null;

@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useOptimistic, useTransition } from "react";
-import { CircleAlert, ExternalLink, Link2, QrCode } from "lucide-react";
+import { CircleAlert, ExternalLink, Link2, Nfc, QrCode } from "lucide-react";
 import { toast } from "sonner";
 import { setMenuEnabledAction } from "@/lib/recenzije/actions/menu";
 import { Button } from "@/components/recenzije/ui/button";
@@ -112,6 +112,11 @@ export function MenuStatus({
             <Button variant="secondary" size="sm" asChild>
               <Link href="/recenzije/plakat?nacin=jelovnik">
                 <QrCode /> QR kodovi za stolove
+              </Link>
+            </Button>
+            <Button variant="secondary" size="sm" asChild>
+              <Link href="/recenzije/plakat?nacin=jelovnik&prikaz=nfc">
+                <Nfc /> NFC pločice
               </Link>
             </Button>
           </div>

@@ -19,8 +19,8 @@ import { buildTableSheetPages, sheetPageCount, type TableQr } from "./table-shee
 const PRINT_ID = "nr-poster-print";
 const SHEET_ID = "nr-sheet-print";
 
-export type PosterMode = "single" | "sheet" | "nfc";
-type Mode = PosterMode;
+export type MenuPosterMode = "single" | "sheet" | "nfc";
+type Mode = MenuPosterMode;
 const MODES: { id: Mode; label: string; hint: string }[] = [
   { id: "single", label: "Jedan kod", hint: "Plakat ili kartica" },
   { id: "sheet", label: "Svi stolovi", hint: "A4 ploča" },
@@ -123,7 +123,7 @@ export function MenuPosterStudio({
   /** False = paket "samo jelovnik": gost odmah vidi jelovnik, plakat i tekstovi ne spominju broj. */
   captureEnabled?: boolean;
   /** Koji način se otvara (poveznica ?prikaz=nfc vodi izravno na NFC pločice). */
-  initialMode?: PosterMode;
+  initialMode?: MenuPosterMode;
 }) {
   const [mode, setMode] = useState<Mode>(initialMode);
   /** Kartica i plakat govore o NFC pločici (znak i natpis "Prislonite mobitel ili skenirajte kod"). Zadano uključeno. */

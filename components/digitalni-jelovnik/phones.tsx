@@ -127,3 +127,43 @@ export function QrGlyph({ className }: { className?: string }) {
     </svg>
   );
 }
+
+/** Znak "beskontaktno" (tri luka), nacrtan vlastitim putanjama; nije službeni NFC Forum N-Mark. */
+export function NfcWaves({ className }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" className={className} aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round">
+      <path d="M7.83 8.79A5 5 0 0 1 7.83 15.21" />
+      <path d="M10.89 6.21A9 9 0 0 1 10.89 17.79" />
+      <path d="M13.96 3.64A13 13 0 0 1 13.96 20.36" />
+    </svg>
+  );
+}
+
+/**
+ * Stolni stalak s QR kodom i uz njega okrugla NFC pločica (ukras, HTML/CSS, bez slika). QR nije važeći kod.
+ * Tekst za čitače zaslona daje opis uz sliku.
+ */
+export function TableStand() {
+  return (
+    <div className="djs" aria-hidden="true">
+      <div className="djs-card">
+        <p className="djs-brand">Vaš lokal</p>
+        <QrGlyph className="djs-qr" />
+        <p className="djs-cap">Skenirajte kod</p>
+      </div>
+      <div className="djs-plate">
+        <NfcWaves className="djs-waves" />
+        <p className="djs-plate-cap">Prislonite mobitel</p>
+      </div>
+    </div>
+  );
+}
+
+/** Mala okrugla NFC pločica (ukras) koja viri iza kartice s QR kodom u naslovnom dijelu stranice. */
+export function MiniPlate({ className }: { className?: string }) {
+  return (
+    <span className={`djs-mini ${className ?? ""}`} aria-hidden="true">
+      <NfcWaves className="djs-mini-waves" />
+    </span>
+  );
+}

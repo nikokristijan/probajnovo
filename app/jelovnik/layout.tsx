@@ -1,15 +1,14 @@
 import type { Metadata, Viewport } from "next";
-import { Bodoni_Moda, DM_Sans, Fraunces, Inter_Tight, Manrope, Newsreader } from "next/font/google";
+import { DM_Sans, Newsreader } from "next/font/google";
 import "./jelovnik.css";
 
-/* KANDIDATI (privremeno): tri smjera, svaki sa svojim parom fontova. Bira se atributom data-dir na <html>. */
-const o = { subsets: ["latin", "latin-ext"] as ("latin" | "latin-ext")[], display: "swap" as const };
-const newsreader = Newsreader({ ...o, variable: "--jl-f-newsreader", axes: ["opsz"] });
-const interTight = Inter_Tight({ ...o, variable: "--jl-f-intertight" });
-const bodoni = Bodoni_Moda({ ...o, variable: "--jl-f-bodoni", axes: ["opsz"] });
-const dmSans = DM_Sans({ ...o, variable: "--jl-f-dmsans", axes: ["opsz"] });
-const fraunces = Fraunces({ ...o, variable: "--jl-f-fraunces", axes: ["opsz"] });
-const manrope = Manrope({ ...o, variable: "--jl-f-manrope" });
+/**
+ * Fontovi javnog jelovnika (samo ruta /jelovnik): Newsreader za naslove i nazive jela (optička veličina prati veličinu slova),
+ * DM Sans za tekst i sučelje. Samo latin + latin-ext, jer hrvatska slova (č, ć, š, đ, ž) nisu u "latin" podskupu pa bi se
+ * inače crtala zamjenskim fontom. Oba su promjenjiva (jedna datoteka po podskupu).
+ */
+const display = Newsreader({ variable: "--jl-font-display", subsets: ["latin", "latin-ext"], display: "swap", axes: ["opsz"] });
+const sans = DM_Sans({ variable: "--jl-font-sans", subsets: ["latin", "latin-ext"], display: "swap", axes: ["opsz"] });
 
 export const metadata: Metadata = {
   robots: { index: false, follow: false, nocache: true },
@@ -21,6 +20,5 @@ export const viewport: Viewport = {
 };
 
 export default function JelovnikLayout({ children }: { children: React.ReactNode }) {
-  const fonts = [newsreader, interTight, bodoni, dmSans, fraunces, manrope].map((f) => f.variable).join(" ");
-  return <div className={`jl ${fonts}`}>{children}</div>;
+  return <div className={`jl ${display.variable} ${sans.variable}`}>{children}</div>;
 }
