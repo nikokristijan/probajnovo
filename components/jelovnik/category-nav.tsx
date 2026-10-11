@@ -4,7 +4,7 @@ import { useEffect, useRef, useState, type MouseEvent } from "react";
 import { menuNoun, type MenuKind } from "@/lib/recenzije/menu-noun";
 import { Bi } from "./bilingual";
 
-export type NavCategory = { id: string; name: string; nameEn: string | null };
+export type NavCategory = { id: string; name: string; nameEn: string | null; nameDe?: string | null; nameIt?: string | null };
 
 /** Visina trake s kategorijama (px) + malo zraka: ispod te crte se sekcija računa kao "trenutna". Isto kao --jl-nav-h u CSS-u. */
 const LINE_OFFSET = 61 + 16;
@@ -69,6 +69,33 @@ export function CategoryNav({ categories, kind }: { categories: NavCategory[]; k
     list.scrollTo({ left: Math.max(0, left), behavior: reducedMotion() ? "auto" : "smooth" });
   }, [active]);
 
+  // Zlatna crta ispod aktivne kategorije klizi na nju (CSS: .jl-chips::before, položaj preko --jl-ink-x / --jl-ink-w).
+  // Bez JavaScripta (ili bez ovoga) ostaje obična crta ispod aktivne poveznice. Prvi put se postavlja bez prijelaza.
+  useEffect(() => {
+    const list = listRef.current;
+    if (!list) return;
+    const place = () => {
+      const chip = list.querySelector<HTMLElement>('[aria-current="true"]');
+      if (!chip) return;
+      const pad = parseFloat(getComputedStyle(chip).paddingLeft) || 0;
+      list.style.setProperty("--jl-ink-x", `${chip.offsetLeft + pad}px`);
+      list.style.setProperty("--jl-ink-w", `${Math.max(0, chip.offsetWidth - pad * 2)}px`);
+      if (!list.hasAttribute("data-ink")) {
+        list.setAttribute("data-ink", "init");
+        window.requestAnimationFrame(() => window.requestAnimationFrame(() => list.setAttribute("data-ink", "ready")));
+      }
+    };
+    place();
+    // Promjena jezika ili učitavanje fonta mijenja širinu poveznica: crta ih prati.
+    const ro = typeof ResizeObserver === "undefined" ? null : new ResizeObserver(place);
+    list.querySelectorAll("a").forEach((a) => ro?.observe(a));
+    window.addEventListener("resize", place);
+    return () => {
+      ro?.disconnect();
+      window.removeEventListener("resize", place);
+    };
+  }, [active, categories]);
+
   function onClick(e: MouseEvent<HTMLAnchorElement>, id: string) {
     const target = document.getElementById(sectionId(id));
     if (!target) return;
@@ -95,7 +122,7 @@ export function CategoryNav({ categories, kind }: { categories: NavCategory[]; k
                 aria-current={active === c.id ? "true" : undefined}
                 onClick={(e) => onClick(e, c.id)}
               >
-                <Bi hr={c.name} en={c.nameEn} />
+                <Bi hr={c.name} en={c.nameEn} de={c.nameDe} it={c.nameIt} />
               </a>
             </li>
           ))}

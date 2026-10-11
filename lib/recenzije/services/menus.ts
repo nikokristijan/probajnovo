@@ -16,9 +16,25 @@ import { env } from "@/lib/recenzije/env";
 import { createId } from "@/lib/recenzije/id";
 import { MENU_DELAY_MAX, MENU_DELAY_MIN } from "@/lib/recenzije/guest-consent";
 import { MAX_PRICE_CENTS } from "@/lib/recenzije/menu-format";
+import {
+  BUTTON_LIMITS,
+  buildPublicActions,
+  maxChars,
+  parseContactAddress,
+  parseContactEmail,
+  parseContactInstagram,
+  parseContactPhone,
+  parseWifiName,
+  parseWifiPassword,
+  safeHttpUrl,
+  type Parsed,
+  type PublicMenuActions,
+} from "@/lib/recenzije/menu-buttons";
 import { displayMenuTitle, parseMenuKind, type MenuKind } from "@/lib/recenzije/menu-noun";
+import { defaultCountryCode } from "@/lib/recenzije/phone";
 import { IMPORT_LIMITS, parseMenuText, type ParsedMenu } from "@/lib/recenzije/menu-import";
 import { suggestMenuSlug, validateMenuSlug } from "@/lib/recenzije/menu-slug";
+import { languagesWithText, type TransLang } from "@/lib/recenzije/menu-lang";
 
 /**
  * Digitalni jelovnik ugostiteljske tvrtke (organizations.is_venue): postavke, kategorije, stavke, brzi uvoz iz teksta
@@ -40,6 +56,8 @@ export const MENU_LIMITS = {
   url: 500,
   logoUrl: 1000,
   importChars: IMPORT_LIMITS.maxChars,
+  /** Neobavezne tipke na javnom jelovniku (menu-buttons.ts). */
+  buttons: BUTTON_LIMITS,
 } as const;
 
 export type MenuResult<T> = { ok: true; value: T } | { ok: false; error: string; field?: string };
@@ -59,6 +77,13 @@ const oneLine = (label: string, maxChars: number) =>
 const requiredLine = (label: string, maxChars: number) => oneLine(label, maxChars).pipe(z.string().min(1, `${label}: obavezno polje`));
 /** Prazan tekst znači "obriši" (null); undefined znači "ne diraj". */
 const optionalLine = (label: string, maxChars: number) => oneLine(label, maxChars).nullish();
+
+/** Tekst bez preoblikovanja (pročišćuje ga menu-buttons.ts); prazno/null = obriši, undefined = ne diraj. */
+const rawText = (label: string, maxChars_: number) =>
+  z
+    .string({ error: `${label}: neispravan unos` })
+    .max(maxChars_ + 300, `${label}: ${maxChars(maxChars_)}`)
+    .nullish();
 
 /** https adresa (bez korisničkog imena i lozinke, s točkom u nazivu domene). Bez sheme se dodaje https://. */
 const httpsUrlOf = (label: string, maxChars: number, example: string) =>
@@ -90,12 +115,23 @@ const settingsSchema = z.object({
   title: requiredLine("Naslov", MENU_LIMITS.title).optional(),
   intro: optionalLine("Uvod", MENU_LIMITS.intro),
   introEn: optionalLine("Uvod (engleski)", MENU_LIMITS.intro),
+  introDe: optionalLine("Uvod (njemački)", MENU_LIMITS.intro),
+  introIt: optionalLine("Uvod (talijanski)", MENU_LIMITS.intro),
   externalUrl: z.union([z.null(), z.literal(""), httpsUrl]).optional(),
   /** Logo lokala: https adresa slike; prazno/null = ukloni. */
   logoUrl: z.union([z.null(), z.literal(""), logoHttpsUrl]).optional(),
   allowSkip: z.boolean().optional(),
   menuKind: z.enum(["jelovnik", "meni"], { error: "Naziv na stranici mora biti Jelovnik ili Meni." }).optional(),
   noticesEnabled: z.boolean({ error: "Neispravan unos." }).optional(),
+  captureEnabled: z.boolean({ error: "Skupljanje brojeva: neispravan unos." }).optional(),
+  showReviewButton: z.boolean({ error: "Tipka Ocijeni nas: neispravan unos." }).optional(),
+  /** Tipke: ovdje samo oblik i granica duljine; sadržaj (broj, e-mail, profil...) provjerava menu-buttons.ts. */
+  wifiName: rawText("Wi-Fi naziv", BUTTON_LIMITS.wifiName),
+  wifiPassword: rawText("Wi-Fi lozinka", BUTTON_LIMITS.wifiPassword),
+  contactPhone: rawText("Telefon", BUTTON_LIMITS.phone),
+  contactEmail: rawText("E-mail", BUTTON_LIMITS.email),
+  contactAddress: rawText("Adresa", BUTTON_LIMITS.address),
+  contactInstagram: rawText("Instagram", BUTTON_LIMITS.instagram),
   delayMinutes: z
     .number({ error: `Odgoda mora biti između ${MENU_DELAY_MIN} i ${MENU_DELAY_MAX} minuta.` })
     .int(`Odgoda mora biti cijeli broj minuta.`)
@@ -108,6 +144,8 @@ const settingsSchema = z.object({
 const categorySchema = z.object({
   name: requiredLine("Naziv kategorije", MENU_LIMITS.name),
   nameEn: optionalLine("Naziv kategorije (engleski)", MENU_LIMITS.name),
+  nameDe: optionalLine("Naziv kategorije (njemački)", MENU_LIMITS.name),
+  nameIt: optionalLine("Naziv kategorije (talijanski)", MENU_LIMITS.name),
 });
 
 const priceSchema = z
@@ -119,8 +157,12 @@ const priceSchema = z
 const itemSchema = z.object({
   name: requiredLine("Naziv", MENU_LIMITS.name),
   nameEn: optionalLine("Naziv (engleski)", MENU_LIMITS.name),
+  nameDe: optionalLine("Naziv (njemački)", MENU_LIMITS.name),
+  nameIt: optionalLine("Naziv (talijanski)", MENU_LIMITS.name),
   description: optionalLine("Opis", MENU_LIMITS.description),
   descriptionEn: optionalLine("Opis (engleski)", MENU_LIMITS.description),
+  descriptionDe: optionalLine("Opis (njemački)", MENU_LIMITS.description),
+  descriptionIt: optionalLine("Opis (talijanski)", MENU_LIMITS.description),
   priceCents: priceSchema,
   allergens: optionalLine("Alergeni", MENU_LIMITS.allergens),
   available: z.boolean().optional(),
@@ -147,11 +189,18 @@ export function menuPublicUrl(slug: string, table?: string | number | null): str
   return t ? `${base}?stol=${encodeURIComponent(t.slice(0, 20))}` : base;
 }
 
-type VenueOrg = { id: string; name: string; isVenue: boolean; isDemo: boolean };
+type VenueOrg = { id: string; name: string; isVenue: boolean; isDemo: boolean; googleReviewUrl: string | null; timezone: string };
 
 async function loadOrg(organizationId: string): Promise<VenueOrg | null> {
   const [org] = await db
-    .select({ id: organizations.id, name: organizations.name, isVenue: organizations.isVenue, isDemo: organizations.isDemo })
+    .select({
+      id: organizations.id,
+      name: organizations.name,
+      isVenue: organizations.isVenue,
+      isDemo: organizations.isDemo,
+      googleReviewUrl: organizations.googleReviewUrl,
+      timezone: organizations.timezone,
+    })
     .from(organizations)
     .where(eq(organizations.id, organizationId))
     .limit(1);
@@ -266,6 +315,8 @@ export type MenuSettingsInput = {
   title?: string;
   intro?: string | null;
   introEn?: string | null;
+  introDe?: string | null;
+  introIt?: string | null;
   /** Vlastiti jelovnik lokala (https). Prazno/null = koristi naš prikaz. */
   externalUrl?: string | null;
   /** Logo lokala (https adresa slike). Prazno/null = ukloni. */
@@ -275,6 +326,18 @@ export type MenuSettingsInput = {
   menuKind?: MenuKind;
   /** Lokal šalje i povremene obavijesti (mijenja tekst privole koji gost vidi). */
   noticesEnabled?: boolean;
+  /** Skupljanje brojeva gostiju. False = "samo jelovnik": izravan prikaz bez vrata, ništa se ne sprema. */
+  captureEnabled?: boolean;
+  /** Tipka "Ocijeni nas" (Google link tvrtke). Uključiti se može samo kad tvrtka ima ispravan link. */
+  showReviewButton?: boolean;
+  /** Tipka "Wi-Fi": naziv mreže (prazno = nema tipke) i neobavezna lozinka. */
+  wifiName?: string | null;
+  wifiPassword?: string | null;
+  /** Tipka "Kontakt": ispunjena polja se prikazuju gostu, prazna se izostavljaju. */
+  contactPhone?: string | null;
+  contactEmail?: string | null;
+  contactAddress?: string | null;
+  contactInstagram?: string | null;
   /** 60 do 240 minuta. */
   delayMinutes?: number;
   enabled?: boolean;
@@ -305,13 +368,47 @@ export async function upsertMenuSettings(organizationId: string, input: MenuSett
   if (d.title !== undefined) patch.title = d.title;
   if (d.intro !== undefined) patch.intro = orNull(d.intro);
   if (d.introEn !== undefined) patch.introEn = orNull(d.introEn);
+  if (d.introDe !== undefined) patch.introDe = orNull(d.introDe);
+  if (d.introIt !== undefined) patch.introIt = orNull(d.introIt);
   if (d.externalUrl !== undefined) patch.externalUrl = orNull(d.externalUrl);
   if (d.logoUrl !== undefined) patch.logoUrl = orNull(d.logoUrl);
   if (d.allowSkip !== undefined) patch.allowSkip = d.allowSkip;
   if (d.menuKind !== undefined) patch.menuKind = d.menuKind;
   if (d.noticesEnabled !== undefined) patch.noticesEnabled = d.noticesEnabled;
+  if (d.captureEnabled !== undefined) patch.captureEnabled = d.captureEnabled;
   if (d.delayMinutes !== undefined) patch.delayMinutes = d.delayMinutes;
   if (d.enabled !== undefined) patch.enabled = d.enabled;
+
+  // Neobavezne tipke. Isključivanje je uvijek dopušteno; uključivanje "Ocijeni nas" traži ispravan Google link tvrtke.
+  if (d.showReviewButton !== undefined) {
+    if (d.showReviewButton && !m.menu.showReviewButton && !safeHttpUrl(m.org.googleReviewUrl)) {
+      return fail("Tipka Ocijeni nas: najprije upišite Google link za recenzije u Postavkama.", "showReviewButton");
+    }
+    patch.showReviewButton = d.showReviewButton;
+  }
+  const cc = defaultCountryCode(m.org.timezone);
+  const fields: [string, Parsed<string | null> | undefined][] = [
+    ["wifiName", d.wifiName === undefined ? undefined : parseWifiName(d.wifiName)],
+    ["wifiPassword", d.wifiPassword === undefined ? undefined : parseWifiPassword(d.wifiPassword)],
+    ["contactPhone", d.contactPhone === undefined ? undefined : parseContactPhone(d.contactPhone, cc)],
+    ["contactEmail", d.contactEmail === undefined ? undefined : parseContactEmail(d.contactEmail)],
+    ["contactAddress", d.contactAddress === undefined ? undefined : parseContactAddress(d.contactAddress)],
+    ["contactInstagram", d.contactInstagram === undefined ? undefined : parseContactInstagram(d.contactInstagram)],
+  ];
+  for (const [field, r] of fields) {
+    if (!r) continue;
+    if (!r.ok) return fail(r.error, field);
+    (patch as Record<string, string | null>)[field] = r.value;
+  }
+  // Lozinka bez naziva mreže nema smisla: brisanje naziva briše i lozinku, a samu lozinku nije moguće upisati bez naziva.
+  if ("wifiName" in patch || "wifiPassword" in patch) {
+    const finalName = "wifiName" in patch ? patch.wifiName : m.menu.wifiName;
+    if (!finalName) {
+      if (typeof patch.wifiPassword === "string") return fail("Wi-Fi lozinka: najprije upišite naziv mreže.", "wifiPassword");
+      patch.wifiName = null;
+      patch.wifiPassword = null;
+    }
+  }
   if (Object.keys(patch).length === 0) return ok(m.menu);
 
   try {
@@ -329,7 +426,7 @@ export async function upsertMenuSettings(organizationId: string, input: MenuSett
 
 // --- Kategorije ---
 
-export type CategoryInput = { name: string; nameEn?: string | null };
+export type CategoryInput = { name: string; nameEn?: string | null; nameDe?: string | null; nameIt?: string | null };
 
 async function nextPosition(table: "category" | "item", scopeId: string): Promise<number> {
   const [row] =
@@ -354,6 +451,8 @@ export async function createCategory(organizationId: string, input: CategoryInpu
       organizationId,
       name: parsed.data.name,
       nameEn: orNull(parsed.data.nameEn),
+      nameDe: orNull(parsed.data.nameDe),
+      nameIt: orNull(parsed.data.nameIt),
       position: await nextPosition("category", m.menu.id),
     })
     .returning();
@@ -369,6 +468,8 @@ export async function updateCategory(organizationId: string, categoryId: string,
   const set: Partial<typeof menuCategories.$inferInsert> = {};
   if (parsed.data.name !== undefined) set.name = parsed.data.name;
   if (parsed.data.nameEn !== undefined) set.nameEn = orNull(parsed.data.nameEn);
+  if (parsed.data.nameDe !== undefined) set.nameDe = orNull(parsed.data.nameDe);
+  if (parsed.data.nameIt !== undefined) set.nameIt = orNull(parsed.data.nameIt);
   const where = and(eq(menuCategories.id, categoryId), eq(menuCategories.organizationId, organizationId), eq(menuCategories.menuId, m.menu.id));
   if (Object.keys(set).length === 0) {
     const [row] = await db.select().from(menuCategories).where(where).limit(1);
@@ -439,8 +540,12 @@ export async function moveCategory(organizationId: string, categoryId: string, d
 export type ItemInput = {
   name: string;
   nameEn?: string | null;
+  nameDe?: string | null;
+  nameIt?: string | null;
   description?: string | null;
   descriptionEn?: string | null;
+  descriptionDe?: string | null;
+  descriptionIt?: string | null;
   /** Cijena u centima (EUR); iz teksta "5,50" pretvara parsePriceToCents (lib/recenzije/menu-format). */
   priceCents: number;
   allergens?: string | null;
@@ -476,8 +581,12 @@ export async function createItem(organizationId: string, categoryId: string, inp
       organizationId,
       name: d.name,
       nameEn: orNull(d.nameEn),
+      nameDe: orNull(d.nameDe),
+      nameIt: orNull(d.nameIt),
       description: orNull(d.description),
       descriptionEn: orNull(d.descriptionEn),
+      descriptionDe: orNull(d.descriptionDe),
+      descriptionIt: orNull(d.descriptionIt),
       priceCents: d.priceCents,
       allergens: orNull(d.allergens),
       available: d.available ?? true,
@@ -501,8 +610,12 @@ export async function updateItem(organizationId: string, itemId: string, patch: 
   const set: Partial<typeof menuItems.$inferInsert> = {};
   if (d.name !== undefined) set.name = d.name;
   if (d.nameEn !== undefined) set.nameEn = orNull(d.nameEn);
+  if (d.nameDe !== undefined) set.nameDe = orNull(d.nameDe);
+  if (d.nameIt !== undefined) set.nameIt = orNull(d.nameIt);
   if (d.description !== undefined) set.description = orNull(d.description);
   if (d.descriptionEn !== undefined) set.descriptionEn = orNull(d.descriptionEn);
+  if (d.descriptionDe !== undefined) set.descriptionDe = orNull(d.descriptionDe);
+  if (d.descriptionIt !== undefined) set.descriptionIt = orNull(d.descriptionIt);
   if (d.priceCents !== undefined) set.priceCents = d.priceCents;
   if (d.allergens !== undefined) set.allergens = orNull(d.allergens);
   if (d.available !== undefined) set.available = d.available;
@@ -718,6 +831,8 @@ export type PublicMenuInfo = {
   title: string;
   intro: string | null;
   introEn: string | null;
+  introDe: string | null;
+  introIt: string | null;
   externalUrl: string | null;
   /** Logo lokala (https adresa) ili null: tada se prikazuje naziv lokala. */
   logoUrl: string | null;
@@ -727,20 +842,33 @@ export type PublicMenuInfo = {
   menuKind: MenuKind;
   /** Lokal šalje i povremene obavijesti: gost vidi drugu varijantu privole (guest-consent.ts). */
   noticesEnabled: boolean;
+  /** False = paket "samo jelovnik": stranica se otvara izravno (bez vrata, privole i broja), ništa o gostu se ne sprema. */
+  captureEnabled: boolean;
   /** True kad ima ijedan engleski tekst: tek tada stranica prikazuje HR/EN prekidač. */
   hasEnglish: boolean;
+  /**
+   * Prijevodi koje jelovnik ima (barem jedan tekst: uvod, naziv kategorije, naziv ili opis stavke), redom en, de, it.
+   * Stranica prikazuje prekidač jezika samo za njih (uz hrvatski); prazno = bez prekidača.
+   */
+  languages: TransLang[];
+  /** Neobavezne tipke (Ocijeni nas, Wi-Fi, Kontakt): samo ono što je ispunjeno i ispravno; sve prazno = stranica kao i prije. */
+  quickActions: PublicMenuActions;
 };
 export type PublicItem = {
   id: string;
   name: string;
   nameEn: string | null;
+  nameDe: string | null;
+  nameIt: string | null;
   description: string | null;
   descriptionEn: string | null;
+  descriptionDe: string | null;
+  descriptionIt: string | null;
   priceCents: number;
   allergens: string | null;
   available: boolean;
 };
-export type PublicCategory = { id: string; name: string; nameEn: string | null; items: PublicItem[] };
+export type PublicCategory = { id: string; name: string; nameEn: string | null; nameDe: string | null; nameIt: string | null; items: PublicItem[] };
 export type PublicMenu = PublicMenuInfo & { categories: PublicCategory[] };
 
 /** Normalizira adresu iz URL-a; null kad nikad ne može biti ispravna (nema upita prema bazi). */
@@ -756,6 +884,16 @@ function decodeSafe(s: string) {
   } catch {
     return s;
   }
+}
+
+/** Ima li jelovnik ijedan tekst na jeziku (uvod, naziv kategorije, naziv ili opis stavke); nazivi stupaca su fiksni, ne dolaze iz unosa. */
+function hasTextSql(menuId: typeof menus.id, intro: typeof menus.introEn | typeof menus.introDe | typeof menus.introIt, lang: TransLang) {
+  const sfx = lang;
+  return sql<boolean>`(
+    coalesce(${intro}, '') <> ''
+    or exists (select 1 from nr_menu_categories c where c.menu_id = ${menuId} and coalesce(${sql.raw(`c.name_${sfx}`)}, '') <> '')
+    or exists (select 1 from nr_menu_items i where i.menu_id = ${menuId} and (coalesce(${sql.raw(`i.name_${sfx}`)}, '') <> '' or coalesce(${sql.raw(`i.description_${sfx}`)}, '') <> ''))
+  )`;
 }
 
 /**
@@ -774,17 +912,27 @@ export async function getPublicMenuInfoBySlug(rawSlug: string): Promise<PublicMe
       title: menus.title,
       intro: menus.intro,
       introEn: menus.introEn,
+      introDe: menus.introDe,
+      introIt: menus.introIt,
       externalUrl: menus.externalUrl,
       logoUrl: menus.logoUrl,
       allowSkip: menus.allowSkip,
       delayMinutes: menus.delayMinutes,
       menuKind: menus.menuKind,
       noticesEnabled: menus.noticesEnabled,
-      hasEnglish: sql<boolean>`(
-        coalesce(${menus.introEn}, '') <> ''
-        or exists (select 1 from nr_menu_categories c where c.menu_id = ${menus.id} and coalesce(c.name_en, '') <> '')
-        or exists (select 1 from nr_menu_items i where i.menu_id = ${menus.id} and (coalesce(i.name_en, '') <> '' or coalesce(i.description_en, '') <> ''))
-      )`,
+      captureEnabled: menus.captureEnabled,
+      showReviewButton: menus.showReviewButton,
+      orgReviewUrl: organizations.googleReviewUrl,
+      timezone: organizations.timezone,
+      wifiName: menus.wifiName,
+      wifiPassword: menus.wifiPassword,
+      contactPhone: menus.contactPhone,
+      contactEmail: menus.contactEmail,
+      contactAddress: menus.contactAddress,
+      contactInstagram: menus.contactInstagram,
+      hasEnglish: hasTextSql(menus.id, menus.introEn, "en"),
+      hasGerman: hasTextSql(menus.id, menus.introDe, "de"),
+      hasItalian: hasTextSql(menus.id, menus.introIt, "it"),
     })
     .from(menus)
     .innerJoin(organizations, eq(organizations.id, menus.organizationId))
@@ -792,7 +940,20 @@ export async function getPublicMenuInfoBySlug(rawSlug: string): Promise<PublicMe
     .limit(1);
   if (!row) return null;
   const menuKind = parseMenuKind(row.menuKind);
-  return { ...row, menuKind, title: displayMenuTitle(menuKind, row.title) };
+  const { showReviewButton, orgReviewUrl, timezone, wifiName, wifiPassword, contactPhone, contactEmail, contactAddress, contactInstagram, hasGerman, hasItalian, ...pub } = row;
+  const quickActions = buildPublicActions({
+    showReviewButton,
+    orgReviewUrl,
+    timezone,
+    wifiName,
+    wifiPassword,
+    contactPhone,
+    contactEmail,
+    contactAddress,
+    contactInstagram,
+  });
+  const languages = languagesWithText({ en: row.hasEnglish, de: hasGerman, it: hasItalian });
+  return { ...pub, languages, menuKind, title: displayMenuTitle(menuKind, row.title), quickActions };
 }
 
 /**
@@ -804,7 +965,7 @@ export async function getPublicMenuBySlug(rawSlug: string): Promise<PublicMenu |
   if (!info) return null;
   const [cats, items] = await Promise.all([
     db
-      .select({ id: menuCategories.id, name: menuCategories.name, nameEn: menuCategories.nameEn })
+      .select({ id: menuCategories.id, name: menuCategories.name, nameEn: menuCategories.nameEn, nameDe: menuCategories.nameDe, nameIt: menuCategories.nameIt })
       .from(menuCategories)
       .where(eq(menuCategories.menuId, info.id))
       .orderBy(asc(menuCategories.position), asc(menuCategories.createdAt)),
@@ -814,8 +975,12 @@ export async function getPublicMenuBySlug(rawSlug: string): Promise<PublicMenu |
         categoryId: menuItems.categoryId,
         name: menuItems.name,
         nameEn: menuItems.nameEn,
+        nameDe: menuItems.nameDe,
+        nameIt: menuItems.nameIt,
         description: menuItems.description,
         descriptionEn: menuItems.descriptionEn,
+        descriptionDe: menuItems.descriptionDe,
+        descriptionIt: menuItems.descriptionIt,
         priceCents: menuItems.priceCents,
         allergens: menuItems.allergens,
         available: menuItems.available,

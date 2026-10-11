@@ -57,3 +57,19 @@ export async function removeSmsGatewayAction(): Promise<ActionState> {
   revalidatePath("/recenzije", "layout");
   return { ok: true, message: "Stari mobitel je odspojen. SMS se od sada šalju s NOVO pošiljatelja." };
 }
+
+/**
+ * Prekidač "Upozorenje na lošu recenziju (e-mail vlasniku)". Vlasnik ili admin; demo ne smije mijenjati.
+ * E-mail ide na kontakt e-mail tvrtke (services/review-alerts.ts).
+ */
+export async function setLowReviewAlertsAction(enabled: boolean): Promise<ActionState> {
+  const { ctx, deny } = await admin();
+  if (deny) return deny;
+  if (typeof enabled !== "boolean") return { error: "Neispravan unos." };
+  await db.update(organizations).set({ lowReviewAlerts: enabled }).where(eq(organizations.id, ctx.org.id));
+  revalidatePath("/recenzije/postavke");
+  return {
+    ok: true,
+    message: enabled ? "Upozorenje na lošu recenziju je uključeno." : "Upozorenje na lošu recenziju je isključeno.",
+  };
+}

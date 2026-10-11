@@ -4,8 +4,9 @@ import { useActionState, useEffect, useState, useTransition } from "react";
 import { ExternalLink, RefreshCw, Unplug } from "lucide-react";
 import { toast } from "sonner";
 import { updateAccountAction, updateBusinessAction } from "@/lib/recenzije/actions/org";
-import { disconnectGoogleAction, refreshGoogleLocationAction, removeSmsGatewayAction } from "@/lib/recenzije/actions/settings";
+import { disconnectGoogleAction, refreshGoogleLocationAction, removeSmsGatewayAction, setLowReviewAlertsAction } from "@/lib/recenzije/actions/settings";
 import { Button } from "@/components/recenzije/ui/button";
+import { Switch } from "@/components/recenzije/ui/dialog";
 import { Field, hitArea, Input, Label, Select } from "@/components/recenzije/ui/primitives";
 import { type ActionState, initialState } from "@/lib/recenzije/action";
 import { INDUSTRIES, TIMEZONES } from "@/lib/recenzije/constants";
@@ -189,5 +190,46 @@ export function LegacyPhoneSwitch({ canEdit }: { canEdit: boolean }) {
     >
       <Unplug /> Prebaci na NOVO broj
     </Button>
+  );
+}
+
+/** Prekidač upozorenja na lošu recenziju: sprema se odmah, a stanje u sučelju prati odgovor poslužitelja. */
+export function LowReviewAlertsSwitch({ initial, canEdit, hasEmail }: { initial: boolean; canEdit: boolean; hasEmail: boolean }) {
+  const [pending, start] = useTransition();
+  const [on, setOn] = useState(initial);
+  return (
+    <div className="space-y-2">
+      <label className="flex min-h-11 cursor-pointer items-start gap-3 text-sm">
+        <span className="pt-1">
+          <Switch
+            checked={on}
+            disabled={!canEdit || pending}
+            label="Upozorenje na lošu recenziju (e-mail vlasniku)"
+            onCheckedChange={(next) =>
+              start(async () => {
+                const prev = on;
+                setOn(next);
+                const r = await setLowReviewAlertsAction(next);
+                if (r.ok) toast.success(r.message ?? "Spremljeno");
+                else {
+                  setOn(prev);
+                  toast.error(r.error ?? "Spremanje nije uspjelo.");
+                }
+              })
+            }
+          />
+        </span>
+        <span className="min-w-0">
+          <span className="block font-medium">Upozorenje na lošu recenziju (e-mail vlasniku)</span>
+          <span className="block text-xs text-muted">
+            Kad se na Googleu pojavi nova recenzija s ocjenom 3 ili manje, dobivate kratak e-mail s tekstom recenzije i prijedlogom odgovora.
+            Jedan e-mail po recenziji, samo za recenzije mlađe od 14 dana.
+          </span>
+        </span>
+      </label>
+      {on && !hasEmail && (
+        <p className="text-xs text-warning">Tvrtka nema kontakt e-mail, pa upozorenje nema kamo stići. Javite se NOVO-u da ga upiše.</p>
+      )}
+    </div>
   );
 }

@@ -19,6 +19,8 @@ import { Dialog, DialogContent, Switch } from "@/components/recenzije/ui/dialog"
 import { Alert, Card, CardBody, CardHeader, EmptyState, Field, Input, Select, Textarea } from "@/components/recenzije/ui/primitives";
 import { formatPriceCents, parsePriceToCents, priceCentsToInput } from "@/lib/recenzije/menu-format";
 import { plural, type CategoryDTO, type ItemDTO } from "./menu-types";
+import { emptyTransValues, TranslationsGroup, type TransValues } from "./menu-translations";
+import { MenuTranslateAll } from "./menu-translate-all";
 
 type CatDialog = { mode: "create" } | { mode: "edit"; category: CategoryDTO } | null;
 type ItemTarget = { mode: "create"; categoryId: string } | { mode: "edit"; item: ItemDTO; categoryId: string };
@@ -26,7 +28,18 @@ type ItemDialog = (ItemTarget & { nonce: number }) | null;
 type DeleteTarget = { kind: "category"; id: string; name: string; items: number } | { kind: "item"; id: string; name: string } | null;
 
 /** Polja uz koja se greška prikazuje u obrascu stavke; za sve ostalo greška ide u obavijest. */
-const ITEM_FIELDS = ["name", "price", "description", "allergens", "categoryId", "nameEn", "descriptionEn"];
+const ITEM_FIELDS = ["name", "price", "description", "allergens", "categoryId", "nameEn", "descriptionEn", "nameDe", "descriptionDe", "nameIt", "descriptionIt"];
+
+/** "Prijevodi: EN DE IT" (samo jezici koji imaju ijedan tekst) uz naziv na jeziku koji je prvi popunjen. */
+function langLine(o: { nameEn?: string | null; descriptionEn?: string | null; nameDe?: string | null; descriptionDe?: string | null; nameIt?: string | null; descriptionIt?: string | null }): string {
+  const langs = [
+    (o.nameEn || o.descriptionEn) && "EN",
+    (o.nameDe || o.descriptionDe) && "DE",
+    (o.nameIt || o.descriptionIt) && "IT",
+  ].filter(Boolean);
+  const first = o.nameEn || o.nameDe || o.nameIt;
+  return `Prijevodi: ${langs.join(" ")}${first ? ` (${first})` : ""}`;
+}
 
 function IconBtn({ label, onClick, disabled, children, danger }: { label: string; onClick: () => void; disabled?: boolean; children: React.ReactNode; danger?: boolean }) {
   return (
@@ -42,11 +55,13 @@ export function MenuEditor({
   readOnly,
   hasExternalUrl,
   onGoImport,
+  aiEnabled,
 }: {
   categories: CategoryDTO[];
   readOnly: boolean;
   hasExternalUrl: boolean;
   onGoImport: () => void;
+  aiEnabled: boolean;
 }) {
   const [busy, run] = useTransition();
   const [catDialog, setCatDialog] = useState<CatDialog>(null);
@@ -94,9 +109,12 @@ export function MenuEditor({
           description={categories.length ? `${categories.length} ${plural(categories.length, "kategorija", "kategorije", "kategorija")}, ${totalItems} ${plural(totalItems, "stavka", "stavke", "stavki")}. Redoslijed je isti kao na stranici za goste.` : "Dodajte kategorije (npr. Pizze, Pića) i u njih stavke."}
           action={
             !readOnly && (
-              <Button size="sm" variant="secondary" onClick={() => setCatDialog({ mode: "create" })}>
-                <FolderPlus /> Nova kategorija
-              </Button>
+              <div className="flex flex-wrap items-center justify-end gap-2">
+                {totalItems > 0 && <MenuTranslateAll aiEnabled={aiEnabled} />}
+                <Button size="sm" variant="secondary" onClick={() => setCatDialog({ mode: "create" })}>
+                  <FolderPlus /> Nova kategorija
+                </Button>
+              </div>
             )
           }
         />
@@ -127,7 +145,7 @@ export function MenuEditor({
                   <div className="flex items-start justify-between gap-3">
                     <div className="min-w-0">
                       <h3 className="break-words text-[15px] font-bold leading-snug">{c.name}</h3>
-                      {c.nameEn && <p className="break-words text-xs text-subtle">EN: {c.nameEn}</p>}
+                      {(c.nameEn || c.nameDe || c.nameIt) && <p className="break-words text-xs text-subtle">{langLine(c)}</p>}
                     </div>
                     <span className="label shrink-0 pt-1 text-muted">
                       {c.items.length} {plural(c.items.length, "stavka", "stavke", "stavki")}
@@ -180,7 +198,7 @@ export function MenuEditor({
 
       <Dialog open={catDialog !== null} onOpenChange={(o) => !o && setCatDialog(null)}>
         <DialogContent title={catDialog?.mode === "edit" ? "Uredi kategoriju" : "Nova kategorija"} description="Npr. Pizze, Tjestenine, Topli napitci.">
-          {catDialog && <CategoryForm category={catDialog.mode === "edit" ? catDialog.category : null} onDone={() => setCatDialog(null)} />}
+          {catDialog && <CategoryForm category={catDialog.mode === "edit" ? catDialog.category : null} onDone={() => setCatDialog(null)} aiEnabled={aiEnabled} readOnly={readOnly} />}
         </DialogContent>
       </Dialog>
 
@@ -192,6 +210,8 @@ export function MenuEditor({
               item={itemDialog.mode === "edit" ? itemDialog.item : null}
               categoryId={itemDialog.categoryId}
               categories={categories}
+              aiEnabled={aiEnabled}
+              readOnly={readOnly}
               onDone={(again) => {
                 if (again && itemDialog.mode === "create") openItem({ mode: "create", categoryId: itemDialog.categoryId });
                 else setItemDialog(null);
@@ -259,7 +279,9 @@ function ItemRow({
           <p className={`break-words text-[15px] font-bold leading-snug ${available ? "" : "text-muted line-through decoration-1"}`}>{item.name}</p>
           {item.description && <p className="mt-0.5 line-clamp-2 break-words text-[13px] text-muted">{item.description}</p>}
           {item.allergens && <p className="mt-1 break-words text-xs text-subtle">Alergeni: {item.allergens}</p>}
-          {(item.nameEn || item.descriptionEn) && <p className="mt-1 break-words text-xs text-subtle">EN: {item.nameEn ?? item.name}</p>}
+          {(item.nameEn || item.descriptionEn || item.nameDe || item.descriptionDe || item.nameIt || item.descriptionIt) && (
+            <p className="mt-1 break-words text-xs text-subtle">{langLine(item)}</p>
+          )}
         </div>
         <p className="tabular shrink-0 pt-0.5 text-[15px] font-bold">{formatPriceCents(item.priceCents)}</p>
       </div>
@@ -289,17 +311,23 @@ function ItemRow({
   );
 }
 
-function CategoryForm({ category, onDone }: { category: CategoryDTO | null; onDone: () => void }) {
+function CategoryForm({ category, onDone, aiEnabled, readOnly }: { category: CategoryDTO | null; onDone: () => void; aiEnabled: boolean; readOnly: boolean }) {
   const [pending, start] = useTransition();
   const [name, setName] = useState(category?.name ?? "");
-  const [nameEn, setNameEn] = useState(category?.nameEn ?? "");
+  const [tr, setTr] = useState<TransValues>(() => {
+    const v = emptyTransValues();
+    v.en.name = category?.nameEn ?? "";
+    v.de.name = category?.nameDe ?? "";
+    v.it.name = category?.nameIt ?? "";
+    return v;
+  });
   const [error, setError] = useState<string | null>(null);
 
   function submit(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
     start(async () => {
-      const input = { name, nameEn: nameEn.trim() || null };
+      const input = { name, nameEn: tr.en.name.trim() || null, nameDe: tr.de.name.trim() || null, nameIt: tr.it.name.trim() || null };
       const r = category ? await updateCategoryAction(category.id, input) : await createCategoryAction(input);
       if (r.ok) {
         toast.success(r.message);
@@ -326,11 +354,9 @@ function CategoryForm({ category, onDone }: { category: CategoryDTO | null; onDo
           aria-invalid={error ? true : undefined}
         />
       </Field>
-      <details className="border border-border bg-surface-2 px-3 py-2.5 [&[open]>summary]:mb-3" open={Boolean(category?.nameEn)}>
-        <summary className="label flex min-h-6 cursor-pointer select-none items-center text-muted">Engleski</summary>
-        <Field label="Naziv (engleski)" htmlFor="c-name-en" hint="Neobavezno. Vidi se kad gost prebaci jelovnik na EN.">
-          <Input id="c-name-en" value={nameEn} maxLength={120} onChange={(e) => setNameEn(e.target.value)} autoComplete="off" />
-        </Field>
+      <details className="border border-border bg-surface-2 px-3 py-2.5 [&[open]>summary]:mb-3" open={Boolean(category?.nameEn || category?.nameDe || category?.nameIt)}>
+        <summary className="label flex min-h-6 cursor-pointer select-none items-center text-muted">Prijevodi (EN, DE, IT)</summary>
+        <TranslationsGroup kind="category" hrName={name} hrDescription="" values={tr} onChange={setTr} aiEnabled={aiEnabled} readOnly={readOnly} idPrefix="c" />
       </details>
       <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
         <Button type="button" variant="ghost" onClick={onDone}>
@@ -349,11 +375,15 @@ function ItemForm({
   categoryId,
   categories,
   onDone,
+  aiEnabled,
+  readOnly,
 }: {
   item: ItemDTO | null;
   categoryId: string;
   categories: CategoryDTO[];
   onDone: (again: boolean) => void;
+  aiEnabled: boolean;
+  readOnly: boolean;
 }) {
   const [pending, start] = useTransition();
   const [name, setName] = useState(item?.name ?? "");
@@ -362,8 +392,11 @@ function ItemForm({
   const [allergens, setAllergens] = useState(item?.allergens ?? "");
   const [available, setAvailable] = useState(item?.available ?? true);
   const [cat, setCat] = useState(categoryId);
-  const [nameEn, setNameEn] = useState(item?.nameEn ?? "");
-  const [descriptionEn, setDescriptionEn] = useState(item?.descriptionEn ?? "");
+  const [tr, setTr] = useState<TransValues>(() => ({
+    en: { name: item?.nameEn ?? "", description: item?.descriptionEn ?? "" },
+    de: { name: item?.nameDe ?? "", description: item?.descriptionDe ?? "" },
+    it: { name: item?.nameIt ?? "", description: item?.descriptionIt ?? "" },
+  }));
   const [errors, setErrors] = useState<Record<string, string>>({});
 
   /** Greška uz polje nestaje čim ga se počne ispravljati (inače crvena poruka stoji uz već ispravnu vrijednost). */
@@ -389,8 +422,12 @@ function ItemForm({
         allergens: allergens.trim() || null,
         available,
         categoryId: cat,
-        nameEn: nameEn.trim() || null,
-        descriptionEn: descriptionEn.trim() || null,
+        nameEn: tr.en.name.trim() || null,
+        descriptionEn: tr.en.description.trim() || null,
+        nameDe: tr.de.name.trim() || null,
+        descriptionDe: tr.de.description.trim() || null,
+        nameIt: tr.it.name.trim() || null,
+        descriptionIt: tr.it.description.trim() || null,
       };
       const r = item ? await updateItemAction(item.id, input) : await createItemAction(cat, input);
       if (r.ok) {
@@ -403,7 +440,7 @@ function ItemForm({
     });
   }
 
-  const hasEnglish = Boolean(item?.nameEn || item?.descriptionEn);
+  const hasTranslations = Boolean(item && (item.nameEn || item.descriptionEn || item.nameDe || item.descriptionDe || item.nameIt || item.descriptionIt));
 
   return (
     <form
@@ -470,16 +507,9 @@ function ItemForm({
           <span className="block text-xs text-muted">Isključeno: stavka ostaje na jelovniku s oznakom da trenutno nije u ponudi.</span>
         </span>
       </label>
-      <details className="border border-border bg-surface-2 px-3 py-2.5 [&[open]>summary]:mb-3" open={hasEnglish}>
-        <summary className="label flex min-h-6 cursor-pointer select-none items-center text-muted">Engleski</summary>
-        <div className="space-y-4">
-          <Field label="Naziv (engleski)" htmlFor="i-name-en" error={errors.nameEn}>
-            <Input id="i-name-en" value={nameEn} maxLength={120} onChange={(e) => setNameEn(e.target.value)} autoComplete="off" />
-          </Field>
-          <Field label="Opis (engleski)" htmlFor="i-desc-en" error={errors.descriptionEn}>
-            <Textarea id="i-desc-en" rows={2} value={descriptionEn} maxLength={400} onChange={(e) => setDescriptionEn(e.target.value)} className="min-h-16" />
-          </Field>
-        </div>
+      <details className="border border-border bg-surface-2 px-3 py-2.5 [&[open]>summary]:mb-3" open={hasTranslations}>
+        <summary className="label flex min-h-6 cursor-pointer select-none items-center text-muted">Prijevodi (EN, DE, IT)</summary>
+        <TranslationsGroup kind="item" hrName={name} hrDescription={description} values={tr} onChange={setTr} aiEnabled={aiEnabled} readOnly={readOnly} errors={errors} idPrefix="i" />
       </details>
       {errors.form && <p className="text-xs text-danger">{errors.form}</p>}
       <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">

@@ -8,6 +8,8 @@ import { derivedKey, env, integrations } from "@/lib/recenzije/env";
 import { fullName } from "@/lib/recenzije/utils";
 import { logActivity } from "./activity";
 import { cancelActiveRunsForClient } from "./automation-engine";
+import { alertEligibility } from "./low-review-email";
+import { processLowReviewAlerts } from "./review-alerts";
 
 /**
  * Google Business Profile integration (real OAuth 2.0, no mocks).
@@ -180,7 +182,17 @@ type IncomingReview = {
   repliedAt: Date | null;
 };
 
-export type SyncResult = { source: "business_profile" | "places"; fetched: number; added: number; matched: number; partial: boolean; rating?: number | null; total?: number | null };
+export type SyncResult = {
+  source: "business_profile" | "places";
+  fetched: number;
+  added: number;
+  matched: number;
+  partial: boolean;
+  rating?: number | null;
+  total?: number | null;
+  /** Upozorenja na lošu recenziju poslana vlasniku u ovoj sinkronizaciji (review-alerts.ts). */
+  alertsSent?: number;
+};
 
 /**
  * Pulls reviews from Google. Business Profile API (all reviews) when connected;
@@ -257,10 +269,20 @@ export async function syncReviews(organizationId: string): Promise<SyncResult> {
 
   let added = 0;
   let matched = 0;
+  const syncStart = new Date();
   for (const r of incoming) {
+    // Upozorenje na lošu recenziju: samo NOVI retci s podobnom ocjenom ostaju neobrađeni (null); sve ostalo se označava
+    // odmah, pa kasnija izmjena ili ponovna sinkronizacija ne može pokrenuti e-mail (vidi services/review-alerts.ts).
+    const eligible = alertEligibility({
+      rating: r.rating,
+      reviewedAt: r.reviewedAt,
+      isDemo: org.isDemo,
+      lowReviewAlerts: org.lowReviewAlerts,
+      contactEmail: org.contactEmail,
+    }).ok;
     const inserted = await db
       .insert(reviews)
-      .values({ organizationId, source: "GOOGLE", ...r })
+      .values({ organizationId, source: "GOOGLE", ...r, lowAlertAt: eligible ? null : syncStart })
       .onConflictDoUpdate({
         target: [reviews.organizationId, reviews.externalId],
         set: { rating: r.rating, comment: r.comment, replyText: r.replyText, repliedAt: r.repliedAt },
@@ -274,7 +296,8 @@ export async function syncReviews(organizationId: string): Promise<SyncResult> {
       if (ok) matched++;
     }
   }
-  return { source, fetched: incoming.length, added, matched, partial: source === "places", rating, total };
+  const alerts = await processLowReviewAlerts(organizationId);
+  return { source, fetched: incoming.length, added, matched, partial: source === "places", rating, total, alertsSent: alerts.sent };
 }
 
 function norm(s: string) {

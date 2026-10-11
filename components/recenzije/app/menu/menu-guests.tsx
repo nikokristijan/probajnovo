@@ -16,11 +16,14 @@ export function MenuGuests({
   rows,
   hasMore,
   delayMinutes,
+  captureEnabled,
 }: {
   summary: GuestSummaryDTO;
   rows: GuestView[];
   hasMore: boolean;
   delayMinutes: number;
+  /** False = paket "samo jelovnik": ništa se ne skuplja. */
+  captureEnabled: boolean;
 }) {
   const router = useRouter();
   const [extra, setExtra] = useState<{ rows: GuestView[]; hasMore: boolean } | null>(null);
@@ -48,6 +51,11 @@ export function MenuGuests({
 
   return (
     <div className="space-y-4">
+      {!captureEnabled && (
+        <p className="border-l-[3px] border-border-strong bg-surface-2 p-3 text-[13px] text-foreground/80" role="note">
+          <b>Skupljanje brojeva je isključeno.</b> Gosti odmah vide jelovnik, ne pitamo za broj i ne šaljemo poruke. Ovdje je samo povijest unosa iz vremena dok je bilo uključeno.
+        </p>
+      )}
       <dl className="grid grid-cols-2 gap-3 lg:grid-cols-4">
         <Tile label="Zadnja 24 h" value={summary.last24h} />
         <Tile label="Zadnjih 7 dana" value={summary.last7d} />
@@ -58,7 +66,11 @@ export function MenuGuests({
       <Card>
         <CardHeader
           title="Zadnji gosti"
-          description={`Ukupno unosa: ${summary.total.toLocaleString("hr-HR")}. Poruka stiže otprilike ${delayMinutes} min nakon unosa, a noću (22:00 do 09:00) ujutro u 09:00.`}
+          description={
+            captureEnabled
+              ? `Ukupno unosa: ${summary.total.toLocaleString("hr-HR")}. Poruka stiže otprilike ${delayMinutes} min nakon unosa, a noću (22:00 do 09:00) ujutro u 09:00.`
+              : `Ukupno unosa: ${summary.total.toLocaleString("hr-HR")}. Novi se unosi ne primaju dok je skupljanje isključeno.`
+          }
           action={
             <Button size="sm" variant="ghost" onClick={refresh} loading={refreshing}>
               <RefreshCw /> Osvježi
@@ -69,8 +81,12 @@ export function MenuGuests({
           {all.length === 0 ? (
             <EmptyState
               icon={Users}
-              title="Još nema gostiju"
-              description="Čim netko skenira QR kod i upiše broj mobitela, pojavit će se ovdje sa stanjem poruke."
+              title={captureEnabled ? "Još nema gostiju" : "Skupljanje brojeva je isključeno"}
+              description={
+                captureEnabled
+                  ? "Čim netko skenira QR kod i upiše broj mobitela, pojavit će se ovdje sa stanjem poruke."
+                  : "Gosti odmah vide jelovnik i nitko ne upisuje broj, pa ovdje nema unosa. Uključite skupljanje brojeva u Postavkama ako želite zahtjeve za recenzije."
+              }
               action={
                 <Button variant="secondary" asChild>
                   <Link href="/recenzije/plakat?nacin=jelovnik">

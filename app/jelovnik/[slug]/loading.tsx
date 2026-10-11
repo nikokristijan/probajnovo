@@ -14,7 +14,7 @@ export default function Loading() {
       <main className="jl-main">
         <div className="jl-wrap jl-head" role="status" aria-label={kind ? `Učitavanje ${menuNoun(kind).gen}` : "Učitavanje"}>
           <span className="jl-skel jl-skel-shimmer jl-skel-brand" />
-          <span className="jl-skel jl-skel-shimmer" style={{ width: 96, height: 12, margin: "20px auto 0" }} />
+          <span className="jl-skel jl-skel-shimmer" style={{ width: 96, height: 12, margin: "22px auto 0" }} />
           <span className="jl-skel jl-skel-shimmer" style={{ width: "86%", height: 14, margin: "22px auto 0" }} />
           <span className="jl-skel jl-skel-shimmer" style={{ width: "58%", height: 14, margin: "10px auto 0" }} />
         </div>
@@ -28,7 +28,7 @@ export default function Loading() {
           </div>
         </div>
         <div className="jl-wrap" aria-hidden>
-          <span className="jl-skel jl-skel-shimmer" style={{ width: "46%", height: 30, margin: "48px auto 0" }} />
+          <span className="jl-skel jl-skel-shimmer" style={{ width: "46%", height: 26, margin: "64px auto 44px" }} />
           {[0, 1, 2, 3, 4].map((i) => (
             <div key={i} className="jl-skel-row">
               <span className="jl-skel jl-skel-shimmer" style={{ width: `${62 - i * 6}%`, height: 18 }} />

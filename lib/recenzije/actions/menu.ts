@@ -6,6 +6,19 @@ import { parsePriceToCents } from "@/lib/recenzije/menu-format";
 import type { ParsedMenu } from "@/lib/recenzije/menu-import";
 import { validateMenuSlug } from "@/lib/recenzije/menu-slug";
 import { requireOrg, requireWritableOrg } from "@/lib/recenzije/session";
+import { integrations } from "@/lib/recenzije/env";
+import { rateLimit } from "@/lib/recenzije/rate-limit";
+import { AiNotConfiguredError, AiRequestError } from "@/lib/recenzije/services/ai";
+import {
+  applyMenuTranslations,
+  draftMenuTranslations,
+  parseLangs,
+  translateTexts,
+  MAX_APPLY_ENTRIES,
+  type ApplyResult,
+  type BatchResult,
+  type DraftFields,
+} from "@/lib/recenzije/services/menu-translate";
 import {
   checkMenuSlug,
   createCategory,
@@ -83,24 +96,38 @@ const settingsSchema = z.object({
   title: shortText(300).optional(),
   intro: optionalText(3000),
   introEn: optionalText(3000),
+  introDe: optionalText(3000),
+  introIt: optionalText(3000),
   externalUrl: optionalText(1200),
   logoUrl: optionalText(1200),
   allowSkip: z.boolean({ error: "Neispravan unos." }).optional(),
   menuKind: z.enum(["jelovnik", "meni"], { error: "Neispravan unos." }).optional(),
   noticesEnabled: z.boolean({ error: "Neispravan unos." }).optional(),
+  captureEnabled: z.boolean({ error: "Neispravan unos." }).optional(),
+  showReviewButton: z.boolean({ error: "Neispravan unos." }).optional(),
+  wifiName: optionalText(500),
+  wifiPassword: optionalText(500),
+  contactPhone: optionalText(500),
+  contactEmail: optionalText(500),
+  contactAddress: optionalText(500),
+  contactInstagram: optionalText(500),
   delayMinutes: z.number({ error: "Odgoda mora biti broj minuta." }).int("Odgoda mora biti cijeli broj minuta.").optional(),
   enabled: z.boolean({ error: "Neispravan unos." }).optional(),
 });
 export type MenuSettingsPatch = z.input<typeof settingsSchema>;
 
-const categorySchema = z.object({ name: shortText(300), nameEn: optionalText(300) });
+const categorySchema = z.object({ name: shortText(300), nameEn: optionalText(300), nameDe: optionalText(300), nameIt: optionalText(300) });
 export type CategoryFormInput = z.input<typeof categorySchema>;
 
 const itemSchema = z.object({
   name: shortText(300),
   nameEn: optionalText(300),
+  nameDe: optionalText(300),
+  nameIt: optionalText(300),
   description: optionalText(1500),
   descriptionEn: optionalText(1500),
+  descriptionDe: optionalText(1500),
+  descriptionIt: optionalText(1500),
   /** Cijena kako je upisana ("5,50"); pretvara se u cente ovdje. */
   price: shortText(30),
   allergens: optionalText(600),
@@ -208,8 +235,12 @@ export async function createItemAction(categoryId: string, input: ItemFormInput)
   const r = await createItem(w.orgId, cat.data, {
     name: d.name,
     nameEn: d.nameEn,
+    nameDe: d.nameDe,
+    nameIt: d.nameIt,
     description: d.description,
     descriptionEn: d.descriptionEn,
+    descriptionDe: d.descriptionDe,
+    descriptionIt: d.descriptionIt,
     allergens: d.allergens,
     available: d.available,
     priceCents: cents,
@@ -231,8 +262,12 @@ export async function updateItemAction(itemId: string, input: ItemFormInput): Pr
   const r = await updateItem(w.orgId, id.data, {
     name: d.name,
     nameEn: d.nameEn,
+    nameDe: d.nameDe,
+    nameIt: d.nameIt,
     description: d.description,
     descriptionEn: d.descriptionEn,
+    descriptionDe: d.descriptionDe,
+    descriptionIt: d.descriptionIt,
     allergens: d.allergens,
     available: d.available,
     categoryId: d.categoryId,
@@ -272,6 +307,108 @@ export async function moveItemAction(itemId: string, direction: "up" | "down"): 
   const r = await moveItem(w.orgId, id.data, dir.data);
   if (r.ok && r.value.moved) refresh();
   return fromService(r, "", () => null);
+}
+
+// --- Prijevodi (AI nacrt) ---
+
+const AI_OFF = "AI nije postavljen, pa automatski prijevod nije dostupan. Prijevode možete upisati ručno.";
+const langsSchema = z.array(z.enum(["en", "de", "it"], { error: "Odaberite jezik." }), { error: "Odaberite jezik." }).min(1, "Odaberite barem jedan jezik.").max(3);
+
+/** Pozivi prema AI-ju po tvrtki: 40 u 10 minuta (cijeli jelovnik od 200 stavki je oko 20 poziva). */
+function aiGate(orgId: string): Fail | null {
+  if (!integrations.ai()) return bad(AI_OFF);
+  const rl = rateLimit(`menu-translate:${orgId}`, 40, 10 * 60_000);
+  return rl.ok ? null : bad(`Previše zahtjeva za prijevod. Pokušajte ponovno za ${Math.max(1, Math.ceil(rl.retryAfter / 60))} min.`);
+}
+
+function aiError(e: unknown): Fail {
+  if (e instanceof AiNotConfiguredError) return bad(AI_OFF);
+  if (e instanceof AiRequestError) return bad(e.message);
+  console.error("[recenzije] prijevod jelovnika", e instanceof Error ? e.message : e);
+  return bad("Prijevod nije uspio. Pokušajte ponovno.");
+}
+
+const fieldsText = z.string().max(700);
+const translateTextsSchema = z.object({
+  kind: z.enum(["category", "item", "intro"]),
+  /** Hrvatski tekst iz obrasca (nespremljen). */
+  name: z.string().max(400).optional(),
+  description: z.string().max(3000).optional(),
+  /** Koja polja su prazna u obrascu i treba ih prevesti, po jeziku. */
+  need: z.object({
+    en: z.array(z.enum(["name", "description"])).max(2).optional(),
+    de: z.array(z.enum(["name", "description"])).max(2).optional(),
+    it: z.array(z.enum(["name", "description"])).max(2).optional(),
+  }),
+});
+
+/**
+ * "Prevedi (AI nacrt)" u obrascu stavke, kategorije ili uvoda: vraća nacrt za prazna polja koja je obrazac naveo. Ništa se ne
+ * sprema; operater nacrt vidi u poljima obrasca, pregleda ga i tek tada sprema obrazac.
+ */
+export async function translateTextsAction(input: z.input<typeof translateTextsSchema>): Promise<MenuActionResult<{ fields: DraftFields }>> {
+  const w = await writable();
+  if (w.deny) return w.deny;
+  const p = translateTextsSchema.safeParse(input);
+  if (!p.success) return firstIssue(p.error);
+  const gate = aiGate(w.orgId);
+  if (gate) return gate;
+  try {
+    const r = await translateTexts(p.data);
+    if (!r.ok) return bad(r.error);
+    if (Object.keys(r.value).length === 0) return bad("AI nije vratio prijevod. Pokušajte ponovno.");
+    return good("AI nacrt je upisan u prazna polja. Provjerite ga prije spremanja.", { fields: r.value });
+  } catch (e) {
+    return aiError(e);
+  }
+}
+
+/** Jedan korak "Prevedi cijeli jelovnik": nacrt za do 10 unosa kojima nedostaje prijevod. Ništa se ne sprema. */
+export async function draftMenuTranslationsAction(input: { langs: string[]; offset: number }): Promise<MenuActionResult<BatchResult>> {
+  const w = await writable();
+  if (w.deny) return w.deny;
+  const langs = langsSchema.safeParse(input.langs);
+  const offset = z.number().int().min(0).max(100_000).safeParse(input.offset);
+  if (!langs.success) return bad(langs.error.issues[0].message);
+  if (!offset.success) return bad("Neispravan unos.");
+  const gate = aiGate(w.orgId);
+  if (gate) return gate;
+  try {
+    const parsed = parseLangs(langs.data);
+    if (!parsed) return bad("Odaberite jezik.");
+    const r = await draftMenuTranslations(w.orgId, { langs: parsed, offset: offset.data });
+    return r.ok ? good("", r.value) : bad(r.error);
+  } catch (e) {
+    return aiError(e);
+  }
+}
+
+const applySchema = z
+  .array(
+    z.object({
+      kind: z.enum(["category", "item", "intro"]),
+      id: idSchema,
+      label: z.string().max(400),
+      fields: z.record(z.string(), fieldsText),
+    }),
+    { error: "Neispravan unos." }
+  )
+  .max(MAX_APPLY_ENTRIES, `Najviše ${MAX_APPLY_ENTRIES} unosa odjednom.`);
+
+/** Sprema pregledani (i po želji ispravljeni) nacrt prijevoda, ali samo u polja koja su još prazna. */
+export async function applyMenuTranslationsAction(entries: z.input<typeof applySchema>): Promise<MenuActionResult<ApplyResult>> {
+  const w = await writable();
+  if (w.deny) return w.deny;
+  const p = applySchema.safeParse(entries);
+  if (!p.success) return bad(p.error.issues[0]?.message ?? "Neispravan unos.");
+  const r = await applyMenuTranslations(w.orgId, p.data as Parameters<typeof applyMenuTranslations>[1]);
+  if (!r.ok) return bad(r.error);
+  refresh();
+  const { applied, skipped } = r.value;
+  return good(
+    applied > 0 ? `Spremljeno prijevoda: ${applied}.${skipped ? ` Preskočeno ${skipped} (polje je već ispunjeno).` : ""}` : "Ništa nije spremljeno: sva su polja već ispunjena.",
+    r.value
+  );
 }
 
 // --- Brzi uvoz ---

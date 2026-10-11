@@ -366,6 +366,14 @@ export default async function RecenzijeLanding({ searchParams }: { searchParams:
             Za ugostiteljske lokale imamo jednu mogućnost više: digitalni jelovnik koji izrađujemo i hostamo na našoj stranici. Vi stavite QR kod na stolove, a gost nakon posjeta
             dobije poruku s molbom za Google recenziju.
           </p>
+          <p className="mt-3 max-w-2xl border-l-[3px] border-orange bg-orange-soft p-4 text-[15px] leading-relaxed">
+            <strong>Samo jelovnik ili jelovnik s recenzijama?</strong> Za kafiće i restorane imamo i posebnu ponudu s paketima Jelovnik, Jelovnik + Recenzije i Sve uključeno, uključujući tiskane stalke i
+            unos jelovnika.{" "}
+            <Link href="/digitalni-jelovnik" className="font-bold underline underline-offset-4">
+              Pogledajte digitalni jelovnik
+            </Link>
+            .
+          </p>
           <ol className="mt-8 grid gap-px border border-border bg-border sm:grid-cols-2 lg:grid-cols-4">
             {VENUE_STEPS.map((s, i) => (
               <li key={s.title} className="bg-white p-6">

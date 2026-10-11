@@ -133,7 +133,7 @@ async function MenuPoster() {
               Gost koji skenira kod vidi stranicu s greškom. Uključite jelovnik prije ispisa.
             </Alert>
           )}
-          <MenuPosterStudio orgName={ctx.org.name} baseUrl={view.publicUrl} initialQr={qr} allowSkip={view.menu.allowSkip} menuKind={view.menu.menuKind === "meni" ? "meni" : "jelovnik"} />
+          <MenuPosterStudio orgName={ctx.org.name} baseUrl={view.publicUrl} initialQr={qr} allowSkip={view.menu.allowSkip || !view.menu.captureEnabled} captureEnabled={view.menu.captureEnabled} menuKind={view.menu.menuKind === "meni" ? "meni" : "jelovnik"} />
         </div>
       ) : (
         <Card>

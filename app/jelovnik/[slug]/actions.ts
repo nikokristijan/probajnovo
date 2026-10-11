@@ -117,7 +117,9 @@ async function run(formData: FormData): Promise<Outcome> {
     case "consent_required":
       return fail("privola", slug, table);
     case "menu_not_found":
-      return { kind: "done", slug }; // stranica sama odgovara s 404
+    case "capture_off":
+      // 404 odgovara sama stranica; "samo jelovnik": nema kolačića ni potvrde, stranica se otvara izravno.
+      return { kind: "done", slug };
     case "ok":
     case "rate_limited":
     case "cap_reached": {

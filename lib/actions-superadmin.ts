@@ -58,7 +58,7 @@ export type InviteState =
 export type SimpleState = { error?: string; success?: boolean } | undefined;
 
 const RESERVED_SLUGS = new Set([
-  "admin", "api", "login", "logout", "robots.txt", "sitemap.xml", "favicon.ico", "_next", "en", "nfc", "proizvodi", "jelovnik",
+  "admin", "api", "login", "logout", "robots.txt", "sitemap.xml", "favicon.ico", "_next", "en", "nfc", "proizvodi", "jelovnik", "digitalni-jelovnik",
 ]);
 
 async function requireSuper(): Promise<AdminUser> {

@@ -15,14 +15,16 @@ export const loadMenuInfo = cache((slug: string) => getPublicMenuInfoBySlug(slug
 /** Cijeli javni jelovnik (kategorije i stavke). */
 export const loadMenuContent = cache((slug: string) => getPublicMenuBySlug(slug));
 
-export type Access = "cookie" | "skip" | "gate";
+export type Access = "cookie" | "skip" | "gate" | "open";
 
 /**
- * Tko smije vidjeti jelovnik: ispravan potpisani kolačić ovog jelovnika, ili (samo ako lokal to dopušta i gost je izričito
+ * Tko smije vidjeti jelovnik: svi kad lokal ne skuplja brojeve (capture_enabled = false); inače ispravan potpisani kolačić ovog jelovnika, ili (samo ako lokal to dopušta i gost je izričito
  * odabrao "bez unosa broja") preskakanje; inače vrata. Ista pravila kao resolveMenuAccess u services/guests.ts, ali bez
  * dodatnog upita u bazu (zaglavlje je već učitano).
  */
 export function decideAccess(info: PublicMenuInfo, cookieValue: string | null | undefined, skip: boolean): Access {
+  // Paket "samo jelovnik": nema vrata ni kolačića, jelovnik je uvijek otvoren.
+  if (!info.captureEnabled) return "open";
   if (verifyGuestCookie(info.id, cookieValue)) return "cookie";
   if (info.allowSkip && skip) return "skip";
   return "gate";

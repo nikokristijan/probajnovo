@@ -1,51 +1,98 @@
 /*
- * Javni jelovnici lokala (/jelovnik/<slug>): crni "luksuzni" stil. Gotovo crna podloga (#0a0a0a), topla šampanjac/zlatna
- * boja samo za sitne naglaske (tanke crte, male oznake velikim slovima, cijene), Cormorant Garamond za naziv lokala i
- * kategorije, Jost za tekst. Mobilno prvo (375 px), središnji stupac do 640 px, mete dodira najmanje 44 px (osim sitne
- * pravne poveznice, koja to namjerno nije, ali ima razmak oko sebe), bez pomicanja sadržaja pri učitavanju.
- * Kontrast teksta na crnoj podlozi najmanje 4,5 : 1 (WCAG AA). Sva pravila su pod .jl, pa ništa ne utječe na ostatak stranice.
+ * Javni jelovnici lokala (/jelovnik/<slug>): crni "luksuzni" stil. Topla gotovo crna podloga s jedva vidljivim zrnom filma i
+ * blagim sjajem iza zaglavlja; šampanjac metal (gradijent kroz background-clip:text) samo na nazivu lokala i cijenama,
+ * a za sve ostalo tanke linije, sitni ukrasi i mirna slova. Cormorant Garamond za naziv, kategorije, stavke i cijene,
+ * Jost za sitne oznake i pomoćni tekst. Mobilno prvo (375 px), središnji stupac do 640 px, mete dodira najmanje 44 px
+ * (osim sitne pravne poveznice, koja to namjerno nije, ali ima razmak oko sebe), bez pomicanja sadržaja pri učitavanju.
+ * Kontrast teksta na crnoj podlozi najmanje 4,5 : 1 (WCAG AA). Svi efekti kretanja su samo opacity i transform i gase se
+ * pri smanjenom kretanju. Sva pravila su pod .jl, pa ništa ne utječe na ostatak stranice.
  */
 
 .jl {
-  --jl-bg: #0a0a0a;
-  --jl-raised: #121212;
-  --jl-text: #ece7de;
-  --jl-soft: #c5beb2;
-  --jl-muted: #a59e92;
-  --jl-faint: #918a7f;
-  --jl-gold: #c8a96a;
-  --jl-gold-bright: #dcc28b;
-  --jl-hair: rgb(200 169 106 / 0.28);
-  --jl-line: rgb(236 231 222 / 0.12);
-  --jl-line-strong: #7b7261;
+  --jl-bg: #0a0908;
+  --jl-card: #0e0c0a;
+  --jl-raised: #12100d;
+  --jl-text: #efe9dd;
+  --jl-soft: #cfc7b8;
+  --jl-muted: #aaa294;
+  --jl-faint: #968e81;
+  --jl-gold: #c9a96a;
+  --jl-gold-bright: #e9d5a1;
+  --jl-gold-deep: #a8823f;
+  --jl-gold-dim: #b79e68;
+  /* Metal: svijetlo pri vrhu slova, tamnije pri dnu. Dno (#a8823f) ima kontrast 5,5 : 1 na podlozi, pa je i najtamniji dio čitljiv. */
+  --jl-metal: linear-gradient(180deg, #f3e6bf 0%, #e9d5a1 24%, #c9a96a 62%, #a8823f 100%);
+  --jl-metal-price: linear-gradient(180deg, #ecd9a6 0%, #d3b574 60%, #b9954f 100%);
+  --jl-hair: rgb(201 169 106 / 0.3);
+  --jl-hair-soft: rgb(201 169 106 / 0.16);
+  --jl-line: rgb(239 233 221 / 0.1);
+  --jl-line-strong: #7d7463;
   --jl-danger: #f0a094;
-  --jl-serif: var(--jl-font-serif), "Cormorant Garamond", Georgia, "Times New Roman", serif;
-  --jl-sans: var(--jl-font-sans), "Jost", "Helvetica Neue", Arial, sans-serif;
+  --jl-glow: rgb(201 169 106 / 0.1);
+  --jl-ease: cubic-bezier(0.2, 0.7, 0.2, 1);
+  --jl-serif: var(--jl-font-serif, "Cormorant Garamond"), "Cormorant Garamond", Georgia, "Times New Roman", serif;
+  --jl-sans: var(--jl-font-sans, "Jost"), "Jost", "Helvetica Neue", Arial, sans-serif;
+  /* Ukras: rombić (obris i pun središnji dio). Koristi se u razdjelnicima ispod zaglavlja, ispod naslova kategorije i u prozoru. */
+  --jl-gem: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 9 9'%3E%3Cpath d='M4.5 .5 8.5 4.5 4.5 8.5 .5 4.5Z' fill='none' stroke='%23c9a96a' stroke-width='.9'/%3E%3Cpath d='M4.5 3 6 4.5 4.5 6 3 4.5Z' fill='%23c9a96a'/%3E%3C/svg%3E");
+  /* Zrno filma: bijeli šum, pri 4 % neprozirnosti jedva vidljiv; ujedno razbija pruge (banding) u sjaju. */
+  --jl-grain: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200'%3E%3Cfilter id='n' x='0' y='0' width='100%25' height='100%25'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.8' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 1 0 0 0 0 .96 0 0 0 0 .88 0 0 0 .85 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
   /* Visina ljepljive trake s kategorijama: 44 (poveznica) + 2 x 8 (razmak) + 1 (crta). Isto kao LINE_OFFSET u category-nav.tsx. */
   --jl-nav-h: 61px;
-  --jl-gutter: max(20px, env(safe-area-inset-left));
+  --jl-gutter: max(22px, env(safe-area-inset-left));
 
+  position: relative;
   min-height: 100dvh;
   display: flex;
   flex-direction: column;
-  background: var(--jl-bg);
+  background-color: var(--jl-bg);
+  /* Topli, vrlo blagi sjaj iza zaglavlja (jedan sloj, bez slika). */
+  background-image: radial-gradient(ellipse 90% 560px at 50% 0, var(--jl-glow), rgb(201 169 106 / 0.035) 45%, transparent 75%);
+  background-repeat: no-repeat;
   color: var(--jl-text);
   font-family: var(--jl-sans);
   font-size: 16px;
   font-weight: 400;
   line-height: 1.55;
+  /* Cormorant ima starinske brojke (1987 sa spuštenim znamenkama); svugdje se traže linijske, a u cijenama i tabularne. */
+  font-variant-numeric: lining-nums;
   color-scheme: dark;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   -webkit-text-size-adjust: 100%;
   text-size-adjust: 100%;
 }
-/* Podloga iza stranice (npr. pri prekomjernom skrolanju na iOS-u) isto crna. */
+/* Zrno preko cijele stranice (fiksno, ne prima dodire, ne pomiče raspored). */
+.jl::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: 90;
+  pointer-events: none;
+  background-image: var(--jl-grain);
+  background-size: 200px 200px;
+  opacity: 0.045;
+}
+/* Podloga iza stranice (npr. pri prekomjernom skrolanju na iOS-u) isto crna; tanka traka za pomicanje. */
 html:has(.jl),
 body:has(.jl) {
-  background: #0a0a0a;
+  background: #0a0908;
+}
+html:has(.jl) {
+  scrollbar-width: thin;
+  scrollbar-color: rgb(201 169 106 / 0.4) #0a0908;
+}
+html:has(.jl)::-webkit-scrollbar {
+  width: 8px;
+}
+html:has(.jl)::-webkit-scrollbar-track {
+  background: #0a0908;
+}
+html:has(.jl)::-webkit-scrollbar-thumb {
+  background: rgb(201 169 106 / 0.32);
+  border-radius: 8px;
 }
 .jl-menu {
+  position: relative;
   min-height: 100dvh;
   display: flex;
   flex-direction: column;
@@ -65,7 +112,7 @@ body:has(.jl) {
   outline-offset: 3px;
 }
 .jl ::selection {
-  background: rgb(200 169 106 / 0.35);
+  background: rgb(201 169 106 / 0.38);
   color: #fff;
 }
 
@@ -74,6 +121,23 @@ body:has(.jl) {
   max-width: 640px;
   margin: 0 auto;
   padding: 0 var(--jl-gutter);
+}
+
+/* ---------- ukras (razdjelnik s rombićem) ---------- */
+
+.jl-orn,
+.jl-head::after,
+.jl-sec-h::after,
+.jl-card-line::before {
+  content: "";
+  display: block;
+  width: min(100%, 164px);
+  height: 9px;
+  margin: 0 auto;
+  background:
+    var(--jl-gem) center / 9px 9px no-repeat,
+    linear-gradient(90deg, transparent, rgb(201 169 106 / 0.55)) left 0 top 4px / calc(50% - 13px) 1px no-repeat,
+    linear-gradient(270deg, transparent, rgb(201 169 106 / 0.55)) right 0 top 4px / calc(50% - 13px) 1px no-repeat;
 }
 
 /* ---------- znak lokala, oznaka, naslovi ---------- */
@@ -85,20 +149,39 @@ body:has(.jl) {
 }
 .jl-brand-name {
   font-family: var(--jl-serif);
-  font-size: clamp(36px, 11vw, 52px);
-  line-height: 1.04;
-  letter-spacing: 0.01em;
-  color: var(--jl-text);
+  font-size: clamp(42px, 12.6vw, 60px);
+  line-height: 1.02;
+  letter-spacing: -0.005em;
+  color: var(--jl-gold-bright);
   text-wrap: balance;
   overflow-wrap: break-word;
   hyphens: auto;
+  /* Padding da gradijent ne odreže spuštene/uzdignute dijelove slova (g, j, Š). */
+  padding: 0.06em 0 0.1em;
+}
+@supports (background-clip: text) or (-webkit-background-clip: text) {
+  .jl-brand-name,
+  .jl-price {
+    background-image: var(--jl-metal);
+    -webkit-background-clip: text;
+    background-clip: text;
+    /* Boja ostaje šampanjac (za čitače i kontrast), samo se ispuna slova zamjenjuje metalom. */
+    -webkit-text-fill-color: transparent;
+  }
+  .jl-price {
+    background-image: var(--jl-metal-price);
+  }
+}
+.jl-brand-name {
+  filter: drop-shadow(0 0 28px rgb(201 169 106 / 0.16));
 }
 .jl-brand-logo {
   display: block;
-  width: 200px;
+  width: 208px;
   max-width: 100%;
-  height: 64px;
+  height: 68px;
   margin: 0 auto;
+  filter: drop-shadow(0 0 24px rgb(201 169 106 / 0.14));
 }
 .jl-brand-logo img {
   display: block;
@@ -110,14 +193,14 @@ body:has(.jl) {
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 14px;
-  margin: 18px 0 0;
+  gap: 16px;
+  margin: 20px 0 0;
   min-width: 0;
   font-family: var(--jl-sans);
   font-size: 11px;
   font-weight: 500;
   line-height: 1.4;
-  letter-spacing: 0.3em;
+  letter-spacing: 0.42em;
   text-transform: uppercase;
   color: var(--jl-gold);
   text-align: center;
@@ -127,40 +210,53 @@ body:has(.jl) {
 .jl-kicker::after {
   content: "";
   flex: none;
-  width: 28px;
+  width: 34px;
   height: 1px;
-  background: var(--jl-hair);
+}
+.jl-kicker::before {
+  background: linear-gradient(90deg, transparent, rgb(201 169 106 / 0.6));
+}
+.jl-kicker::after {
+  background: linear-gradient(270deg, transparent, rgb(201 169 106 / 0.6));
 }
 /* Naslov na stranicama grešaka. */
 .jl-title {
-  margin: 20px 0 0;
+  margin: 24px 0 0;
   font-family: var(--jl-serif);
-  font-size: clamp(30px, 8.6vw, 40px);
+  font-size: clamp(32px, 9vw, 44px);
   font-weight: 500;
-  line-height: 1.1;
-  letter-spacing: 0.005em;
+  line-height: 1.08;
+  letter-spacing: 0.002em;
   text-align: center;
   text-wrap: balance;
   overflow-wrap: break-word;
   hyphens: auto;
 }
+.jl-title + .jl-orn {
+  margin-top: 26px;
+}
 .jl-lead {
-  margin: 22px auto 0;
-  max-width: 40ch;
-  font-size: 15.5px;
-  line-height: 1.65;
+  margin: 24px auto 0;
+  max-width: 36ch;
+  font-family: var(--jl-serif);
+  font-size: 20px;
+  font-style: italic;
+  line-height: 1.5;
   color: var(--jl-soft);
   text-align: center;
   text-wrap: pretty;
 }
 .jl-intro {
-  margin: 22px auto 0;
-  max-width: 46ch;
-  font-size: 15.5px;
-  line-height: 1.7;
+  margin: 26px auto 0;
+  max-width: 36ch;
+  font-family: var(--jl-serif);
+  font-size: clamp(19px, 5.4vw, 21px);
+  font-style: italic;
+  font-weight: 400;
+  line-height: 1.5;
   color: var(--jl-soft);
   text-align: center;
-  text-wrap: pretty;
+  text-wrap: balance;
 }
 
 /* ---------- vrata: mali prozor iznad zamućene stranice ---------- */
@@ -189,30 +285,33 @@ body:has(.jl-gate-layer) {
   pointer-events: none;
   user-select: none;
   -webkit-user-select: none;
+  background-image: radial-gradient(ellipse 90% 560px at 50% 0, var(--jl-glow), transparent 75%);
+  background-repeat: no-repeat;
 }
 .jl-backdrop .jl-head,
+.jl-backdrop .jl-head > *,
 .jl-backdrop .jl-sec {
   animation: none;
 }
 /* Traka kategorija u pozadini nije ljepljiva i ne smije iskočiti iznad zamućenja i prozora. */
 .jl-backdrop .jl-nav {
-  position: static;
+  position: relative;
   z-index: auto;
 }
 /* Zamućenje i zatamnjenje: tekst iza se ne može pročitati. Preglednici bez backdrop-filtera dobivaju zamućenu pozadinu izravno. */
 .jl-scrim {
   position: absolute;
   inset: 0;
-  background: rgb(6 6 6 / 0.5);
-  -webkit-backdrop-filter: blur(9px);
-  backdrop-filter: blur(9px);
+  background: radial-gradient(ellipse 80% 60% at 50% 42%, rgb(8 7 6 / 0.26), rgb(5 4 3 / 0.6));
+  -webkit-backdrop-filter: blur(10px);
+  backdrop-filter: blur(10px);
 }
 @supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
   .jl-backdrop-in {
-    filter: blur(9px);
+    filter: blur(10px);
   }
   .jl-scrim {
-    background: rgb(6 6 6 / 0.7);
+    background: rgb(6 5 4 / 0.72);
   }
 }
 .jl-gate-main {
@@ -224,41 +323,81 @@ body:has(.jl-gate-layer) {
   min-height: 0;
   padding: 16px;
 }
+/*
+ * Prozor kao pozivnica: vanjska tanka crta, unutarnja još tanja (inset sjena, ne pomiče se pri pomicanju sadržaja prozora),
+ * zlatni kutovi na unutarnjem okviru i blagi unutarnji sjaj. Sve je u pozadini elementa, pa nema dodatnih elemenata.
+ */
 .jl-card {
+  --jl-corner: rgb(233 213 161 / 0.85);
   position: relative;
   width: 100%;
-  max-width: 372px;
+  max-width: 384px;
   max-height: calc(100vh - 100px);
-  max-height: min(85dvh, calc(100dvh - 100px));
+  max-height: min(86dvh, calc(100dvh - 100px));
   overflow-y: auto;
   overscroll-behavior: contain;
   -webkit-overflow-scrolling: touch;
-  padding: 24px 20px 4px;
-  border: 1px solid var(--jl-hair);
-  background: #0d0c0b;
-  box-shadow: 0 30px 90px rgb(0 0 0 / 0.75), 0 0 0 1px rgb(0 0 0 / 0.5);
-  animation: jl-pop 0.4s cubic-bezier(0.2, 0.7, 0.2, 1) both;
+  scrollbar-width: thin;
+  scrollbar-color: rgb(201 169 106 / 0.35) transparent;
+  padding: 34px 28px 6px;
+  border: 1px solid rgb(201 169 106 / 0.42);
+  background-color: var(--jl-card);
+  background-image:
+    /* kutovi (po dvije crte, 14 px) na unutarnjem okviru, 8 px od ruba */
+    linear-gradient(var(--jl-corner), var(--jl-corner)), linear-gradient(var(--jl-corner), var(--jl-corner)),
+    linear-gradient(var(--jl-corner), var(--jl-corner)), linear-gradient(var(--jl-corner), var(--jl-corner)),
+    linear-gradient(var(--jl-corner), var(--jl-corner)), linear-gradient(var(--jl-corner), var(--jl-corner)),
+    linear-gradient(var(--jl-corner), var(--jl-corner)), linear-gradient(var(--jl-corner), var(--jl-corner)),
+    radial-gradient(ellipse 100% 70% at 50% 0, rgb(201 169 106 / 0.075), transparent 70%);
+  background-position:
+    left 8px top 8px, left 8px top 8px, right 8px top 8px, right 8px top 8px,
+    left 8px bottom 8px, left 8px bottom 8px, right 8px bottom 8px, right 8px bottom 8px,
+    center top;
+  background-size:
+    15px 1px, 1px 15px, 15px 1px, 1px 15px,
+    15px 1px, 1px 15px, 15px 1px, 1px 15px,
+    100% 100%;
+  background-repeat: no-repeat;
+  box-shadow:
+    inset 0 0 0 8px var(--jl-card),
+    inset 0 0 0 9px rgb(201 169 106 / 0.2),
+    inset 0 0 70px rgb(201 169 106 / 0.045),
+    0 40px 100px rgb(0 0 0 / 0.8),
+    0 0 0 1px rgb(0 0 0 / 0.6),
+    0 0 60px rgb(201 169 106 / 0.05);
+  animation: jl-pop 0.6s var(--jl-ease) both;
+}
+.jl-card::-webkit-scrollbar {
+  width: 4px;
+}
+.jl-card::-webkit-scrollbar-thumb {
+  background: rgb(201 169 106 / 0.35);
 }
 .jl-card .jl-brand-name {
-  font-size: clamp(26px, 8vw, 32px);
-  line-height: 1.1;
+  font-size: clamp(32px, 9.4vw, 38px);
+  line-height: 1.06;
 }
 .jl-card .jl-brand-name.is-long {
-  font-size: clamp(22px, 6.6vw, 26px);
+  font-size: clamp(24px, 7vw, 28px);
   line-height: 1.12;
 }
 .jl-card .jl-brand-logo {
   width: 100%;
-  max-width: 200px;
-  height: 36px;
+  max-width: 224px;
+  height: 52px;
 }
 .jl-card-line {
-  margin: 12px 0 0;
-  font-size: 14px;
-  line-height: 1.5;
+  margin: 18px 0 0;
+  font-family: var(--jl-serif);
+  font-size: 19px;
+  font-style: italic;
+  line-height: 1.4;
   text-align: center;
   color: var(--jl-soft);
   text-wrap: balance;
+}
+.jl-card-line::before {
+  margin-bottom: 18px;
 }
 .jl-sr {
   position: absolute;
@@ -274,57 +413,63 @@ body:has(.jl-gate-layer) {
 }
 .jl-form {
   position: relative;
-  margin-top: 16px;
+  margin-top: 20px;
 }
 .jl-field {
   display: block;
   text-align: center;
 }
+/* Polje kao tanka crta ispod broja; pri fokusu crta se zadeblja, zasvijetli i dobije blagi sjaj odozdo. */
 .jl-input {
   display: block;
   width: 100%;
-  min-height: 50px;
-  padding: 0 14px;
-  border: 1px solid var(--jl-line-strong);
+  min-height: 56px;
+  padding: 6px 12px 4px;
+  border: 0;
+  border-bottom: 1px solid var(--jl-line-strong);
   border-radius: 0;
-  background: rgb(255 255 255 / 0.03);
+  background: linear-gradient(to top, rgb(239 233 221 / 0.05), transparent 80%);
   color: var(--jl-text);
-  font: inherit;
-  /* 18 px: iOS ne povećava stranicu pri fokusu na polju (granica je 16 px). */
-  font-size: 18px;
-  font-weight: 400;
-  letter-spacing: 0.06em;
+  font-family: var(--jl-serif);
+  /* 24 px: iOS ne povećava stranicu pri fokusu na polju (granica je 16 px). */
+  font-size: 25px;
+  font-weight: 500;
+  letter-spacing: 0.08em;
   text-align: center;
-  font-variant-numeric: tabular-nums;
+  font-variant-numeric: lining-nums tabular-nums;
   appearance: none;
-  transition: border-color 0.2s ease, background-color 0.2s ease;
+  transition: border-color 0.25s ease, background-color 0.25s ease, box-shadow 0.25s ease;
 }
 .jl-input::placeholder {
-  color: #8a8377;
-  letter-spacing: 0.06em;
+  color: #8c8579;
+  font-weight: 400;
+  letter-spacing: 0.08em;
+  opacity: 1;
 }
 .jl-input:focus {
-  border-color: var(--jl-gold);
-  background: rgb(200 169 106 / 0.06);
+  border-bottom-color: var(--jl-gold-bright);
+  background: linear-gradient(to top, rgb(201 169 106 / 0.12), transparent 85%);
   outline: none;
-  box-shadow: 0 0 0 1px var(--jl-gold);
+  box-shadow: 0 1px 0 0 var(--jl-gold-bright), 0 18px 26px -20px rgb(201 169 106 / 0.6);
 }
 .jl-input[aria-invalid="true"] {
-  border-color: var(--jl-danger);
-  box-shadow: 0 0 0 1px var(--jl-danger);
+  border-bottom-color: var(--jl-danger);
+  box-shadow: 0 1px 0 0 var(--jl-danger);
 }
 .jl-hint {
-  margin: 6px 0 0;
+  margin: 10px 0 0;
   font-size: 12px;
-  line-height: 1.5;
+  line-height: 1.55;
+  letter-spacing: 0.02em;
   color: var(--jl-muted);
+  text-wrap: balance;
 }
 .jl-nowrap {
   white-space: nowrap;
 }
 .jl-error {
-  margin: 8px 0 0;
-  padding: 8px 12px;
+  margin: 10px 0 0;
+  padding: 9px 12px;
   border-left: 2px solid var(--jl-danger);
   background: rgb(240 160 148 / 0.09);
   font-size: 13px;
@@ -333,20 +478,21 @@ body:has(.jl-gate-layer) {
   text-align: left;
 }
 .jl-error-block {
-  margin-top: 12px;
+  margin-top: 14px;
 }
 
 .jl-consent {
-  margin-top: 10px;
+  margin-top: 14px;
 }
 .jl-check {
   display: flex;
   align-items: flex-start;
-  gap: 12px;
+  gap: 14px;
   min-height: 44px;
   padding: 6px 0 2px;
   cursor: pointer;
 }
+/* Kućica: tanki zlatni kvadrat; označena dobije zlatnu kvačicu i topao ton unutra. */
 .jl-check input {
   flex: none;
   appearance: none;
@@ -354,54 +500,84 @@ body:has(.jl-gate-layer) {
   width: 22px;
   height: 22px;
   margin: 1px 0 0;
-  border: 1px solid var(--jl-gold);
+  border: 1px solid rgb(201 169 106 / 0.8);
   border-radius: 0;
-  background-color: transparent;
+  background-color: rgb(201 169 106 / 0.03);
   background-repeat: no-repeat;
   background-position: center;
-  background-size: 15px 15px;
+  background-size: 16px 16px;
   cursor: pointer;
-  transition: background-color 0.15s ease;
+  transition: background-color 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+}
+.jl-check input:hover {
+  border-color: var(--jl-gold-bright);
+  box-shadow: 0 0 14px rgb(201 169 106 / 0.22);
 }
 .jl-check input:checked {
-  background-color: var(--jl-gold);
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='none' stroke='%230a0a0a' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M3 8.5l3.2 3.2L13 4.8'/%3E%3C/svg%3E");
+  border-color: var(--jl-gold-bright);
+  background-color: rgb(201 169 106 / 0.16);
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='none' stroke='%23e9d5a1' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M3 8.6l3.1 3.1L13 4.6'/%3E%3C/svg%3E");
 }
 .jl-check input[aria-invalid="true"] {
   border-color: var(--jl-danger);
 }
 .jl-check-text {
   font-size: 12.5px;
-  line-height: 1.55;
+  line-height: 1.6;
   color: var(--jl-soft);
 }
 .jl-more {
-  margin: 0 0 0 34px;
+  margin: 0 0 0 36px;
   font-size: 12.5px;
-  line-height: 1.6;
+  line-height: 1.65;
   color: var(--jl-muted);
 }
+/* "Pročitaj više": sitna slova velikim slovima, s plus/minus oznakom. */
 .jl-more summary {
   display: inline-flex;
   align-items: center;
+  gap: 10px;
   min-height: 44px;
   padding: 0;
   cursor: pointer;
-  color: var(--jl-soft);
-  text-decoration: underline;
-  text-decoration-color: var(--jl-hair);
-  text-underline-offset: 4px;
+  color: var(--jl-gold-dim);
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
   list-style: none;
+  transition: color 0.2s ease;
 }
 .jl-more summary::-webkit-details-marker {
   display: none;
 }
+.jl-more summary::after {
+  content: "+";
+  font-size: 15px;
+  font-weight: 300;
+  letter-spacing: 0;
+  line-height: 1;
+}
+.jl-more[open] summary::after {
+  content: "\2212";
+}
+.jl-more summary:hover {
+  color: var(--jl-gold-bright);
+}
+.jl-more summary {
+  padding: 0 10px;
+  margin-left: -10px;
+}
+/* Okvir fokusa je uvučen (ne dodiruje redak teksta iznad), a meta dodira ostaje visoka 44 px. */
 .jl-more summary:focus-visible {
-  outline: 1px solid var(--jl-gold);
-  outline-offset: 3px;
+  outline: 1px solid var(--jl-gold-bright);
+  outline-offset: -6px;
 }
 .jl-more p {
   margin: 0 0 8px;
+}
+.jl-more[open] {
+  margin-bottom: 14px;
 }
 .jl-more a {
   display: inline-block;
@@ -412,9 +588,7 @@ body:has(.jl-gate-layer) {
   text-underline-offset: 4px;
 }
 .jl-foot-link {
-  text-decoration: underline;
-  text-decoration-color: var(--jl-hair);
-  text-underline-offset: 4px;
+  text-decoration: none;
 }
 /* Podnožje ispod prozora: sitno, na dnu ekrana. */
 .jl-gate-layer .jl-foot {
@@ -423,6 +597,9 @@ body:has(.jl-gate-layer) {
   margin-top: 0;
   border-top: 0;
   padding-bottom: max(4px, env(safe-area-inset-bottom));
+}
+.jl-gate-layer .jl-foot::before {
+  display: none;
 }
 .jl-gate-layer .jl-foot-in {
   justify-content: center;
@@ -437,17 +614,17 @@ body:has(.jl-gate-layer) {
 .jl-ph-bar {
   display: block;
   height: 14px;
-  background: #24221e;
+  background: #23201b;
 }
 .jl-ph-brand {
   width: min(70%, 260px);
-  height: 44px;
+  height: 48px;
   margin: 0 auto;
 }
 .jl-ph-kicker {
   width: 110px;
   height: 12px;
-  margin: 22px auto 0;
+  margin: 24px auto 0;
 }
 .jl-ph-chip {
   flex: none;
@@ -461,7 +638,6 @@ body:has(.jl-gate-layer) {
 }
 .jl-ph-row {
   padding: 18px 0;
-  border-bottom: 1px solid var(--jl-line);
 }
 .jl-ph-top {
   display: flex;
@@ -475,7 +651,7 @@ body:has(.jl-gate-layer) {
 .jl-ph-desc {
   height: 12px;
   margin-top: 12px;
-  background: #1c1a17;
+  background: #1b1915;
 }
 
 /* Skriveno polje za botove: izvan ekrana, ali ne display:none (botovi takva polja preskaču). */
@@ -490,44 +666,70 @@ body:has(.jl-gate-layer) {
 
 /* ---------- gumbi ---------- */
 
+/* Zlatni gumb: puna šampanjac boja (za kontrast) s metalnim gradijentom preko; na prelasku mišem preko njega prođe svjetlosna traka. */
 .jl-btn {
+  position: relative;
   display: flex;
   align-items: center;
   justify-content: center;
   gap: 10px;
   width: 100%;
-  min-height: 50px;
-  margin-top: 10px;
+  min-height: 52px;
+  margin-top: 12px;
   padding: 0 24px;
-  border: 1px solid var(--jl-gold);
+  overflow: hidden;
+  border: 1px solid #d9bf84;
   border-radius: 0;
-  background: var(--jl-gold);
-  color: #0a0a0a;
+  background-color: var(--jl-gold);
+  background-image: linear-gradient(180deg, #ecd9a6 0%, #d2b273 52%, #bb964f 100%);
+  color: #0a0908;
   font: inherit;
-  font-size: 13px;
+  font-size: 12.5px;
   font-weight: 600;
   line-height: 1.2;
-  letter-spacing: 0.2em;
+  letter-spacing: 0.26em;
   text-transform: uppercase;
   text-align: center;
   text-decoration: none;
   cursor: pointer;
-  transition: background-color 0.2s ease, border-color 0.2s ease;
+  box-shadow: 0 1px 0 rgb(255 255 255 / 0.35) inset, 0 12px 28px -16px rgb(201 169 106 / 0.45);
+  transition: box-shadow 0.3s ease, transform 0.15s ease, filter 0.2s ease;
+}
+.jl-btn::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  width: 46%;
+  background: linear-gradient(100deg, transparent 0%, rgb(255 255 255 / 0.4) 50%, transparent 100%);
+  transform: translateX(-130%) skewX(-18deg);
+  pointer-events: none;
 }
 .jl-btn:hover {
-  background: var(--jl-gold-bright);
-  border-color: var(--jl-gold-bright);
+  box-shadow: 0 1px 0 rgb(255 255 255 / 0.45) inset, 0 12px 34px -10px rgb(201 169 106 / 0.7);
+}
+.jl-btn:hover::after {
+  transform: translateX(300%) skewX(-18deg);
+  transition: transform 0.9s var(--jl-ease);
+}
+.jl-btn:active {
+  transform: scale(0.985);
+  filter: brightness(0.94);
 }
 .jl-btn:disabled {
-  opacity: 0.75;
+  opacity: 0.78;
   cursor: progress;
+}
+.jl-btn:disabled::after {
+  display: none;
 }
 .jl-spin {
   flex: none;
   width: 16px;
   height: 16px;
-  border: 2px solid rgb(10 10 10 / 0.3);
-  border-top-color: #0a0a0a;
+  border: 2px solid rgb(10 9 8 / 0.3);
+  border-top-color: #0a0908;
   border-radius: 50%;
   animation: jl-spin 0.7s linear infinite;
 }
@@ -539,21 +741,21 @@ body:has(.jl-gate-layer) {
 
 /* Pravna poveznica "bez unosa broja": namjerno sitna i mirna, ali čitljiva (kontrast iznad 4,5 : 1) i s dovoljno razmaka za dodir. */
 .jl-skip {
-  margin: 0;
+  margin: 4px 0 0;
   text-align: center;
 }
 .jl-skip-link {
   display: inline-block;
-  padding: 15px 20px;
-  font-size: 12px;
+  padding: 14px 20px;
+  font-size: 12.5px;
   font-weight: 400;
   line-height: 1.4;
-  letter-spacing: 0.06em;
+  letter-spacing: 0.08em;
   color: var(--jl-faint);
   text-decoration: underline;
-  text-decoration-color: rgb(145 138 127 / 0.5);
-  text-underline-offset: 3px;
-  transition: color 0.2s ease;
+  text-decoration-color: rgb(150 142 129 / 0.45);
+  text-underline-offset: 4px;
+  transition: color 0.2s ease, text-decoration-color 0.2s ease;
 }
 .jl-skip-link:hover {
   color: var(--jl-gold-bright);
@@ -564,55 +766,327 @@ body:has(.jl-gate-layer) {
 
 .jl-head {
   padding-top: 16px;
-  padding-bottom: 36px;
-  animation: jl-rise 0.7s cubic-bezier(0.2, 0.7, 0.2, 1) both;
+  padding-bottom: 30px;
+}
+/* Ulazak: dijelovi zaglavlja jedan za drugim (samo opacity i transform). */
+.jl-head > * {
+  animation: jl-rise 0.9s var(--jl-ease) both;
+}
+.jl-head > :nth-child(2) {
+  animation-delay: 0.06s;
+}
+.jl-head > :nth-child(3) {
+  animation-delay: 0.14s;
+}
+.jl-head > :nth-child(4) {
+  animation-delay: 0.22s;
+}
+.jl-head > :nth-child(5) {
+  animation-delay: 0.3s;
+}
+.jl-head::after {
+  margin-top: 40px;
 }
 .jl-head:not(:has(.jl-head-top)) {
-  padding-top: 52px;
+  padding-top: 64px;
 }
 .jl-head-top {
   display: flex;
   align-items: center;
   justify-content: flex-end;
   min-height: 44px;
-  margin-bottom: 12px;
+  margin-bottom: 18px;
+  margin-right: -10px;
 }
 
+/* Prekidač jezika: tanki tekstualni izbornik (HR / EN ...), aktivni jezik zlatan s crticom ispod. */
 .jl-lang {
   flex: none;
   display: inline-flex;
+  align-items: center;
 }
 .jl-lang-btn {
-  min-width: 48px;
+  position: relative;
+  min-width: 44px;
   min-height: 44px;
-  padding: 0 12px;
-  border: 1px solid var(--jl-line-strong);
+  padding: 0 10px;
+  border: 0;
   background: transparent;
   color: var(--jl-muted);
   font-family: var(--jl-sans);
   font-size: 12px;
   font-weight: 500;
-  letter-spacing: 0.18em;
+  letter-spacing: 0.2em;
   cursor: pointer;
-  transition: color 0.2s ease, background-color 0.2s ease;
+  transition: color 0.2s ease, text-shadow 0.2s ease;
 }
-.jl-lang-btn + .jl-lang-btn {
-  margin-left: -1px;
+.jl-lang-btn + .jl-lang-btn::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 50%;
+  width: 1px;
+  height: 12px;
+  margin-top: -6px;
+  background: var(--jl-line-strong);
+}
+.jl-lang-btn::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  bottom: 9px;
+  width: 0;
+  height: 1px;
+  margin-left: 0;
+  background: var(--jl-gold-bright);
+  transition: width 0.35s var(--jl-ease), margin-left 0.35s var(--jl-ease);
 }
 .jl-lang-btn:hover {
   color: var(--jl-text);
 }
 .jl-lang-btn[aria-pressed="true"] {
-  border-color: var(--jl-gold);
-  background: rgb(200 169 106 / 0.14);
   color: var(--jl-gold-bright);
-  position: relative;
+  text-shadow: 0 0 16px rgb(201 169 106 / 0.45);
+}
+.jl-lang-btn[aria-pressed="true"]::after {
+  width: 18px;
+  margin-left: -9px;
 }
 
-/* Dvojezični tekst: vidi se samo odabrani jezik. */
+/*
+ * Dvojezični tekst: vidi se samo odabrani jezik (data-lang na .jl-menu).
+ * Pravila za dodatne jezike (DE, IT ...) idu ovdje, uz postojeće hr / en.
+ */
 .jl-menu[data-lang="en"] .jl-hr,
 .jl-menu[data-lang="hr"] .jl-en {
   display: none;
+}
+/* Njemački i talijanski (isti obrazac: element s klasom jl-<jezik>). */
+.jl-menu[data-lang="hr"] :is(.jl-de, .jl-it),
+.jl-menu[data-lang="en"] :is(.jl-de, .jl-it),
+.jl-menu[data-lang="de"] :is(.jl-hr, .jl-en, .jl-it),
+.jl-menu[data-lang="it"] :is(.jl-hr, .jl-en, .jl-de) {
+  display: none;
+}
+/* Prijevod ovog teksta nedostaje na odabranom jeziku: hrvatski ostaje vidljiv (Bi dodaje jl-fb-<jezik> na hrvatski element). */
+.jl-menu[data-lang="en"] .jl-hr.jl-fb-en,
+.jl-menu[data-lang="de"] .jl-hr.jl-fb-de,
+.jl-menu[data-lang="it"] .jl-hr.jl-fb-it {
+  display: inline;
+}
+
+/* ---------- brze tipke: Ocijeni nas, Wi-Fi, Kontakt (neobavezno; bez njih zaglavlje je kao i prije) ---------- */
+
+.jl-qa {
+  max-width: 440px;
+  margin: 34px auto 0;
+}
+.jl-qa-bar {
+  display: flex;
+  gap: 10px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+/* Jednake širine (1, 2 ili 3 tipke); min-width 0 da dugačak natpis ne razvuče red. */
+.jl-qa-bar > li {
+  display: flex;
+  flex: 1 1 0;
+  min-width: 0;
+}
+/* Tanak pravokutnik: sitna ikona nad natpisom malim velikim slovima; pri prelasku mišem sjaj, pri dodiru kratko stisne. */
+.jl-qa-btn {
+  position: relative;
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  min-width: 0;
+  min-height: 62px;
+  padding: 9px 6px 8px;
+  border: 1px solid rgb(201 169 106 / 0.34);
+  border-radius: 0;
+  background: linear-gradient(180deg, rgb(201 169 106 / 0.05), rgb(201 169 106 / 0.01));
+  color: var(--jl-soft);
+  font: inherit;
+  font-size: 10.5px;
+  font-weight: 500;
+  line-height: 1.3;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  text-align: center;
+  text-decoration: none;
+  overflow-wrap: anywhere;
+  cursor: pointer;
+  transition: color 0.25s ease, border-color 0.25s ease, background-color 0.25s ease, box-shadow 0.3s ease, transform 0.15s ease;
+}
+.jl-qa-txt {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.jl-qa-ico {
+  flex: none;
+  display: block;
+  width: 19px;
+  height: 19px;
+  color: var(--jl-gold);
+  transition: color 0.25s ease, transform 0.4s var(--jl-ease);
+}
+.jl-qa-btn:hover {
+  border-color: rgb(233 213 161 / 0.75);
+  color: var(--jl-gold-bright);
+  box-shadow: 0 0 26px rgb(201 169 106 / 0.14), inset 0 0 22px rgb(201 169 106 / 0.06);
+}
+.jl-qa-btn:hover .jl-qa-ico {
+  color: var(--jl-gold-bright);
+  transform: translateY(-1px);
+}
+.jl-qa-btn:active {
+  transform: scale(0.97);
+}
+.jl-qa-btn[aria-expanded="true"] {
+  border-color: var(--jl-gold-bright);
+  background: linear-gradient(180deg, rgb(201 169 106 / 0.16), rgb(201 169 106 / 0.05));
+  color: var(--jl-gold-bright);
+}
+/* Ploča se otvara ispod reda (ne prozor): visina ide od 0 do sadržaja, zatvorena je neaktivna (visibility + inert). */
+.jl-qa-panel {
+  display: grid;
+  grid-template-rows: 0fr;
+  visibility: hidden;
+  transition: grid-template-rows 0.34s var(--jl-ease), visibility 0s linear 0.34s;
+}
+.jl-qa-panel[data-open="true"] {
+  grid-template-rows: 1fr;
+  visibility: visible;
+  transition: grid-template-rows 0.34s var(--jl-ease), visibility 0s;
+}
+.jl-qa-clip {
+  min-height: 0;
+  overflow: hidden;
+}
+.jl-qa-in {
+  margin-top: 10px;
+  padding: 4px 18px;
+  border: 1px solid var(--jl-hair);
+  background: linear-gradient(180deg, rgb(201 169 106 / 0.045), transparent 60%), var(--jl-raised);
+  box-shadow: inset 0 0 0 4px var(--jl-raised), inset 0 0 0 5px rgb(201 169 106 / 0.12);
+  text-align: left;
+}
+/* Naslov ploče treba samo kad su ploče otvorene bez JavaScripta (noscript stil u komponenti). */
+.jl-qa-ph {
+  display: none;
+  margin: 12px 0 0;
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.3em;
+  text-transform: uppercase;
+  color: var(--jl-gold);
+}
+.jl-qa-line {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 0;
+}
+.jl-qa-line + .jl-qa-line {
+  border-top: 1px solid var(--jl-line);
+}
+.jl-qa-field {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
+.jl-qa-k {
+  font-size: 10.5px;
+  font-weight: 500;
+  letter-spacing: 0.26em;
+  text-transform: uppercase;
+  color: var(--jl-gold-dim);
+}
+/* Cijela vrijednost se označi jednim dodirom (ako kopiranje ne uspije, gost je može kopirati ručno). */
+.jl-qa-v {
+  font-family: var(--jl-serif);
+  font-size: 23px;
+  font-weight: 500;
+  line-height: 1.25;
+  letter-spacing: 0.03em;
+  font-variant-numeric: lining-nums;
+  color: var(--jl-text);
+  overflow-wrap: anywhere;
+  -webkit-user-select: all;
+  user-select: all;
+}
+.jl-qa-copy {
+  flex: none;
+  min-width: 96px;
+  min-height: 44px;
+  padding: 0 12px;
+  border: 1px solid rgb(201 169 106 / 0.45);
+  border-radius: 0;
+  background: transparent;
+  color: var(--jl-gold-bright);
+  font: inherit;
+  font-size: 10.5px;
+  font-weight: 500;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: color 0.2s ease, border-color 0.2s ease, background-color 0.2s ease, box-shadow 0.25s ease, transform 0.15s ease;
+}
+.jl-qa-copy:hover,
+.jl-qa-copy[data-state="copied"] {
+  border-color: var(--jl-gold-bright);
+  background: rgb(201 169 106 / 0.12);
+  box-shadow: 0 0 18px rgb(201 169 106 / 0.14);
+}
+.jl-qa-copy:active {
+  transform: scale(0.97);
+}
+.jl-qa-links {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.jl-qa-links > li + li {
+  border-top: 1px solid var(--jl-line);
+}
+.jl-qa-link {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 3px;
+  min-height: 62px;
+  padding: 10px 0;
+  color: var(--jl-text);
+  text-decoration: none;
+}
+.jl-qa-act {
+  font-size: 10.5px;
+  font-weight: 500;
+  letter-spacing: 0.26em;
+  text-transform: uppercase;
+  color: var(--jl-gold-dim);
+  transition: color 0.2s ease;
+}
+.jl-qa-sub {
+  font-family: var(--jl-serif);
+  font-size: 21px;
+  font-weight: 500;
+  line-height: 1.3;
+  letter-spacing: 0.01em;
+  font-variant-numeric: lining-nums;
+  color: var(--jl-text);
+  overflow-wrap: anywhere;
+  transition: color 0.2s ease;
+}
+.jl-qa-link:hover .jl-qa-act,
+.jl-qa-link:hover .jl-qa-sub {
+  color: var(--jl-gold-bright);
 }
 
 /* ---------- traka kategorija ---------- */
@@ -623,7 +1097,28 @@ body:has(.jl-gate-layer) {
   z-index: 20;
   /* Potpuno neprozirna: kroz poluprozirnu podlogu bi pri skrolanju probijao tekst stavki. */
   background: var(--jl-bg);
-  border-bottom: 1px solid var(--jl-hair);
+  border-bottom: 1px solid transparent;
+}
+/* Tanka linija koja pri rubovima blijedi i mekani prijelaz ispod trake. */
+.jl-nav::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: -1px;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgb(201 169 106 / 0.38) 18%, rgb(201 169 106 / 0.38) 82%, transparent);
+  pointer-events: none;
+}
+.jl-nav::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 100%;
+  height: 22px;
+  background: linear-gradient(var(--jl-bg), transparent);
+  pointer-events: none;
 }
 .jl-nav-in {
   max-width: 640px;
@@ -633,7 +1128,7 @@ body:has(.jl-gate-layer) {
   /* offsetParent za pomicanje aktivne poveznice u vidno polje (category-nav.tsx računa offsetLeft prema ovoj traci). */
   position: relative;
   display: flex;
-  gap: 4px;
+  gap: 2px;
   margin: 0;
   padding: 8px var(--jl-gutter);
   list-style: none;
@@ -653,6 +1148,26 @@ body:has(.jl-gate-layer) {
   flex: none;
   width: 28px;
 }
+/* Zlatna crta koja klizi do aktivne kategorije (položaj postavlja category-nav.tsx preko --jl-ink-x i --jl-ink-w). */
+.jl-chips::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  bottom: 14px;
+  width: var(--jl-ink-w, 0px);
+  height: 1px;
+  background: var(--jl-gold-bright);
+  box-shadow: 0 0 10px rgb(233 213 161 / 0.7);
+  opacity: 0;
+  transform: translateX(var(--jl-ink-x, 0px));
+  pointer-events: none;
+}
+.jl-chips[data-ink]::before {
+  opacity: 1;
+}
+.jl-chips[data-ink="ready"]::before {
+  transition: transform 0.5s var(--jl-ease), width 0.5s var(--jl-ease);
+}
 .jl-chips li {
   flex: none;
 }
@@ -663,67 +1178,69 @@ body:has(.jl-gate-layer) {
   padding: 2px 14px 0;
   border-bottom: 1px solid transparent;
   color: var(--jl-muted);
-  font-size: 12px;
+  font-size: 11.5px;
   font-weight: 500;
   line-height: 1;
-  letter-spacing: 0.16em;
+  letter-spacing: 0.22em;
   text-transform: uppercase;
   white-space: nowrap;
   text-decoration: none;
-  transition: color 0.2s ease, border-color 0.2s ease;
+  transition: color 0.25s ease, text-shadow 0.25s ease, border-color 0.25s ease;
 }
 .jl-chip:hover {
-  color: var(--jl-text);
+  color: var(--jl-gold-bright);
+  text-shadow: 0 0 18px rgb(201 169 106 / 0.45);
 }
 .jl-chip[aria-current="true"] {
   border-bottom-color: var(--jl-gold);
   color: var(--jl-gold-bright);
 }
+/* Kad je klizna crta aktivna, vlastita crta poveznice se ne crta. */
+.jl-chips[data-ink] .jl-chip[aria-current="true"] {
+  border-bottom-color: transparent;
+}
 
 /* ---------- popis ---------- */
 
 .jl-secs {
-  padding-bottom: 28px;
+  padding-bottom: 36px;
 }
 .jl-sec {
-  padding-top: 52px;
+  padding-top: 68px;
   scroll-margin-top: calc(var(--jl-nav-h) + 4px);
-  animation: jl-rise 0.7s cubic-bezier(0.2, 0.7, 0.2, 1) both;
 }
+/* Naslov kategorije: mala velika slova, široki razmak; ispod njega razdjelnik s rombićem. */
 .jl-sec-h {
   position: relative;
   margin: 0;
-  padding-bottom: 22px;
+  /* Razmak slova dodaje prazninu i iza zadnjeg slova; lijevi razmak je izravnava da naslov stoji točno na sredini. */
+  padding: 0 0 0 0.34em;
   font-family: var(--jl-serif);
-  font-size: clamp(30px, 8.4vw, 38px);
+  font-size: clamp(21px, 5.8vw, 25px);
   font-weight: 500;
-  line-height: 1.1;
-  letter-spacing: 0.01em;
+  line-height: 1.25;
+  letter-spacing: 0.34em;
+  text-transform: uppercase;
   text-align: center;
   text-wrap: balance;
   overflow-wrap: break-word;
+  color: var(--jl-text);
 }
 .jl-sec-h::after {
-  content: "";
-  position: absolute;
-  left: 50%;
-  bottom: 0;
-  width: 36px;
-  height: 1px;
-  background: var(--jl-gold);
-  transform: translateX(-50%);
+  position: relative;
+  left: -0.17em;
+  margin-top: 22px;
 }
 .jl-items {
-  margin: 0;
+  margin: 38px 0 0;
   padding: 0;
   list-style: none;
 }
 .jl-item {
-  padding: 18px 0;
-  border-bottom: 1px solid var(--jl-line);
+  padding: 0 0 32px;
 }
 .jl-item:last-child {
-  border-bottom: 0;
+  padding-bottom: 0;
 }
 .jl-item-top {
   display: flex;
@@ -735,53 +1252,61 @@ body:has(.jl-gate-layer) {
   min-width: 0;
   margin: 0;
   font-family: var(--jl-serif);
-  font-size: 22px;
-  font-weight: 600;
-  line-height: 1.2;
-  letter-spacing: 0.005em;
+  font-size: 23px;
+  font-weight: 500;
+  line-height: 1.18;
+  letter-spacing: 0.012em;
   color: var(--jl-text);
   overflow-wrap: break-word;
+  text-wrap: pretty;
 }
-/* Točkasta crta između naziva i cijene. */
+/* Fina točkasta crta između naziva i cijene (točke od 1 px na svaka 4 px). */
 .jl-leader {
   flex: 1 1 0;
   min-width: 14px;
-  margin: 0 10px;
+  margin: 0 12px;
   align-self: baseline;
-  height: 0;
-  border-bottom: 1px dotted rgb(200 169 106 / 0.5);
-  transform: translateY(-4px);
+  height: 1px;
+  background: linear-gradient(90deg, rgb(201 169 106 / 0.5) 1px, transparent 1px) left bottom / 4px 1px repeat-x;
+  transform: translateY(-5px);
 }
 .jl-price {
   flex: none;
-  font-size: 16px;
-  font-weight: 500;
-  line-height: 1.3;
-  letter-spacing: 0.04em;
+  font-family: var(--jl-serif);
+  font-size: 21px;
+  font-weight: 600;
+  line-height: 1.2;
+  letter-spacing: 0.03em;
   color: var(--jl-gold-bright);
-  font-variant-numeric: tabular-nums lining-nums;
+  font-variant-numeric: lining-nums tabular-nums;
   white-space: nowrap;
 }
 .jl-desc {
-  margin: 6px 0 0;
-  max-width: 50ch;
-  font-size: 15px;
-  line-height: 1.6;
+  margin: 7px 0 0;
+  max-width: 44ch;
+  font-family: var(--jl-serif);
+  font-size: 18.5px;
+  font-style: italic;
+  font-weight: 400;
+  line-height: 1.42;
   color: var(--jl-muted);
   overflow-wrap: break-word;
+  text-wrap: pretty;
 }
+/* Alergeni: sitna mala velika slova u jednom retku. */
 .jl-allergens {
-  margin: 8px 0 0;
-  font-size: 12.5px;
-  line-height: 1.5;
+  margin: 9px 0 0;
+  font-size: 10.5px;
+  font-weight: 400;
+  line-height: 1.7;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
   color: var(--jl-faint);
   overflow-wrap: break-word;
 }
 .jl-allergens-label {
   font-weight: 500;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-  font-size: 11px;
+  color: var(--jl-gold-dim);
 }
 .jl-item.is-off .jl-item-name,
 .jl-item.is-off .jl-desc {
@@ -789,64 +1314,91 @@ body:has(.jl-gate-layer) {
 }
 .jl-item.is-off .jl-price {
   color: var(--jl-faint);
+  background-image: none;
+  -webkit-text-fill-color: currentcolor;
 }
 .jl-item.is-off .jl-leader {
-  border-bottom-color: var(--jl-line);
+  background-image: linear-gradient(90deg, var(--jl-line) 1px, transparent 1px);
 }
 .jl-off-label {
   display: inline-block;
-  margin: 10px 0 0;
-  padding: 3px 10px;
+  margin: 12px 0 0;
+  padding: 4px 12px 3px;
   border: 1px solid var(--jl-line-strong);
-  font-size: 11px;
-  letter-spacing: 0.16em;
+  font-size: 10.5px;
+  letter-spacing: 0.2em;
   text-transform: uppercase;
   color: var(--jl-muted);
 }
 .jl-empty {
-  margin: 40px 0 48px;
-  padding: 26px 20px;
-  border-top: 1px solid var(--jl-hair);
-  border-bottom: 1px solid var(--jl-hair);
+  margin: 48px 0 56px;
+  padding: 32px 20px;
+  border-top: 1px solid;
+  border-bottom: 1px solid;
+  border-image: linear-gradient(90deg, transparent, rgb(201 169 106 / 0.45) 20%, rgb(201 169 106 / 0.45) 80%, transparent) 1;
   font-family: var(--jl-serif);
-  font-size: 22px;
+  font-size: 23px;
+  font-style: italic;
   line-height: 1.4;
   text-align: center;
   color: var(--jl-soft);
+  text-wrap: balance;
 }
 .jl-external {
   padding-top: 0;
-  padding-bottom: 48px;
+  padding-bottom: 56px;
   max-width: 460px;
 }
 .jl-external .jl-btn {
-  margin-top: 22px;
+  margin-top: 8px;
 }
 .jl-external .jl-hint {
-  margin-top: 14px;
+  margin-top: 16px;
   text-align: center;
+}
+
+/* Otkrivanje pri skrolanju (reveal.tsx): samo ispod ruba ekrana, samo opacity i transform; bez JavaScripta se ništa ne sakriva. */
+.jl-menu [data-rv] {
+  transition: opacity 0.9s ease, transform 0.9s var(--jl-ease);
+  transition-delay: var(--jl-rv-d, 0ms);
+}
+.jl-menu [data-rv="0"] {
+  opacity: 0;
+  transform: translateY(14px);
 }
 
 /* ---------- podnožje ---------- */
 
 .jl-foot {
-  margin-top: 28px;
-  border-top: 1px solid var(--jl-line);
+  position: relative;
+  margin-top: 36px;
+  padding-top: 24px;
   padding-bottom: env(safe-area-inset-bottom);
+}
+.jl-foot::before {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: 0;
+  width: min(100% - 44px, 420px);
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgb(201 169 106 / 0.28), transparent);
+  transform: translateX(-50%);
 }
 .jl-foot-in {
   display: flex;
-  justify-content: space-between;
-  gap: 16px;
+  justify-content: center;
+  gap: 32px;
 }
 .jl-foot-link {
   display: inline-flex;
   align-items: center;
   min-height: 52px;
-  font-size: 11px;
-  letter-spacing: 0.18em;
+  font-size: 10.5px;
+  letter-spacing: 0.24em;
   text-transform: uppercase;
   color: var(--jl-faint);
+  transition: color 0.2s ease;
 }
 .jl-foot-link:hover {
   color: var(--jl-gold-bright);
@@ -859,26 +1411,28 @@ body:has(.jl-gate-layer) {
   left: 0;
   right: 0;
   bottom: max(16px, env(safe-area-inset-bottom));
-  z-index: 40;
+  z-index: 100;
   display: flex;
   align-items: center;
   gap: 4px;
   width: calc(100% - 32px);
   max-width: 460px;
   margin: 0 auto;
-  padding: 4px 4px 4px 18px;
+  padding: 4px 4px 4px 20px;
   border: 1px solid var(--jl-hair);
-  background: #181614;
+  background: #171410;
   color: var(--jl-text);
-  box-shadow: 0 10px 30px rgb(0 0 0 / 0.6);
+  box-shadow: 0 14px 40px rgb(0 0 0 / 0.65), inset 0 0 0 3px #171410, inset 0 0 0 4px rgb(201 169 106 / 0.14);
   animation: jl-flash 8s ease both;
 }
 .jl-flash-text {
   flex: 1;
   margin: 0;
   padding: 8px 0;
-  font-size: 14px;
-  line-height: 1.4;
+  font-family: var(--jl-serif);
+  font-size: 18px;
+  font-style: italic;
+  line-height: 1.35;
 }
 .jl-flash-x {
   flex: none;
@@ -915,7 +1469,7 @@ body:has(.jl-gate-layer) {
 @keyframes jl-rise {
   from {
     opacity: 0;
-    transform: translateY(8px);
+    transform: translateY(10px);
   }
   to {
     opacity: 1;
@@ -926,7 +1480,7 @@ body:has(.jl-gate-layer) {
 @keyframes jl-pop {
   from {
     opacity: 0;
-    transform: translateY(8px) scale(0.98);
+    transform: translateY(10px) scale(0.985);
   }
   to {
     opacity: 1;
@@ -938,41 +1492,59 @@ body:has(.jl-gate-layer) {
 
 .jl-skel {
   display: block;
-  background: #171717;
+  background: #151311;
 }
+/* Spor zlatni treperaj preko kostura. */
 .jl-skel-shimmer {
-  background: linear-gradient(90deg, #151515 0%, #212121 50%, #151515 100%);
-  background-size: 200% 100%;
-  animation: jl-shimmer 1.6s ease-in-out infinite;
+  background-color: #14120f;
+  background-image: linear-gradient(100deg, transparent 20%, rgb(201 169 106 / 0.13) 50%, transparent 80%);
+  background-size: 250% 100%;
+  background-repeat: no-repeat;
+  animation: jl-shimmer 2.8s ease-in-out infinite;
 }
 .jl-skel-brand {
-  width: min(72%, 280px);
-  height: 52px;
+  width: min(72%, 300px);
+  height: 56px;
   margin: 0 auto;
 }
 .jl-skel-row {
-  padding: 18px 0;
-  border-bottom: 1px solid var(--jl-line);
+  padding: 0 0 30px;
 }
 @keyframes jl-shimmer {
   from {
-    background-position: 200% 0;
+    background-position: 160% 0;
   }
   to {
-    background-position: -200% 0;
+    background-position: -60% 0;
   }
 }
 .jl-center {
   padding-top: 40px;
-  padding-bottom: 48px;
+  padding-bottom: 56px;
   max-width: 460px;
   text-align: center;
 }
 .jl-center .jl-btn {
-  margin-top: 28px;
+  margin-top: 32px;
+}
+/* Jedan gumb na samostalnoj stranici: ne preko cijele širine zaslona. */
+.jl-center .jl-btn,
+.jl-external .jl-btn {
+  width: min(100%, 320px);
+  margin-left: auto;
+  margin-right: auto;
 }
 
 /* ---------- veći ekrani ---------- */
+
+@media (min-width: 480px) {
+  .jl-qa-btn {
+    flex-direction: row;
+    gap: 10px;
+    min-height: 52px;
+    padding: 6px 10px;
+  }
+}
 
 @media (min-width: 640px) {
   .jl {
@@ -980,29 +1552,34 @@ body:has(.jl-gate-layer) {
   }
   .jl-head {
     padding-top: 28px;
-    padding-bottom: 44px;
   }
   .jl-head:not(:has(.jl-head-top)) {
-    padding-top: 72px;
+    padding-top: 88px;
+  }
+  .jl-brand-name {
+    font-size: 64px;
   }
   .jl-sec {
-    padding-top: 64px;
+    padding-top: 84px;
+  }
+  .jl-sec-h {
+    font-size: 26px;
   }
   .jl-item {
-    padding: 20px 0;
+    padding-bottom: 36px;
   }
   .jl-item-name {
-    font-size: 24px;
+    font-size: 25px;
   }
   .jl-price {
-    font-size: 17px;
+    font-size: 22px;
   }
   .jl-desc {
-    font-size: 15.5px;
+    font-size: 19.5px;
   }
   .jl-btn {
     width: auto;
-    min-width: 280px;
+    min-width: 300px;
   }
   .jl-form .jl-btn {
     width: 100%;
@@ -1012,29 +1589,94 @@ body:has(.jl-gate-layer) {
   }
 }
 
+@media (min-width: 1024px) {
+  .jl-wrap,
+  .jl-nav-in {
+    max-width: 720px;
+  }
+  .jl-brand-name {
+    font-size: 76px;
+  }
+  .jl-brand-logo {
+    width: 248px;
+    height: 80px;
+  }
+  .jl-intro {
+    max-width: 40ch;
+    font-size: 23px;
+  }
+  .jl-qa {
+    max-width: 480px;
+  }
+  .jl-sec-h {
+    font-size: 28px;
+  }
+  .jl-item-name {
+    font-size: 27px;
+  }
+  .jl-price {
+    font-size: 24px;
+  }
+  .jl-desc {
+    font-size: 21px;
+  }
+  .jl-card {
+    max-width: 404px;
+  }
+  .jl-wrap.jl-center,
+  .jl-wrap.jl-external {
+    max-width: 460px;
+  }
+}
+
 /* ---------- smanjeno kretanje ---------- */
 
 @media (prefers-reduced-motion: reduce) {
   .jl-card,
-  .jl-head,
+  .jl-head > *,
   .jl-sec {
     animation: none;
   }
+  .jl-menu [data-rv] {
+    transition: none;
+  }
+  .jl-menu [data-rv="0"] {
+    opacity: 1;
+    transform: none;
+  }
   .jl-btn,
+  .jl-btn::after,
+  .jl-btn:hover::after,
   .jl-input,
   .jl-chip,
+  .jl-chips[data-ink="ready"]::before,
+  .jl-qa-btn,
+  .jl-qa-ico,
+  .jl-qa-copy,
+  .jl-qa-panel,
+  .jl-qa-panel[data-open="true"],
   .jl-lang-btn,
+  .jl-lang-btn::after,
   .jl-skip-link,
+  .jl-more summary,
   .jl-check input {
     transition: none;
   }
+  .jl-btn:active,
+  .jl-qa-btn:active,
+  .jl-qa-copy:active {
+    transform: none;
+  }
+  .jl-btn::after {
+    display: none;
+  }
   .jl-spin {
     animation: none;
-    border-top-color: rgb(10 10 10 / 0.3);
+    border-top-color: rgb(10 9 8 / 0.3);
   }
   .jl-skel-shimmer {
     animation: none;
-    background: #171717;
+    background-image: none;
   }
   /* Traka se i dalje sama sakrije, ali bez pomaka i bez prijelaza opacity. */
   .jl-flash {
