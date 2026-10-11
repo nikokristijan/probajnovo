@@ -42,7 +42,7 @@ export const env = {
 
   anthropicKey: process.env.ANTHROPIC_API_KEY || "",
   /** Haiku je najjeftiniji i sasvim dovoljan za kratke SMS-ove. */
-  anthropicModel: process.env.ANTHROPIC_MODEL || "claude-haiku-4-5",
+  anthropicModel: process.env.ANTHROPIC_MODEL || "claude-haiku-5-5",
 
   twilioSid: (process.env.TWILIO_ACCOUNT_SID || "").trim(),
   twilioToken: (process.env.TWILIO_AUTH_TOKEN || "").trim(),
