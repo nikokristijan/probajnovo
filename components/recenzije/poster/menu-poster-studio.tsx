@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState, useTransition } from "react";
-import { ChevronLeft, ChevronRight, Download, ExternalLink, Printer, QrCode } from "lucide-react";
+import { ChevronLeft, ChevronRight, Download, ExternalLink, Nfc, Printer, QrCode } from "lucide-react";
 import { buildMenuQrAction, buildMenuTableQrsAction } from "@/lib/recenzije/actions/menu";
 import { MAX_TABLES, plural } from "@/components/recenzije/app/menu/menu-types";
 import { Button } from "@/components/recenzije/ui/button";
@@ -10,17 +10,21 @@ import type { MenuKind } from "@/lib/recenzije/menu-noun";
 import { cn } from "@/lib/recenzije/utils";
 import type { QrMatrix } from "@/lib/recenzije/services/qr";
 import { POSTER_VARIANTS, menuPosterFileName, qrOnlySvg, tableSheetFileName, variantInfo, type PosterVariant } from "./poster-layout";
-import { CopyLinkButton, saveSvg } from "./poster-shared";
+import { NfcInstructions, NfcUrlList } from "./nfc-panel";
+import { buildNfcRows, nfcCsv, nfcFileName, nfcTextList, parseNfcRange } from "./nfc-urls";
+import { CopyLinkButton, copyText, saveSvg, saveText } from "./poster-shared";
 import { buildPosterSvg } from "./poster-svg";
 import { buildTableSheetPages, sheetPageCount, type TableQr } from "./table-sheet-svg";
 
 const PRINT_ID = "nr-poster-print";
 const SHEET_ID = "nr-sheet-print";
 
-type Mode = "single" | "sheet";
+export type PosterMode = "single" | "sheet" | "nfc";
+type Mode = PosterMode;
 const MODES: { id: Mode; label: string; hint: string }[] = [
   { id: "single", label: "Jedan kod", hint: "Plakat ili kartica" },
-  { id: "sheet", label: "Svi stolovi", hint: "A4 ploča s karticama" },
+  { id: "sheet", label: "Svi stolovi", hint: "A4 ploča" },
+  { id: "nfc", label: "NFC pločice", hint: "Adrese za upis" },
 ];
 
 /**
@@ -59,7 +63,7 @@ function sheetPrintCss() {
 }`;
 }
 
-const tips = (capture: boolean) => [
+const tips = (capture: boolean, nfc: boolean) => [
   <>
     Ispišite u mjerilu <b>100 %</b> (isključite „Prilagodi stranici”) i bez zaglavlja i podnožja. Format papira se postavlja sam.
   </>,
@@ -75,8 +79,29 @@ const tips = (capture: boolean) => [
   ) : (
     <>U načinu „Svi stolovi” svaki kod nosi broj stola. Izrežite kartice po isprekidanoj crti.</>
   ),
-  <>Ako promijenite adresu jelovnika u Postavkama, već ispisani kodovi prestaju raditi. Tada ispišite nove.</>,
+  nfc ? (
+    <>
+      Natpis „Prislonite mobitel ili skenirajte kod” i znak NFC ostavite uključene samo ako uz svaki stalak ide i NFC pločica. Adrese za upis na pločice
+      su u načinu „NFC pločice”.
+    </>
+  ) : (
+    <>Znak NFC je isključen: kartica govori samo o skeniranju QR koda. Uključite ga kad uz stalak ide i NFC pločica.</>
+  ),
+  <>Ako promijenite adresu jelovnika u Postavkama, već ispisani kodovi i zaključane NFC pločice prestaju raditi. Tada ispišite nove kodove i upišite nove pločice.</>,
 ];
+
+/** Prekidač "Prikaži NFC upute na kartici": znak NFC i natpis "Prislonite mobitel ili skenirajte kod" na plakatu i kartici. */
+function NfcToggle({ checked, onChange }: { checked: boolean; onChange: (v: boolean) => void }) {
+  return (
+    <label className="flex min-h-11 cursor-pointer items-start gap-3 text-sm">
+      <input type="checkbox" checked={checked} onChange={(e) => onChange(e.target.checked)} className="mt-0.5 size-5 shrink-0 accent-black" />
+      <span className="min-w-0">
+        Prikaži NFC upute na kartici
+        <span className="block text-xs text-muted">Znak NFC i natpis „Prislonite mobitel ili skenirajte kod”. Isključite ako uz stalak nema NFC pločice.</span>
+      </span>
+    </label>
+  );
+}
 
 type Current = { table: string; qr: QrMatrix; url: string };
 
@@ -88,6 +113,7 @@ export function MenuPosterStudio({
   allowSkip,
   menuKind,
   captureEnabled = true,
+  initialMode = "single",
 }: {
   orgName: string;
   baseUrl: string;
@@ -96,9 +122,13 @@ export function MenuPosterStudio({
   menuKind?: MenuKind;
   /** False = paket "samo jelovnik": gost odmah vidi jelovnik, plakat i tekstovi ne spominju broj. */
   captureEnabled?: boolean;
+  /** Koji način se otvara (poveznica ?prikaz=nfc vodi izravno na NFC pločice). */
+  initialMode?: PosterMode;
 }) {
-  const TIPS = tips(captureEnabled);
-  const [mode, setMode] = useState<Mode>("single");
+  const [mode, setMode] = useState<Mode>(initialMode);
+  /** Kartica i plakat govore o NFC pločici (znak i natpis "Prislonite mobitel ili skenirajte kod"). Zadano uključeno. */
+  const [showNfc, setShowNfc] = useState(true);
+  const TIPS = tips(captureEnabled, showNfc);
   const [variant, setVariant] = useState<PosterVariant>("a4");
   const info = variantInfo(variant);
 
@@ -127,8 +157,14 @@ export function MenuPosterStudio({
 
   const typed = tableInput.replace(/\s+/g, " ").trim();
   const inSync = typed === current.table && !qrPending;
-  const preview = buildPosterSvg({ orgName, qr: current.qr, variant, inline: true, kind: "menu", menu: { table: current.table, allowSkip, menuKind } });
-  const sheetPages = useMemo(() => (sheetItems ? buildTableSheetPages({ orgName, tables: sheetItems, inline: true, menuKind }) : []), [orgName, sheetItems, menuKind]);
+  const preview = buildPosterSvg({ orgName, qr: current.qr, variant, inline: true, kind: "menu", menu: { table: current.table, allowSkip, menuKind, nfc: showNfc } });
+  const sheetPages = useMemo(
+    () => (sheetItems ? buildTableSheetPages({ orgName, tables: sheetItems, inline: true, menuKind, nfc: showNfc }) : []),
+    [orgName, sheetItems, menuKind, showNfc]
+  );
+  // NFC: adrese se grade odmah u pregledniku (bez poslužitelja) istom funkcijom kao QR, iz osnovne adrese tvrtke.
+  const nfcRange = useMemo(() => parseNfcRange(count, from), [count, from]);
+  const nfcRows = useMemo(() => (nfcRange.ok ? buildNfcRows(baseUrl, nfcRange.count, nfcRange.from) : []), [nfcRange, baseUrl]);
   const pageIndex = Math.min(sheetPage, Math.max(0, sheetPages.length - 1));
 
   function onTableChange(raw: string) {
@@ -190,12 +226,12 @@ export function MenuPosterStudio({
 
   return (
     <>
-      <style>{mode === "single" ? posterPrintCss(info) : sheetPrintCss()}</style>
+      {mode !== "nfc" && <style>{mode === "single" ? posterPrintCss(info) : sheetPrintCss()}</style>}
       <div className="grid grid-cols-[minmax(0,1fr)] gap-6 lg:grid-cols-[minmax(0,1fr)_380px]">
         <Card className="self-start lg:col-start-2 lg:row-start-1">
-          <CardHeader title="Što ispisati" description="Jedan kod za plakat ili karticu, ili ploča sa svim stolovima." />
+          <CardHeader title="Što ispisati" description="Jedan kod za plakat ili karticu, ploča sa svim stolovima, ili adrese za NFC pločice." />
           <CardBody className="space-y-5">
-            <div role="radiogroup" aria-label="Što ispisati" className="grid grid-cols-2 border border-foreground">
+            <div role="radiogroup" aria-label="Što ispisati" className="grid grid-cols-3 border border-foreground">
               {MODES.map((m) => {
                 const on = m.id === mode;
                 return (
@@ -209,7 +245,7 @@ export function MenuPosterStudio({
                     onClick={() => setMode(m.id)}
                     onKeyDown={onModeKey}
                     className={cn(
-                      "flex min-h-11 cursor-pointer flex-col items-start gap-1 px-3 py-3 text-left transition-colors sm:px-4",
+                      "flex min-h-11 min-w-0 cursor-pointer flex-col items-start gap-1 px-2.5 py-3 text-left transition-colors sm:px-3",
                       on ? "bg-foreground text-white" : "bg-white text-foreground hover:bg-surface-2"
                     )}
                   >
@@ -269,6 +305,8 @@ export function MenuPosterStudio({
                   />
                 </Field>
 
+                <NfcToggle checked={showNfc} onChange={setShowNfc} />
+
                 <div className="flex flex-col gap-2 sm:flex-row lg:flex-col xl:flex-row">
                   <Button size="lg" className="sm:flex-1 lg:flex-none xl:flex-1" disabled={!inSync} onClick={() => window.print()}>
                     <Printer /> Ispiši
@@ -281,7 +319,7 @@ export function MenuPosterStudio({
                     onClick={() =>
                       saveSvg(
                         menuPosterFileName(orgName, variant, "plakat", current.table),
-                        buildPosterSvg({ orgName, qr: current.qr, variant, kind: "menu", menu: { table: current.table, allowSkip, menuKind } })
+                        buildPosterSvg({ orgName, qr: current.qr, variant, kind: "menu", menu: { table: current.table, allowSkip, menuKind, nfc: showNfc } })
                       )
                     }
                   >
@@ -297,6 +335,35 @@ export function MenuPosterStudio({
                   <QrCode className="size-3.5" /> Preuzmi samo QR kod (SVG)
                 </button>
               </>
+            ) : mode === "nfc" ? (
+              <>
+                <p className="text-sm leading-relaxed text-muted">
+                  Isti link kao u QR kodu upisujete na NFC pločicu: gost prisloni mobitel na pločicu ili skenira kod i otvara isti jelovnik.
+                </p>
+                <div className="grid grid-cols-2 gap-3">
+                  <Field label="Broj stolova" htmlFor="mp-nfc-count" hint={`Najviše ${MAX_TABLES}.`}>
+                    <Input id="mp-nfc-count" type="number" inputMode="numeric" min={1} max={MAX_TABLES} value={count} onChange={(e) => setCount(e.target.value)} aria-invalid={!nfcRange.ok ? true : undefined} />
+                  </Field>
+                  <Field label="Prvi stol" htmlFor="mp-nfc-from" hint="Obično 1.">
+                    <Input id="mp-nfc-from" type="number" inputMode="numeric" min={0} max={9999} value={from} onChange={(e) => setFrom(e.target.value)} />
+                  </Field>
+                </div>
+                {!nfcRange.ok && <p className="-mt-2 text-xs text-danger" role="alert">{nfcRange.error}</p>}
+                <div className="flex flex-col gap-2">
+                  <Button size="lg" disabled={!nfcRange.ok} onClick={() => copyText(nfcTextList(nfcRows), `Kopirano: ${nfcRows.length} ${plural(nfcRows.length, "adresa", "adrese", "adresa")}`)}>
+                    <Nfc /> Kopiraj sve
+                  </Button>
+                  <div className="grid grid-cols-2 gap-2">
+                    <Button size="lg" variant="secondary" disabled={!nfcRange.ok} onClick={() => saveText(nfcFileName(orgName, "csv"), nfcCsv(nfcRows), "text/csv")}>
+                      <Download /> CSV
+                    </Button>
+                    <Button size="lg" variant="secondary" disabled={!nfcRange.ok} onClick={() => saveText(nfcFileName(orgName, "txt"), nfcTextList(nfcRows) + "\n", "text/plain")}>
+                      <Download /> TXT
+                    </Button>
+                  </div>
+                </div>
+                <p className="-mt-2 text-xs text-muted">„Kopiraj sve” stavlja jednu adresu po retku, redom po stolovima. CSV ima stupce „stol” i „url”.</p>
+              </>
             ) : (
               <>
                 <div className="grid grid-cols-2 gap-3">
@@ -307,6 +374,7 @@ export function MenuPosterStudio({
                     <Input id="mp-from" type="number" inputMode="numeric" min={0} max={9999} value={from} onChange={(e) => setFrom(e.target.value)} />
                   </Field>
                 </div>
+                <NfcToggle checked={showNfc} onChange={setShowNfc} />
                 {sheetError && <p className="-mt-2 text-xs text-danger">{sheetError}</p>}
                 <Button size="lg" variant={sheetItems ? "secondary" : "primary"} loading={building} onClick={makeSheet} className="w-full">
                   <QrCode /> {sheetItems ? "Napravi ponovno" : "Napravi ploču"}
@@ -326,7 +394,7 @@ export function MenuPosterStudio({
                         variant="secondary"
                         className="sm:flex-1 lg:flex-none xl:flex-1"
                         onClick={() => {
-                          const files = buildTableSheetPages({ orgName, tables: sheetItems, menuKind });
+                          const files = buildTableSheetPages({ orgName, tables: sheetItems, menuKind, nfc: showNfc });
                           saveSvg(tableSheetFileName(orgName, pageIndex + 1), files[pageIndex] ?? files[0]);
                         }}
                       >
@@ -339,7 +407,7 @@ export function MenuPosterStudio({
             )}
 
             <div className="min-w-0">
-              <p className="label text-muted">Kamo vodi QR kod</p>
+              <p className="label text-muted">Kamo vode QR kod i NFC pločica</p>
               <div className="mt-1.5 flex items-center gap-1 border border-border bg-surface-2 py-1 pl-3 pr-1">
                 <code className="min-w-0 flex-1 truncate font-mono text-xs" title={urlShown}>
                   {urlShown}
@@ -352,14 +420,24 @@ export function MenuPosterStudio({
                 </Button>
               </div>
               <p className="mt-2 text-xs text-muted">
-                Kod vodi na jelovnik na našoj stranici. {!captureEnabled ? "Gost odmah vidi jelovnik, bez upisa broja." : allowSkip ? "Gost može otvoriti jelovnik i bez broja." : "Gost prvo upisuje broj mobitela, pa tek onda vidi jelovnik."}
+                Kod i pločica vode na jelovnik na našoj stranici. {!captureEnabled ? "Gost odmah vidi jelovnik, bez upisa broja." : allowSkip ? "Gost može otvoriti jelovnik i bez broja." : "Gost prvo upisuje broj mobitela, pa tek onda vidi jelovnik."}
               </p>
             </div>
           </CardBody>
         </Card>
 
         <div className="min-w-0 self-start border border-border bg-surface-2 p-4 sm:p-8 lg:col-start-1 lg:row-span-2 lg:row-start-1">
-          {mode === "single" ? (
+          {mode === "nfc" ? (
+            nfcRange.ok ? (
+              <NfcUrlList venueUrl={baseUrl} rows={nfcRows} />
+            ) : (
+              <div className="flex min-h-48 flex-col items-center justify-center border border-dashed border-border-strong bg-white p-8 text-center">
+                <Nfc className="size-8 text-muted" aria-hidden />
+                <p className="mt-3 text-sm font-bold">Popis adresa</p>
+                <p className="mt-1 max-w-64 text-[13px] text-muted">{nfcRange.error}</p>
+              </div>
+            )
+          ) : mode === "single" ? (
             <>
               <div
                 id={PRINT_ID}
@@ -407,16 +485,20 @@ export function MenuPosterStudio({
         </div>
 
         <Card className="self-start lg:col-start-2 lg:row-start-2">
-          <CardHeader title="Prije ispisa" />
+          <CardHeader title={mode === "nfc" ? "Upis i provjera pločice" : "Prije ispisa"} />
           <CardBody>
-            <ol className="space-y-3 text-[14px] leading-relaxed">
-              {TIPS.map((t, i) => (
-                <li key={i} className="flex gap-3">
-                  <span className="label mt-0.5 shrink-0 text-accent">0{i + 1}</span>
-                  <span>{t}</span>
-                </li>
-              ))}
-            </ol>
+            {mode === "nfc" ? (
+              <NfcInstructions captureEnabled={captureEnabled} venueUrl={baseUrl} />
+            ) : (
+              <ol className="space-y-3 text-[14px] leading-relaxed">
+                {TIPS.map((t, i) => (
+                  <li key={i} className="flex gap-3">
+                    <span className="label mt-0.5 shrink-0 text-accent">0{i + 1}</span>
+                    <span>{t}</span>
+                  </li>
+                ))}
+              </ol>
+            )}
           </CardBody>
         </Card>
       </div>

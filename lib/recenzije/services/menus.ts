@@ -34,6 +34,7 @@ import { displayMenuTitle, parseMenuKind, type MenuKind } from "@/lib/recenzije/
 import { defaultCountryCode } from "@/lib/recenzije/phone";
 import { IMPORT_LIMITS, parseMenuText, type ParsedMenu } from "@/lib/recenzije/menu-import";
 import { suggestMenuSlug, validateMenuSlug } from "@/lib/recenzije/menu-slug";
+import { menuUrlWithTable } from "@/lib/recenzije/menu-url";
 import { languagesWithText, type TransLang } from "@/lib/recenzije/menu-lang";
 
 /**
@@ -184,9 +185,7 @@ function isUniqueViolation(e: unknown): boolean {
 
 /** Javna adresa jelovnika (za QR kod i poveznice). `table` je neobavezan broj stola (?stol=), samo informativno. */
 export function menuPublicUrl(slug: string, table?: string | number | null): string {
-  const base = `${env.appUrl}/jelovnik/${slug}`;
-  const t = table === null || table === undefined ? "" : String(table).trim();
-  return t ? `${base}?stol=${encodeURIComponent(t.slice(0, 20))}` : base;
+  return menuUrlWithTable(`${env.appUrl}/jelovnik/${slug}`, table);
 }
 
 type VenueOrg = { id: string; name: string; isVenue: boolean; isDemo: boolean; googleReviewUrl: string | null; timezone: string };
