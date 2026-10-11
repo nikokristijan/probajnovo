@@ -1,13 +1,12 @@
 import type { Metadata } from "next";
+import { pageMetadata } from "@/lib/seo";
 import Link from "next/link";
 import LegalPage from "@/components/LegalPage";
 import ConsentReset from "@/components/novo/ConsentReset";
 
 export const metadata: Metadata = {
-  title: "Politika kolačića",
-  description: "Koje kolačiće probajnovo.com koristi i zašto.",
+  ...pageMetadata({ title: "Politika kolačića", description: "Koje kolačiće probajnovo.com koristi i zašto.", path: "/kolacici" }),
   robots: { index: true, follow: true },
-  alternates: { canonical: "https://www.probajnovo.com/kolacici" },
 };
 
 export default function CookiePolicyPage() {
