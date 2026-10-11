@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { DEFAULT_OG_IMAGE } from "@/lib/seo";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getProductBySlug, listProducts, recordPageView } from "@/lib/db/queries";
@@ -95,14 +96,16 @@ export async function generateMetadata({ params }: { params: Promise<Params> }):
       title: ogTitle,
       description,
       url,
+      siteName: "NOVO",
+      locale: "hr_HR",
       type: "website",
-      images: product.images[0] ? [{ url: product.images[0], alt: product.name }] : undefined,
+      images: product.images[0] ? [{ url: product.images[0], alt: product.name }] : [DEFAULT_OG_IMAGE],
     },
     twitter: {
       card: "summary_large_image",
       title: ogTitle,
       description,
-      images: product.images[0] ? [product.images[0]] : undefined,
+      images: [product.images[0] || DEFAULT_OG_IMAGE.url],
     },
   };
 }
