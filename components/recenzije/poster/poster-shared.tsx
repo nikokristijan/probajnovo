@@ -54,6 +54,7 @@ export function CopyLinkButton({ value }: { value: string }) {
     <Button
       size="sm"
       variant="ghost"
+      className="h-11 sm:pointer-fine:h-11"
       onClick={async () => {
         try {
           await navigator.clipboard.writeText(value);

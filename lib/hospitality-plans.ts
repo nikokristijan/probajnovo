@@ -6,19 +6,53 @@
  * pa promjena iznosa ili popisa stavki ne traži izmjene nigdje drugdje.
  *
  * Pravila: iznosi su u EUR, mjesečno, BEZ PDV-a. Godišnja uplata = 10 mjesečnih iznosa
- * (dva mjeseca gratis). Postavljanje je jednokratno i besplatno je uz godišnju uplatu.
+ * (dva mjeseca gratis). Postavljanje je jednokratno i besplatno je uz godišnju uplatu (do uključenog broja komada).
  * Struktura: tri paketa (Jelovnik, Jelovnik + Recenzije, Sve uključeno) i dodaci uz Jelovnik koji se mogu uzeti zasebno;
  * ušteda paketa "Sve uključeno" računa se iz ovih iznosa (bundleSavingEur), ne upisuje se ručno.
  * Ovo je odvojeno od paketa NOVO Recenzije (lib/recenzije), koji služe obrtima i tvrtkama bez jelovnika.
  */
 
 /**
- * Fizički komplet koji ide uz svaki paket: stolni stalci s QR kodom i NFC pločica (gost prisloni mobitel ili skenira kod,
- * oba otvaraju isti jelovnik) te naljepnica za vrata. Jedan tekst na jednom mjestu, da se stranica, paketi i JSON-LD ne razilaze.
- * VAŽNO: nigdje se ne navodi broj komada ni cijena opreme; koliko stolova pokriva jednokratno postavljanje odlučuje vlasnik.
+ * Fizički komplet koji ide uz svaki paket i jednokratno postavljanje. Jedinica je KOMAD: 1 komad = jedan stolni stalak s
+ * QR kodom + jedna NFC pločica (gost prisloni mobitel ili skenira kod, oba otvaraju isti jelovnik). Komadi se broje, a ne
+ * stolovi, jer stol s osam mjesta može trebati komad po gostu. Svi iznosi i brojevi su ovdje; stranica i tekstovi ih računaju.
+ * Iznosi su u EUR bez PDV-a.
  */
+export const HOSPITALITY_SETUP = {
+  /** Jednokratno postavljanje. Uključuje `includedPieces` komada, unos jelovnika s fotografije, ispis i podešavanje. */
+  setupFeeEur: 99,
+  /** Koliko komada (stalak s QR kodom + NFC pločica) je uključeno u postavljanje. */
+  includedPieces: 10,
+  /** Cijena svakog dodatnog komada uz mjesečno plaćanje. */
+  extraPieceEur: 8,
+  /** Cijena svakog dodatnog komada uz godišnju uplatu (postavljanje je tada besplatno do `includedPieces`). */
+  extraPieceAnnualEur: 5,
+  /** Poštarina za dostavu izvan Slavonskog Broda i okolice (kad nema postavljanja na licu mjesta). */
+  shippingEur: 10,
+} as const;
+
 export const KIT_SHORT = "Stolni stalci s QR kodom i NFC pločica";
-export const KIT_NOTE = "Komplet za jelovnik: stalci i pločice za sve stolove prema dogovoru.";
+
+/** "1 komad", "2 komada", "10 komada": hrvatski oblik uz broj. */
+export function piecesLabel(n: number): string {
+  const m10 = n % 10;
+  const m100 = n % 100;
+  return `${n} ${m10 === 1 && m100 !== 11 ? "komad" : "komada"}`;
+}
+
+/** Koliko dodatnih komada preko uključenih (nikad negativno). */
+export function extraPieces(totalPieces: number): number {
+  return Math.max(0, Math.floor(totalPieces) - HOSPITALITY_SETUP.includedPieces);
+}
+
+/** Dodatni komadi preko uključenih: iznos u EUR (mjesečno plaćanje ili godišnja uplata). */
+export function extraPiecesCostEur(totalPieces: number, annual: boolean): number {
+  const per = annual ? HOSPITALITY_SETUP.extraPieceAnnualEur : HOSPITALITY_SETUP.extraPieceEur;
+  return extraPieces(totalPieces) * per;
+}
+
+/** Jedna rečenica o komplementu, za stranicu (računa se iz HOSPITALITY_SETUP). */
+export const KIT_NOTE = `1 komad je jedan stolni stalak s QR kodom i jedna NFC pločica. U postavljanje je uključeno do ${HOSPITALITY_SETUP.includedPieces} komada, a svaki dodatni komad je ${HOSPITALITY_SETUP.extraPieceEur} € (uz godišnju uplatu ${HOSPITALITY_SETUP.extraPieceAnnualEur} €).`;
 
 export type HospitalityPlanKey = "jelovnik" | "jelovnik-recenzije" | "sve";
 
@@ -50,7 +84,7 @@ export const HOSPITALITY_PLANS: HospitalityPlan[] = [
     smsMonthly: 0,
     features: [
       "Digitalni jelovnik: gost prisloni mobitel na NFC pločicu ili skenira QR kod",
-      `${KIT_SHORT} (komplet za jelovnik) i naljepnica za vrata`,
+      `${KIT_SHORT} (do ${piecesLabel(HOSPITALITY_SETUP.includedPieces)} u postavljanju) i naljepnica za vrata`,
       "Unos jelovnika i izmjene cijena i stavki radimo mi",
       "Engleski prijevod osnovnog teksta",
       "Tipke Wi-Fi, Kontakt i Ocijeni nas kad ih želite",
@@ -111,8 +145,8 @@ export const HOSPITALITY_ADDONS: HospitalityAddon[] = [
 export const FULL_PLAN_KEY: HospitalityPlanKey = "sve";
 export const BASE_PLAN_KEY: HospitalityPlanKey = "jelovnik";
 
-/** Jednokratno postavljanje, EUR bez PDV-a. Uključuje tisak stalaka, NFC pločice s upisanom adresom, naljepnicu za vrata i upis jelovnika s fotografije. */
-export const SETUP_FEE_EUR = 79;
+/** Jednokratno postavljanje, EUR bez PDV-a (vidi HOSPITALITY_SETUP). Besplatno uz godišnju uplatu, do uključenog broja komada. */
+export const SETUP_FEE_EUR = HOSPITALITY_SETUP.setupFeeEur;
 
 /** Broj plaćenih mjeseci kod godišnje uplate (umjesto 12). */
 export const ANNUAL_PAID_MONTHS = 10;

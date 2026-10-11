@@ -5,7 +5,8 @@ import { Check, ExternalLink } from "lucide-react";
 import { Button } from "@/components/recenzije/ui/button";
 import { cn } from "@/lib/recenzije/utils";
 import { copyText } from "./poster-shared";
-import type { NfcRow } from "./nfc-urls";
+import { HOSPITALITY_SETUP, formatEur, piecesLabel } from "@/lib/hospitality-plans";
+import { pieceTotals, type NfcRow } from "./nfc-urls";
 
 /** Gumb "Kopiraj" koji nakratko pokaže "Kopirano" (uz obavijest), visine 44 px za dodir. */
 function RowCopy({ value, label, done }: { value: string; label: string; done?: string }) {
@@ -21,7 +22,7 @@ function RowCopy({ value, label, done }: { value: string; label: string; done?: 
     <Button
       size="sm"
       variant="outline"
-      className="h-11 min-w-[7rem] shrink-0"
+      className="h-11 min-w-[7rem] shrink-0 sm:pointer-fine:h-11"
       aria-label={label}
       onClick={async () => {
         if (!(await copyText(value, done))) return;
@@ -59,7 +60,7 @@ function UrlRow({ label, url, hint, copyLabel }: { label: string; url: string; h
 }
 
 /** Popis adresa za upis na pločice: cijeli lokal i po jedan redak za svaki stol. Svaka adresa je ista kao u QR kodu tog stola. */
-export function NfcUrlList({ venueUrl, rows }: { venueUrl: string; rows: NfcRow[] }) {
+export function NfcUrlList({ venueUrl, rows, perTable = 1 }: { venueUrl: string; rows: NfcRow[]; perTable?: number }) {
   return (
     <div className="space-y-5" data-nfc-list>
       <div>
@@ -74,7 +75,7 @@ export function NfcUrlList({ venueUrl, rows }: { venueUrl: string; rows: NfcRow[
         </p>
         <ul className="mt-1.5 border border-border bg-white" aria-label="Adrese po stolovima">
           {rows.map((r) => (
-            <UrlRow key={r.table} label={`Stol ${r.table}`} url={r.url} copyLabel={`Kopiraj adresu za stol ${r.table}`} />
+            <UrlRow key={r.table} label={`Stol ${r.table}`} hint={perTable > 1 ? `${piecesLabel(perTable)} s istim linkom` : undefined} url={r.url} copyLabel={`Kopiraj adresu za stol ${r.table}`} />
           ))}
         </ul>
       </div>
@@ -168,12 +169,33 @@ export function NfcInstructions({ captureEnabled, venueUrl }: { captureEnabled: 
             }
           />
         </div>
-        <Button size="sm" variant="ghost" asChild className={cn("mt-3 h-11 px-0")}>
+        <Button size="sm" variant="ghost" asChild className={cn("mt-3 h-11 px-0 sm:pointer-fine:h-11")}>
           <a href={venueUrl} target="_blank" rel="noopener noreferrer">
             <ExternalLink /> Otvori jelovnik lokala
           </a>
         </Button>
       </div>
+    </div>
+  );
+}
+
+/**
+ * Veličina kompleta: stolovi x komada po stolu = ukupno komada, naspram komada uključenih u postavljanje.
+ * 1 komad = jedan stolni stalak s QR kodom + jedna NFC pločica. Iznosi dolaze iz lib/hospitality-plans.ts.
+ */
+export function PiecesSummary({ tables, perTable }: { tables: number; perTable: number }) {
+  const t = pieceTotals(tables, perTable);
+  return (
+    <div className="border-l-[3px] border-orange bg-orange-soft p-3 text-[13px] leading-relaxed" data-pieces-summary>
+      <p>
+        Ukupno: <b>{t.tables}</b> × <b>{t.perTable}</b> = <b data-pieces-total>{piecesLabel(t.total)}</b> (stalak s QR kodom + NFC pločica). U postavljanje je uključeno{" "}
+        {t.included}.
+      </p>
+      <p className="mt-1" data-pieces-extra>
+        {t.extra > 0
+          ? `Dodatnih ${piecesLabel(t.extra)}: ${formatEur(t.extraEur)} (${t.extra} × ${formatEur(HOSPITALITY_SETUP.extraPieceEur)}), uz godišnju uplatu ${formatEur(t.extraAnnualEur)} (${t.extra} × ${formatEur(HOSPITALITY_SETUP.extraPieceAnnualEur)}). Bez PDV-a.`
+          : "Stane u uključeni komplet, bez doplate."}
+      </p>
     </div>
   );
 }

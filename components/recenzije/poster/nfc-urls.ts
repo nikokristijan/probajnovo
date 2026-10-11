@@ -5,6 +5,7 @@
  */
 
 import { MAX_TABLES } from "@/components/recenzije/app/menu/menu-types";
+import { HOSPITALITY_SETUP, extraPieces, extraPiecesCostEur } from "@/lib/hospitality-plans";
 import { menuUrlWithTable } from "@/lib/recenzije/menu-url";
 import { slugify } from "@/lib/recenzije/utils";
 
@@ -57,4 +58,62 @@ export function nfcCsv(rows: NfcRow[]): string {
 
 export function nfcFileName(orgName: string, ext: "csv" | "txt"): string {
   return `jelovnik-nfc-${slugify(orgName) || "lokal"}.${ext}`;
+}
+
+/* ---------- Komadi (stalak s QR kodom + NFC pločica) ---------- */
+
+/** Najviše komada po stolu (stol s puno mjesta može trebati komad po gostu). */
+export const MAX_PIECES_PER_TABLE = 12;
+/** Najviše kartica u jednom ispisu "Svi stolovi" (preglednik gradi sve stranice odjednom). */
+export const MAX_SHEET_CARDS = 600;
+
+export type PiecesParse = { ok: true; value: number } | { ok: false; error: string };
+
+/** "Komada po stolu": prazno = 1, cijeli broj 1 do MAX_PIECES_PER_TABLE. */
+export function parsePiecesPerTable(raw: string): PiecesParse {
+  const t = raw.trim();
+  if (t === "") return { ok: true, value: 1 };
+  const n = Number(t);
+  if (!Number.isFinite(n)) return { ok: false, error: "Komada po stolu: upišite broj." };
+  if (!Number.isInteger(n)) return { ok: false, error: "Komada po stolu: upišite cijeli broj." };
+  if (n < 1) return { ok: false, error: "Komada po stolu: najmanje 1." };
+  if (n > MAX_PIECES_PER_TABLE) return { ok: false, error: `Komada po stolu: najviše ${MAX_PIECES_PER_TABLE}.` };
+  return { ok: true, value: n };
+}
+
+export type PieceTotals = {
+  tables: number;
+  perTable: number;
+  /** stolovi x komada po stolu */
+  total: number;
+  /** Koliko komada je uključeno u postavljanje. */
+  included: number;
+  /** Komadi preko uključenih (0 ako stane). */
+  extra: number;
+  /** Doplata za dodatne komade uz mjesečno plaćanje, EUR bez PDV-a. */
+  extraEur: number;
+  /** Doplata za dodatne komade uz godišnju uplatu, EUR bez PDV-a. */
+  extraAnnualEur: number;
+};
+
+/** Veličina kompleta: stolovi x komada po stolu, naspram komada uključenih u postavljanje. */
+export function pieceTotals(tables: number, perTable: number): PieceTotals {
+  const t = Math.max(0, Math.floor(tables));
+  const p = Math.max(0, Math.floor(perTable));
+  const total = t * p;
+  return {
+    tables: t,
+    perTable: p,
+    total,
+    included: HOSPITALITY_SETUP.includedPieces,
+    extra: extraPieces(total),
+    extraEur: extraPiecesCostEur(total, false),
+    extraAnnualEur: extraPiecesCostEur(total, true),
+  };
+}
+
+/** Svaka kartica se ponavlja `perTable` puta za redom (isti ?stol): 1,1,2,2,3,3... */
+export function repeatCards<T>(items: T[], perTable: number): T[] {
+  const k = Math.max(1, Math.floor(perTable));
+  return items.flatMap((it) => Array.from({ length: k }, () => it));
 }

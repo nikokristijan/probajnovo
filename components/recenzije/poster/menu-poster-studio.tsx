@@ -10,8 +10,8 @@ import type { MenuKind } from "@/lib/recenzije/menu-noun";
 import { cn } from "@/lib/recenzije/utils";
 import type { QrMatrix } from "@/lib/recenzije/services/qr";
 import { POSTER_VARIANTS, menuPosterFileName, qrOnlySvg, tableSheetFileName, variantInfo, type PosterVariant } from "./poster-layout";
-import { NfcInstructions, NfcUrlList } from "./nfc-panel";
-import { buildNfcRows, nfcCsv, nfcFileName, nfcTextList, parseNfcRange } from "./nfc-urls";
+import { NfcInstructions, NfcUrlList, PiecesSummary } from "./nfc-panel";
+import { MAX_PIECES_PER_TABLE, MAX_SHEET_CARDS, buildNfcRows, nfcCsv, nfcFileName, nfcTextList, parseNfcRange, parsePiecesPerTable, repeatCards } from "./nfc-urls";
 import { CopyLinkButton, copyText, saveSvg, saveText } from "./poster-shared";
 import { buildPosterSvg } from "./poster-svg";
 import { buildTableSheetPages, sheetPageCount, type TableQr } from "./table-sheet-svg";
@@ -143,6 +143,7 @@ export function MenuPosterStudio({
   // Svi stolovi
   const [count, setCount] = useState("12");
   const [from, setFrom] = useState("1");
+  const [perTableInput, setPerTableInput] = useState("1");
   const [sheetItems, setSheetItems] = useState<TableQr[] | null>(null);
   const [sheetError, setSheetError] = useState<string | null>(null);
   const [sheetPage, setSheetPage] = useState(0);
@@ -158,9 +159,13 @@ export function MenuPosterStudio({
   const typed = tableInput.replace(/\s+/g, " ").trim();
   const inSync = typed === current.table && !qrPending;
   const preview = buildPosterSvg({ orgName, qr: current.qr, variant, inline: true, kind: "menu", menu: { table: current.table, allowSkip, menuKind, nfc: showNfc } });
+  // Komada po stolu: ista kartica (isti ?stol) ponavlja se toliko puta za svaki stol.
+  const perTable = useMemo(() => parsePiecesPerTable(perTableInput), [perTableInput]);
+  const sheetCards = useMemo(() => (sheetItems && perTable.ok ? repeatCards(sheetItems, perTable.value) : []), [sheetItems, perTable]);
+  const sheetTooMany = sheetCards.length > MAX_SHEET_CARDS;
   const sheetPages = useMemo(
-    () => (sheetItems ? buildTableSheetPages({ orgName, tables: sheetItems, inline: true, menuKind, nfc: showNfc }) : []),
-    [orgName, sheetItems, menuKind, showNfc]
+    () => (sheetCards.length && !sheetTooMany ? buildTableSheetPages({ orgName, tables: sheetCards, inline: true, menuKind, nfc: showNfc }) : []),
+    [orgName, sheetCards, sheetTooMany, menuKind, showNfc]
   );
   // NFC: adrese se grade odmah u pregledniku (bez poslužitelja) istom funkcijom kao QR, iz osnovne adrese tvrtke.
   const nfcRange = useMemo(() => parseNfcRange(count, from), [count, from]);
@@ -349,8 +354,12 @@ export function MenuPosterStudio({
                   </Field>
                 </div>
                 {!nfcRange.ok && <p className="-mt-2 text-xs text-danger" role="alert">{nfcRange.error}</p>}
+                <Field label="Komada po stolu" htmlFor="mp-nfc-pieces" hint={`Isti link na svakom komadu. Najviše ${MAX_PIECES_PER_TABLE}.`} error={perTable.ok ? undefined : perTable.error}>
+                  <Input id="mp-nfc-pieces" type="number" inputMode="numeric" min={1} max={MAX_PIECES_PER_TABLE} value={perTableInput} onChange={(e) => setPerTableInput(e.target.value)} aria-invalid={!perTable.ok ? true : undefined} />
+                </Field>
+                {nfcRange.ok && perTable.ok && <PiecesSummary tables={nfcRange.count} perTable={perTable.value} />}
                 <div className="flex flex-col gap-2">
-                  <Button size="lg" disabled={!nfcRange.ok} onClick={() => copyText(nfcTextList(nfcRows), `Kopirano: ${nfcRows.length} ${plural(nfcRows.length, "adresa", "adrese", "adresa")}`)}>
+                  <Button size="lg" disabled={!nfcRange.ok || !perTable.ok} onClick={() => copyText(nfcTextList(nfcRows), `Kopirano: ${nfcRows.length} ${plural(nfcRows.length, "adresa", "adrese", "adresa")}`)}>
                     <Nfc /> Kopiraj sve
                   </Button>
                   <div className="grid grid-cols-2 gap-2">
@@ -362,7 +371,7 @@ export function MenuPosterStudio({
                     </Button>
                   </div>
                 </div>
-                <p className="-mt-2 text-xs text-muted">„Kopiraj sve” stavlja jednu adresu po retku, redom po stolovima. CSV ima stupce „stol” i „url”.</p>
+                <p className="-mt-2 text-xs text-muted">„Kopiraj sve” stavlja jednu adresu po retku, redom po stolovima (jedna po stolu, bez obzira na broj komada). CSV ima stupce „stol” i „url”.</p>
               </>
             ) : (
               <>
@@ -374,27 +383,38 @@ export function MenuPosterStudio({
                     <Input id="mp-from" type="number" inputMode="numeric" min={0} max={9999} value={from} onChange={(e) => setFrom(e.target.value)} />
                   </Field>
                 </div>
+                <Field label="Komada po stolu" htmlFor="mp-pieces" hint={`Isti link na svakom komadu. Najviše ${MAX_PIECES_PER_TABLE}.`} error={perTable.ok ? undefined : perTable.error}>
+                  <Input id="mp-pieces" type="number" inputMode="numeric" min={1} max={MAX_PIECES_PER_TABLE} value={perTableInput} onChange={(e) => setPerTableInput(e.target.value)} aria-invalid={!perTable.ok ? true : undefined} />
+                </Field>
                 <NfcToggle checked={showNfc} onChange={setShowNfc} />
                 {sheetError && <p className="-mt-2 text-xs text-danger">{sheetError}</p>}
                 <Button size="lg" variant={sheetItems ? "secondary" : "primary"} loading={building} onClick={makeSheet} className="w-full">
                   <QrCode /> {sheetItems ? "Napravi ponovno" : "Napravi ploču"}
                 </Button>
-                {sheetItems && (
+                {sheetItems && perTable.ok && (
                   <div className="space-y-3 border-t border-border pt-5">
-                    <p className="text-sm text-muted">
-                      <b className="text-foreground">{sheetItems.length}</b> {plural(sheetItems.length, "kartica", "kartice", "kartica")} na{" "}
-                      <b className="text-foreground">{sheetPages.length}</b> {plural(sheetPages.length, "stranici", "stranice", "stranica")} A4 (po 12 na stranici).
-                    </p>
-                    <div className="flex flex-col gap-2 sm:flex-row lg:flex-col xl:flex-row">
-                      <Button size="lg" className="sm:flex-1 lg:flex-none xl:flex-1" onClick={() => window.print()}>
+                    <PiecesSummary tables={sheetItems.length} perTable={perTable.value} />
+                    {sheetTooMany ? (
+                      <p className="text-xs text-danger" role="alert">
+                        Previše kartica za jedan ispis ({sheetCards.length}, najviše {MAX_SHEET_CARDS}). Smanjite broj stolova ili komada po stolu.
+                      </p>
+                    ) : (
+                      <p className="text-sm text-muted">
+                        <b className="text-foreground">{sheetCards.length}</b> {plural(sheetCards.length, "kartica", "kartice", "kartica")} na{" "}
+                        <b className="text-foreground">{sheetPages.length}</b> {plural(sheetPages.length, "stranici", "stranice", "stranica")} A4 (po 12 na stranici).
+                      </p>
+                    )}
+                    <div className="flex flex-col gap-2 sm:flex-row lg:flex-col">
+                      <Button size="lg" className="sm:flex-1 lg:flex-none" disabled={sheetTooMany} onClick={() => window.print()}>
                         <Printer /> Ispiši ploču
                       </Button>
                       <Button
                         size="lg"
                         variant="secondary"
-                        className="sm:flex-1 lg:flex-none xl:flex-1"
+                        className="sm:flex-1 lg:flex-none"
+                        disabled={sheetTooMany}
                         onClick={() => {
-                          const files = buildTableSheetPages({ orgName, tables: sheetItems, menuKind, nfc: showNfc });
+                          const files = buildTableSheetPages({ orgName, tables: sheetCards, menuKind, nfc: showNfc });
                           saveSvg(tableSheetFileName(orgName, pageIndex + 1), files[pageIndex] ?? files[0]);
                         }}
                       >
@@ -413,7 +433,7 @@ export function MenuPosterStudio({
                   {urlShown}
                 </code>
                 <CopyLinkButton value={urlShown} />
-                <Button size="sm" variant="ghost" asChild>
+                <Button size="sm" variant="ghost" asChild className="size-11 sm:pointer-fine:size-11 px-0">
                   <a href={urlShown} target="_blank" rel="noopener noreferrer" aria-label="Otvori jelovnik u novoj kartici">
                     <ExternalLink />
                   </a>
@@ -429,7 +449,7 @@ export function MenuPosterStudio({
         <div className="min-w-0 self-start border border-border bg-surface-2 p-4 sm:p-8 lg:col-start-1 lg:row-span-2 lg:row-start-1">
           {mode === "nfc" ? (
             nfcRange.ok ? (
-              <NfcUrlList venueUrl={baseUrl} rows={nfcRows} />
+              <NfcUrlList venueUrl={baseUrl} rows={nfcRows} perTable={perTable.ok ? perTable.value : 1} />
             ) : (
               <div className="flex min-h-48 flex-col items-center justify-center border border-dashed border-border-strong bg-white p-8 text-center">
                 <Nfc className="size-8 text-muted" aria-hidden />
@@ -453,7 +473,7 @@ export function MenuPosterStudio({
                 {current.table ? ` · stol ${current.table}` : ""}
               </p>
             </>
-          ) : sheetItems ? (
+          ) : sheetItems && sheetPages.length > 0 ? (
             <>
               <div id={SHEET_ID} className="mx-auto w-full max-w-[440px] border border-foreground bg-white shadow-[6px_6px_0_0_rgba(0,0,0,0.08)]">
                 {sheetPages.map((svg, i) => (
@@ -472,7 +492,7 @@ export function MenuPosterStudio({
                 </Button>
               </div>
               <p className="label mt-3 text-center text-muted">
-                Pregled · A4 · stolovi {sheetItems[0]?.label} do {sheetItems[sheetItems.length - 1]?.label} · {sheetPageCount(sheetItems.length)} str.
+                Pregled · A4 · stolovi {sheetItems[0]?.label} do {sheetItems[sheetItems.length - 1]?.label} · {sheetPageCount(sheetCards.length)} str.
               </p>
             </>
           ) : (

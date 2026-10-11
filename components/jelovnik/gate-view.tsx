@@ -10,7 +10,7 @@ import { GateForm } from "./gate-form";
 
 /**
  * Vrata: mali prozor na sredini ekrana iznad zamućene, zatamnjene stranice. U prozoru su logo ili naziv lokala, jedna kratka
- * rečenica, broj mobitela, jedna privola (kratka rečenica + "Pročitaj više") i zlatni gumb; ispod njega sitna, čitljiva
+ * rečenica, broj mobitela, jedna privola (kratka rečenica + "Pročitaj više") i glavni gumb (boja akcenta); ispod njega sitna, čitljiva
  * poveznica za pregled bez broja (ako je lokal dopušta), koja ništa ne sprema. Sve je poslužiteljski ispisano i radi bez
  * JavaScripta (obrazac se šalje izvorno). Pozadina je ukrasna i neaktivna; stranica iza se ne može pomicati.
  */

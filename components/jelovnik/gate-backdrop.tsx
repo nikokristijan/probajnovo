@@ -48,12 +48,7 @@ function RealPreview({ menu, categories, all }: { menu: PublicMenuInfo; categori
                 <li key={it.id} className="jl-item">
                   <div className="jl-item-top">
                     <div className="jl-item-name">{it.name}</div>
-                    {it.priceCents > 0 && (
-                      <>
-                        <span className="jl-leader" />
-                        <span className="jl-price">{formatPriceCents(it.priceCents)}</span>
-                      </>
-                    )}
+                    {it.priceCents > 0 && <span className="jl-price">{formatPriceCents(it.priceCents)}</span>}
                   </div>
                   {it.description && <p className="jl-desc">{it.description}</p>}
                 </li>

@@ -40,12 +40,7 @@ function Item({ item }: { item: PublicItem }) {
         <h3 className="jl-item-name">
           <Bi hr={item.name} en={item.nameEn} de={item.nameDe} it={item.nameIt} />
         </h3>
-        {item.priceCents > 0 && (
-          <>
-            <span className="jl-leader" aria-hidden />
-            <span className="jl-price">{formatPriceCents(item.priceCents)}</span>
-          </>
-        )}
+        {item.priceCents > 0 && <span className="jl-price">{formatPriceCents(item.priceCents)}</span>}
       </div>
       {item.description && (
         <p className="jl-desc">

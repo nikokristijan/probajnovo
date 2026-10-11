@@ -115,7 +115,7 @@ async function MenuPoster({ initialMode }: { initialMode: MenuPosterMode }) {
         title="QR kod i NFC pločica za jelovnik"
         description="Ispišite plakat, stolnu karticu ili ploču sa svim stolovima, a za NFC pločice kopirajte adrese za upis. Gost prisloni mobitel na pločicu ili skenira kod, i otvara isti jelovnik."
         actions={
-          <Button variant="secondary" asChild>
+          <Button variant="secondary" asChild className="h-11">
             <Link href="/recenzije/jelovnik">Uredi jelovnik</Link>
           </Button>
         }

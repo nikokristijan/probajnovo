@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 
 /**
- * Znak lokala na vrhu vrata i jelovnika: logo ako ga lokal ima, inače naziv lokala elegantnim fontom. Uvijek je to h1
+ * Znak lokala na vrhu vrata i jelovnika: logo ako ga lokal ima, inače naziv lokala u display fontu. Uvijek je to h1
  * (logo nosi naziv lokala u alt-u). Okvir logotipa je stalne veličine (200 x 64), pa učitavanje slike ne pomiče stranicu.
  * Ako se slika ne može učitati (neispravna adresa, slika obrisana), tiho se prikazuje naziv lokala.
  */
