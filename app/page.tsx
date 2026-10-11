@@ -1,9 +1,16 @@
+import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import NovoHome from "@/components/NovoHome";
 import { loadNovoHomeData } from "@/lib/novoHomeData";
 import ConsentTracking from "@/components/novo/ConsentTracking";
 
 export const revalidate = 0; // uvijek svježe iz baze (admin izmjene odmah vidljive)
+
+// Naslov, opis i Open Graph dolaze iz app/layout.tsx. Canonical je bitan jer ista
+// naslovnica odgovara i na ?view=studies / ?view=office.
+export const metadata: Metadata = {
+  alternates: { canonical: "https://www.probajnovo.com" },
+};
 
 const VALID_VIEWS = new Set(["home", "studies", "office"]);
 
