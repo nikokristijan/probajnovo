@@ -58,7 +58,7 @@ export default async function NfcGuestCard({ tag }: { tag: NfcGuestCardData }) {
     <div className="nfc-card">
       {tag.image && (
         <div className="nfc-hero-image">
-          <Image src={tag.image} alt="" fill sizes="420px" />
+          <Image src={tag.image} alt="" fill sizes="(max-width: 420px) 100vw, 420px" />
         </div>
       )}
 

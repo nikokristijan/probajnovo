@@ -9,7 +9,7 @@ import { readFileSync } from "node:fs";
 import { createRequire } from "node:module";
 
 const require = createRequire(import.meta.url);
-const files = process.argv.slice(2).length ? process.argv.slice(2) : ["app/globals.css"];
+const files = process.argv.slice(2).length ? process.argv.slice(2) : ["app/globals.css", "app/admin/admin.css", "app/[slug]/stay.css"];
 
 let transform;
 try {

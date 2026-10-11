@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { singleImgUrl } from "@/lib/blob-image";
 
 /**
  * Video proizvoda kao NOVO "prozor": ne pokreće se sam, nego tek kad posjetitelj
@@ -65,7 +66,7 @@ export default function ProductVideoNovo({ src, name, poster }: { src: string; n
           muted
           playsInline
           preload="metadata"
-          poster={poster}
+          poster={singleImgUrl(poster)}
           aria-label={`${name} — video`}
           onClick={togglePlay}
           onPlay={() => setPlaying(true)}

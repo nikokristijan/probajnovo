@@ -6,6 +6,7 @@ import { eur } from "@/lib/pricing";
 import NovoShell, { VIEW_HREF } from "@/components/novo/NovoShell";
 import SystemTile from "@/components/novo/SystemTile";
 import type { SystemListing } from "@/lib/system-products";
+import { IMG_SIZES, responsiveImgSource } from "@/lib/blob-image";
 
 /* ------------------------------------------------------------------ */
 /* Tipovi                                                              */
@@ -93,10 +94,36 @@ function hashStr(s: string) {
 }
 const BG_SHADES = ["#eee", "#e6e6e6", "#dedede", "#f1f1f1", "#e2e2e2"];
 
-function ProjectImage({ src, alt, className }: { src?: string; alt: string; className?: string }) {
+function ProjectImage({
+  src,
+  alt,
+  className,
+  sizes,
+  priority = false,
+}: {
+  src?: string;
+  alt: string;
+  className?: string;
+  /** CSS širina slike (vidi IMG_SIZES) — po njoj preglednik bira pravu širinu iz srcSet-a. */
+  sizes: string;
+  /** Prva vidljiva slika prikaza: odmah (eager) i s visokim prioritetom, ostale su lazy. */
+  priority?: boolean;
+}) {
   if (src) {
-    // eslint-disable-next-line @next/next/no-img-element
-    return <img src={src} alt={alt} className={className} loading="lazy" decoding="async" />;
+    // Običan <img> ostaje (CSS klase ovise o njemu), ali Blob originali (više MB) idu kroz
+    // next/image optimizator: responsivni WebP srcSet umjesto sirove datoteke (vidi lib/blob-image.ts).
+    const img = responsiveImgSource(src, sizes);
+    return (
+      // eslint-disable-next-line @next/next/no-img-element
+      <img
+        {...img}
+        alt={alt}
+        className={className}
+        loading={priority ? "eager" : "lazy"}
+        fetchPriority={priority ? "high" : undefined}
+        decoding="async"
+      />
+    );
   }
   const seed = alt || "novo";
   const hash = hashStr(seed);
@@ -285,7 +312,7 @@ function ExhibitContent({ images }: { images: { src?: string; alt: string }[] })
       <div className="exhibit-track">
         {loop.map((img, i) => (
           <div className="exhibit-frame" key={i}>
-            <ProjectImage src={img.src} alt={img.alt} className="exhibit-img" />
+            <ProjectImage src={img.src} alt={img.alt} className="exhibit-img" sizes={IMG_SIZES.exhibit} priority={i === 0} />
           </div>
         ))}
       </div>
@@ -303,7 +330,7 @@ function ProjectContent({ project }: { project: StudyProject }) {
   return (
     <div className="proj-viewport">
       <button className="proj-image-btn" onClick={advance} aria-label="Sljedeća slika">
-        <ProjectImage src={images[i]} alt={project.name} className="proj-img" />
+        <ProjectImage src={images[i]} alt={project.name} className="proj-img" sizes={IMG_SIZES.projWindow} />
       </button>
       <div className="proj-info">
         <p className="proj-desc">{project.tagline}</p>
@@ -355,7 +382,7 @@ function ProductContent({ product, contactEmail }: { product: ProductCard; conta
   return (
     <div className="proj-viewport">
       <button className="proj-image-btn" onClick={advance} aria-label="Sljedeća slika">
-        <ProjectImage src={images[i]} alt={product.name} className="proj-img" />
+        <ProjectImage src={images[i]} alt={product.name} className="proj-img" sizes={IMG_SIZES.projWindow} />
       </button>
       <div className="proj-info">
         <p className="proj-desc">{product.description}</p>
@@ -435,7 +462,13 @@ function ProductFullscreenPage({
       <div className="product-full-scroll">
         <div className="product-full-body">
           <div className="product-full-hero">
-            <ProjectImage src={images[i]} alt={product.name} className="product-full-hero-img" />
+            <ProjectImage
+              src={images[i]}
+              alt={product.name}
+              className="product-full-hero-img"
+              sizes={IMG_SIZES.productFullHero}
+              priority
+            />
           </div>
           {images.length > 1 && (
             <div className="product-full-thumbs">
@@ -446,7 +479,7 @@ function ProductFullscreenPage({
                   onClick={() => setI(idx)}
                   aria-label={`Slika ${idx + 1}`}
                 >
-                  <ProjectImage src={src} alt={product.name} className="product-full-thumb-img" />
+                  <ProjectImage src={src} alt={product.name} className="product-full-thumb-img" sizes={IMG_SIZES.productFullThumb} />
                 </button>
               ))}
             </div>
@@ -506,6 +539,13 @@ function ProductsView({
   const [category, setCategory] = useState<string | null>(null);
   const sorted = [...products].sort((a, b) => Number(b.featured) - Number(a.featured));
   const visible = category ? sorted.filter((p) => p.category?.trim() === category) : sorted;
+  // Prve četiri kartice sa slikom (dva reda od po dvije na mobitelu) su iznad pregiba: odmah, s visokim prioritetom.
+  const priorityIds = new Set(
+    visible
+      .filter((p) => !p.system && p.images[0])
+      .slice(0, 4)
+      .map((p) => p.id)
+  );
   const total = products.length + 2; // + prostorna slova (/slova) + recenzije (/recenzije)
 
   return (
@@ -570,7 +610,13 @@ function ProductsView({
             const inner = (
               <>
                 <div className="pl-card-img">
-                  <ProjectImage src={p.images[0]} alt={p.name} className="pl-card-thumb" />
+                  <ProjectImage
+                    src={p.images[0]}
+                    alt={p.name}
+                    className="pl-card-thumb"
+                    sizes={IMG_SIZES.productCard}
+                    priority={priorityIds.has(p.id)}
+                  />
                   {/* Najviše jedna oznaka: akcija ima prednost pred "istaknuto". */}
                   {p.salePercent ? (
                     <span className="pl-badge pl-badge--sale mono">−{p.salePercent} %</span>

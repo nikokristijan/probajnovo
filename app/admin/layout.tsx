@@ -1,4 +1,5 @@
 import type { Metadata, Viewport } from "next";
+import "./admin.css";
 import Link from "next/link";
 import { getCurrentAdminRecord } from "@/lib/auth";
 import { logoutAction } from "@/lib/actions";

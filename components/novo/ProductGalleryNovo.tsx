@@ -96,6 +96,7 @@ export default function ProductGalleryNovo({ images, name }: { images: string[];
                 fill
                 sizes="(max-width: 720px) 100vw, (max-width: 1280px) 50vw, 560px"
                 priority={i === 0}
+                fetchPriority={i === 0 ? "high" : undefined}
               />
             </button>
           ))}

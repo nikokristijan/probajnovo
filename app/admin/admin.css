@@ -1,0 +1,2580 @@
+/* =====================================================================
+   Admin CSS — izdvojeno iz app/globals.css (nije potrebno na javnim stranicama).
+   Učitava se samo preko app/admin/layout.tsx. Redoslijed pravila je isti kao prije.
+   ===================================================================== */
+
+/* =====================================================================
+   ADMIN — jednostavno, funkcionalno sučelje (Tailwind za layout/forme).
+   ===================================================================== */
+/* Neumorphism pilula (isti jezik kao .neu-nav > a/.owner-quicklink) — RANIJE
+   bijela pločica s tankim rubom, sad ispupčena preko --neu-* tokena koje
+   .admin-shell/.owner-page-bg već definiraju, pa se automatski uklapa u
+   koji god kontekst (superadmin/vlasnik) se nađe. */
+.admin-quicklink {
+  font-size: 13px;
+  font-weight: 600;
+  border-radius: 999px;
+  padding: 8px 16px;
+  background: var(--neu-base);
+  text-decoration: none;
+  color: var(--neu-ink);
+  box-shadow: 4px 4px 8px var(--neu-shadow), -4px -4px 8px var(--neu-highlight);
+  transition: box-shadow 0.15s ease, color 0.15s ease, transform 0.15s ease;
+}
+.admin-quicklink:hover {
+  color: var(--neu-accent-ink);
+  box-shadow: 2px 2px 5px var(--neu-shadow), -2px -2px 5px var(--neu-highlight);
+  transform: translateY(-1px);
+}
+.admin-quicklink:active {
+  transform: translateY(0) scale(0.97);
+  box-shadow: inset 3px 3px 6px var(--neu-shadow), inset -3px -3px 6px var(--neu-highlight);
+}
+.admin-shell {
+  min-height: 100vh;
+  background: #f7f7f5;
+  font-family: var(--font-space-grotesk), sans-serif;
+  /* Neumorphism tokeni za IZBORNIK (vidi .neu-header/.neu-nav niže) —
+     definirani ovdje jer je .admin-shell zajednički predak i vlasniku i
+     superadminu. Vrijednosti ovdje su LIGHT-ONLY zadano stanje (koristi ih
+     puni admin, koji nema temu po korisniku) — .owner-page-bg niže
+     (postavlja se SAMO za role="owner", vidi app/admin/layout.tsx)
+     prepisuje ista imena svojim (light/dark/system) paletama, pa se
+     .neu-header ne mora granati po ulozi: čita iste --neu-* varijable, a
+     koja se vrijednost primijeni ovisi samo o tome je li .owner-page-bg
+     prisutan na istom elementu. --neu-base namjerno = --admin-shell
+     pozadina (#f7f7f5) da izbornik izgleda "izrezan" iz iste podloge, ne
+     kao naljepljena pločica druge boje — to je bit neumorphism efekta. */
+  /* NOVO/Revolut redizajn (korisnički feedback: "nista nisi redizajnirao,
+     izgleda kao prije" — cijeli .neu-* sustav je i dalje bio "ispupčena
+     jastučasta" neumorphism estetika, dvostruka sjena iste boje kao
+     podloga, ništa poput stvarne NOVO stranice). --neu-base sad znači
+     STVARNA površina kartice/gumba (bijela), različita od --neu-base
+     podloge stranice ispod, umjesto "iste boje pa sjena glumi rub" —
+     --neu-highlight/--neu-shadow su namjerno prazni (vidi kombinirano
+     pravilo "border: 1px solid var(--neu-border)" niže koje zamjenjuje
+     obje sjene jednom tankom linijom, isti jezik kao --na-border u
+     PORTAL/Vlasnički izbornik sustavu). */
+  --neu-base: #ffffff;
+  --neu-highlight: transparent;
+  --neu-shadow: transparent;
+  /* Podignuto s 0.1 na 0.16 (korisnički feedback: "nema nikakvih okvira,
+     jako zbunjujuce izgleda" — 0.1 alpha crno na bijelom je tehnički rub,
+     ali u praksi gotovo nevidljiv). */
+  --neu-border: rgba(0, 0, 0, 0.16);
+  --neu-ink: #0a0a0a;
+  --neu-ink-faint: rgba(0, 0, 0, 0.62);
+  --neu-accent: #ff7f00;
+  --neu-accent-ink: #b35600;
+}
+/* Utisnuta neumorphism površina (isti jezik kao .neu-input) — RANIJE
+   obična bijela pločica s tankim rubom. */
+.admin-input {
+  border: none;
+  border-radius: 10px;
+  padding: 9px 12px;
+  font-size: 14px;
+  font-family: inherit;
+  outline: none;
+  width: 100%;
+  background: var(--neu-base);
+  color: var(--neu-ink);
+  box-shadow: inset 2px 2px 5px var(--neu-shadow), inset -2px -2px 5px var(--neu-highlight);
+  transition: box-shadow 0.15s ease;
+}
+.admin-input:focus {
+  box-shadow: inset 2px 2px 5px var(--neu-shadow), inset -2px -2px 5px var(--neu-highlight), 0 0 0 2px #0000c3;
+}
+.admin-repeat-row { display: flex; flex-direction: column; gap: 8px; border: 1px solid rgba(0,0,0,0.1); border-radius: 10px; padding: 12px; background: #fff; }
+.admin-repeat-add { align-self: flex-start; font-size: 13px; font-weight: 600; border: 1px dashed rgba(0,0,0,0.25); border-radius: 999px; padding: 8px 16px; background: transparent; cursor: pointer; transition: border-color 0.15s ease, color 0.15s ease; }
+.admin-repeat-add:hover { border-color: #ff7f00; color: #b35600; }
+.admin-repeat-remove { align-self: flex-start; font-size: 12px; font-weight: 600; color: #b3261e; background: transparent; border: none; cursor: pointer; padding: 2px 0; text-decoration: underline; }
+.admin-repeat-remove:hover { color: #7a1a15; }
+
+/* Generička "nepročitano" točkica — na zahtjev "vikendice u istom neu
+   stilu" zamjenjuje raniju razliku bojom ruba kartice (border-black/10 vs
+   border-[#ff7f00]/50), koja se gubi na .neu-card (nema ruba, samo sjena).
+   Koristi se npr. za upite u app/admin/vikendice/[id]/page.tsx. */
+.admin-unread-dot {
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--neu-accent);
+  flex-shrink: 0;
+}
+
+/* ---------------------------------------------------------------------
+   Admin "polish" animacije — graf zarade (linija + ispuna), fade-up ulaz
+   za statistike, i grow-in za proporcionalne trake (lijevkasti/kategorije).
+   Sve se igraju SAMO jednom pri ulasku u DOM (mount), što u praksi znači
+   svaki put kad se uđe na stranicu (Next.js App Router puni novi RSC
+   payload/DOM čvorove za novu rutu) — bez klijentske komponente/JS-a.
+   --------------------------------------------------------------------- */
+@keyframes admin-line-draw { from { stroke-dashoffset: 1; } to { stroke-dashoffset: 0; } }
+.admin-chart-line { stroke-dasharray: 1; stroke-dashoffset: 1; animation: admin-line-draw 1.1s ease-out forwards; }
+
+@keyframes admin-area-fade { from { opacity: 0; } to { opacity: 1; } }
+.admin-chart-area { opacity: 0; animation: admin-area-fade 0.7s ease-out 0.5s forwards; }
+
+@keyframes admin-dot-pop { from { opacity: 0; transform: scale(0); } to { opacity: 1; transform: scale(1); } }
+.admin-chart-dot { opacity: 0; transform-origin: center; transform-box: fill-box; animation: admin-dot-pop 0.35s ease-out forwards; }
+
+/* Sitna postupna pojava, nikad "flashy" (Sign 05: "nothing moves, it just
+   appears" — 150-300ms po elementu, fade + blagi slide, jedan za drugim). */
+@keyframes admin-fade-up { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+.admin-animate-grid > * { opacity: 0; animation: admin-fade-up 0.28s ease-out forwards; }
+.admin-animate-grid > *:nth-child(1) { animation-delay: 0.02s; }
+.admin-animate-grid > *:nth-child(2) { animation-delay: 0.05s; }
+.admin-animate-grid > *:nth-child(3) { animation-delay: 0.08s; }
+.admin-animate-grid > *:nth-child(4) { animation-delay: 0.11s; }
+.admin-animate-grid > *:nth-child(5) { animation-delay: 0.14s; }
+.admin-animate-grid > *:nth-child(6) { animation-delay: 0.17s; }
+.admin-animate-grid > *:nth-child(n+7) { animation-delay: 0.2s; }
+
+@keyframes admin-bar-grow { from { transform: scaleX(0); } to { transform: scaleX(1); } }
+.admin-bar-grow { transform-origin: left; animation: admin-bar-grow 0.6s cubic-bezier(0.22, 1, 0.36, 1) forwards; }
+
+/* ---------------------------------------------------------------------
+   Vlasnički (role="owner") dashboard — "liquid glass" dizajn sustav.
+   Sve u ovom bloku živi ISKLJUČIVO iza .owner-dash omotača (app/admin/
+   page.tsx OwnerDashboard) — namjerno NIJE na :root, da ni jedno pravilo
+   ovdje ne može procuriti u superadmin/puni-admin izgled (StatCard,
+   AdminDashboard, itd. dijele isti globals.css ali nemaju .owner-dash
+   pretka). Zamjenjuje raniji ravni gradient-hero sustav istog imena.
+
+   Pristup: stakleni (frosted) sloj PREKO postojeće NOVO palete (navy
+   #0000c3 → ljubičasta → narančasta #ff7f00), ne neutralno bijelo Apple
+   staklo — boja mora ostati prepoznatljiva ispod stakla. Zamućene "mrlje"
+   boje sjede iza staklenih površina (.owner-dash::before) tako da
+   backdrop-filter stvarno pokupi boju odozdo, ne samo prozirnu bijelu
+   podlogu — to je razlika između pravog "liquid glass" efekta i običnog
+   plosnatog gradijenta s prozirnošću.
+   --------------------------------------------------------------------- */
+
+/* PETI krug feedbacka na "crta/jak prijelaz" (nakon što je ČETVRTI krug —
+   vidi .owner-hero box-shadow niže — riješio samo rub HERO KARTICE, ne i
+   ono što se ispostavilo kao stvarni, veći izvor pritužbe): .owner-dash
+   živi UNUTAR <main className="max-w-4xl mx-auto px-6 py-10"> (app/admin/
+   layout.tsx), a taj <main> nema svoju pozadinu pa kroz njegov padding i
+   kroz prazan prostor lijevo/desno od max-w-4xl proviruje .admin-shell-ova
+   FIKSNA svijetlo-siva pozadina (#f7f7f5) — u tamnoj temi to je oštar
+   pravokutni rub gdje se skoro-crna .owner-dash kutija odsječe od te sive
+   podloge (i u svijetloj temi suptilnija, ali ista vrsta oštrog reza).
+   Rješenje: .admin-shell (dijeljen s punim adminom, ali ova klasa se
+   dodaje SAMO kad je admin.role === "owner" — vidi app/admin/layout.tsx)
+   dobiva ISTU pozadinsku boju kao --od-bg gore/dolje, pa "kutija" oko
+   .owner-dash nestaje jer se boji s njom stapaju umjesto sudaraju. Ne
+   dira .admin-shell izgled za pravog (super)admina jer klasa/atribut
+   nikad nisu prisutni na tom putu. */
+.owner-page-bg {
+  /* NOVO/Revolut redizajn: neutralniji, manje "lavande" ton nego prijašnji
+     #f2f3f9 — vidi --na-bg u NOVO/REVOLUT REDIZAJN sekciji gore (prati
+     temu preko istog .owner-page-bg[data-theme]/media obrasca). */
+  background: var(--na-bg);
+  /* ŠESTI krug feedbacka: "gornji navbar ostaje bijel u tamnom modu, sve u
+     vlasnik adminu (kalendar, rezervacije...) treba istu temu kao početna".
+     Ovi --oh-* tokeni žive OVDJE (na .owner-page-bg = .admin-shell omotač,
+     iznad i headera i <main>-a) umjesto na .owner-dash (koji headeru nije
+     predak) — tako i izbornik niže (.neu-header, .owner-header-chip/-faint)
+     i bilo koja buduća vlasnička stranica izvan .owner-dash mogu čitati
+     istu paletu bez ponavljanja.
+     Namjerno ODVOJENO od --od-* tokena na .owner-dash (isti brojevi, ali
+     zasebne varijable) da uređivanje jednog sustava slučajno ne pomakne
+     drugi. */
+  --oh-ink: #0b0b1f;
+  --oh-ink-faint: rgba(11, 11, 31, 0.6);
+  --oh-glass: rgba(243, 244, 255, 0.72);
+  --oh-glass-chip: rgba(11, 11, 31, 0.05);
+  /* Podignuto s 0.1 na 0.16 (korisnički feedback: "nema nikakvih okvira,
+     jako zbunjujuce izgleda") — vidi isti popravak na --na-border gore. */
+  --oh-hairline: rgba(11, 11, 31, 0.16);
+  /* Vlasnička (light) neumorphism paleta za izbornik — vidi opsežan
+     komentar uz --neu-* na .admin-shell gore za zašto ova imena postoje na
+     dva mjesta. --neu-base = ISTA boja kao pozadina ispod (#f2f3f9, vidi
+     "background" gore) iz istog razloga: izbornik mora izgledati kao dio
+     iste podloge, ne naljepljena pločica. */
+  --neu-base: #ffffff;
+  --neu-highlight: transparent;
+  --neu-shadow: transparent;
+  --neu-border: var(--oh-hairline);
+  --neu-ink: var(--oh-ink);
+  --neu-ink-faint: var(--oh-ink-faint);
+  --neu-accent: #ff7f00;
+  --neu-accent-ink: #b35600;
+}
+/* NEUMORPHISM redizajn sadržaja (na izričit zahtjev: "napravi cijeli
+   dashboard u tom stilu... makni sve gradijente jer izgledaju cheap i AI")
+   — raniji plavi ambient "sjaj" (radial-gradient wash, vidi git povijest)
+   koji je ovdje nekoć rješavao vizualni šav oko .owner-dash kutije je u
+   potpunosti uklonjen zajedno sa svim ostalim gradijentima u vlasničkom
+   dashboardu. Pozadina je sad posve ravna (#0a0a24 tamna / #f2f3f9
+   svijetla) i na .owner-page-bg i na .owner-dash, pa šava nema ni bez
+   sjaja — obje pozadine su već identična ravna boja. */
+.owner-page-bg[data-theme="dark"] {
+  /* NOVO/Revolut redizajn (korisnički feedback, izravno iz screenshota:
+     "ovo je mutna tamnoplava pozadina, ne izgleda ni izbliza kao NOVO
+     stranica") — #0a0a24/#0d0d29/#1a1a4a su NAVY-tintane boje (vidljivo
+     plavkasto, ne neutralno crno), i cijeli izbornik/kartice su se
+     oslanjale na neumorphism dvostruku sjenu (--neu-shadow/--neu-highlight)
+     koja na tamnoj podlozi ispadne kao zamućen, prljav rub umjesto čistog
+     minimalizma. Zamijenjeno ISTOM neutralnom tamnom paletom kao :root
+     [data-theme="dark"] (NOVO/REVOLUT REDIZAJN token sustav gore) —
+     --na-bg/--na-surface — da vlasnički dio admina konačno izgleda kao
+     ISTI proizvod kao Portal, ne kao stariji, nedovršeni dizajn ispod njega. */
+  background: #0c0c0e;
+  --oh-ink: #f5f5f5;
+  --oh-ink-faint: rgba(255, 255, 255, 0.58);
+  --oh-glass: rgba(23, 23, 26, 0.92);
+  --oh-glass-chip: rgba(255, 255, 255, 0.08);
+  /* Podignuto s 0.12 na 0.18 — vidi isti popravak uz --oh-hairline (light) gore. */
+  --oh-hairline: rgba(255, 255, 255, 0.18);
+  /* --neu-base je sad STVARNA površina kartice (tamnosiva, različita od
+     #0c0c0e podloge), ne "ista boja + sjena" — vidi opsežan komentar uz
+     --neu-base u .admin-shell gore. */
+  --neu-base: #17171a;
+  --neu-highlight: transparent;
+  --neu-shadow: transparent;
+  --neu-border: var(--oh-hairline);
+  --neu-ink: var(--oh-ink);
+  --neu-ink-faint: var(--oh-ink-faint);
+  --neu-accent: #ff7f00;
+  --neu-accent-ink: #ffab5e;
+}
+@media (prefers-color-scheme: dark) {
+  .owner-page-bg:not([data-theme="light"]):not([data-theme="dark"]) {
+    background: #0c0c0e;
+    --oh-ink: #f5f5f5;
+    --oh-ink-faint: rgba(255, 255, 255, 0.58);
+    --oh-glass: rgba(23, 23, 26, 0.92);
+    --oh-glass-chip: rgba(255, 255, 255, 0.08);
+    --oh-hairline: rgba(255, 255, 255, 0.18);
+    --neu-base: #17171a;
+    --neu-highlight: transparent;
+    --neu-shadow: transparent;
+    --neu-border: var(--oh-hairline);
+    --neu-ink: var(--oh-ink);
+    --neu-ink-faint: var(--oh-ink-faint);
+    --neu-accent: #ff7f00;
+    --neu-accent-ink: #ffab5e;
+  }
+}
+
+/* OSMI krug feedbacka ("bijela pruga na dnu ekrana", potvrđeno: admin je
+   dodan na početni zaslon kao PWA) — na iOS-u "rubber-band" scroll-bounce
+   ispod kraja dokumenta (i uski rub iza home-indicatora) otkriva <body>-jevu
+   pozadinu, ne .admin-shell/.owner-page-bg (koja PETI krug gore već boji da
+   odgovara --od-bg). <body> je DIJELJEN s cijelom javnom stranicom (uvijek
+   #ffffff), pa se ne smije mijenjati globalno — :has() ga cilja SAMO kad je
+   .owner-page-bg negdje unutar <body>, a taj razred postoji ISKLJUČIVO za
+   role="owner" (vidi app/admin/layout.tsx), pa javna stranica i puni/
+   superadmin dashboard (nikad nemaju .owner-page-bg) ostaju netaknuti.
+   Safari na iOS-u podržava :has() od 16.4 — isti minimum koji push
+   obavijesti u ovom projektu već traže (vidi OwnerPushNotificationToggle:
+   "Na iPhoneu treba iOS 16.4+"), pa ovo ne uvodi novi prag kompatibilnosti. */
+body:has(.owner-page-bg) {
+  background: #fafafa;
+}
+body:has(.owner-page-bg[data-theme="dark"]) {
+  background: #0c0c0e;
+}
+@media (prefers-color-scheme: dark) {
+  body:has(.owner-page-bg:not([data-theme="light"]):not([data-theme="dark"])) {
+    background: #0c0c0e;
+  }
+}
+
+/* DEVETI krug feedbacka ("ovaj rub je oštar, na svakoj stranici u meniju
+   kad je tamni mod", sa slikom koja crveno kruži punu, svijetlo-sivu
+   okomitu traku uz sam desni rub ekrana, od vrha do dna) — to je obična
+   (nestilizirana) scrollbar TRAKA koju instalirana PWA na iOS-u iscrta preko
+   cijelog dokumenta čim je stranica scrollabilna; nasuprot tankom
+   sam-nestajućem iOS pokazivaču u običnoj Safari kartici, WKWebView
+   standalone prikaz zna iscrtati puni klasični scrollbar ako ga stranica
+   sama ne sakrije — i taj svijetlo-sivi trak na skoro crnoj pozadini je
+   točno taj "oštar rub" (i zato izgleda identično na SVAKOJ stranici: to je
+   scrollbar dokumenta, ne nešto specifično jednoj stranici). Pravе Apple
+   aplikacije nemaju trajno vidljiv scrollbar trak — sakrivanje je ovdje i
+   ispravan smjer za "izgleda kao high end Apple aplikacija", ne samo
+   kozmetički zaobilazak. Isti :has() razlog kao OSMI krug gore — cilja
+   SAMO kad je .owner-page-bg (isključivo role="owner") negdje u dokumentu,
+   pa javna stranica i puni/superadmin dashboard zadrže svoj default
+   scrollbar, netaknuto. html (ne body) jer je html korijenski scroll
+   element kad dokument premaši visinu ekrana. */
+html:has(.owner-page-bg) {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+html:has(.owner-page-bg)::-webkit-scrollbar {
+  display: none;
+  width: 0;
+  height: 0;
+}
+
+/* =====================================================================
+   ADMIN IZBORNIK — neumorphism (zamjenjuje raniji "liquid glass" header
+   za vlasnika i ravni bijeli header za superadmina jednim dijeljenim
+   "soft UI" tretmanom). Oba sučelja sad koriste ISTE klase (.neu-header/
+   .neu-nav/.neu-btn/.neu-toggle) — koja se paleta primijeni ovisi samo o
+   tome čita li se --neu-* preko .owner-page-bg (vlasnik, light/dark/
+   sustav) ili izravno preko .admin-shell (superadmin, uvijek light) —
+   vidi te varijable uz "background" na oba mjesta gore. Cilj: baza
+   izbornika (--neu-base) NAMJERNO ista boja kao stranica ispod (ne
+   naljepljena pločica), a dubina dolazi isključivo iz dvostruke sjene
+   (svijetla + tamna), ne iz ruba ili prozirnosti — to je razlika prema
+   ranijem "liquid glass" pristupu (staklo/blur) koji ostaje netaknut na
+   .owner-dash (kalendar/rezervacije/postavke) ispod izbornika. */
+/* NOVO/Revolut redizajn — ovaj kombinirani selektor zamjenjuje SVAKU
+   pojedinačnu neumorphism dvostruku sjenu (--neu-shadow/--neu-highlight su
+   sad prazni, vidi .admin-shell/.owner-page-bg gore) jednom tankom linijom,
+   isti minimalni jezik kao --na-border u Portalu/vlasničkom izborniku —
+   umjesto da se svaki od ovih razreda zasebno prepravlja, svi dijele
+   identičan tanki rub preko --neu-border (koji već grana light/dark/owner/
+   superadmin isto kao i ostatak --neu-* sustava).
+   DRUGI KRUG (korisnički feedback: "nema nikakvih okvira oko tipki i
+   svega") — .owner-input/.neu-empty/.portal-thread/.owner-theme-switch su
+   PRVI put propušteni u ovom popisu: imali su border:none i oslanjali se
+   isključivo na sad-prazan inset --neu-shadow/--neu-highlight, pa su bili
+   doslovno bez ijednog vizualnog ruba (npr. "Nova rezervacija"/"Novi
+   trošak" polja na vlasničkom mobitelu). Dodani ovdje. */
+.admin-quicklink,
+.admin-input,
+.neu-nav > a,
+.neu-btn,
+.neu-toggle,
+.owner-header-chip,
+.neu-card,
+.neu-input,
+.owner-quicklink,
+.owner-glass,
+.owner-glass-strong,
+.neu-disclosure,
+.owner-input,
+.neu-empty,
+.portal-thread,
+.owner-theme-switch {
+  border: 1px solid var(--neu-border);
+}
+
+.neu-header {
+  position: sticky;
+  top: 0;
+  z-index: 40;
+  background: var(--neu-base);
+  color: var(--neu-ink);
+  /* Rub zamijenjen jednom tankom linijom ispod trake umjesto mekane
+     dvostruke sjene — vidi komentar uz kombinirano pravilo gore. */
+  border-bottom: 1px solid var(--neu-border);
+  box-shadow: none;
+  transition: background-color 0.25s ease, color 0.25s ease, box-shadow 0.25s ease;
+}
+
+/* Svaka nav stavka postaje zasebna meka pločica — cilja SVE izravne <a>
+   potomke (next/link renderira <a>), pa i vlasnički i superadmin set
+   linkova (4 vs ~9) te zajednički "Postavke"/"Pogledaj stranicu" dobivaju
+   identičan tretman bez posebne komponente po linku. U mirovanju ispupčena
+   (dvostruka vanjska sjena), pri hoveru "podignutija" (uža sjena + narančasti
+   tekst), pri kliku "utisnuta" (inset sjena + lagano smanjenje) — klasični
+   raised → hover → pressed neumorphism ciklus. */
+.neu-nav > a {
+  /* inline-flex (ranije inline-block) — inline-block je poništavao Tailwind
+     "inline-flex gap-*" na pojedinim linkovima (ovo pravilo ima veću
+     specifičnost), pa je značka nepročitanih uz "Portal" bila zalijepljena
+     za tekst, a ikona uz "Pogledaj stranicu" se lomila u novi red. */
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  white-space: nowrap;
+  padding: 8px 14px;
+  border-radius: 14px;
+  background: var(--neu-base);
+  box-shadow: 4px 4px 8px var(--neu-shadow), -4px -4px 8px var(--neu-highlight);
+  transition: box-shadow 0.18s cubic-bezier(0.22, 1, 0.36, 1), transform 0.18s cubic-bezier(0.22, 1, 0.36, 1),
+    color 0.18s ease;
+}
+.neu-nav > a:hover {
+  color: var(--neu-accent-ink);
+  box-shadow: 2px 2px 5px var(--neu-shadow), -2px -2px 5px var(--neu-highlight);
+}
+.neu-nav > a:active {
+  transform: scale(0.96);
+  box-shadow: inset 3px 3px 6px var(--neu-shadow), inset -3px -3px 6px var(--neu-highlight);
+}
+
+/* Hamburger toggle (mobitel) i "Odjava" gumb — isti raised/pressed jezik
+   kao .neu-nav > a gore, odvojeno definirano jer nisu <a> (label i
+   button). .neu-toggle zadržava blaže zaobljen kvadratni oblik (ikonski
+   gumb), .neu-btn pilulu (tekstualni gumb poput "Odjava"). */
+.neu-btn,
+.neu-toggle {
+  /* NE stavljati "border: none" ovdje — .neu-btn/.neu-toggle su već u
+     kombiniranom pravilu iznad (border: 1px solid var(--neu-border)); ovaj
+     kasniji blok (isti razred, ista specifičnost) bi ga inače prepisao
+     natrag na ništa zbog redoslijeda u datoteci — ista greška kao kod
+     .owner-input/.neu-input, vidi komentar uz kombinirano pravilo. */
+  background: var(--neu-base);
+  color: inherit;
+  box-shadow: 4px 4px 8px var(--neu-shadow), -4px -4px 8px var(--neu-highlight);
+  transition: box-shadow 0.18s cubic-bezier(0.22, 1, 0.36, 1), transform 0.18s cubic-bezier(0.22, 1, 0.36, 1),
+    color 0.18s ease;
+}
+.neu-btn { border-radius: 999px; }
+.neu-toggle { border-radius: 12px; }
+.neu-btn:hover,
+.neu-toggle:hover {
+  color: var(--neu-accent-ink);
+}
+.neu-btn:active,
+.neu-toggle:active {
+  transform: scale(0.96);
+  box-shadow: inset 3px 3px 6px var(--neu-shadow), inset -3px -3px 6px var(--neu-highlight);
+}
+
+/* Email/rola značke — TRAJNO utisnute (inset sjena), za razliku od
+   klikabilnih elemenata gore koji su ispupčeni dok miruju; vizualno
+   odmah jasno da je ovo statusni natpis, ne gumb. */
+.owner-header-chip {
+  background: var(--neu-base);
+  color: var(--neu-ink-faint);
+  box-shadow: inset 2px 2px 4px var(--neu-shadow), inset -2px -2px 4px var(--neu-highlight);
+}
+.owner-header-faint {
+  color: var(--neu-ink-faint);
+}
+
+/* Trajno "utisnuto" stanje za nav stavku TRENUTNE stranice (ne samo dok se
+   klika) — AdminNavLink.tsx postavlja aria-current="page" preko usePathname()
+   kad je link trenutna ruta (ili njen roditelj, npr. "Vikendice" ostaje
+   aktivan i na /admin/vikendice/123). Ista inset-sjena kao :active gore, ali
+   TRAJNA dok se ne ode na drugu stranicu, umjesto da nestane čim se pusti
+   miš/prst — bez ovoga nav nije imao nikakav vizualni znak "ovdje si sada". */
+.neu-nav > a[aria-current="page"] {
+  color: var(--neu-accent-ink);
+  font-weight: 700;
+  box-shadow: inset 3px 3px 6px var(--neu-shadow), inset -3px -3px 6px var(--neu-highlight);
+}
+
+.neu-btn,
+.neu-toggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+/* Hamburger je samo za mobitel — Tailwindov "sm:hidden" je u @layer pa ga
+   gornji (ne-slojeviti) display: inline-flex nadjača, zato je gumb bio
+   vidljiv i na desktopu gdje ne radi ništa. */
+@media (min-width: 640px) {
+  .admin-nav-toggle-btn { display: none; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .neu-nav > a,
+  .neu-btn,
+  .neu-toggle {
+    transition: color 0.18s ease;
+  }
+  .neu-nav > a:active,
+  .neu-btn:active,
+  .neu-toggle:active {
+    transform: none;
+  }
+}
+
+/* Redizajn vlasničkog izbornika (Task #14 → NOVO/Revolut redizajn, "izgleda
+   jako nepregledno i tesko za koristiti... stil Revolut aplikacije, clean
+   minimalno jednostavno"). Prvotna verzija (neumorphism, 5 zasebnih
+   "izbočenih" pločica sa sjenama) i dalje je djelovala nagurano — otud
+   drugi prolaz: JEDNA ravna traka (.na-card) s tankim rubom, bez sjena,
+   gdje je aktivna stavka jednostavno TAMNA ispunjena pločica (isti
+   "segmented control" obrazac kao Revolut donja navigacija), a ostale su
+   gole ikona+label bez ruba/sjene dok se ne hoveriraju. auto-fit/minmax i
+   dalje osigurava da mreža uvijek ispunjava punu širinu (2 stupca na
+   uskom mobitelu, do 5 na desktopu). Vrijedi ISKLJUČIVO za vlasnika
+   (superadmin/puni admin zadržava izvorni .neu-nav — različit problem,
+   9+ linkova treba hamburger).
+   TREĆI PROLAZ (korisnički feedback: "ovaj gore navbar izgleda katastrofa
+   i zauzima pola ekrana") — auto-fit/minmax(90px, 1fr) je na uskom
+   mobitelu (< ~450px, tj. 5×90px) prelamao 5 pločica u 2 retka, što je uz
+   .owner-menu-secondary koji je ISPOD (i sam se prelamao na email+2 značke
+   +odjava) davalo cijeli "pola ekrana" dojam. repeat(5, 1fr) bez minmax
+   nema donju granicu širine stupca pa uvijek ostaje TOČNO jedan red, na
+   bilo kojoj širini — samo se pločice suze/šire. */
+.owner-menu-grid {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 2px;
+  width: 100%;
+  background: var(--na-surface);
+  border: 1px solid var(--na-border);
+  border-radius: var(--na-radius);
+  padding: 4px;
+}
+.owner-menu-tile {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  padding: 8px 2px;
+  border-radius: calc(var(--na-radius) - 5px);
+  background: transparent;
+  color: var(--na-ink-faint);
+  font-family: var(--font-space-grotesk), sans-serif;
+  font-size: 10.5px;
+  font-weight: 600;
+  text-align: center;
+  line-height: 1.15;
+  transition: background 0.15s ease, color 0.15s ease, transform 0.15s ease;
+}
+.owner-menu-tile-icon {
+  display: flex;
+  color: inherit;
+}
+.owner-menu-tile:hover {
+  color: var(--na-ink);
+  background: var(--na-bg);
+}
+.owner-menu-tile:active {
+  transform: scale(0.96);
+}
+.owner-menu-tile[aria-current="page"] {
+  color: var(--na-surface);
+  background: var(--na-ink);
+}
+
+/* Sekundarni red ISPOD mreže — vanjski link na javnu stranicu, email/uloga
+   značka i odjava NISU "odredišta" izbornika, pa namjerno ostaju izvan
+   .owner-menu-grid, u tanjem statusnom retku ispod, sada u --na-ink-faint
+   monu radi manje vizualne buke. margin-left:auto na gumbu Odjava
+   (postavljen izravno u JSX-u) gura ga na desni kraj retka. */
+.owner-menu-secondary {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  width: 100%;
+  font-size: 12.5px;
+  color: var(--na-ink-faint);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .owner-menu-tile {
+    transition: color 0.15s ease, background 0.15s ease;
+  }
+  .owner-menu-tile:active {
+    transform: none;
+  }
+}
+
+/* =====================================================================
+   NOVO/REVOLUT REDIZAJN (Task #24, nastavak) — na izričit zahtjev: "zelim
+   da sve ima stil glavne NOVO stranice... clean minimalno jednostavno za
+   koristenje... stil Revolut aplikacije". Paralelan sustav uz .neu-* i
+   .owner-* ispod (NE zamjenjuje ih posvuda odjednom — prevelik rizik da se
+   svih ~30 admin stranica prepravi u jednom potezu; .na-* se uvodi prvo na
+   vlasnički izbornik, vlasnički dashboard i Portal, širi se dalje kasnije).
+   Preuzima stvarne NOVO brend tokene (--novo-blue/--novo-orange gore u
+   ovoj datoteci, .novo-os-* sekcija) i fontove već učitane u app/layout.tsx
+   (--font-space-grotesk za naslove/UI, --font-jetbrains-mono za mono
+   "kicker" labele — isti dvojac kao na javnoj NOVO stranici), ali BEZ
+   njenog desktop-OS/prozor layouta (to je specifično za marketing hero,
+   ne za app UI) — umjesto toga ravne (flat) kartice s mekim rubom i
+   velikodušnim razmakom, bliže Revolutovom app stilu nego neumorphism
+   dvostrukoj sjeni. */
+/* NAPOMENA (korisnički feedback nakon prvog kruga: "nema nikakvih okvira,
+   jako zbunjujuce izgleda") — --na-border je RANIJE bio 0.08/0.1 alpha,
+   tehnički postojeći rub, ali u praksi gotovo nevidljiv (npr. tražilica na
+   Portal početnoj). Podignuto na jasno vidljivu, i dalje suptilnu, liniju. */
+:root {
+  --na-bg: #fafafa;
+  --na-surface: #ffffff;
+  --na-border: rgba(0, 0, 0, 0.15);
+  --na-border-strong: rgba(0, 0, 0, 0.22);
+  --na-ink: #0a0a0a;
+  --na-ink-faint: rgba(0, 0, 0, 0.62);
+  --na-ink-faintest: rgba(0, 0, 0, 0.32);
+  --na-blue: #0000c3;
+  --na-accent: #ff7f00;
+  --na-accent-ink: #b35600;
+  --na-radius-lg: 22px;
+  --na-radius: 16px;
+  --na-radius-sm: 11px;
+}
+.owner-page-bg[data-theme="dark"] {
+  --na-bg: #0c0c0e;
+  --na-surface: #17171a;
+  --na-border: rgba(255, 255, 255, 0.18);
+  --na-border-strong: rgba(255, 255, 255, 0.26);
+  --na-ink: #f5f5f5;
+  --na-ink-faint: rgba(255, 255, 255, 0.58);
+  --na-ink-faintest: rgba(255, 255, 255, 0.36);
+  --na-accent-ink: #ffab5e;
+}
+@media (prefers-color-scheme: dark) {
+  .owner-page-bg:not([data-theme="light"]):not([data-theme="dark"]) {
+    --na-bg: #0c0c0e;
+    --na-surface: #17171a;
+    --na-border: rgba(255, 255, 255, 0.18);
+    --na-border-strong: rgba(255, 255, 255, 0.26);
+    --na-ink: #f5f5f5;
+    --na-ink-faint: rgba(255, 255, 255, 0.58);
+    --na-ink-faintest: rgba(255, 255, 255, 0.36);
+    --na-accent-ink: #ffab5e;
+  }
+}
+
+.na-kicker {
+  font-family: var(--font-jetbrains-mono), monospace;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--na-ink-faint);
+}
+.na-heading {
+  font-family: var(--font-space-grotesk), sans-serif;
+  color: var(--na-ink);
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+.na-card {
+  background: var(--na-surface);
+  border: 1px solid var(--na-border);
+  border-radius: var(--na-radius-lg);
+  color: var(--na-ink);
+}
+.na-card-interactive {
+  transition: border-color 0.15s ease, transform 0.15s ease, box-shadow 0.15s ease;
+}
+.na-card-interactive:hover {
+  border-color: var(--na-border-strong);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.06);
+}
+.na-card-interactive:active {
+  transform: scale(0.99);
+}
+/* Namjerno BEZ vlastitog padding-a (isti obrazac kao .neu-btn gore) — svako
+   mjesto korištenja dodaje px-* i py-* Tailwind klase, pa se veličina gumba
+   prilagođava kontekstu bez sukoba dviju "padding" deklaracija. */
+.na-btn {
+  font-family: var(--font-space-grotesk), sans-serif;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: var(--na-ink);
+  color: var(--na-surface);
+  border-radius: var(--na-radius-sm);
+  font-weight: 600;
+  font-size: 13.5px;
+  transition: background 0.15s ease, transform 0.15s ease;
+}
+.na-btn:hover {
+  background: var(--na-accent);
+}
+.na-btn:active {
+  transform: scale(0.97);
+}
+.na-btn-ghost {
+  font-family: var(--font-space-grotesk), sans-serif;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: transparent;
+  color: var(--na-ink);
+  border: 1px solid var(--na-border-strong);
+  border-radius: var(--na-radius-sm);
+  font-weight: 600;
+  font-size: 13.5px;
+  transition: border-color 0.15s ease, background 0.15s ease;
+}
+.na-btn-ghost:hover {
+  border-color: var(--na-accent);
+  color: var(--na-accent-ink);
+}
+.na-input {
+  font-family: inherit;
+  background: var(--na-bg);
+  border: 1px solid var(--na-border);
+  border-radius: var(--na-radius-sm);
+  padding: 10px 14px;
+  color: var(--na-ink);
+  font-size: 14px;
+  width: 100%;
+  transition: border-color 0.15s ease;
+}
+.na-input:focus {
+  outline: none;
+  border-color: var(--na-blue);
+}
+.na-chip {
+  font-family: var(--font-jetbrains-mono), monospace;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  font-weight: 500;
+  border-radius: 999px;
+  padding: 4px 10px;
+  border: 1px solid var(--na-border-strong);
+  color: var(--na-ink-faint);
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+.na-stat-value {
+  font-family: var(--font-space-grotesk), sans-serif;
+  font-weight: 700;
+  font-size: 26px;
+  letter-spacing: -0.01em;
+  color: var(--na-ink);
+  font-variant-numeric: tabular-nums;
+}
+
+/* =====================================================================
+   ADMIN SADRŽAJ — dijeljeni neumorphism gradivni blokovi (na izričit
+   zahtjev: "napravi cijeli dashboard u tom stilu"). Za razliku od
+   .owner-* sustava niže (koji živi ISKLJUČIVO iza .owner-dash), ove klase
+   rade posvuda unutar .admin-shell — i za superadmina (čita --neu-* koje
+   .admin-shell sam definira, uvijek light) i za vlasnika (čita --neu-*
+   koje .owner-page-bg prepisuje, light/dark/sustav) — jer čitaju SAMO
+   --neu-* varijable, nikad fiksne boje, pa se automatski uklapaju u koji
+   god kontekst se nađu. Zamjenjuje raniju ponovljenu "border border-black/10
+   rounded-xl px-4 py-3 bg-white" Tailwind mrlju koja se ručno kopirala u
+   svaku admin stranicu (i nije imala nikakvu temu ni dubinu). */
+.neu-card {
+  background: var(--neu-base);
+  color: var(--neu-ink);
+  border-radius: 16px;
+  box-shadow: 5px 5px 12px var(--neu-shadow), -5px -5px 12px var(--neu-highlight);
+  transition: box-shadow 0.18s cubic-bezier(0.22, 1, 0.36, 1), transform 0.18s cubic-bezier(0.22, 1, 0.36, 1);
+}
+.neu-card-interactive:hover {
+  box-shadow: 3px 3px 8px var(--neu-shadow), -3px -3px 8px var(--neu-highlight);
+  transform: translateY(-1px);
+}
+.neu-card-interactive:active {
+  box-shadow: inset 3px 3px 6px var(--neu-shadow), inset -3px -3px 6px var(--neu-highlight);
+  transform: translateY(0) scale(0.99);
+}
+
+/* Standardni tekstualni/date/select input izvan .owner-dash (superadmin
+   forme) — isti "utisnuti" (inset sjena) jezik kao .owner-input niže, samo
+   preko --neu-* umjesto --od-*, da forme na oba sučelja izgledaju kao dio
+   iste obitelji komponenti. */
+.neu-input {
+  /* border: 1px solid var(--neu-border) dolazi iz kombiniranog pravila gore
+     — NE "border: none" ovdje (isti razlog kao komentar uz .owner-input). */
+  background: var(--neu-base);
+  color: var(--neu-ink);
+  border-radius: 10px;
+  padding: 9px 12px;
+  font-size: 14px;
+  font-family: inherit;
+  width: 100%;
+  outline: none;
+  box-shadow: inset 2px 2px 5px var(--neu-shadow), inset -2px -2px 5px var(--neu-highlight);
+  transition: box-shadow 0.15s ease;
+}
+.neu-input::placeholder { color: var(--neu-ink-faint); }
+.neu-input:focus {
+  box-shadow: inset 2px 2px 5px var(--neu-shadow), inset -2px -2px 5px var(--neu-highlight), 0 0 0 2px var(--neu-accent);
+}
+
+/* Prazno stanje (Sign 04 — "no loading or empty screens"): utisnuta
+   pločica s ikonom umjesto gole rečenice "još nema X" da prazan popis ne
+   izgleda kao slomljena stranica. */
+.neu-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  text-align: center;
+  padding: 36px 20px;
+  border-radius: 16px;
+  background: var(--neu-base);
+  color: var(--neu-ink-faint);
+  box-shadow: inset 3px 3px 8px var(--neu-shadow), inset -3px -3px 8px var(--neu-highlight);
+}
+.neu-empty svg { opacity: 0.55; }
+.neu-empty-text { font-size: 13px; max-width: 34ch; }
+
+/* Skeleton učitavanja (Sign 04) — blaga pulsirajuća neprozirnost umjesto
+   gradient "sjaja" koji bi se sudarao sa "makni sve gradijente" zahtjevom;
+   isti vizualni jezik (ravna --neu-shadow ploha) kao utisnuti elementi. */
+@keyframes neu-pulse {
+  0%, 100% { opacity: 0.35; }
+  50% { opacity: 0.75; }
+}
+.neu-skeleton {
+  border-radius: 10px;
+  /* --neu-shadow ovdje NIJE sjena nego samo ravna ploha boje (skeleton
+     ispuna) — otkad je --neu-shadow prazan (vidi napomenu uz kombinirano
+     .admin-quicklink/... pravilo gore), koristi se --neu-border (tanka
+     ali vidljiva, theme-aware boja) umjesto njega. */
+  background: var(--neu-border);
+  animation: neu-pulse 1.6s ease-in-out infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .neu-skeleton { animation: none; opacity: 0.5; }
+  .neu-card-interactive:hover,
+  .neu-card-interactive:active { transform: none; }
+}
+
+/* =====================================================================
+   "URED" v2 — pravi pikselizirani TLOCRT ureda (Portal, Faza 3), na
+   izričit zahtjev nakon prve verzije ("uopće nije kao što sam zamislio"):
+   sad je ovo stvaran plan kata (stolovi u paru, sastanačka soba s
+   tepihom, kutak za odmor s kaučem, biljke, ormar) umjesto tri odvojene
+   "zone", s avatarima koji stvarno HODAJU po prostoru (CSS keyframes po
+   dijeljenoj putanji, vidi .office-char-pos.is-walking niže) dok su
+   online. "Jede" više NIJE animacija na liku — away lik SJEDI za svojim
+   stolom, a kava/keks je nacrtan NA STOLU pored njega (.office-snack), na
+   izričitu ispravku "ovaj 'jede' ne treba biti jede nego nek se
+   vizualizira kao na stolu da je hrana". Offline lik leži na kauču u
+   kutku za odmor (i dalje "spava", samo sad kao dio stvarnog tlocrta, ne
+   posebna odvojena zona). Sve je SVG (ne raster/sprite slike) da ostane
+   oštro na svakoj rezoluciji — shape-rendering:crispEdges + isključivo
+   pravokutnici bez zaobljenih rubova daju "8-bit" dojam bez pravih pixel
+   slika. I dalje BEZ gradijenata (svaka ploha je puna boja) i I DALJE
+   samo NOVO narančasta (--neu-accent) kao jedini brend akcent (mala
+   "lampica napajanja" na svakom monitoru) — svi ostali tonovi (drvo,
+   tekstil, bilje) su namjerno neutralna paleta OKO tog akcenta, ne
+   dodatni brend akcenti. Nadahnuto RPG-tilemap referentnim slikama koje
+   je korisnik priložio, ali NAMJERNO originalan raspored/paleta — ne
+   kopija tih slika. */
+
+.office-wrap {
+  border-radius: 16px;
+  padding: 12px;
+  background: var(--neu-base);
+  box-shadow: inset 2px 2px 6px var(--neu-shadow), inset -2px -2px 6px var(--neu-highlight);
+}
+.office-frame {
+  border-radius: 10px;
+  overflow: hidden;
+  display: block;
+  width: 100%;
+  height: auto;
+  /* KLJUČNO za pikselizirani izgled — bez ovoga preglednik zaglađuje
+     rubove pravokutnika (i samu pozadinsku sliku) i cijela scena izgleda
+     mutno na necjelobrojnim CSS širinama (responzivno skaliranje). */
+  shape-rendering: crispEdges;
+}
+
+/* --- Likovi (avatari) --------------------------------------------- */
+
+/* Vanjska grupa nosi POZICIJU (statičnu za away/offline preko inline
+   transform, ili hodajuću animaciju za online) — odvojeno od unutarnje
+   grupe (.office-char-sprite) koja nosi idle/hod/disanje mikro-animaciju,
+   da se dva transforma nikad ne sudare na istom elementu. */
+.office-char-pos.is-walking {
+  animation-name: office-walk-loop;
+  animation-timing-function: linear;
+  animation-iteration-count: infinite;
+  animation-duration: var(--walk-dur, 19s);
+  animation-delay: var(--walk-delay, 0s);
+}
+/* Putanja je JEDNA dijeljena petlja kroz otvoreni prolaz nove CC0 pozadinske
+   scene (v7, office-scene.png 256×224 — gornji prolaz ispred vending/vrata,
+   pa dolje kroz razmak između stolova do kutka s kavom, i natrag) — svaki
+   online avatar dobiva različit negativni animation-delay pa svi hodaju
+   ISTOM stazom ali u različitim točkama, umjesto da se svi kreću u koraku. */
+@keyframes office-walk-loop {
+  0%   { transform: translate(18px, 124px); }
+  20%  { transform: translate(235px, 124px); }
+  40%  { transform: translate(215px, 180px); }
+  60%  { transform: translate(117px, 183px); }
+  80%  { transform: translate(45px, 150px); }
+  100% { transform: translate(18px, 124px); }
+}
+
+.office-char-sprite.is-walk-bob { animation: office-char-bob 0.55s ease-in-out infinite; }
+.office-char-sprite.is-idle-sway { animation: office-char-idle 2.6s ease-in-out infinite; }
+.office-char-sprite.is-sleep-breathe { animation: office-char-breathe 2.8s ease-in-out infinite; }
+/* "radi" lik za računalom (v5) — sitan, brz trzaj kao da ruke tipkaju po
+   tipkovnici; namjerno mnogo brži i suptilniji od hodajućeg bob-a. */
+.office-char-sprite.is-typing { animation: office-char-type 0.3s steps(2, jump-none) infinite; }
+@keyframes office-char-type {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-0.4px); }
+}
+/* Treptavi "sadržaj" na upaljenom ekranu računala (v5, ComputerDesk). */
+.office-screen-glow { animation: office-screen-glow 1.6s ease-in-out infinite; }
+@keyframes office-screen-glow {
+  0%, 100% { opacity: 0.55; }
+  50% { opacity: 1; }
+}
+@keyframes office-char-bob {
+  0%, 100% { transform: translateY(0) rotate(0deg); }
+  50% { transform: translateY(-1.5px) rotate(3deg); }
+}
+@keyframes office-char-idle {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-0.8px); }
+}
+@keyframes office-char-breathe {
+  0%, 100% { opacity: 0.72; }
+  50% { opacity: 1; }
+}
+/* Kava/keks na stolu pored away lika — blagi "para se diže" titraj. */
+.office-snack-steam { animation: office-steam 1.8s ease-in-out infinite; }
+@keyframes office-steam {
+  0%, 100% { opacity: 0.2; transform: translateY(0); }
+  50% { opacity: 0.65; transform: translateY(-2px); }
+}
+/* "Zzz" iznad lika koji spava na kauču. */
+.office-zzz { animation: office-zzz-float 2.4s ease-in-out infinite; }
+@keyframes office-zzz-float {
+  0%, 100% { opacity: 0.35; transform: translate(0, 0); }
+  50% { opacity: 0.85; transform: translate(2px, -3px); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .office-char-pos.is-walking { animation: none; }
+  .office-char-sprite.is-walk-bob,
+  .office-char-sprite.is-idle-sway,
+  .office-char-sprite.is-sleep-breathe,
+  .office-char-sprite.is-typing,
+  .office-screen-glow,
+  .office-snack-steam,
+  .office-zzz { animation: none; }
+}
+
+/* --- Popis tima ispod scene (čitljiva imena — pikselizirani likovi u
+   maloj razmjeri nisu dovoljno čitljivi sami za sebe, ovo je dosljedan
+   fallback isto kao title="" hover na avataru u sceni). --- */
+.office-roster {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 10px;
+}
+.office-roster-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--neu-ink-faint);
+  background: var(--neu-base);
+  border-radius: 999px;
+  padding: 4px 10px 4px 5px;
+  box-shadow: 2px 2px 5px var(--neu-shadow), -2px -2px 5px var(--neu-highlight);
+}
+.office-roster-swatch { width: 12px; height: 12px; border-radius: 4px; flex-shrink: 0; }
+.office-roster-status {
+  width: 6px;
+  height: 6px;
+  border-radius: 2px;
+  flex-shrink: 0;
+  margin-left: -1px;
+}
+.office-roster-status.is-working { background: #16a34a; }
+.office-roster-status.is-away { background: #d97706; }
+.office-roster-status.is-offline { background: #94a3b8; }
+.office-roster-custom-status {
+  font-weight: 500;
+  color: var(--neu-ink-faint);
+  white-space: nowrap;
+}
+
+/* --- Sezonski ukrasi u sceni (v8) — vidi seasonalDecorItems u
+   OfficePresence.tsx. --- */
+.office-seasonal-decor { pointer-events: none; }
+.office-seasonal-decor.is-drifting {
+  animation: office-seasonal-drift 3.2s ease-in-out infinite;
+  animation-delay: var(--drift-delay, 0s);
+}
+@keyframes office-seasonal-drift {
+  0%, 100% { transform: translateY(0); opacity: 0.75; }
+  50% { transform: translateY(4px); opacity: 1; }
+}
+
+/* --- "Tvoj status" formular (v8, OfficeStatusForm.tsx) --- */
+.office-status-form { margin-top: 12px; display: flex; flex-direction: column; gap: 6px; }
+.office-status-row { display: flex; gap: 6px; align-items: center; }
+.office-status-emoji-input { width: 46px; text-align: center; flex-shrink: 0; }
+.office-status-quick { display: flex; flex-wrap: wrap; gap: 6px; }
+/* ČETVRTI KRUG (korisnički feedback: "na portalu jos uvijek nema okvira") —
+   ova dva chipa (i .office-leaderboard-item ispod) dijele isti "border: none"
+   + sad-providan --neu-shadow/--neu-highlight uzorak kao .neu-btn/.owner-input
+   koje smo već popravili, ali su bili izostavljeni jer žive u istoj datoteci
+   kao Ured pixel-art scena (OfficePresence.tsx) pa smo ih prvi put oprezno
+   preskočili — ovo NIJE sama pixel-art scena, nego obična "Tvoj status"/
+   zadaci-predlošci forma iznad nje, sigurno za popraviti istim uzorkom. */
+.office-status-chip {
+  font-size: 11px;
+  font-weight: 600;
+  padding: 3px 9px;
+  border-radius: 999px;
+  background: var(--neu-base);
+  box-shadow: 2px 2px 5px var(--neu-shadow), -2px -2px 5px var(--neu-highlight);
+  color: var(--neu-ink-faint);
+  cursor: pointer;
+  border: 1px solid var(--neu-border);
+}
+.office-status-chip:hover { color: var(--neu-ink); }
+
+/* --- Predlošci zadataka (task templates, TeamTaskForm.tsx) — vizualno   */
+/* isti "neu chip" izgled kao .office-status-chip gore, odvojena klasa    */
+/* jer chip ovdje nosi i prišivenu "×" formu za brisanje pored sebe.      */
+.task-template-chip-wrap { display: inline-flex; align-items: center; gap: 3px; }
+.task-template-chip {
+  font-size: 11px;
+  font-weight: 600;
+  padding: 3px 9px;
+  border-radius: 999px;
+  background: var(--neu-base);
+  box-shadow: 2px 2px 5px var(--neu-shadow), -2px -2px 5px var(--neu-highlight);
+  color: var(--neu-ink-faint);
+  cursor: pointer;
+  border: 1px solid var(--neu-border);
+  max-width: 220px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.task-template-chip:hover { color: var(--neu-ink); }
+.task-template-chip-dot {
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #dc2626;
+  margin-right: 5px;
+  vertical-align: middle;
+}
+.task-template-chip-del {
+  font-size: 13px;
+  line-height: 1;
+  color: var(--neu-ink-faint);
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 3px 5px;
+}
+.task-template-chip-del:hover { color: #dc2626; }
+
+/* --- Tjedna ljestvica (v8, getWeeklyLeaderboard) --- */
+.office-leaderboard { margin-top: 12px; display: flex; flex-direction: column; gap: 6px; }
+.office-leaderboard-title {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+  color: var(--neu-ink-faint);
+}
+.office-leaderboard-list { display: flex; flex-wrap: wrap; gap: 6px; }
+.office-leaderboard-item {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 11px;
+  font-weight: 600;
+  background: var(--neu-base);
+  border: 1px solid var(--neu-border);
+  border-radius: 999px;
+  padding: 4px 10px 4px 6px;
+  box-shadow: 2px 2px 5px var(--neu-shadow), -2px -2px 5px var(--neu-highlight);
+}
+.office-leaderboard-rank { font-size: 12px; }
+
+@media (prefers-reduced-motion: reduce) {
+  .office-seasonal-decor.is-drifting { animation: none; }
+}
+
+/* =====================================================================
+   Full-bleed "breakout" — vlasnički meni i Portal (Faza 3) trebaju se
+   rasporediti preko CIJELOG ekrana ("Ne treba biti sve u sredini, nego
+   nek se rasporedi fino preko cijelog ekrana"), ali dijeljeni
+   <main className="max-w-4xl mx-auto ..."> u app/admin/layout.tsx omata
+   SVIH 28 admin stranica — mijenjati taj wrapper globalno ima prevelik
+   doseg (svaka druga stranica bi se morala redizajnirati za punu širinu
+   istovremeno). Umjesto toga ovaj CSS trik izbija BAŠ OVAJ element iz
+   roditeljevog max-w-4xl stupca do pune širine viewporta, bez obzira na
+   ugniježđenje — sve ostale stranice ostaju netaknute. */
+.admin-breakout {
+  width: 100vw;
+  position: relative;
+  left: 50%;
+  right: 50%;
+  margin-left: -50vw;
+  margin-right: -50vw;
+  box-sizing: border-box;
+}
+/* Unutarnji omotač — bez ovoga bi "puna širina viewporta" na vrlo širokim
+   monitorima (2000px+) razvukla kartice/grafove do apsurdno tankih traka.
+   Umjesto toga vanjski .admin-breakout izbija do ruba viewporta (rješava
+   "sve u sredini"), a UNUTARNJI wrapper onda sam sebe centrira do razumne
+   maksimalne širine nadzorne ploče — "raspoređeno preko cijelog ekrana" na
+   laptopu/tabletu (896px → do 1560px), ali i dalje pregledno na 4K-u. */
+.admin-breakout-inner {
+  max-width: 1560px;
+  margin: 0 auto;
+  padding-left: clamp(16px, 4vw, 56px);
+  padding-right: clamp(16px, 4vw, 56px);
+  box-sizing: border-box;
+}
+
+/* =====================================================================
+   PORTAL — NOVO/Revolut redizajn ("PORTAL nema sa strane tim zadaci
+   statistika nego da to sve bude na jednoj stranici jedan veliki
+   pregled"). Raniji Slack/Teams app-shell (fiksni bočni izbornik +
+   sadržaj iza ?tab=, .portal-shell/.portal-sidebar/.portal-main/
+   .portal-tabs) je UKLONJEN — sve (Tim, Zadaci, Statistika, Nadolazeće,
+   Rođendani, Aktivnost, Pretraga) je sad JEDNA scrollajuća stranica, vidi
+   components/admin/PortalOverview.tsx. Ono što ostaje: tanka vodoravna
+   PortalTopBar (zamjena za bočni izbornik SAMO za DM prebacivanje, vidi
+   .portal-topbar-contact niže) i sitni avatar/bedž stilovi koje ona
+   dijeli s DM nitima. Portal NIJE .owner-dash (dostupan je punim
+   adminima, nikad vlasniku) i i dalje čita --neu-* i --na-* tokene, nikad
+   fiksne boje. */
+
+.portal-topbar-contact {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 5px 10px 5px 5px;
+  border-radius: 999px;
+  color: var(--na-ink);
+  text-decoration: none;
+  white-space: nowrap;
+  flex-shrink: 0;
+  transition: background 0.15s ease;
+}
+.portal-topbar-contact:hover { background: var(--na-bg); }
+.portal-topbar-contact[data-active] {
+  background: var(--na-ink);
+  color: var(--na-surface);
+}
+.portal-topbar-contact[data-active] span { color: inherit !important; }
+
+.portal-nav-avatar {
+  width: 24px;
+  height: 24px;
+  border-radius: 999px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 10px;
+  font-weight: 700;
+  color: #fff;
+}
+.portal-nav-badge {
+  font-size: 10px;
+  font-weight: 700;
+  background: var(--na-accent);
+  color: #fff;
+  border-radius: 999px;
+  padding: 1px 6px;
+  min-width: 16px;
+  text-align: center;
+  flex-shrink: 0;
+}
+
+/* --- Chat nit (Teams-stil) — dijeli se između tim kanala i DM-a --- */
+/* PETI KRUG: nit je sama kartica (rub + zaobljenje iz --na-* tokena) —
+   ranije inset neumorphism sjena (sad providna) + vanjski .na-card omotač u
+   PortalOverview.tsx = dvostruki okvir na početnoj, a bez ikakvog okvira na
+   DM stranici. */
+.portal-thread {
+  display: flex;
+  flex-direction: column;
+  height: min(620px, 72vh);
+  background: var(--na-surface);
+  border: 1px solid var(--na-border);
+  border-radius: var(--na-radius-lg);
+  overflow: hidden;
+}
+.portal-thread-messages {
+  flex: 1;
+  overflow-y: auto;
+  padding: 14px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+/* Kad je poruka malo (npr. nov DM razgovor), drži ih pri DNU niti uz polje
+   za unos, kao svaka chat aplikacija — ranije su visjele na vrhu s velikim
+   praznim prostorom ispod. */
+.portal-thread-messages > :first-child { margin-top: auto; }
+.portal-thread-empty {
+  margin: auto;
+  font-size: 13px;
+  color: var(--neu-ink-faint);
+  text-align: center;
+}
+.portal-msg-group {
+  display: flex;
+  gap: 10px;
+  padding: 6px 8px;
+  border-radius: 12px;
+}
+.portal-msg-group.is-own { background: rgba(255, 127, 0, 0.07); }
+.portal-msg-avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 9px;
+  flex-shrink: 0;
+  margin-top: 1px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  font-weight: 700;
+  color: #fff;
+}
+.portal-msg-body { min-width: 0; flex: 1; }
+.portal-msg-head { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; line-height: 1.3; }
+.portal-msg-name { font-size: 13px; font-weight: 700; color: var(--neu-ink); }
+.portal-msg-time { font-size: 10.5px; color: var(--neu-ink-faint); }
+.portal-msg-text {
+  font-size: 13.5px;
+  line-height: 1.5;
+  white-space: pre-wrap;
+  word-break: break-word;
+  color: var(--neu-ink);
+  margin-top: 1px;
+}
+.portal-thread-form {
+  border-top: 1px solid var(--na-border);
+  padding: 10px 12px;
+  display: flex;
+  gap: 8px;
+  /* center (ranije flex-end) — gumb za slanje je bio par piksela niže od
+     polja za unos jer su imali različite visine. */
+  align-items: center;
+  background: var(--na-surface);
+}
+.portal-thread-textarea {
+  flex: 1;
+  resize: none;
+  min-height: 42px;
+  line-height: 20px;
+  padding-top: 10px;
+  padding-bottom: 10px;
+  display: block;
+}
+/* Kvadratni gumb iste visine kao polje, ikona točno u sredini. */
+.portal-send-btn {
+  width: 42px;
+  height: 42px;
+  padding: 0;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+/* --- Faza 5: @spominjanja, emoji reakcije, prikvačivanje --- */
+
+/* Spominjanje unutar teksta poruke (portal-msg-text) — narančasti čip,
+   pojačan kad spominje TRENUTNOG admina (mentions-me na roditelju retke
+   dodatno boji cijeli redak, vidi niže). */
+.portal-mention {
+  display: inline-block;
+  padding: 0 4px;
+  border-radius: 5px;
+  font-weight: 700;
+  color: var(--neu-accent-ink);
+  background: rgba(255, 127, 0, 0.12);
+}
+.portal-mention.is-me { color: #fff; background: var(--neu-accent); }
+
+/* Jedan red = jedna poruka (NIJE cijela grupa — grupa dijeli avatar/ime, ali
+   svaka pojedina poruka unutar nje ima svoje reakcije/pin). mentions-me daje
+   suptilan lijevi rub kao "ovo je za tebe" signal, isti akcent kao
+   is-own pozadina grupe iznad. */
+/* PETI KRUG: -10px lijevo + 8px padding + 2px rub = tekst poruke je točno
+   poravnat s imenom pošiljatelja (ranije uvučen ~10px desno od imena), a
+   narančasti "spominje tebe" rub sjedi u razmaku lijevo od teksta. Desni
+   padding ostavlja mjesta plutajućoj traci akcija da ne prekrije tekst. */
+.portal-msg-row {
+  position: relative;
+  margin-left: -10px;
+  padding: 1px 60px 1px 8px;
+  border-left: 2px solid transparent;
+  border-radius: 0 8px 8px 0;
+  transition: background 0.12s ease;
+}
+.portal-msg-row:hover { background: var(--na-bg); }
+.portal-msg-row.mentions-me { border-left-color: var(--neu-accent); }
+.portal-msg-row + .portal-msg-row { margin-top: 2px; }
+
+/* Plan #61: vrijeme svake poruke u lijevom rubu (kao Slack), vidljivo na
+   prelazak mišem/fokus; prva poruka grupe već ima vrijeme uz ime. */
+.portal-msg-row-time {
+  position: absolute;
+  right: 100%;
+  top: 3px;
+  margin-right: 6px;
+  font-size: 10.5px;
+  color: var(--neu-ink-faint);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  opacity: 0;
+  transition: opacity 0.12s ease;
+}
+.portal-msg-row:hover .portal-msg-row-time,
+.portal-msg-row:focus-within .portal-msg-row-time { opacity: 1; }
+.portal-msg-head + .portal-msg-row .portal-msg-row-time { display: none; }
+
+/* Razdjelnik dana u niti ("Danas", "Jučer", "28. 9."). */
+.portal-day-sep {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 14px 0 8px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--neu-ink-faint);
+}
+.portal-day-sep::before,
+.portal-day-sep::after {
+  content: "";
+  flex: 1;
+  height: 1px;
+  background: var(--na-border);
+}
+.portal-day-sep span {
+  padding: 2px 10px;
+  border: 1px solid var(--na-border);
+  border-radius: 999px;
+  background: var(--na-surface);
+}
+
+/* Plan #63: komentari na kartici zadatka (TasksBoard). */
+.task-comments summary {
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--neu-ink-faint);
+  list-style: none;
+  width: fit-content;
+}
+.task-comments summary::-webkit-details-marker { display: none; }
+.task-comments summary::before { content: "▸ "; }
+.task-comments[open] summary::before { content: "▾ "; }
+.task-comments-body {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px solid var(--na-border);
+}
+.task-comment { font-size: 12.5px; line-height: 1.45; }
+.task-comment-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: 11px;
+  color: var(--neu-ink-faint);
+  margin-bottom: 2px;
+}
+
+/* Plan #72: "Pročitano 14:05" ispod zadnje poslane DM poruke. */
+.portal-read-receipt {
+  text-align: right;
+  font-size: 11px;
+  color: var(--neu-ink-faint);
+  margin: 2px 4px 0 0;
+}
+
+.portal-msg-reactions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-wrap: wrap;
+  margin: 4px 0 2px;
+}
+
+/* Akcije (reakcija/prikvači) — Slack-stil plutajuća trakica u gornjem
+   desnom kutu retka, vidljiva samo na hover/fokus (ranije su ikone stajale
+   ispod SVAKE poruke kao cijeli dodatni red, pa je nit izgledala
+   natrpano). Na dodirnim ekranima (bez hovera) uvijek vidljive, ali
+   prigušene i bez okvira. */
+.portal-msg-actions {
+  position: absolute;
+  top: -4px;
+  right: 6px;
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding: 2px;
+  background: var(--na-surface);
+  border: 1px solid var(--na-border);
+  border-radius: 9px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.06);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.12s ease;
+  z-index: 5;
+}
+.portal-msg-row:hover .portal-msg-actions,
+.portal-msg-row:focus-within .portal-msg-actions,
+.portal-msg-actions.is-open {
+  opacity: 1;
+  pointer-events: auto;
+}
+@media (hover: none) {
+  .portal-msg-actions {
+    opacity: 0.7;
+    pointer-events: auto;
+    top: 0;
+    background: transparent;
+    border-color: transparent;
+    box-shadow: none;
+  }
+}
+.portal-msg-action-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 7px;
+  color: var(--na-ink-faint);
+  transition: color 0.15s, background 0.15s;
+}
+.portal-msg-action-btn:hover { color: var(--na-ink); background: var(--na-bg); }
+.portal-msg-action-btn.is-pinned { color: var(--neu-accent-ink); }
+
+.portal-reaction-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  height: 22px;
+  padding: 0 8px;
+  border-radius: 999px;
+  font-size: 12px;
+  line-height: 1;
+  background: var(--na-bg);
+  border: 1px solid var(--na-border);
+  color: var(--na-ink-faint);
+}
+.portal-reaction-pill.is-mine {
+  background: rgba(255, 127, 0, 0.12);
+  border-color: rgba(255, 127, 0, 0.45);
+  color: var(--neu-accent-ink);
+  font-weight: 700;
+}
+.portal-reaction-count { font-variant-numeric: tabular-nums; }
+
+.portal-reaction-add-wrap { position: relative; }
+/* Otvara se PREMA DOLJE i poravnat desno (traka akcija je u gornjem
+   desnom kutu retka — prema gore bi se kod prve poruke odrezao o rub niti). */
+.portal-reaction-picker {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  margin-top: 6px;
+  display: flex;
+  gap: 2px;
+  padding: 5px;
+  border-radius: 12px;
+  background: var(--na-surface);
+  border: 1px solid var(--na-border);
+  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.1);
+  z-index: 20;
+}
+.portal-reaction-picker button {
+  width: 30px;
+  height: 30px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 15px;
+  border-radius: 6px;
+}
+.portal-reaction-picker button:hover { background: var(--neu-border); }
+
+/* Prikvačene poruke — panel iznad niti, sažmljiv. */
+.portal-pinned-panel {
+  border-bottom: 1px solid var(--na-border);
+  background: rgba(255, 127, 0, 0.05);
+}
+.portal-pinned-toggle {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  padding: 8px 14px;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--neu-accent-ink);
+}
+.portal-pinned-chevron { margin-left: auto; color: var(--neu-ink-faint); transition: transform 0.15s ease; }
+.portal-pinned-chevron.is-open { transform: rotate(180deg); }
+.portal-pinned-list { display: flex; flex-direction: column; gap: 2px; padding: 0 12px 8px; max-height: 160px; overflow-y: auto; }
+.portal-pinned-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 8px;
+  border-radius: 8px;
+  font-size: 12.5px;
+}
+.portal-pinned-item:hover { background: var(--neu-border); }
+.portal-pinned-author { font-weight: 700; flex-shrink: 0; }
+.portal-pinned-text {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--neu-ink-faint);
+}
+.portal-pinned-unpin {
+  flex-shrink: 0;
+  width: 22px;
+  height: 22px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 6px;
+  color: var(--neu-ink-faint);
+  opacity: 0.6;
+}
+.portal-pinned-unpin:hover { opacity: 1; color: var(--neu-accent-ink); }
+
+/* @spominjanje padajući izbornik — iznad textarea (thread-form je pri dnu
+   niti, izbornik mora rasti prema gore, ne prema dolje izvan vidljivog
+   okvira). */
+.portal-thread-input-wrap { position: relative; flex: 1; }
+.portal-thread-input-wrap .portal-thread-textarea { width: 100%; }
+.portal-mention-dropdown {
+  position: absolute;
+  bottom: 100%;
+  left: 0;
+  right: 0;
+  margin-bottom: 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  padding: 4px;
+  border-radius: 12px;
+  background: var(--na-surface);
+  border: 1px solid var(--na-border);
+  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.1);
+  max-height: 220px;
+  overflow-y: auto;
+  z-index: 20;
+}
+.portal-mention-option {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 8px;
+  border-radius: 7px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--neu-ink);
+  text-align: left;
+}
+.portal-mention-option.is-active,
+.portal-mention-option:hover { background: var(--neu-border); }
+.portal-mention-avatar {
+  width: 22px;
+  height: 22px;
+  border-radius: 6px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 9.5px;
+  font-weight: 700;
+  color: #fff;
+}
+
+/* --- Brze poveznice + sažete brojke (PortalOverview.tsx), PETI KRUG ---
+   Desktop: red jednakih pilula. Mobitel: 4 jednaka stupca, ikona iznad
+   natpisa, sve centrirano (ranije se red lomio pa je zadnja pilula ostajala
+   sama u drugom redu). */
+.portal-quicklinks {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+}
+.portal-quicklink {
+  font-family: var(--font-space-grotesk), sans-serif;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  padding: 10px 4px;
+  min-width: 0;
+  background: var(--na-surface);
+  border: 1px solid var(--na-border);
+  border-radius: var(--na-radius);
+  color: var(--na-ink);
+  font-size: 12px;
+  font-weight: 600;
+  text-align: center;
+  transition: border-color 0.15s ease, color 0.15s ease;
+}
+.portal-quicklink span { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.portal-quicklink:hover { border-color: var(--na-accent); color: var(--na-accent-ink); }
+@media (min-width: 640px) {
+  .portal-quicklinks { display: flex; flex-wrap: wrap; }
+  .portal-quicklink { flex-direction: row; gap: 7px; padding: 8px 14px; font-size: 13.5px; }
+}
+.portal-stat-tile {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 14px 16px;
+  min-width: 0;
+}
+.portal-stat-tile .na-kicker { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+@media (max-width: 639px) {
+  .portal-stat-tile { padding: 12px; align-items: center; text-align: center; }
+  .portal-stat-tile .na-kicker { font-size: 10px; letter-spacing: 0.04em; }
+}
+
+/* --- Statistika kartice (grafovi) --- */
+.portal-stat-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 16px; }
+.portal-donut-legend { display: flex; flex-direction: column; gap: 6px; margin-top: 10px; }
+.portal-donut-legend-item { display: flex; align-items: center; gap: 8px; font-size: 12.5px; color: var(--neu-ink-faint); }
+.portal-donut-swatch { width: 10px; height: 10px; border-radius: 3px; flex-shrink: 0; }
+.portal-bar-row { display: flex; align-items: center; gap: 10px; font-size: 12.5px; }
+.portal-bar-row-label { width: 96px; flex-shrink: 0; color: var(--neu-ink-faint); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* display:block — oba su <span> (inline), pa se width/height na traci i
+   ispuni ignorirao: stupac "Dovršeni zadaci po osobi" je bio samo siva
+   traka bez ikakve narančaste ispune. */
+.portal-bar-track { display: block; flex: 1; height: 10px; border-radius: 999px; background: var(--na-bg); border: 1px solid var(--na-border); overflow: hidden; }
+.portal-bar-fill { display: block; height: 100%; border-radius: 999px; background: var(--neu-accent); }
+.portal-bar-row-count { width: 22px; text-align: right; font-weight: 700; color: var(--neu-ink); flex-shrink: 0; }
+
+/* --- Profil --- */
+.portal-profile-header { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; }
+.portal-profile-avatar {
+  width: 64px;
+  height: 64px;
+  border-radius: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 22px;
+  font-weight: 700;
+  color: #fff;
+  flex-shrink: 0;
+}
+
+.owner-dash {
+  --od-navy: #0000c3;
+  --od-orange: #ff7f00;
+  --od-purple: #6a21b0;
+
+  --od-ink: #0b0b1f;
+  --od-ink-soft: rgba(11, 11, 31, 0.74);
+  --od-ink-faint: rgba(11, 11, 31, 0.6);
+  /* NEUMORPHISM: "staklo" (--od-glass-bg*) više ne znači prozirnost/blur —
+     znači "ista boja kao podloga", jer u soft-UI dubina dolazi isključivo iz
+     --neu-shadow/--neu-highlight dvostruke sjene (vidi .owner-glass niže),
+     ne iz prozirnosti. --neu-* ovdje čita .owner-page-bg predak (vidi taj
+     razred), pa se light/dark/sustav grananje ne mora ponavljati ovdje. */
+  --od-glass-bg: var(--neu-base);
+  --od-glass-bg-strong: var(--neu-base);
+  --od-hairline: rgba(11, 11, 31, 0.09);
+  /* Za .owner-input niže (color-scheme: var(--od-color-scheme)) — bez ovoga
+     nativna ikona kalendara na <input type="date"> ostaje crna/tamna i u
+     tamnoj temi (browser ne zna da je podloga tamna), pa "nestane". */
+  --od-color-scheme: light;
+
+  /* .owner-dash nema vlastitu pozadinu (prozirna je) — .owner-page-bg predak
+     (vidi taj razred) je jedini izvor boje, pa nema šava između njih. */
+  min-height: 100vh;
+  transition: background-color 0.25s ease;
+  position: relative;
+  color: var(--od-ink);
+}
+
+.owner-dash[data-theme="dark"] {
+  --od-ink: #f3f3fb;
+  --od-ink-soft: rgba(243, 243, 251, 0.84);
+  --od-ink-faint: rgba(243, 243, 251, 0.66);
+  --od-hairline: rgba(255, 255, 255, 0.16);
+  --od-color-scheme: dark;
+  --od-reserved: #3a4bff;
+}
+
+@media (prefers-color-scheme: dark) {
+  .owner-dash:not([data-theme="light"]):not([data-theme="dark"]) {
+    --od-ink: #f3f3fb;
+    --od-ink-soft: rgba(243, 243, 251, 0.84);
+    --od-ink-faint: rgba(243, 243, 251, 0.66);
+    --od-hairline: rgba(255, 255, 255, 0.16);
+    --od-color-scheme: dark;
+    --od-reserved: #3a4bff;
+  }
+}
+
+/* Osnovna neumorphism površina (className="owner-glass") — RANIJE prozirno
+   "liquid glass" staklo s blurom/rubom/gradient mrljama iza sebe; na izričit
+   zahtjev ("makni sve gradijente, izgledaju cheap i AI") zamijenjeno
+   ravnom pločicom iste boje kao podloga, gdje dubinu daje isključivo meka
+   dvostruka sjena (svijetla + tamna) — identičan jezik kao .neu-card/
+   .neu-nav > a u izborniku iznad, samo preko --od-* imena koje ostatak
+   vlasničkih komponenti već očekuje. */
+.owner-glass {
+  background: var(--od-glass-bg);
+  border-radius: 20px;
+  box-shadow: 6px 6px 14px var(--neu-shadow), -6px -6px 14px var(--neu-highlight);
+  transition: box-shadow 0.2s cubic-bezier(0.22, 1, 0.36, 1), transform 0.2s cubic-bezier(0.22, 1, 0.36, 1);
+}
+.owner-glass-strong {
+  background: var(--od-glass-bg-strong);
+  border-radius: 18px;
+  box-shadow: 4px 4px 10px var(--neu-shadow), -4px -4px 10px var(--neu-highlight);
+}
+a.owner-glass:hover,
+.owner-glass-interactive:hover {
+  transform: translateY(-1px);
+  box-shadow: 3px 3px 8px var(--neu-shadow), -3px -3px 8px var(--neu-highlight);
+}
+a.owner-glass:active,
+.owner-glass-interactive:active {
+  transform: translateY(0px) scale(0.99);
+  box-shadow: inset 3px 3px 6px var(--neu-shadow), inset -3px -3px 6px var(--neu-highlight);
+}
+
+/* .owner-glass-grain (sitna zrnata tekstura preko stakla) je NAMJERNO
+   maknuta — imala je smisla samo za optičku nesavršenost glassmorphism
+   bluras, neumorphism nema blur pa nema ni zrno. Klasa ostaje definirana
+   (bez efekta) da postojeći className="owner-glass-grain" u komponentama
+   ne mora nigdje mijenjati. */
+.owner-glass-grain {
+  position: relative;
+}
+
+/* Vlasnički pandan .admin-quicklink — NAMJERNO odvojena klasa (ne dijeli
+   se s superadmin AdminDashboard, koji i dalje koristi .admin-quicklink
+   nepromijenjeno) da redizajn ostane izoliran na role="owner". */
+.owner-quicklink {
+  font-size: 13px;
+  font-weight: 600;
+  border-radius: 999px;
+  padding: 8px 16px;
+  text-decoration: none;
+  color: var(--od-ink);
+  background: var(--od-glass-bg);
+  box-shadow: 4px 4px 8px var(--neu-shadow), -4px -4px 8px var(--neu-highlight);
+  transition: box-shadow 0.15s ease, color 0.15s ease, transform 0.15s ease;
+}
+.owner-quicklink:hover {
+  color: var(--od-orange);
+  box-shadow: 2px 2px 5px var(--neu-shadow), -2px -2px 5px var(--neu-highlight);
+  transform: translateY(-1px);
+}
+.owner-quicklink:active {
+  transform: translateY(0) scale(0.97);
+  box-shadow: inset 3px 3px 6px var(--neu-shadow), inset -3px -3px 6px var(--neu-highlight);
+}
+
+/* ---------------------------------------------------------------------
+   "neu-disclosure" — sažeta padajuća sekcija (native <details>/<summary>,
+   BEZ klijentske komponente/JS-a, isti obrazac kao #admin-nav-toggle
+   checkbox hack gore). Na izričit zahtjev ("vlasnik menu izgleda jako
+   nepregledno") zamjenjuje raniji stupac od 5 owner-quicklink/
+   admin-quicklink pilula (Izvezi CSV/Godišnji izvještaj/Backup/Knjigovođa
+   CSV/PDF) koje su se na mobitelu slagale jedna preko druge s teškim
+   dvostrukim neumorphism sjenama — izgledalo je muddled/nepregledno.
+   Dijeli --neu-* tokene kao i sve ostalo u adminu, pa se automatski
+   uklapa u vlasnički (light/dark/system) i superadmin kontekst. Radi i
+   za owner-quicklink i za admin-quicklink djecu unutar .neu-disclosure-body
+   — te klase ostaju nepromijenjene, samo im je roditelj sad skriven dok se
+   ne otvori. */
+.neu-disclosure {
+  border-radius: 16px;
+  background: var(--neu-base);
+  box-shadow: 4px 4px 8px var(--neu-shadow), -4px -4px 8px var(--neu-highlight);
+}
+.neu-disclosure > summary {
+  list-style: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 11px 16px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--neu-ink);
+  user-select: none;
+  border-radius: 16px;
+  transition: box-shadow 0.15s ease;
+}
+.neu-disclosure > summary::-webkit-details-marker,
+.neu-disclosure > summary::marker {
+  display: none;
+  content: "";
+}
+.neu-disclosure-count {
+  font-weight: 400;
+  color: var(--neu-ink-faint);
+}
+.neu-disclosure-chevron {
+  margin-left: auto;
+  color: var(--neu-ink-faint);
+  transition: transform 0.2s ease;
+}
+.neu-disclosure[open] > summary {
+  box-shadow: inset 3px 3px 6px var(--neu-shadow), inset -3px -3px 6px var(--neu-highlight);
+  border-radius: 16px 16px 0 0;
+}
+.neu-disclosure[open] > summary .neu-disclosure-chevron {
+  transform: rotate(180deg);
+}
+.neu-disclosure-body {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 2px 16px 16px;
+}
+@media (prefers-reduced-motion: reduce) {
+  .neu-disclosure-chevron { transition: none; }
+}
+
+/* ---- Hero kartica ------------------------------------------------- */
+/* Namjerno JEDNOBOJNA, tamno neutralna (skoro crna) podloga — jedina
+   površina u vlasničkom dashboardu koja NIJE iste boje kao stranica ispod
+   (namjerna iznimka od neumorphism "ista boja, dubina iz sjene" pravila,
+   da najvažnija brojka na stranici ima vizualnu težinu "kartice koja se
+   ističe", ne još jedne utisnute pločice). NOVO brand boje (navy/narančasta)
+   i dalje žive u akcentima unutar kartice — streak bedž, prsten napretka,
+   brojke — ne u samoj podlozi, i nigdje kao gradient. */
+/* NOVO/Revolut redizajn — RANIJE #121214 (skoro crna, fiksno u OBJE teme)
+   uz dramatičnu 60px drop-sjenu: na tamnoj (navy) podlozi to je davalo
+   "sve je jedna mutna mrlja" dojam (kartica se jedva razlikovala od
+   podloge), a i inače je ta teška sjena bila upravo onaj "cheap/AI"
+   gradient-adjacent izgled na koji je stigao feedback. Jedina kartica u
+   vlasničkom dashboardu koja NIJE neutralna (--na-surface) — namjerno
+   puna NOVO brand plava (--na-blue, ista boja kao naglasna traka na
+   probajnovo.com) da najvažnija brojka ima vizualnu težinu na OBA fona
+   (svijetlom i tamnom), bez ijedne sjene/gradijenta. */
+.owner-hero {
+  position: relative;
+  overflow: hidden;
+  border-radius: clamp(20px, 5vw, 28px);
+  padding: clamp(20px, 4vw, 30px) clamp(18px, 4.5vw, 30px);
+  color: #fff;
+  background: var(--na-blue);
+  box-shadow: none;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  isolation: isolate;
+}
+.owner-hero > * { position: relative; z-index: 1; }
+
+.owner-hero-top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+@media (max-width: 420px) {
+  .owner-hero-top { flex-direction: column; gap: 12px; }
+}
+
+@keyframes owner-hero-pop {
+  from { opacity: 0; transform: scale(0.94) translateY(8px); }
+  to { opacity: 1; transform: scale(1) translateY(0); }
+}
+.owner-hero-value {
+  /* NAMJERNO "block", ne "inline-block" — bio je uzrok "broj je prebliz"
+     bug-a: label je <span> (inline), broj je <div> odmah iza njega, pa se
+     inline-block div nastavljao na ISTOM retku kao label umjesto da padne
+     ispod na svoj red (margin-top ne stvara prijelom retka za inline
+     elemente). "block" garantira vlastiti red bez obzira na širinu labela. */
+  display: block;
+  transform-origin: left center;
+  animation: owner-hero-pop 0.55s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+  font-size: clamp(2.1rem, 7vw, 3rem);
+  letter-spacing: -0.02em;
+}
+
+/* ---- Prsten napretka + cilj-traka ----------------------------------- */
+@keyframes owner-ring-draw { from { stroke-dashoffset: 1; } to { stroke-dashoffset: var(--owner-ring-offset, 0); } }
+.owner-ring-progress { stroke-dasharray: 1; stroke-dashoffset: 1; animation: owner-ring-draw 1s cubic-bezier(0.22, 1, 0.36, 1) 0.15s forwards; }
+
+.owner-goal-track { height: 8px; border-radius: 999px; background: rgba(255, 255, 255, 0.22); overflow: hidden; }
+.owner-goal-fill { height: 100%; border-radius: 999px; background: rgba(255, 255, 255, 0.9); transition: width 0.6s cubic-bezier(0.22, 1, 0.36, 1); }
+
+/* Sitan "olovka" gumb za uređivanje cilja — namjerno miran (bez border-radius
+   ekstrema/emoji-heavy izgleda), samo suptilan glass krug. */
+.owner-goal-edit-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.16);
+  border: 1px solid rgba(255, 255, 255, 0.28);
+  color: rgba(255, 255, 255, 0.9);
+  font-size: 12px;
+  transition: background 0.15s ease;
+}
+.owner-goal-edit-btn:hover { background: rgba(255, 255, 255, 0.28); }
+
+/* ---- Carousel ------------------------------------------------------- */
+.owner-carousel {
+  display: flex;
+  gap: 12px;
+  overflow-x: auto;
+  scroll-snap-type: x mandatory;
+  padding: 2px 2px 10px;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: thin;
+  /* Desni rub vidljivo iščezava umjesto da se sadržaj naglo reže — jasan
+     signal "još ima, skrolaj" umjesto da izgleda kao slomljen layout
+     (feedback: bedž trofeja se naglo prekidao na rubu ekrana). Bezopasno
+     i kad sadržaj stane bez potrebe za skrolanjem — maska tad jednostavno
+     nema što izblijediti. */
+  -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 32px), transparent 100%);
+  mask-image: linear-gradient(to right, #000 calc(100% - 32px), transparent 100%);
+}
+.owner-carousel > * { scroll-snap-align: start; flex: 0 0 auto; }
+
+/* ---- Statistički mini-kartice (OwnerStatCard) ------------------------- */
+/* Bez obojenog ruba sve tri kartice izgledaju kao identična ponovljena
+   pločica (feedback: "malo ruzno" — monotono). Tanka PUNA traka boje na
+   vrhu svake kartice, po jedna boja iz NOVO palete, dovoljna je da svaka
+   kartica dobije vlastiti identitet — RANIJE je traka bila gradijent
+   (boja → prozirno), sad puna boja (na izričit zahtjev: bez gradijenata). */
+.owner-stat-card {
+  position: relative;
+  overflow: hidden;
+}
+.owner-stat-card::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  opacity: 0.85;
+}
+.owner-stat-card-orange::before { background: var(--od-orange); }
+.owner-stat-card-navy::before { background: var(--od-navy); }
+.owner-stat-card-purple::before { background: var(--od-purple); }
+
+/* ---- Tema/gumb prekidača --------------------------------------------- */
+.owner-theme-switch {
+  display: inline-flex;
+  padding: 3px;
+  border-radius: 999px;
+  gap: 2px;
+}
+.owner-theme-switch button {
+  border: none;
+  background: transparent;
+  color: var(--od-ink-faint);
+  font-size: 12.5px;
+  font-weight: 600;
+  padding: 6px 11px;
+  border-radius: 999px;
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+.owner-theme-switch button.owner-theme-option {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--od-ink-soft);
+}
+.owner-theme-switch button:focus-visible { outline: 2px solid var(--od-navy); outline-offset: 1px; }
+.owner-theme-switch button.owner-theme-switch-active {
+  background: var(--od-glass-bg-strong);
+  color: var(--neu-accent-ink);
+  box-shadow: inset 2px 2px 4px var(--neu-shadow), inset -2px -2px 4px var(--neu-highlight);
+}
+
+/* ---- Sitni kalendar (OwnerMiniCalendar) -------------------------------- */
+/* Plan #33: ručno blokirano = prigušeno sivo (ranije crveno, a crvena je
+   na Početnoj značila "rezervirano" — zbunjujuće). Rezervacija = navy,
+   iCal = isprekidani rub. Crvena ostaje samo za greške. */
+.owner-cal-cell-blocked {
+  background: rgba(110, 110, 135, 0.42);
+  color: var(--od-ink);
+}
+.owner-cal-cell-free {
+  background: rgba(120, 120, 150, 0.1);
+  color: var(--od-ink-soft);
+}
+
+/* ---- Puni kalendar/rezervacije/upiti/postavke (liquid glass redizajn) --
+   Dodatni gradivni blokovi za app/admin/kalendar, /rezervacije, /inquiries,
+   /settings — na izričit zahtjev korisnika ("kalendar rezervacije i sve
+   ostalo u vlasnik adminu nek poprimi istu temu kao pocetna stranica").
+   Svaka od tih stranica je DIJELJENA s punim adminom (ista ruta/komponenta,
+   samo drugačiji podaci po ulozi), pa je stil ovdje odvojen u zasebne
+   .owner-* klase koje se u JSX-u primjenjuju SAMO kad je admin.role ===
+   "owner" (uvjetni className, isti obrazac kao .owner-header ranije) —
+   puni admin i dalje vidi identičan stari bijeli/crni izgled. --------- */
+
+/* Klikabilna varijanta kalendarske ćelije (pravi <button>, ne <div> kao u
+   mini-kalendaru) — koristi se ZAJEDNO s .owner-cal-cell-free/-blocked/
+   -ical/-reservation za boju, ova klasa nosi samo interakciju/oblik. */
+.owner-cal-cell-btn {
+  aspect-ratio: 1;
+  width: 100%;
+  border-radius: 10px;
+  border: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform 0.12s ease, filter 0.15s ease;
+}
+.owner-cal-cell-btn:hover { filter: brightness(1.12); }
+.owner-cal-cell-btn:active { transform: scale(0.94); }
+
+.owner-cal-cell-ical {
+  background: rgba(110, 110, 135, 0.1);
+  border: 1.5px dashed rgba(110, 110, 135, 0.75);
+  color: var(--od-ink);
+}
+.owner-cal-cell-reservation {
+  background: var(--od-reserved, #0000c3);
+  color: #fff;
+  box-shadow: 0 2px 6px -2px rgba(0, 0, 195, 0.55);
+}
+
+/* Odabrana (aktivna) .owner-quicklink pilula — npr. odabrana vikendica u
+   selektoru kod kalendara/rezervacija. Solidna navy umjesto prozirnog
+   stakla da se jasno razlikuje od neodabranih opcija u OBJE teme. */
+.owner-quicklink-active,
+.owner-quicklink-active:hover {
+  background: var(--od-navy);
+  border-color: var(--od-navy);
+  color: #fff;
+  transform: none;
+}
+
+/* Standardni tekstualni/date/select input unutar .owner-dash — "utisnuta"
+   neumorphism površina (inset sjena, isti jezik kao .neu-input izvan
+   .owner-dash) umjesto ranijeg prozirnog stakla/bluras, i umjesto
+   Tailwind-ovog .admin-input (border-black/15, obična bijela pozadina)
+   koji u tamnoj temi ostaje bijel/nečitljiv. color-scheme je NAMJERNO po
+   varijabli (vidi --od-color-scheme gore) da nativna ikona <input
+   type="date"> kalendara bude vidljiva u tamnoj temi. */
+.owner-input {
+  /* border: 1px solid var(--neu-border) dolazi iz kombiniranog pravila
+     gore (.owner-input je dodan tamo) — NE stavljati "border: none" ovdje,
+     inače bi (zbog redoslijeda u datoteci) prepisalo taj rub natrag na
+     ništa, vidi komentar uz kombinirano pravilo. */
+  background: var(--od-glass-bg);
+  color: var(--od-ink);
+  border-radius: 10px;
+  padding: 9px 12px;
+  font-size: 14px;
+  box-shadow: inset 2px 2px 5px var(--neu-shadow), inset -2px -2px 5px var(--neu-highlight);
+  transition: box-shadow 0.15s ease;
+  color-scheme: var(--od-color-scheme, light);
+}
+.owner-input::placeholder { color: var(--od-ink-faint); }
+.owner-input:focus {
+  outline: none;
+  box-shadow: inset 2px 2px 5px var(--neu-shadow), inset -2px -2px 5px var(--neu-highlight), 0 0 0 2px var(--od-navy);
+}
+
+/* Puni (solidni) primarni gumb — za glavne submit akcije (blokiraj raspon,
+   spremi postavke...). Namjerno solidna navy boja (ne staklo) da se jasno
+   razlikuje od sekundarnih .owner-quicklink gumba. */
+.owner-btn-primary {
+  border-radius: 999px;
+  background: var(--od-navy);
+  color: #fff;
+  font-weight: 600;
+  font-size: 14px;
+  padding: 10px 22px;
+  border: none;
+  cursor: pointer;
+  box-shadow: 0 10px 24px -10px rgba(0, 0, 195, 0.55);
+  transition: transform 0.15s ease, box-shadow 0.15s ease, opacity 0.15s ease;
+}
+.owner-btn-primary:hover { transform: translateY(-1px); }
+.owner-btn-primary:active { transform: translateY(0) scale(0.98); }
+.owner-btn-primary:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+
+/* Tiha tekstualna akcija uz glavni gumb (plan #40, npr. "Označi pročitano"
+   ispod upita) — bez okvira i pozadine, da ne konkurira gumbu "Odgovori". */
+.owner-text-action {
+  background: none;
+  border: none;
+  padding: 6px 2px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--od-ink-soft);
+  cursor: pointer;
+  text-decoration: underline;
+  text-decoration-color: transparent;
+  text-underline-offset: 3px;
+  transition: text-decoration-color 0.15s ease, color 0.15s ease;
+}
+.owner-text-action:hover { color: var(--od-ink); text-decoration-color: currentColor; }
+.owner-text-action:focus-visible { outline: 2px solid var(--od-navy); outline-offset: 2px; border-radius: 4px; }
+
+/* Destruktivna/upozoravajuća akcija (npr. obriši upit, otkaži rezervaciju) —
+   ista puna crvena kao .owner-cal-cell-blocked, radi Apple-ovski dosljedno
+   "crveno = destruktivno" kroz cijeli vlasnički admin. */
+.owner-btn-danger {
+  border-radius: 999px;
+  background: #ff3b30;
+  color: #fff;
+  font-weight: 600;
+  font-size: 13px;
+  padding: 8px 16px;
+  border: none;
+  cursor: pointer;
+  box-shadow: 0 8px 20px -10px rgba(255, 59, 48, 0.6);
+  transition: transform 0.15s ease, opacity 0.15s ease;
+}
+.owner-btn-danger:hover { transform: translateY(-1px); }
+.owner-btn-danger:active { transform: translateY(0) scale(0.98); }
+
+/* Donji list za unos/uređivanje rezervacije (plan #36/#38,
+   components/admin/OwnerReservationSheet.tsx). Na mobitelu izlazi odozdo,
+   od 640px je centriran prozor. */
+.owner-sheet {
+  position: fixed;
+  inset: 0;
+  height: fit-content;
+  border: none;
+  padding: 0;
+  background: transparent;
+  color: var(--od-ink, #0b0b1f);
+  width: 100%;
+  max-width: 100%;
+  max-height: 100dvh;
+  margin: auto auto 0;
+}
+.owner-sheet::backdrop { background: rgba(10, 10, 20, 0.45); }
+.owner-sheet-card {
+  background: var(--od-glass-bg-strong, #ffffff);
+  border-top: 1px solid var(--od-hairline, rgba(0, 0, 0, 0.1));
+  border-radius: 22px 22px 0 0;
+  padding: 18px 16px calc(18px + env(safe-area-inset-bottom));
+  max-height: 88dvh;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  box-shadow: 0 -20px 50px -20px rgba(0, 0, 0, 0.4);
+  text-align: left;
+  font-weight: 400;
+  white-space: normal;
+}
+.owner-sheet[open] .owner-sheet-card { animation: owner-sheet-up 0.22s cubic-bezier(0.2, 0.8, 0.2, 1); }
+@keyframes owner-sheet-up {
+  from { transform: translateY(24px); opacity: 0; }
+  to { transform: none; opacity: 1; }
+}
+@media (min-width: 640px) {
+  .owner-sheet { max-width: 560px; margin: auto; }
+  .owner-sheet-card { border-radius: 22px; border: 1px solid var(--od-hairline, rgba(0, 0, 0, 0.1)); padding: 22px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .owner-sheet[open] .owner-sheet-card { animation: none; }
+}
+.owner-sheet-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.owner-sheet-close {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 999px;
+  border: 1px solid var(--od-hairline, rgba(0, 0, 0, 0.12));
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+.owner-sheet-close:hover { background: rgba(127, 127, 127, 0.12); }
+.owner-btn-with-icon {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+/* Rezervacija kao kartica na mobitelu (plan #37). */
+.owner-res-card {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 14px 16px;
+}
+.owner-res-card-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+/* Potvrda brisanja (plan #58, components/admin/ConfirmSubmit.tsx) — zamjena
+   za browserov confirm(). Boje iz tokena pretka: --od-* kod vlasnika,
+   --na-* na Portalu, inače bijelo/crno za superadmin. */
+.confirm-dialog {
+  position: fixed;
+  inset: 0;
+  margin: auto;
+  height: fit-content;
+  border: none;
+  padding: 0;
+  background: transparent;
+  max-width: min(420px, calc(100vw - 32px));
+  width: 100%;
+  color: var(--od-ink, var(--na-ink, #111118));
+}
+.confirm-dialog::backdrop {
+  background: rgba(10, 10, 20, 0.45);
+}
+.confirm-dialog[open] {
+  animation: confirm-dialog-in 0.16s ease-out;
+}
+@keyframes confirm-dialog-in {
+  from { opacity: 0; transform: translateY(8px) scale(0.98); }
+  to { opacity: 1; transform: none; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .confirm-dialog[open] { animation: none; }
+}
+.confirm-dialog-card {
+  background: var(--od-glass-bg-strong, var(--na-surface, #ffffff));
+  border: 1px solid var(--od-hairline, var(--na-border, rgba(0, 0, 0, 0.12)));
+  border-radius: 18px;
+  padding: 20px;
+  box-shadow: 0 24px 60px -20px rgba(0, 0, 0, 0.45);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  text-align: left;
+  white-space: normal;
+}
+.confirm-dialog-title {
+  font-size: 17px;
+  font-weight: 700;
+  line-height: 1.3;
+  text-wrap: balance;
+}
+.confirm-dialog-desc {
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--od-ink-soft, var(--na-ink-faint, rgba(0, 0, 0, 0.66)));
+}
+.confirm-dialog-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 6px;
+  flex-wrap: wrap;
+}
+.confirm-dialog-cancel,
+.confirm-dialog-danger {
+  border-radius: 999px;
+  font-size: 14px;
+  font-weight: 600;
+  padding: 9px 18px;
+  cursor: pointer;
+  border: 1px solid transparent;
+}
+.confirm-dialog-cancel {
+  background: transparent;
+  color: inherit;
+  border-color: var(--od-hairline, var(--na-border, rgba(0, 0, 0, 0.15)));
+}
+.confirm-dialog-cancel:hover { background: rgba(127, 127, 127, 0.1); }
+.confirm-dialog-danger {
+  background: #d70015;
+  color: #fff;
+}
+.confirm-dialog-danger:hover { background: #b80012; }
+.confirm-dialog-danger:disabled { opacity: 0.6; cursor: progress; }
+.confirm-dialog-cancel:focus-visible,
+.confirm-dialog-danger:focus-visible {
+  outline: 2px solid #0000c3;
+  outline-offset: 2px;
+}
+
+/* Sitna statusna pilula (npr. "na čekanju" / "riješeno" na upitima,
+   "plaćeno" na rezervacijama) — neutralna glass verzija koje boje se onda
+   dodaju inline stilom po statusu (isto ograničenje kao ostatak sustava:
+   fiksne boje poput bg-green-100 rade OK preko bijele, ne preko tamnog
+   stakla, pa svaki status dobiva var(--od-*)-svjesnu varijantu u JSX-u). */
+.owner-pill {
+  display: inline-flex;
+  align-items: center;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: var(--od-glass-bg);
+  color: var(--od-ink-soft);
+}
+
+/* Obojane statusne pilule (rezervacije: plaćeno/kapara/čeka se/u tijeku).
+   owner-pill-warning/-neutral rade automatski u obje teme (već koriste
+   var(--od-orange)/--od-ink-soft), ali -success/-info koriste FIKSNE zelene/
+   plave nijanse pa trebaju eksplicitnu tamnu varijantu — inače je npr. tamno
+   zelen tekst na skoro-crnoj pozadini nečitljiv (isti "nema kontrasta"
+   problem kao ostatak ovog kruga feedbacka). */
+.owner-pill-success { background: rgba(16, 185, 129, 0.15); color: #059669; }
+.owner-pill-warning { background: rgba(255, 127, 0, 0.14); color: var(--od-orange); }
+.owner-pill-info { background: rgba(0, 0, 195, 0.12); color: var(--od-navy); }
+.owner-pill-neutral { background: var(--od-glass-bg); color: var(--od-ink-soft); }
+
+.owner-dash[data-theme="dark"] .owner-pill-success {
+  background: rgba(16, 185, 129, 0.22);
+  color: #34d399;
+}
+.owner-dash[data-theme="dark"] .owner-pill-info {
+  background: rgba(120, 120, 255, 0.24);
+  color: #a5a5ff;
+}
+@media (prefers-color-scheme: dark) {
+  .owner-dash:not([data-theme="light"]):not([data-theme="dark"]) .owner-pill-success {
+    background: rgba(16, 185, 129, 0.22);
+    color: #34d399;
+  }
+  .owner-dash:not([data-theme="light"]):not([data-theme="dark"]) .owner-pill-info {
+    background: rgba(120, 120, 255, 0.24);
+    color: #a5a5ff;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .admin-chart-line { animation: none; stroke-dashoffset: 0; }
+  .admin-chart-area { animation: none; opacity: 1; }
+  .admin-chart-dot { animation: none; opacity: 1; transform: scale(1); }
+  .admin-animate-grid > * { animation: none; opacity: 1; }
+  .admin-bar-grow { animation: none; transform: scaleX(1); }
+  .owner-hero-value { animation: none; opacity: 1; transform: none; }
+  .owner-ring-progress { animation: none; stroke-dashoffset: var(--owner-ring-offset, 0); }
+  .owner-glass, .owner-glass-interactive, a.owner-glass { transition: none; }
+}
+
+/* ================================================================
+   Faza 2 — superadmin (plan #12, #13, #19, #22, #24, #27)
+   ================================================================ */
+
+/* Rezultat pozivnice: poruka + link za kopiranje (InviteResult.tsx). */
+.invite-result {
+  border: 1px solid rgba(0, 0, 195, 0.25);
+  background: rgba(0, 0, 195, 0.04);
+  border-radius: 12px;
+  padding: 12px 14px;
+}
+
+/* Čarobnjak za novog klijenta (ClientWizardForm.tsx). */
+.wizard-step-num {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 999px;
+  background: var(--neu-ink, #0a0a0a);
+  color: var(--neu-base, #fff);
+  font-size: 12px;
+  font-weight: 700;
+}
+.wizard-choice {
+  display: inline-flex;
+  align-items: center;
+  min-height: 40px;
+  padding: 8px 16px;
+  border-radius: 999px;
+  border: 1px solid var(--neu-border, rgba(0, 0, 0, 0.16));
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.wizard-choice.is-active {
+  background: var(--neu-ink, #0a0a0a);
+  color: var(--neu-base, #fff);
+  border-color: var(--neu-ink, #0a0a0a);
+}
+.wizard-choice:focus-within {
+  outline: 2px solid #0000c3;
+  outline-offset: 2px;
+}
+
+/* Zdravlje klijenta (Financije): točka uz ime — boja + tekst "Rizik/Pratiti". */
+.health-dot {
+  width: 9px;
+  height: 9px;
+  border-radius: 999px;
+  flex-shrink: 0;
+}
+.health-rizik { background: #d70015; }
+.health-pratiti { background: #ff7f00; }
+.health-dobro { background: #0a7a3e; }
+
+/* "Danas" na Pregledu (SuperadminToday.tsx). */
+.today-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.today-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.today-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-height: 44px;
+  padding: 10px 14px;
+  border-radius: 12px;
+  border: 1px solid var(--neu-border, rgba(0, 0, 0, 0.16));
+  background: var(--neu-base, #fff);
+  font-size: 14px;
+  font-weight: 500;
+  transition: border-color 0.15s ease;
+}
+.today-item:hover { border-color: rgba(0, 0, 0, 0.4); }
+.today-item.is-warn { border-left: 4px solid #ff7f00; }
+.today-item.is-bad { border-left: 4px solid #d70015; }
+
+/* Paginacija (Pagination.tsx). */
+.pager-btn {
+  display: inline-flex;
+  align-items: center;
+  min-height: 36px;
+  padding: 6px 14px;
+  border-radius: 999px;
+  border: 1px solid rgba(0, 0, 0, 0.15);
+  font-size: 13px;
+  font-weight: 600;
+}
+.pager-btn:hover { border-color: rgba(0, 0, 0, 0.4); }
+.pager-btn.is-disabled {
+  opacity: 0.4;
+  pointer-events: none;
+}
+
+/* Grupirani izbornik: tanki razdjelnik između grupa (samo na širem ekranu). */
+.neu-nav-sep { display: none; }
+@media (min-width: 640px) {
+  .neu-nav-sep {
+    display: inline-block;
+    width: 1px;
+    height: 18px;
+    background: var(--neu-border, rgba(0, 0, 0, 0.16));
+    margin: 0 2px;
+  }
+}
+
+/* Cmd+K paleta (CommandPalette.tsx). */
+.cmdk-trigger {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 34px;
+  padding: 6px 10px;
+  border-radius: 999px;
+  border: 1px solid var(--neu-border, rgba(0, 0, 0, 0.16));
+  background: var(--neu-base, #fff);
+  color: var(--neu-ink, #0a0a0a);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.cmdk-trigger:hover { border-color: rgba(0, 0, 0, 0.4); }
+.cmdk-trigger:focus-visible { outline: 2px solid #0000c3; outline-offset: 2px; }
+.cmdk-kbd {
+  display: none;
+  font-family: inherit;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 1px 6px;
+  border-radius: 6px;
+  background: rgba(0, 0, 0, 0.06);
+  color: rgba(0, 0, 0, 0.62);
+}
+@media (min-width: 640px) {
+  .cmdk-kbd { display: inline-block; }
+}
+.cmdk-dialog {
+  position: fixed;
+  inset: 0;
+  margin: 12vh auto auto;
+  height: fit-content;
+  width: min(560px, calc(100vw - 32px));
+  max-width: 100%;
+  padding: 0;
+  border: none;
+  background: transparent;
+}
+.cmdk-dialog::backdrop { background: rgba(10, 10, 20, 0.45); }
+.cmdk-root {
+  background: #fff;
+  color: #0a0a0a;
+  border: 1px solid rgba(0, 0, 0, 0.12);
+  border-radius: 16px;
+  box-shadow: 0 24px 60px -20px rgba(0, 0, 0, 0.45);
+  overflow: hidden;
+}
+.cmdk-input {
+  width: 100%;
+  border: none;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+  padding: 16px 18px;
+  font-size: 16px;
+  font-family: inherit;
+  outline: none;
+  background: transparent;
+}
+.cmdk-list {
+  max-height: min(380px, 55vh);
+  overflow-y: auto;
+  padding: 6px;
+}
+.cmdk-empty {
+  padding: 18px;
+  font-size: 14px;
+  color: rgba(0, 0, 0, 0.62);
+}
+.cmdk-group [cmdk-group-heading] {
+  padding: 10px 12px 4px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: rgba(0, 0, 0, 0.55);
+}
+.cmdk-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  min-height: 42px;
+  padding: 8px 12px;
+  border-radius: 10px;
+  font-size: 14px;
+  cursor: pointer;
+}
+.cmdk-item[data-selected="true"] { background: rgba(0, 0, 195, 0.08); }
+.cmdk-hint {
+  font-size: 12px;
+  color: rgba(0, 0, 0, 0.55);
+  white-space: nowrap;
+}
+.cmdk-footer {
+  border-top: 1px solid rgba(0, 0, 0, 0.08);
+  padding: 8px 14px;
+  font-size: 11.5px;
+  color: rgba(0, 0, 0, 0.55);
+}
+

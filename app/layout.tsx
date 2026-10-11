@@ -4,6 +4,14 @@ import { Analytics } from "@vercel/analytics/next";
 import "./globals.css";
 import AutomationKick from "@/components/AutomationKick";
 
+/*
+ * Fontovi: svih devet obitelji ostaje dostupno na svim rutama (CSS varijable se koriste u globals.css,
+ * pa izgled stranica ostaje isti), ali se PRELOADAJU samo Space Grotesk i JetBrains Mono (okvir NOVO
+ * stranica: izbornik, naslovi, oznake). Ostalih sedam bi inače preglednik povlačio na SVAKOJ ruti
+ * (~350 KiB, i na /admin i /proizvodi) iako ih koristi samo vikendica (/[slug]: Zilla/Karla/Caveat/Inter/
+ * Fraunces) ili /drop (Baloo/Nunito). S `preload: false` @font-face pravila ostaju u CSS-u, a
+ * preglednik datoteku skine tek kad neki element stvarno koristi tu obitelj (display: swap).
+ */
 const spaceGrotesk = Space_Grotesk({
   variable: "--font-space-grotesk",
   subsets: ["latin"],
@@ -16,29 +24,34 @@ subsets: ["latin"],
 });
 const zillaSlab = Zilla_Slab({
   variable: "--font-zilla-slab",
+  preload: false,
   subsets: ["latin"],
   weight: ["500", "600", "700"],
 });
 const karla = Karla({
   variable: "--font-karla",
+  preload: false,
   subsets: ["latin"],
   weight: ["400", "500", "600", "700"],
 });
 /** Rukom pisani font — Classic pečat i potpisi ispod polaroida (stay layout). */
 const caveat = Caveat({
   variable: "--font-caveat",
+  preload: false,
   subsets: ["latin"],
   weight: ["600", "700"],
 });
 /** Apple layout — bliže sistemskom San Francisco fontu nego Space Grotesk/Karla. */
 const inter = Inter({
   variable: "--font-inter",
+  preload: false,
   subsets: ["latin"],
   weight: ["400", "500", "600", "700", "800"],
 });
 /** Grand layout — visoka, tanka serifna vitrina. */
 const fraunces = Fraunces({
   variable: "--font-fraunces",
+  preload: false,
   subsets: ["latin"],
   weight: ["300", "400", "500", "600"],
   style: ["normal", "italic"],
@@ -47,12 +60,14 @@ const fraunces = Fraunces({
  * GenZ fizički-newsletter koncept (showcase primjer, ne pravi klijent). */
 const baloo2 = Baloo_2({
   variable: "--font-baloo",
+  preload: false,
   subsets: ["latin"],
   weight: ["500", "600", "700", "800"],
 });
 /** Drop mikrostranica — zaobljeni, prijateljski font za tijelo teksta. */
 const nunito = Nunito({
   variable: "--font-nunito",
+  preload: false,
   subsets: ["latin"],
   weight: ["400", "600", "700", "800"],
 });
