@@ -39,9 +39,15 @@ function friendlyAiError(e: unknown): Error {
     if (e.status === 401 || e.status === 403) {
       return new AiRequestError("AI ključ nije prihvaćen. Provjerite ANTHROPIC_API_KEY u Vercel env varijablama.");
     }
+    if (e.status === 404) {
+      return new AiRequestError(`AI model "${env.anthropicModel}" nije pronađen. Postavite ANTHROPIC_MODEL u Vercel env varijablama (npr. claude-haiku-5-5).`);
+    }
+    if (e.status === 400 && /credit|billing|balance/i.test(e.message)) {
+      return new AiRequestError("Na Anthropic računu nema kredita. Dopunite stanje u Anthropic konzoli (Plans & Billing).");
+    }
     if (e.status === 429) return new AiRequestError("AI je trenutno preopterećen ili je potrošen limit. Pokušajte ponovno za minutu.");
     if (e.status !== undefined && e.status >= 500) return new AiRequestError("AI servis trenutno nije dostupan. Pokušajte ponovno kasnije.");
-    return new AiRequestError("AI zahtjev nije uspio. Pokušajte ponovno.");
+    return new AiRequestError(`AI zahtjev nije uspio${e.status ? ` (šifra ${e.status})` : ""}. Pokušajte ponovno.`);
   }
   console.error("[ai] neočekivana greška", e instanceof Error ? e.message.slice(0, 300) : e);
   return new AiRequestError("AI zahtjev nije uspio. Pokušajte ponovno.");
