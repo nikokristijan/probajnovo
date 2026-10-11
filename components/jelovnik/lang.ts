@@ -1,18 +1,23 @@
-export type Lang = "hr" | "en";
+import { TRANS_LANGS, type MenuLang, type TransLang } from "@/lib/recenzije/menu-lang";
+
+/** Jezici javne stranice: hrvatski (osnovni) i prijevodi en, de, it. */
+export type Lang = MenuLang;
+export const LANGS: readonly Lang[] = ["hr", ...TRANS_LANGS];
 
 export function parseLang(value: unknown): Lang | null {
-  return value === "hr" || value === "en" ? value : null;
+  return value === "hr" || value === "en" || value === "de" || value === "it" ? value : null;
 }
 
 /** Jezici koje gost iz regije čita bez muke: za njih ostaje hrvatski jelovnik. */
 const READS_CROATIAN = new Set(["hr", "bs", "sr", "sl", "me", "mk"]);
 
 /**
- * Zadani jezik prema zaglavlju Accept-Language. Hrvatski ostaje ako ga preglednik uopće navodi (mnogi Hrvati imaju
- * mobitel na engleskom, a hrvatski kao drugi jezik); engleski dobiva gost čiji popis jezika hrvatski ne sadrži
- * (npr. njemački ili talijanski turist), jer mu je engleski bolji od hrvatskog. Bez zaglavlja: hrvatski.
+ * Zadani jezik prema zaglavlju Accept-Language, među jezicima koje jelovnik ima (`available`, hrvatski je uvijek).
+ * Prvi jezik s popisa preglednika koji je dostupan (njemački, talijanski) dobiva prednost; hrvatski ostaje ako ga preglednik
+ * uopće navodi prije toga (mnogi Hrvati imaju mobitel na engleskom, a hrvatski kao drugi jezik); engleski dobiva gost čiji popis
+ * hrvatski ne sadrži, a jelovnik nema njegov jezik (npr. francuski turist), jer mu je engleski bolji od hrvatskog. Bez zaglavlja: hrvatski.
  */
-export function langFromAcceptLanguage(header: string | null | undefined): Lang {
+export function langFromAcceptLanguage(header: string | null | undefined, available: readonly Lang[] = ["hr", "en"]): Lang {
   if (!header) return "hr";
   let seen = 0;
   for (const part of header.split(",").slice(0, 16)) {
@@ -24,16 +29,22 @@ export function langFromAcceptLanguage(header: string | null | undefined): Lang 
     if (Number.isFinite(weight) && weight <= 0) continue;
     seen++;
     if (READS_CROATIAN.has(primary)) return "hr";
+    if ((primary === "de" || primary === "it") && available.includes(primary)) return primary;
   }
-  return seen > 0 ? "en" : "hr";
+  return seen > 0 && available.includes("en") ? "en" : "hr";
 }
 
 /**
- * Jezik prvog prikaza: bez engleskog teksta uvijek hrvatski; inače izbor gosta (kolačić), a ako ga nema, jezik preglednika.
+ * Jezik prvog prikaza: bez ijednog prijevoda uvijek hrvatski; inače izbor gosta (kolačić) ako taj jezik jelovnik ima, a ako ga nema,
+ * jezik preglednika. (`hasEnglish` je stari oblik za jelovnike samo s engleskim.)
  */
-export function resolveLang(input: { hasEnglish: boolean; cookie?: string | null; acceptLanguage?: string | null }): Lang {
-  if (!input.hasEnglish) return "hr";
-  return parseLang(input.cookie) ?? langFromAcceptLanguage(input.acceptLanguage);
+export function resolveLang(input: { languages?: readonly TransLang[]; hasEnglish?: boolean; cookie?: string | null; acceptLanguage?: string | null }): Lang {
+  const languages: readonly TransLang[] = input.languages ?? (input.hasEnglish ? ["en"] : []);
+  if (languages.length === 0) return "hr";
+  const available: Lang[] = ["hr", ...languages];
+  const saved = parseLang(input.cookie);
+  if (saved && available.includes(saved)) return saved;
+  return langFromAcceptLanguage(input.acceptLanguage, available);
 }
 
 /** Adresa vlastitog jelovnika lokala samo ako je ispravan https (ne javascript:, ne adresa s lozinkom). Vraća normaliziranu adresu ili null. */

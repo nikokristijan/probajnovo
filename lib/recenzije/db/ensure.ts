@@ -9,7 +9,7 @@ import { db } from "./index";
  * da se dva serverless pokretanja ne sudare. Kad se shema promijeni:
  * dodaj ALTER TABLE ... ADD COLUMN IF NOT EXISTS na kraj i povećaj SCHEMA_VERSION.
  */
-export const SCHEMA_VERSION = 8;
+export const SCHEMA_VERSION = 9;
 
 const DDL = `
 CREATE TABLE IF NOT EXISTS "nr_meta" ("key" text PRIMARY KEY NOT NULL, "value" text NOT NULL);
@@ -432,6 +432,23 @@ ALTER TABLE "nr_menus" ADD COLUMN IF NOT EXISTS "contact_phone" text;
 ALTER TABLE "nr_menus" ADD COLUMN IF NOT EXISTS "contact_email" text;
 ALTER TABLE "nr_menus" ADD COLUMN IF NOT EXISTS "contact_address" text;
 ALTER TABLE "nr_menus" ADD COLUMN IF NOT EXISTS "contact_instagram" text;
+ALTER TABLE "nr_menus" ADD COLUMN IF NOT EXISTS "intro_de" text;
+ALTER TABLE "nr_menus" ADD COLUMN IF NOT EXISTS "intro_it" text;
+ALTER TABLE "nr_menu_categories" ADD COLUMN IF NOT EXISTS "name_de" text;
+ALTER TABLE "nr_menu_categories" ADD COLUMN IF NOT EXISTS "name_it" text;
+ALTER TABLE "nr_menu_items" ADD COLUMN IF NOT EXISTS "name_de" text;
+ALTER TABLE "nr_menu_items" ADD COLUMN IF NOT EXISTS "name_it" text;
+ALTER TABLE "nr_menu_items" ADD COLUMN IF NOT EXISTS "description_de" text;
+ALTER TABLE "nr_menu_items" ADD COLUMN IF NOT EXISTS "description_it" text;
+ALTER TABLE "nr_organizations" ADD COLUMN IF NOT EXISTS "low_review_alerts" boolean DEFAULT true NOT NULL;
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'nr_reviews' AND column_name = 'low_alert_at') THEN
+    ALTER TABLE "nr_reviews" ADD COLUMN "low_alert_at" timestamp with time zone;
+    -- Samo pri prvom dodavanju stupca: postojeće recenzije su već "viđene" i nikad ne pokreću upozorenje.
+    UPDATE "nr_reviews" SET "low_alert_at" = now() WHERE "low_alert_at" IS NULL;
+  END IF;
+END $$;
+CREATE INDEX IF NOT EXISTS "nr_review_alert_pending" ON "nr_reviews" USING btree ("organization_id") WHERE "low_alert_at" IS NULL;
 `;
 
 /**

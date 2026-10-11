@@ -11,6 +11,7 @@ export default function MenuNotFound() {
         <div className="jl-wrap jl-center">
           <Kicker>NOVO</Kicker>
           <h1 className="jl-title">Ova stranica trenutno nije dostupna</h1>
+          <span className="jl-orn" aria-hidden="true" />
           <p className="jl-lead">Poveznica je možda zastarjela ili je stranica privremeno isključena. Pitajte osoblje za novi QR kod.</p>
         </div>
       </main>

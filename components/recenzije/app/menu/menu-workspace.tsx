@@ -7,6 +7,7 @@ import { MenuGuests } from "./menu-guests";
 import { MenuImport } from "./menu-import";
 import { MenuSettingsForm } from "./menu-settings-form";
 import { MenuStatus } from "./menu-status";
+import { MenuTables } from "./menu-tables";
 import {
   activeButtonLabels,
   MENU_TABS,
@@ -15,6 +16,7 @@ import {
   type GuestView,
   type MenuSettingsDTO,
   type MenuTab,
+  type StatsDTO,
 } from "./menu-types";
 
 export type MenuWorkspaceProps = {
@@ -29,9 +31,13 @@ export type MenuWorkspaceProps = {
   guests: GuestView[];
   guestsHasMore: boolean;
   initialTab: MenuTab;
+  /** AI je postavljen na poslužitelju: prijevodi (AI nacrt) su dostupni. */
+  aiEnabled: boolean;
+  stats7: StatsDTO;
+  stats30: StatsDTO;
 };
 
-/** Stranica jelovnika: stanje + adresa na vrhu, ispod kartice Stavke / Uvoz / Postavke / Gosti (sve ostaje montirano, pa tekst u uvozu ne nestaje pri prebacivanju). */
+/** Stranica jelovnika: stanje + adresa na vrhu, ispod kartice Stavke / Uvoz / Postavke / Gosti / Stolovi (sve ostaje montirano, pa tekst u uvozu ne nestaje pri prebacivanju). */
 export function MenuWorkspace(p: MenuWorkspaceProps) {
   const [tab, setTab] = useState<MenuTab>(p.initialTab);
   const items = p.categories.reduce((n, c) => n + c.items.length, 0);
@@ -73,7 +79,7 @@ export function MenuWorkspace(p: MenuWorkspaceProps) {
         summary={p.summary}
       />
 
-      <div role="tablist" aria-label="Odjeljci jelovnika" className="grid grid-cols-4 border border-foreground">
+      <div role="tablist" aria-label="Odjeljci jelovnika" className="grid grid-cols-5 border border-foreground">
         {MENU_TABS.map((t) => {
           const on = t.id === tab;
           return (
@@ -88,7 +94,7 @@ export function MenuWorkspace(p: MenuWorkspaceProps) {
               onClick={() => select(t.id)}
               onKeyDown={onKey}
               className={cn(
-                "label min-h-11 cursor-pointer truncate px-1 transition-colors sm:px-3",
+                "label min-h-11 cursor-pointer truncate px-0.5 transition-colors max-sm:text-[10px] max-sm:tracking-[0.02em] sm:px-3",
                 on ? "bg-foreground text-white" : "bg-white text-foreground hover:bg-surface-2"
               )}
             >
@@ -99,16 +105,19 @@ export function MenuWorkspace(p: MenuWorkspaceProps) {
       </div>
 
       <div id="menu-panel-stavke" role="tabpanel" aria-labelledby="menu-tab-stavke" hidden={tab !== "stavke"}>
-        <MenuEditor categories={p.categories} readOnly={p.readOnly} hasExternalUrl={Boolean(p.settings.externalUrl)} onGoImport={() => select("uvoz")} />
+        <MenuEditor categories={p.categories} readOnly={p.readOnly} hasExternalUrl={Boolean(p.settings.externalUrl)} onGoImport={() => select("uvoz")} aiEnabled={p.aiEnabled} />
       </div>
       <div id="menu-panel-uvoz" role="tabpanel" aria-labelledby="menu-tab-uvoz" hidden={tab !== "uvoz"}>
         <MenuImport readOnly={p.readOnly} onSaved={() => select("stavke")} />
       </div>
       <div id="menu-panel-postavke" role="tabpanel" aria-labelledby="menu-tab-postavke" hidden={tab !== "postavke"}>
-        <MenuSettingsForm settings={p.settings} host={p.host} readOnly={p.readOnly} hasReviewUrl={p.hasReviewUrl} />
+        <MenuSettingsForm settings={p.settings} host={p.host} readOnly={p.readOnly} hasReviewUrl={p.hasReviewUrl} aiEnabled={p.aiEnabled} />
       </div>
       <div id="menu-panel-gosti" role="tabpanel" aria-labelledby="menu-tab-gosti" hidden={tab !== "gosti"}>
         <MenuGuests summary={p.summary} rows={p.guests} hasMore={p.guestsHasMore} delayMinutes={p.settings.delayMinutes} captureEnabled={p.settings.captureEnabled} />
+      </div>
+      <div id="menu-panel-stolovi" role="tabpanel" aria-labelledby="menu-tab-stolovi" hidden={tab !== "stolovi"}>
+        <MenuTables stats7={p.stats7} stats30={p.stats30} captureEnabled={p.settings.captureEnabled} />
       </div>
     </div>
   );

@@ -80,8 +80,12 @@ const FEATURES = [
     text: "Engleski prijevod je u svakom paketu, njemački i talijanski u paketu Sve uključeno ili kao dodatak. Gost jednim dodirom bira jezik.",
   },
   {
-    title: "Tjedni izvještaj",
-    text: "U paketu Sve uključeno (ili uz dodatak Izvještaj i statistika) jednom tjedno dobivate kratak izvještaj u jednoj rečenici, bez tablica i grafikona.",
+    title: "Tjedni izvještaj i statistika po stolu",
+    text: "U paketu Sve uključeno (ili uz dodatak Izvještaj i statistika) jednom tjedno stiže e-mail: na vrhu sažetak u jednoj rečenici (koliko je gostiju ostavilo broj, koliko je novih recenzija, prosječna ocjena), uz najposjećeniji stol i doba dana s najviše gostiju, bez grafikona. Stolovi se računaju iz gostiju koji ostave broj, pa to traži paket s recenzijama.",
+  },
+  {
+    title: "Upozorenje na lošu recenziju",
+    text: "U paketu Sve uključeno (ili uz dodatak Izvještaj i statistika): kad se na Googleu pojavi nova recenzija s ocjenom 3 ili manje, dobivate e-mail s tekstom recenzije i prijedlogom odgovora koji sami objavljujete. Recenzije provjeravamo jednom dnevno, pa e-mail stiže najkasnije idući dan; potrebno je da je vaš Google profil povezan s nama.",
   },
   {
     title: "Tipke Ocijeni nas, Wi-Fi, Kontakt",

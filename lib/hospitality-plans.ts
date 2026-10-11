@@ -74,8 +74,8 @@ export const HOSPITALITY_PLANS: HospitalityPlan[] = [
     features: [
       "Sve iz paketa Jelovnik i Jelovnik + Recenzije",
       "Povremene obavijesti gostima koji su pristali (novosti, događanja, ponude)",
-      "Tjedni izvještaj jednom rečenicom i statistika po stolu",
-      "Upozorenje na lošu recenziju",
+      "Tjedni izvještaj e-mailom sa sažetkom u jednoj rečenici i statistika po stolu (iz gostiju koji ostave broj)",
+      "Upozorenje e-mailom na novu lošu Google recenziju (ocjena 3 ili manje), s prijedlogom odgovora",
       "Prijevodi na njemački i talijanski",
       "Do 500 SMS-ova mjesečno",
       "Prioritetna podrška",
@@ -95,7 +95,7 @@ export type HospitalityAddon = {
 export const HOSPITALITY_ADDONS: HospitalityAddon[] = [
   { key: "recenzije", name: "Recenzije", priceMonthlyEur: 25, note: "Upis broja uz privolu i poruka za Google recenziju, do 200 SMS-ova mjesečno" },
   { key: "obavijesti", name: "Obavijesti gostima", priceMonthlyEur: 20, note: "Novosti, događanja i ponude, samo gostima koji su pristali (uz Recenzije)" },
-  { key: "izvjestaj", name: "Izvještaj i statistika", priceMonthlyEur: 12, note: "Tjedni izvještaj jednom rečenicom, statistika po stolu i upozorenje na lošu recenziju" },
+  { key: "izvjestaj", name: "Izvještaj i statistika", priceMonthlyEur: 12, note: "Tjedni izvještaj e-mailom sa sažetkom u jednoj rečenici, statistika po stolu i upozorenje na lošu Google recenziju" },
   { key: "prijevodi", name: "Prijevodi DE i IT", priceMonthlyEur: 12, note: "Njemački i talijanski prijevod jelovnika" },
 ];
 

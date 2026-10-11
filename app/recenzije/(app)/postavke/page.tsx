@@ -1,8 +1,8 @@
 import Link from "next/link";
 import { eq } from "drizzle-orm";
-import { CircleAlert, Smartphone } from "lucide-react";
+import { Bell, CircleAlert, Smartphone } from "lucide-react";
 import { GoogleIcon } from "@/components/recenzije/auth/oauth";
-import { BusinessForm, GoogleActions, LegacyPhoneSwitch } from "@/components/recenzije/app/settings/forms";
+import { BusinessForm, GoogleActions, LegacyPhoneSwitch, LowReviewAlertsSwitch } from "@/components/recenzije/app/settings/forms";
 import { Button } from "@/components/recenzije/ui/button";
 import { Alert, Badge, Card, CardBody, CardHeader, PageHeader } from "@/components/recenzije/ui/primitives";
 import { db } from "@/lib/recenzije/db";
@@ -110,6 +110,19 @@ export default async function SettingsPage({ searchParams }: { searchParams: Pro
                 ) : (
                   <p className="text-xs text-muted">Javite se NOVO-u.</p>
                 ))}
+            </CardBody>
+          </Card>
+
+          <Card id="obavijesti">
+            <CardHeader
+              title={
+                <span className="flex items-center gap-2">
+                  <Bell className="size-4" /> Obavijesti e-mailom
+                </span>
+              }
+            />
+            <CardBody className="pt-3">
+              <LowReviewAlertsSwitch initial={ctx.org.lowReviewAlerts} canEdit={canEdit} hasEmail={Boolean(ctx.org.contactEmail?.trim())} />
             </CardBody>
           </Card>
 

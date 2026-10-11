@@ -2,11 +2,12 @@ import "server-only";
 import { and, asc, eq, gt, ne, sql } from "drizzle-orm";
 import { z } from "zod";
 import { db } from "@/lib/recenzije/db";
-import { activityEvents, organizationMembers, organizations, users, type ActivityType } from "@/lib/recenzije/db/schema";
+import { activityEvents, menus, organizationMembers, organizations, users, type ActivityType } from "@/lib/recenzije/db/schema";
 import { env, integrations } from "@/lib/recenzije/env";
 import { OPERATOR_EMAIL } from "@/lib/recenzije/operator";
 import { usage } from "@/lib/recenzije/services/billing";
 import { sendEmail } from "@/lib/recenzije/services/email";
+import { getVenueWeekly } from "@/lib/recenzije/services/menu-stats";
 import { periodReportStats } from "@/lib/recenzije/services/stats";
 import { buildWeeklyReportEmail, pickRecipient, type MemberCandidate } from "@/lib/recenzije/services/weekly-report-email";
 
@@ -61,6 +62,9 @@ type Candidate = {
   organizationId: string;
   name: string;
   timezone: string;
+  isVenue: boolean;
+  /** Skupljanje brojeva s jelovnika je uključeno (samo za ugostitelje s jelovnikom). */
+  captureEnabled: boolean;
   /** null = nema kamo poslati (ni kontakt email ni član s emailom). */
   recipient: MemberCandidate | null;
 };
@@ -76,11 +80,14 @@ async function reportCandidates(): Promise<Candidate[]> {
       organizationId: organizations.id,
       name: organizations.name,
       timezone: organizations.timezone,
+      isVenue: organizations.isVenue,
+      captureEnabled: menus.captureEnabled,
       contactEmail: organizations.contactEmail,
       contactName: organizations.contactName,
       createdAt: organizations.createdAt,
     })
     .from(organizations)
+    .leftJoin(menus, eq(menus.organizationId, organizations.id))
     .where(eq(organizations.isDemo, false))
     .orderBy(asc(organizations.createdAt));
 
@@ -110,7 +117,7 @@ async function reportCandidates(): Promise<Candidate[]> {
     const recipient: MemberCandidate | null = contactEmail
       ? { role: "OWNER", email: contactEmail, name: o.contactName?.trim() || null, joinedAt: o.createdAt }
       : pickRecipient(membersByOrg.get(o.organizationId) ?? []);
-    return { organizationId: o.organizationId, name: o.name, timezone: o.timezone, recipient };
+    return { organizationId: o.organizationId, name: o.name, timezone: o.timezone, isVenue: o.isVenue, captureEnabled: o.captureEnabled ?? false, recipient };
   });
 }
 
@@ -240,12 +247,22 @@ export async function runWeeklyReports(opts: { dryRun?: boolean; budgetMs?: numb
         continue;
       }
       const stats = await periodReportStats(c.organizationId, WEEKLY_REPORT_WINDOW_DAYS);
+      // Ugostitelji: dodatna rečenica o stolovima i satu; greška tu ne smije spriječiti izvještaj.
+      let venue;
+      if (c.isVenue) {
+        try {
+          venue = await getVenueWeekly(c.organizationId, c.captureEnabled);
+        } catch (e) {
+          console.error("[weekly-report] statistika stolova", c.organizationId, e instanceof Error ? e.message : e);
+        }
+      }
       const mail = buildWeeklyReportEmail({
         orgName: c.name,
         recipientName: recipient.name,
         timezone: c.timezone,
         stats,
         contactEmail: env.salesEmail,
+        venue,
       });
       const wait = SEND_PACING_MS - (Date.now() - lastSendAt);
       if (wait > 0) await sleep(wait);

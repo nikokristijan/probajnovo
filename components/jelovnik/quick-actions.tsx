@@ -2,7 +2,7 @@
 
 import { useEffect, useId, useRef, useState, type KeyboardEvent, type RefObject } from "react";
 import { contactIsPhoneOnly, type PublicContact, type PublicMenuActions } from "@/lib/recenzije/menu-buttons";
-import { Bi } from "./bilingual";
+import { T, UI } from "./bilingual";
 
 type PanelId = "wifi" | "contact";
 
@@ -46,7 +46,10 @@ export function QuickActions({ actions }: { actions: PublicMenuActions }) {
         {reviewUrl && (
           <li>
             <a className="jl-qa-btn" href={reviewUrl} target="_blank" rel="noopener noreferrer">
-              <Bi hr="Ocijeni nas" en="Rate us" />
+              <Icon name="star" />
+              <span className="jl-qa-txt">
+                <T t={UI.rate} />
+              </span>
             </a>
           </li>
         )}
@@ -61,7 +64,8 @@ export function QuickActions({ actions }: { actions: PublicMenuActions }) {
               aria-controls={ids.wifi}
               onClick={() => toggle("wifi")}
             >
-              Wi-Fi
+              <Icon name="wifi" />
+              <span className="jl-qa-txt">Wi-Fi</span>
             </button>
           </li>
         )}
@@ -69,7 +73,10 @@ export function QuickActions({ actions }: { actions: PublicMenuActions }) {
           <li>
             {phoneOnly && contact.phone ? (
               <a className="jl-qa-btn" href={contact.phone.href}>
-                <Bi hr="Nazovi" en="Call" />
+                <Icon name="phone" />
+                <span className="jl-qa-txt">
+                  <T t={UI.call} />
+                </span>
               </a>
             ) : (
               <button
@@ -81,7 +88,10 @@ export function QuickActions({ actions }: { actions: PublicMenuActions }) {
                 aria-controls={ids.contact}
                 onClick={() => toggle("contact")}
               >
-                <Bi hr="Kontakt" en="Contact" />
+                <Icon name="mail" />
+                <span className="jl-qa-txt">
+                  <T t={UI.contact} />
+                </span>
               </button>
             )}
           </li>
@@ -91,19 +101,58 @@ export function QuickActions({ actions }: { actions: PublicMenuActions }) {
       {wifi && (
         <Panel id={ids.wifi} labelledBy={ids.wifiBtn} open={open === "wifi"}>
           <p className="jl-qa-ph">Wi-Fi</p>
-          <CopyLine label={<Bi hr="Mreža" en="Network" />} value={wifi.name} />
-          {wifi.password && <CopyLine label={<Bi hr="Lozinka" en="Password" />} value={wifi.password} />}
+          <CopyLine label={<T t={UI.network} />} value={wifi.name} />
+          {wifi.password && <CopyLine label={<T t={UI.password} />} value={wifi.password} />}
         </Panel>
       )}
       {contact && !phoneOnly && (
         <Panel id={ids.contact} labelledBy={ids.contactBtn} open={open === "contact"}>
           <p className="jl-qa-ph">
-            <Bi hr="Kontakt" en="Contact" />
+            <T t={UI.contact} />
           </p>
           <ContactLinks contact={contact} />
         </Panel>
       )}
     </div>
+  );
+}
+
+/** Fine ikone (crta 1,25 px, boja iz teksta), samo ukras: aria-hidden, a natpis uz njih nosi značenje. */
+function Icon({ name }: { name: "star" | "wifi" | "phone" | "mail" }) {
+  return (
+    <svg
+      className="jl-qa-ico"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.25"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+      focusable="false"
+    >
+      {name === "star" && <path d="M12 3.2l2.6 5.8 6.3.6-4.7 4.2 1.4 6.2L12 16.7 6.4 20l1.4-6.2L3.1 9.6l6.3-.6z" />}
+      {name === "wifi" && (
+        <>
+          <path d="M3 9.2a13.2 13.2 0 0 1 18 0" />
+          <path d="M6 12.6a8.8 8.8 0 0 1 12 0" />
+          <path d="M9.1 16a4.4 4.4 0 0 1 5.8 0" />
+          <circle cx="12" cy="19.4" r="0.9" fill="currentColor" stroke="none" />
+        </>
+      )}
+      {name === "phone" && (
+        <>
+          <rect x="7" y="3" width="10" height="18" rx="2" />
+          <path d="M10.6 18.2h2.8" />
+        </>
+      )}
+      {name === "mail" && (
+        <>
+          <rect x="3" y="5.5" width="18" height="13" rx="1" />
+          <path d="M3.4 6.8 12 13l8.6-6.2" />
+        </>
+      )}
+    </svg>
   );
 }
 
@@ -125,7 +174,7 @@ function ContactLinks({ contact }: { contact: PublicContact }) {
         <li>
           <a className="jl-qa-link" href={contact.phone.href}>
             <span className="jl-qa-act">
-              <Bi hr="Nazovi" en="Call" />
+              <T t={UI.call} />
             </span>
             <span className="jl-qa-sub">{contact.phone.display}</span>
           </a>
@@ -135,7 +184,7 @@ function ContactLinks({ contact }: { contact: PublicContact }) {
         <li>
           <a className="jl-qa-link" href={contact.email.href}>
             <span className="jl-qa-act">
-              <Bi hr="Pošalji e-mail" en="Email" />
+              <T t={UI.email} />
             </span>
             <span className="jl-qa-sub">{contact.email.address}</span>
           </a>
@@ -145,7 +194,7 @@ function ContactLinks({ contact }: { contact: PublicContact }) {
         <li>
           <a className="jl-qa-link" href={contact.map.href} target="_blank" rel="noopener noreferrer">
             <span className="jl-qa-act">
-              <Bi hr="Karta" en="Map" />
+              <T t={UI.map} />
             </span>
             <span className="jl-qa-sub">{contact.map.address}</span>
           </a>
@@ -235,10 +284,10 @@ function CopyLine({ label, value }: { label: React.ReactNode; value: string }) {
         </span>
       </div>
       <button type="button" className="jl-qa-copy" onClick={onCopy} data-state={state}>
-        {state === "copied" ? <Bi hr="Kopirano" en="Copied" /> : state === "selected" ? <Bi hr="Označeno" en="Selected" /> : <Bi hr="Kopiraj" en="Copy" />}
+        {state === "copied" ? <T t={UI.copied} /> : state === "selected" ? <T t={UI.selected} /> : <T t={UI.copy} />}
       </button>
       <span className="jl-sr" role="status" aria-live="polite">
-        {state === "copied" ? <Bi hr="Kopirano" en="Copied" /> : state === "selected" ? <Bi hr="Označeno, kopirajte ručno" en="Selected, copy manually" /> : ""}
+        {state === "copied" ? <T t={UI.copied} /> : state === "selected" ? <T t={UI.selectedManual} /> : ""}
       </span>
     </div>
   );

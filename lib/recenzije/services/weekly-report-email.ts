@@ -1,3 +1,4 @@
+import { venueSummaryLine, venueTableSentence, type VenueWeekly } from "@/lib/recenzije/menu-stats-format";
 import { escapeHtml } from "@/lib/recenzije/utils";
 
 /**
@@ -78,6 +79,8 @@ export function buildWeeklyReportEmail(input: {
   stats: WeeklyReportStats;
   /** Kontakt za pitanja i za one koji ne žele primati izvještaj. */
   contactEmail: string;
+  /** Samo za ugostiteljske tvrtke: podaci s digitalnog jelovnika (stolovi, sat). Bez toga izvještaj je isti kao prije. */
+  venue?: VenueWeekly;
 }): { subject: string; html: string; text: string } {
   const { stats } = input;
   const tz = safeTimeZone(input.timezone);
@@ -100,6 +103,10 @@ export function buildWeeklyReportEmail(input: {
     stats.totalReviews > 0
       ? `Ukupno spremljenih recenzija: ${formatInt(stats.totalReviews)}, prosječna ocjena ${formatRating(stats.overallAverage)}.`
       : "Još nema spremljenih recenzija.";
+
+  // Ugostitelji: jedna sažeta rečenica na vrhu i (samo kad ima podataka) jedna o stolovima.
+  const venueSummary = input.venue ? venueSummaryLine(input.venue, stats.newReviews, stats.averageRating) : "";
+  const venueTables = input.venue ? venueTableSentence(input.venue) : null;
 
   const rows: [string, string][] = [
     ["Poslano zahtjeva", formatInt(stats.requestsSent)],
@@ -132,11 +139,11 @@ export function buildWeeklyReportEmail(input: {
 <p style="margin:0 0 6px;${mono};font-size:11px;letter-spacing:1.4px;text-transform:uppercase;color:#666666">Tjedni izvještaj</p>
 <h1 style="margin:0 0 16px;font-size:24px;line-height:1.25;color:#000000">${escapeHtml(orgName)}</h1>
 <p style="margin:0 0 6px;font-size:15px;line-height:1.55">${escapeHtml(greeting)}</p>
-<p style="margin:0 0 ${hint || pendingNote ? "8" : "16"}px;font-size:15px;line-height:1.55">${escapeHtml(intro)}</p>
+${venueSummary ? `<p style="margin:0 0 8px;font-size:16px;line-height:1.5;font-weight:700">${escapeHtml(venueSummary)}</p>` : ""}<p style="margin:0 0 ${hint || pendingNote ? "8" : "16"}px;font-size:15px;line-height:1.55">${escapeHtml(intro)}</p>
 ${hint ? `<p style="margin:0 0 ${pendingNote ? "8" : "16"}px;font-size:15px;line-height:1.55;color:#444444">${escapeHtml(hint)}</p>` : ""}${pendingNote ? `<p style="margin:0 0 16px;font-size:15px;line-height:1.55;color:#444444">${escapeHtml(pendingNote)}</p>` : ""}
 </td></tr>
 <tr><td style="padding:0 28px"><table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border-top:2px solid #000000">${tableRows}</table></td></tr>
-<tr><td style="padding:14px 28px 4px;${font};font-size:13px;line-height:1.5;color:#666666">${escapeHtml(overallNote)}</td></tr>
+<tr><td style="padding:14px 28px 4px;${font};font-size:13px;line-height:1.5;color:#666666">${escapeHtml(overallNote)}</td></tr>${venueTables ? `\n<tr><td style="padding:4px 28px;${font};font-size:14px;line-height:1.5;color:#444444">${escapeHtml(venueTables)}</td></tr>` : ""}
 <tr><td style="padding:0 28px 20px"></td></tr>
 <tr><td style="padding:16px 28px;border-top:1px solid #e5e5e5;${font};font-size:12px;line-height:1.5;color:#888888">${escapeHtml(footer)}</td></tr>
 </table></td></tr></table>
@@ -147,6 +154,7 @@ ${hint ? `<p style="margin:0 0 ${pendingNote ? "8" : "16"}px;font-size:15px;line
     orgName,
     "",
     greeting,
+    ...(venueSummary ? [venueSummary] : []),
     intro,
     ...(hint ? [hint] : []),
     ...(pendingNote ? [pendingNote] : []),
@@ -154,6 +162,7 @@ ${hint ? `<p style="margin:0 0 ${pendingNote ? "8" : "16"}px;font-size:15px;line
     ...rows.map(([label, value]) => `${label}: ${value}`),
     "",
     overallNote,
+    ...(venueTables ? [venueTables] : []),
     "",
     footer,
   ].join("\n");

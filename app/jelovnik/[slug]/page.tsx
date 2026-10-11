@@ -86,7 +86,7 @@ export default async function MenuPage({ params, searchParams }: Props) {
   if (!menu) notFound();
   const h = await headers();
   const lang = resolveLang({
-    hasEnglish: menu.hasEnglish,
+    languages: menu.languages,
     cookie: jar.get(LANG_COOKIE)?.value,
     acceptLanguage: h.get("accept-language"),
   });

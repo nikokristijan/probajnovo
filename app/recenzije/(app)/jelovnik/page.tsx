@@ -1,13 +1,15 @@
 import Link from "next/link";
 import { ExternalLink, QrCode, UtensilsCrossed } from "lucide-react";
 import { MenuWorkspace } from "@/components/recenzije/app/menu/menu-workspace";
-import { parseMenuTab, toGuestView, type CategoryDTO } from "@/components/recenzije/app/menu/menu-types";
+import { parseMenuTab, toGuestView, toStatsDTO, type CategoryDTO } from "@/components/recenzije/app/menu/menu-types";
 import { Button } from "@/components/recenzije/ui/button";
 import { Card, EmptyState, PageHeader } from "@/components/recenzije/ui/primitives";
 import { delayWording } from "@/lib/recenzije/guest-consent";
 import { parseMenuKind } from "@/lib/recenzije/menu-noun";
 import { requireOrg } from "@/lib/recenzije/session";
+import { integrations } from "@/lib/recenzije/env";
 import { getGuestSummary, listRecentGuests } from "@/lib/recenzije/services/guests";
+import { getMenuStats } from "@/lib/recenzije/services/menu-stats";
 import { getVenueMenuForOperator } from "@/lib/recenzije/services/menus";
 
 export const metadata = { title: "Jelovnik" };
@@ -42,19 +44,30 @@ export default async function MenuPage({ searchParams }: { searchParams: Promise
     );
   }
 
-  const [summary, guestRows] = await Promise.all([getGuestSummary(ctx.org.id), listRecentGuests(ctx.org.id, GUEST_PAGE + 1, 0)]);
+  const [summary, guestRows, stats7, stats30] = await Promise.all([
+    getGuestSummary(ctx.org.id),
+    listRecentGuests(ctx.org.id, GUEST_PAGE + 1, 0),
+    getMenuStats(ctx.org.id, 7),
+    getMenuStats(ctx.org.id, 30),
+  ]);
   const now = new Date();
 
   const categories: CategoryDTO[] = view.categories.map((c) => ({
     id: c.id,
     name: c.name,
     nameEn: c.nameEn,
+    nameDe: c.nameDe,
+    nameIt: c.nameIt,
     items: c.items.map((i) => ({
       id: i.id,
       name: i.name,
       nameEn: i.nameEn,
+      nameDe: i.nameDe,
+      nameIt: i.nameIt,
       description: i.description,
       descriptionEn: i.descriptionEn,
+      descriptionDe: i.descriptionDe,
+      descriptionIt: i.descriptionIt,
       priceCents: i.priceCents,
       allergens: i.allergens,
       available: i.available,
@@ -100,6 +113,8 @@ export default async function MenuPage({ searchParams }: { searchParams: Promise
           title: m.title,
           intro: m.intro,
           introEn: m.introEn,
+          introDe: m.introDe,
+          introIt: m.introIt,
           externalUrl: m.externalUrl,
           logoUrl: m.logoUrl,
           allowSkip: m.allowSkip,
@@ -122,6 +137,9 @@ export default async function MenuPage({ searchParams }: { searchParams: Promise
         guests={guestRows.slice(0, GUEST_PAGE).map((r) => toGuestView(r, ctx.org.timezone, now))}
         guestsHasMore={guestRows.length > GUEST_PAGE}
         initialTab={parseMenuTab(sp.tab)}
+        aiEnabled={integrations.ai()}
+        stats7={toStatsDTO(stats7)}
+        stats30={toStatsDTO(stats30)}
       />
     </>
   );

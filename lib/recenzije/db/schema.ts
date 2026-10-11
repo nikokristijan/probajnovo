@@ -152,6 +152,11 @@ export const organizations = pgTable("nr_organizations", {
    * /jelovnik/<slug> (tablice nr_menus*) i hvataju brojeve gostiju za zahtjev za recenziju.
    */
   isVenue: boolean("is_venue").notNull().default(false),
+  /**
+   * Upozorenje vlasniku e-mailom kad Google sinkronizacija pronađe NOVU recenziju s ocjenom 3 ili manje
+   * (services/review-alerts.ts). Zadano uključeno; gasi se u Postavkama.
+   */
+  lowReviewAlerts: boolean("low_review_alerts").notNull().default(true),
   /** Where tracking links redirect. Set manually or from the Google connection. */
   googleReviewUrl: text("google_review_url"),
   googlePlaceId: text("google_place_id"),
@@ -367,11 +372,18 @@ export const reviews = pgTable(
     repliedAt: timestamp("replied_at", { withTimezone: true }),
     clientId: text("client_id").references(() => clients.id, { onDelete: "set null" }),
     match: reviewMatch("match").notNull().default("NONE"),
+    /**
+     * Upozorenje na lošu recenziju: null = čeka obradu (nova recenzija s ocjenom do 3), vrijeme = obrađena (upozorenje poslano
+     * ili recenzija nije podobna: dobra ocjena, stara, isključeno, nema e-maila). Postavlja se pri prvom spremanju
+     * recenzije i nikad se ne vraća na null osim kad slanje ne uspije (vidi services/review-alerts.ts).
+     */
+    lowAlertAt: timestamp("low_alert_at", { withTimezone: true }),
     createdAt: createdAt(),
   },
   (t) => [
     uniqueIndex("nr_review_org_external").on(t.organizationId, t.externalId),
     index("nr_review_org_date").on(t.organizationId, t.reviewedAt),
+    index("nr_review_alert_pending").on(t.organizationId).where(sql`${t.lowAlertAt} is null`),
   ]
 );
 
@@ -482,6 +494,8 @@ export const menus = pgTable(
     title: text("title").notNull().default("Jelovnik"),
     intro: text("intro"),
     introEn: text("intro_en"),
+    introDe: text("intro_de"),
+    introIt: text("intro_it"),
     /** Vlastiti jelovnik lokala (PDF ili stranica): gost se nakon unosa broja šalje na tu adresu umjesto na naš prikaz. */
     externalUrl: text("external_url"),
     /**
@@ -537,6 +551,8 @@ export const menuCategories = pgTable(
     organizationId: orgRef(),
     name: text("name").notNull(),
     nameEn: text("name_en"),
+    nameDe: text("name_de"),
+    nameIt: text("name_it"),
     position: integer("position").notNull().default(0),
     createdAt: createdAt(),
   },
@@ -556,8 +572,12 @@ export const menuItems = pgTable(
     organizationId: orgRef(),
     name: text("name").notNull(),
     nameEn: text("name_en"),
+    nameDe: text("name_de"),
+    nameIt: text("name_it"),
     description: text("description"),
     descriptionEn: text("description_en"),
+    descriptionDe: text("description_de"),
+    descriptionIt: text("description_it"),
     /** Cijena u centima (EUR); novac se nikad ne drži kao decimalni broj. */
     priceCents: integer("price_cents").notNull().default(0),
     allergens: text("allergens"),

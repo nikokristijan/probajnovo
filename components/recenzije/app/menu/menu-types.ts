@@ -8,13 +8,18 @@ import type { MenuKind } from "@/lib/recenzije/menu-noun";
 import type { GuestOutcome } from "@/lib/recenzije/db/schema";
 import type { Tone } from "@/components/recenzije/ui/primitives";
 import type { GuestRow } from "@/lib/recenzije/services/guests";
+import type { MenuStats } from "@/lib/recenzije/services/menu-stats";
 
 export type ItemDTO = {
   id: string;
   name: string;
   nameEn: string | null;
+  nameDe: string | null;
+  nameIt: string | null;
   description: string | null;
   descriptionEn: string | null;
+  descriptionDe: string | null;
+  descriptionIt: string | null;
   priceCents: number;
   allergens: string | null;
   available: boolean;
@@ -24,6 +29,8 @@ export type CategoryDTO = {
   id: string;
   name: string;
   nameEn: string | null;
+  nameDe: string | null;
+  nameIt: string | null;
   items: ItemDTO[];
 };
 
@@ -33,6 +40,8 @@ export type MenuSettingsDTO = {
   title: string;
   intro: string | null;
   introEn: string | null;
+  introDe: string | null;
+  introIt: string | null;
   externalUrl: string | null;
   logoUrl: string | null;
   allowSkip: boolean;
@@ -90,12 +99,46 @@ export type GuestView = {
   detail: string | null;
 };
 
-export type MenuTab = "stavke" | "uvoz" | "postavke" | "gosti";
+/** Statistika stolova za prikaz (isto što i MenuStats iz services/menu-stats.ts, ali samo JSON: bez Date). */
+export type StatsDTO = {
+  days: number;
+  total: number;
+  uniqueNumbers: number;
+  withoutTable: number;
+  tables: { label: string; count: number; unique: number }[];
+  otherTables: number;
+  byWeekday: number[];
+  byHour: number[];
+  requests: { scheduled: number; sent: number; skipped: number };
+  topTable: { label: string; count: number } | null;
+  peakHour: number | null;
+  peakWeekday: number | null;
+};
+
+export function toStatsDTO(s: MenuStats): StatsDTO {
+  return {
+    days: s.days,
+    total: s.total,
+    uniqueNumbers: s.uniqueNumbers,
+    withoutTable: s.withoutTable,
+    tables: s.tables,
+    otherTables: s.otherTables,
+    byWeekday: s.byWeekday,
+    byHour: s.byHour,
+    requests: { scheduled: s.requests.scheduled, sent: s.requests.sent, skipped: s.requests.skipped },
+    topTable: s.topTable,
+    peakHour: s.peakHour,
+    peakWeekday: s.peakWeekday,
+  };
+}
+
+export type MenuTab = "stavke" | "uvoz" | "postavke" | "gosti" | "stolovi";
 export const MENU_TABS: { id: MenuTab; label: string }[] = [
   { id: "stavke", label: "Stavke" },
   { id: "uvoz", label: "Uvoz" },
   { id: "postavke", label: "Postavke" },
   { id: "gosti", label: "Gosti" },
+  { id: "stolovi", label: "Stolovi" },
 ];
 export function parseMenuTab(raw: string | null | undefined): MenuTab {
   return MENU_TABS.some((t) => t.id === raw) ? (raw as MenuTab) : "stavke";

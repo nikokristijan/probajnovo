@@ -15,6 +15,7 @@ import { validateMenuSlug } from "@/lib/recenzije/menu-slug";
 import { cn } from "@/lib/recenzije/utils";
 import { MenuButtonsSection, type ButtonsValue } from "./menu-buttons-section";
 import { DELAY_OPTIONS, type MenuSettingsDTO } from "./menu-types";
+import { emptyTransValues, TranslationsGroup, type TransValues } from "./menu-translations";
 
 /** Polja uz koja se greška prikazuje u obrascu; za sve ostalo greška ide u obavijest. */
 const SHOWN_FIELDS = [
@@ -22,6 +23,8 @@ const SHOWN_FIELDS = [
   "title",
   "intro",
   "introEn",
+  "introDe",
+  "introIt",
   "externalUrl",
   "logoUrl",
   "delayMinutes",
@@ -68,22 +71,30 @@ export function MenuSettingsForm({
   host,
   readOnly,
   hasReviewUrl,
+  aiEnabled,
 }: {
   settings: MenuSettingsDTO;
   host: string;
   readOnly: boolean;
   hasReviewUrl: boolean;
+  aiEnabled: boolean;
 }) {
   // Nakon spremanja poslužitelj vraća nove postavke; ključ ponovno postavlja obrazac na spremljene vrijednosti.
-  const key = [settings.slug, settings.title, settings.intro, settings.introEn, settings.externalUrl, settings.logoUrl, settings.allowSkip, settings.delayMinutes, settings.menuKind, settings.noticesEnabled, settings.captureEnabled, ...Object.values(buttonsOf(settings))].join("\u0001");
-  return <SettingsFormInner key={key} settings={settings} host={host} readOnly={readOnly} hasReviewUrl={hasReviewUrl} />;
+  const key = [settings.slug, settings.title, settings.intro, settings.introEn, settings.introDe, settings.introIt, settings.externalUrl, settings.logoUrl, settings.allowSkip, settings.delayMinutes, settings.menuKind, settings.noticesEnabled, settings.captureEnabled, ...Object.values(buttonsOf(settings))].join("\u0001");
+  return <SettingsFormInner key={key} settings={settings} host={host} readOnly={readOnly} hasReviewUrl={hasReviewUrl} aiEnabled={aiEnabled} />;
 }
 
-function SettingsFormInner({ settings, host, readOnly, hasReviewUrl }: { settings: MenuSettingsDTO; host: string; readOnly: boolean; hasReviewUrl: boolean }) {
+function SettingsFormInner({ settings, host, readOnly, hasReviewUrl, aiEnabled }: { settings: MenuSettingsDTO; host: string; readOnly: boolean; hasReviewUrl: boolean; aiEnabled: boolean }) {
   const [pending, start] = useTransition();
   const [title, setTitle] = useState(settings.title);
   const [intro, setIntro] = useState(settings.intro ?? "");
-  const [introEn, setIntroEn] = useState(settings.introEn ?? "");
+  const [introTr, setIntroTr] = useState<TransValues>(() => {
+    const v = emptyTransValues();
+    v.en.description = settings.introEn ?? "";
+    v.de.description = settings.introDe ?? "";
+    v.it.description = settings.introIt ?? "";
+    return v;
+  });
   const [externalUrl, setExternalUrl] = useState(settings.externalUrl ?? "");
   const [logoUrl, setLogoUrl] = useState(settings.logoUrl ?? "");
   const [logoBroken, setLogoBroken] = useState(false);
@@ -113,7 +124,9 @@ function SettingsFormInner({ settings, host, readOnly, hasReviewUrl }: { setting
     slugChanged ||
     title.trim() !== settings.title ||
     intro.trim() !== (settings.intro ?? "") ||
-    introEn.trim() !== (settings.introEn ?? "") ||
+    introTr.en.description.trim() !== (settings.introEn ?? "") ||
+    introTr.de.description.trim() !== (settings.introDe ?? "") ||
+    introTr.it.description.trim() !== (settings.introIt ?? "") ||
     externalUrl.trim() !== (settings.externalUrl ?? "") ||
     logoUrl.trim() !== (settings.logoUrl ?? "") ||
     delay !== settings.delayMinutes ||
@@ -149,7 +162,9 @@ function SettingsFormInner({ settings, host, readOnly, hasReviewUrl }: { setting
         ...(slugChanged ? { slug: slug.trim() } : {}),
         title,
         intro: intro.trim() || null,
-        introEn: introEn.trim() || null,
+        introEn: introTr.en.description.trim() || null,
+        introDe: introTr.de.description.trim() || null,
+        introIt: introTr.it.description.trim() || null,
         externalUrl: externalUrl.trim() || null,
         logoUrl: logoUrl.trim() || null,
         allowSkip,
@@ -228,16 +243,20 @@ function SettingsFormInner({ settings, host, readOnly, hasReviewUrl }: { setting
               <Textarea id="m-intro" rows={3} value={intro} maxLength={600} onChange={(e) => setIntro(e.target.value)} aria-invalid={errors.intro ? true : undefined} />
             </Field>
 
-            <details className="group border border-border bg-surface-2 px-3 py-2.5 [&[open]>summary]:mb-3" open={Boolean(settings.introEn)}>
-              <summary className="label flex min-h-6 cursor-pointer select-none items-center text-muted">Engleski</summary>
-              <Field
-                label="Uvod (engleski)"
-                htmlFor="m-intro-en"
-                error={errors.introEn}
-                hint="Prekidač HR / EN na javnoj stranici pojavljuje se tek kad postoji ijedan engleski tekst (uvod, naziv ili opis)."
-              >
-                <Textarea id="m-intro-en" rows={3} value={introEn} maxLength={600} onChange={(e) => setIntroEn(e.target.value)} />
-              </Field>
+            <details className="group border border-border bg-surface-2 px-3 py-2.5 [&[open]>summary]:mb-3" open={Boolean(settings.introEn || settings.introDe || settings.introIt)}>
+              <summary className="label flex min-h-6 cursor-pointer select-none items-center text-muted">Prijevodi uvoda (EN, DE, IT)</summary>
+              <TranslationsGroup
+                kind="intro"
+                hrName=""
+                hrDescription={intro}
+                values={introTr}
+                onChange={setIntroTr}
+                aiEnabled={aiEnabled}
+                readOnly={readOnly}
+                errors={errors}
+                idPrefix="m-intro"
+              />
+              <p className="mt-3 text-xs text-muted">Prekidač jezika na javnoj stranici pojavljuje se za jezike koji imaju ijedan tekst (uvod, naziv ili opis). Hrvatski ostaje uvijek.</p>
             </details>
 
             <div className="border border-border bg-surface-2 p-4">
