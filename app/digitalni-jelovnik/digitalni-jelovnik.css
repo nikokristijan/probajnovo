@@ -141,6 +141,89 @@
   outline-offset: 2px;
 }
 
+/* ---------- stalak s QR kodom i NFC pločica (ukras) ---------- */
+
+.djs {
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  gap: 22px;
+  padding: 8px 0 14px;
+}
+.djs-card {
+  width: 148px;
+  flex: none;
+  padding: 12px 12px 11px;
+  border: 1px solid #000;
+  background: #fff;
+  box-shadow: 5px 5px 0 rgb(0 0 0 / 0.9);
+  transform: rotate(-2.5deg);
+  text-align: center;
+}
+.djs-brand {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: #000;
+}
+.djs-qr {
+  display: block;
+  width: 100%;
+  height: auto;
+  margin: 9px 0 8px;
+}
+.djs-cap {
+  font-size: 13px;
+  font-weight: 600;
+  color: #000;
+}
+.djs-plate {
+  display: grid;
+  flex: none;
+  width: 112px;
+  height: 112px;
+  place-items: center;
+  align-content: center;
+  gap: 4px;
+  padding: 10px;
+  border: 3px solid #ff7f00;
+  border-radius: 999px;
+  background: #000;
+  color: #ff7f00;
+  text-align: center;
+  box-shadow: 4px 4px 0 rgb(0 0 0 / 0.25);
+}
+.djs-waves {
+  width: 38px;
+  height: 38px;
+}
+.djs-plate-cap {
+  max-width: 80px;
+  font-size: 12px;
+  line-height: 1.2;
+  color: #fff;
+}
+/* Sitna pločica uz karticu u naslovnom dijelu. */
+.djs-mini {
+  position: absolute;
+  right: -22px;
+  bottom: -26px;
+  display: grid;
+  width: 58px;
+  height: 58px;
+  place-items: center;
+  border: 2px solid #ff7f00;
+  border-radius: 999px;
+  background: #000;
+  color: #ff7f00;
+  box-shadow: 3px 3px 0 rgb(0 0 0 / 0.25);
+}
+.djs-mini-waves {
+  width: 28px;
+  height: 28px;
+}
+
 /* ---------- mobitel s crnim jelovnikom (ukras, ne radi) ---------- */
 
 .djp {

@@ -17,7 +17,7 @@ function Field({ label, htmlFor, error, hint, children }: { label: string; htmlF
     <div>
       <Label htmlFor={htmlFor}>{label}</Label>
       {children}
-      {error ? <p className="mt-1.5 text-[14px] text-danger">{error}</p> : hint ? <p className="mt-1.5 text-[14px] leading-snug text-muted">{hint}</p> : null}
+      {error ? <p className="mt-1.5 text-[16px] text-danger">{error}</p> : hint ? <p className="mt-1.5 text-[16px] leading-snug text-muted">{hint}</p> : null}
     </div>
   );
 }
@@ -89,7 +89,7 @@ export function DigitalniJelovnikInquiryForm({ plans, defaultPlan }: { plans: Pl
   return (
     <form action={action} className="space-y-5" noValidate>
       {state.error && (
-        <div role="alert" className="flex items-start gap-2 border-l-[3px] border-danger bg-danger-soft p-3 text-[15px] text-danger">
+        <div role="alert" className="flex items-start gap-2 border-l-[3px] border-danger bg-danger-soft p-3 text-[16px] text-danger">
           <AlertCircle className="mt-0.5 size-4 shrink-0" />
           {state.error}
         </div>
@@ -142,7 +142,7 @@ export function DigitalniJelovnikInquiryForm({ plans, defaultPlan }: { plans: Pl
       </Field>
 
       <div>
-        <label className="flex min-h-11 items-start gap-3 text-[15px] leading-relaxed text-ink-soft">
+        <label className="flex min-h-11 items-start gap-3 text-[16px] leading-relaxed text-ink-soft">
           <input type="checkbox" name="consent" required className="mt-1 size-5 shrink-0 accent-black" defaultChecked={v.consent === "on"} />
           <span>
             Slažem se s{" "}
@@ -152,7 +152,7 @@ export function DigitalniJelovnikInquiryForm({ plans, defaultPlan }: { plans: Pl
             i obradom podataka radi odgovora na upit.
           </span>
         </label>
-        {fe.consent && <p className="mt-1.5 text-[14px] text-danger">{fe.consent}</p>}
+        {fe.consent && <p className="mt-1.5 text-[16px] text-danger">{fe.consent}</p>}
       </div>
 
       <Button type="submit" size="lg" className="h-14 w-full px-8 text-[14px] sm:w-auto" loading={pending}>

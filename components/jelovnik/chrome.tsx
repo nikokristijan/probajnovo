@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { menuNoun, type MenuKind } from "@/lib/recenzije/menu-noun";
 
-/** Mala oznaka (velika slova, razmaknuta slova) s tankim crtama sa strane. */
+/** Mala oznaka (velika slova, razmaknuta slova) s kratkom crtom akcenta iznad. */
 export function Kicker({ children }: { children: React.ReactNode }) {
   return <p className="jl-kicker">{children}</p>;
 }

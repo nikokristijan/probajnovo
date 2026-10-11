@@ -60,19 +60,41 @@ export const MENU_HEADLINE = ["Skenirajte", "i otvorite", "jelovnik"] as const;
 
 /** Isto, ali prema nazivu koji lokal odabere za stranicu ("jelovnik" ili "meni", lib/recenzije/menu-noun.ts). */
 export const menuKicker = (kind?: MenuKind | null) => `DIGITALNI ${menuNoun(kind).nom.toUpperCase()}`;
-export const menuHeadline = (kind?: MenuKind | null) => ["Skenirajte", "i otvorite", menuNoun(kind).acc] as const;
+export const menuHeadline = (kind?: MenuKind | null, nfc = false) =>
+  nfc ? NFC_HEADLINE : (["Skenirajte", "i otvorite", menuNoun(kind).acc] as const);
+
+/**
+ * Plakat s NFC pločicom: gost prisloni mobitel na pločicu ILI skenira kod, oba vode na isti jelovnik. Naslov je u tri retka
+ * (zadnja riječ plava) i čita se kao jedna rečenica: "Prislonite mobitel ili skenirajte kod". Naziv jelovnika je u natpisu iznad.
+ */
+export const NFC_HEADLINE = ["Prislonite", "mobitel ili", "skenirajte kod"] as const;
+/** Natpis na maloj kartici sa stolom (dva retka uz NFC znak). */
+export const NFC_CAPTION = ["Prislonite mobitel", "ili skenirajte kod"] as const;
 
 /**
  * Koraci na plakatu jelovnika. Drugi korak ovisi o postavci lokala: ako gost smije pogledati jelovnik bez broja,
  * plakat ne smije tvrditi da je broj obavezan.
  */
-export function menuSteps(allowSkip: boolean) {
+export function menuSteps(allowSkip: boolean, nfc = false) {
   return [
-    { n: "01", text: "Skenirajte", note: "kamerom mobitela" },
+    nfc ? { n: "01", text: "Prislonite", note: "ili skenirajte" } : { n: "01", text: "Skenirajte", note: "kamerom mobitela" },
     allowSkip ? { n: "02", text: "Otvorite", note: "bez aplikacije" } : { n: "02", text: "Upišite broj", note: "u par sekundi" },
     { n: "03", text: "Birajte", note: "i prijatno" },
   ] as const;
 }
+
+/**
+ * Jednostavan znak "beskontaktno" (tri luka), nacrtan vlastitim putanjama; nije službeni NFC Forum N-Mark.
+ * Kutija 14 x 24 (jedinica `h` = visina). Vraća SVG isječak za umetanje u plakat ili karticu.
+ */
+export function nfcGlyph(x: number, y: number, h: number, color: string = COLORS.ink): string {
+  const k = Number((h / 24).toFixed(4));
+  const arcs = ["M7.83 8.79A5 5 0 0 1 7.83 15.21", "M10.89 6.21A9 9 0 0 1 10.89 17.79", "M13.96 3.64A13 13 0 0 1 13.96 20.36"];
+  return `<g transform="translate(${Number(x.toFixed(2))} ${Number(y.toFixed(2))}) scale(${k})" fill="none" stroke="${color}" stroke-width="1.7" stroke-linecap="round" aria-hidden="true">${arcs.map((d) => `<path d="${d}"/>`).join("")}</g>`;
+}
+
+/** Širina znaka iz nfcGlyph za zadanu visinu. */
+export const nfcGlyphWidth = (h: number) => (14 * h) / 24;
 
 /** Oblik zvjezdice iz primitives.Stars (kutija 20 x 20). */
 export const STAR_PATH = "M10 1.5l2.6 5.5 6 .7-4.5 4.1 1.2 5.9L10 14.8l-5.3 2.9 1.2-5.9L1.4 7.7l6-.7z";

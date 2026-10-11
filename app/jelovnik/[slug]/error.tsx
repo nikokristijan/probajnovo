@@ -16,9 +16,8 @@ export default function MenuError({ reset }: { error: Error & { digest?: string 
       <div className="jl-wrap jl-center">
         <Kicker>{noun ? noun.Nom : "NOVO"}</Kicker>
         <h1 className="jl-title">{noun ? `${noun.Nom} se trenutno ne može učitati` : "Stranica se trenutno ne može učitati"}</h1>
-        <span className="jl-orn" aria-hidden="true" />
         <p className="jl-lead">
-          Pokušajte ponovno za nekoliko trenutaka. Ako se ne riješi, pitajte osoblje da vam {noun ? `pokažu ${noun.acc}` : "pomognu"}.
+          Pokušajte ponovno za koji trenutak. Ako i dalje ne ide, osoblje će vam rado {noun ? `pokazati ${noun.acc}` : "pomoći"}.
         </p>
         <button type="button" className="jl-btn" onClick={reset}>
           Pokušaj ponovno

@@ -7,7 +7,7 @@ import { Bi } from "./bilingual";
 export type NavCategory = { id: string; name: string; nameEn: string | null; nameDe?: string | null; nameIt?: string | null };
 
 /** Visina trake s kategorijama (px) + malo zraka: ispod te crte se sekcija računa kao "trenutna". Isto kao --jl-nav-h u CSS-u. */
-const LINE_OFFSET = 61 + 16;
+const LINE_OFFSET = 54 + 16;
 
 const sectionId = (id: string) => `jl-c-${id}`;
 
@@ -69,7 +69,7 @@ export function CategoryNav({ categories, kind }: { categories: NavCategory[]; k
     list.scrollTo({ left: Math.max(0, left), behavior: reducedMotion() ? "auto" : "smooth" });
   }, [active]);
 
-  // Zlatna crta ispod aktivne kategorije klizi na nju (CSS: .jl-chips::before, položaj preko --jl-ink-x / --jl-ink-w).
+  // Crta ispod aktivne kategorije klizi na nju (CSS: .jl-chips::before, položaj preko --jl-ink-x / --jl-ink-w).
   // Bez JavaScripta (ili bez ovoga) ostaje obična crta ispod aktivne poveznice. Prvi put se postavlja bez prijelaza.
   useEffect(() => {
     const list = listRef.current;

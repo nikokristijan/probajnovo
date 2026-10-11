@@ -6,7 +6,7 @@
 
 import { escapeHtml } from "@/lib/recenzije/utils";
 import { menuNoun, type MenuKind } from "@/lib/recenzije/menu-noun";
-import { COLORS, FONT_MONO, FONT_SANS, ellipsize, textWidth } from "./poster-layout";
+import { COLORS, FONT_MONO, FONT_SANS, NFC_CAPTION, ellipsize, nfcGlyph, nfcGlyphWidth, textWidth } from "./poster-layout";
 
 export const SHEET_COLS = 3;
 export const SHEET_ROWS = 4;
@@ -48,7 +48,20 @@ export function sheetPageCount(tables: number): number {
 }
 
 /** Jedna SVG stranica za svaki blok od 12 stolova. `inline`: za ugradnju u stranicu (kao poster-svg). */
-export function buildTableSheetPages({ orgName, tables, inline = false, menuKind }: { orgName: string; tables: TableQr[]; inline?: boolean; menuKind?: MenuKind }): string[] {
+export function buildTableSheetPages({
+  orgName,
+  tables,
+  inline = false,
+  menuKind,
+  nfc = false,
+}: {
+  orgName: string;
+  tables: TableQr[];
+  inline?: boolean;
+  menuKind?: MenuKind;
+  /** Kartica kaže "Prislonite mobitel ili skenirajte kod" i pokazuje znak NFC (uz NFC pločicu na stalku). */
+  nfc?: boolean;
+}): string[] {
   const cellW = (PAGE_W - MARGIN * 2) / SHEET_COLS;
   const cellH = (PAGE_H - MARGIN * 2) / SHEET_ROWS;
   const sans = inline ? INLINE_SANS : FONT_SANS;
@@ -90,11 +103,26 @@ export function buildTableSheetPages({ orgName, tables, inline = false, menuKind
       );
       // Natpis stola.
       parts.push(
-        `<text x="${n(cx)}" y="${n(by + QR_BOX + 8.8)}" text-anchor="middle" font-size="8.5" font-weight="700" letter-spacing="-0.1" fill="${COLORS.ink}">Stol ${escapeHtml(label)}</text>`
+        `<text x="${n(cx)}" y="${n(by + QR_BOX + (nfc ? 7.6 : 8.8))}" text-anchor="middle" font-size="8.5" font-weight="700" letter-spacing="-0.1" fill="${COLORS.ink}">Stol ${escapeHtml(label)}</text>`
       );
-      parts.push(
-        `<text x="${n(cx)}" y="${n(by + QR_BOX + 13.6)}" text-anchor="middle" font-size="2.7" fill="${COLORS.muted}" ${monoAttr}>skenirajte za ${menuNoun(menuKind).acc}</text>`
-      );
+      if (nfc) {
+        // Znak NFC lijevo od dva retka natpisa; skupina je centrirana na kartici.
+        const glyphH = 6;
+        const textW = Math.max(...NFC_CAPTION.map((c) => c.length)) * 2.7 * 0.6;
+        const gap = 2;
+        const left = cx - (nfcGlyphWidth(glyphH) + gap + textW) / 2;
+        const top = by + QR_BOX + 9.2;
+        parts.push(nfcGlyph(left, top, glyphH, COLORS.blue));
+        NFC_CAPTION.forEach((line, li) => {
+          parts.push(
+            `<text x="${n(left + nfcGlyphWidth(glyphH) + gap)}" y="${n(top + 2.4 + li * 3.2)}" font-size="2.7" fill="${COLORS.muted}" ${monoAttr}>${escapeHtml(line)}</text>`
+          );
+        });
+      } else {
+        parts.push(
+          `<text x="${n(cx)}" y="${n(by + QR_BOX + 13.6)}" text-anchor="middle" font-size="2.7" fill="${COLORS.muted}" ${monoAttr}>skenirajte za ${menuNoun(menuKind).acc}</text>`
+        );
+      }
     });
 
     const first = chunk[0]?.label ?? "";

@@ -88,7 +88,7 @@ const FAQ = [
   },
   {
     q: "Imam kafić ili restoran. Kako to radi s jelovnikom?",
-    a: "Jelovnik izrađujemo i vodimo na našoj stranici, a vi QR kod stavite na stolove. Gost skenira kod i otvara jelovnik. Ako upiše broj mobitela uz privolu, otprilike sat i pol do dva sata kasnije dobije poruku s molbom za Google recenziju; noću (22:00 do 9:00) ne šaljemo, pa tada poruka stiže ujutro. Stranicu možete nazvati „jelovnik” ili „meni”. Standardno gost pristaje samo na tu jednu poruku i broj koristimo samo za nju. Ako sami uključite obavijesti, gost vidi drugi tekst privole i pristaje i na povremene obavijesti vašeg lokala o novostima, događanjima i ponudama; tekst privole to jasno navodi, a vi odgovarate za sadržaj i učestalost obavijesti. Broj čuvamo najviše 12 mjeseci, a odjava je odgovorom STOP ili poveznicom u poruci. Gost jelovnik uvijek može pogledati i bez unosa broja (sitna poveznica ispod polja); tada ništa ne spremamo ni ne šaljemo.",
+    a: "Jelovnik izrađujemo i vodimo na našoj stranici, a vi QR kod i NFC pločicu stavite na stolove. Gost prisloni mobitel na pločicu ili skenira kod i otvara jelovnik. Ako upiše broj mobitela uz privolu, otprilike sat i pol do dva sata kasnije dobije poruku s molbom za Google recenziju; noću (22:00 do 9:00) ne šaljemo, pa tada poruka stiže ujutro. Stranicu možete nazvati „jelovnik” ili „meni”. Standardno gost pristaje samo na tu jednu poruku i broj koristimo samo za nju. Ako sami uključite obavijesti, gost vidi drugi tekst privole i pristaje i na povremene obavijesti vašeg lokala o novostima, događanjima i ponudama; tekst privole to jasno navodi, a vi odgovarate za sadržaj i učestalost obavijesti. Broj čuvamo najviše 12 mjeseci, a odjava je odgovorom STOP ili poveznicom u poruci. Gost jelovnik uvijek može pogledati i bez unosa broja (sitna poveznica ispod polja); tada ništa ne spremamo ni ne šaljemo.",
   },
   { q: "Mogu li otkazati?", a: "Da, bilo kad. Plaća se mjesečno, bez ugovorne obveze." },
 ];
@@ -109,15 +109,15 @@ function planPoints(p: { smsMonthlyLimit: number; locationLimit: number }) {
 const VENUE_INDUSTRY = "Kafići i restorani";
 const INDUSTRIES = ["Klime i grijanje", "Vodoinstalateri", "Električari", "Stomatolozi", "Frizeri i saloni", "Autoservisi", "Čišćenje", VENUE_INDUSTRY, "Apartmani"];
 
-/** Ugostiteljstvo: jelovnik na našoj stranici + QR kod na stolovima. Samo ono što stvarno radimo; nikakvih obećanja o broju recenzija. */
+/** Ugostiteljstvo: jelovnik na našoj stranici + QR kod i NFC pločica na stolovima. Samo ono što stvarno radimo; nikakvih obećanja o broju recenzija. */
 const VENUE_STEPS = [
   {
     title: "Jelovnik izrađujemo mi",
     text: "Na našoj stranici unesemo kategorije, jela i cijene (po želji i engleski tekst) ili povežemo jelovnik koji već imate. Točnost cijena i alergena potvrđujete vi.",
   },
   {
-    title: "QR kod na stolove",
-    text: "Dobivate QR kodove spremne za ispis, po želji s brojem stola. Ispisujete ih i postavljate vi.",
+    title: "QR kod i NFC pločica na stolove",
+    text: "Dobivate QR kod i NFC pločicu za stolove, po želji s brojem stola. Gost prisloni mobitel na pločicu ili skenira kod, a otvara se isti jelovnik. NFC čita većina novijih mobitela, a za ostale je tu QR kod.",
   },
   {
     title: "Gost otvori jelovnik, po želji uz broj",
@@ -361,13 +361,13 @@ export default async function RecenzijeLanding({ searchParams }: { searchParams:
           <h2 id="kafici-naslov" className="label flex items-center gap-2 text-muted">
             <span className="size-1.5 bg-orange" /> Kafići i restorani
           </h2>
-          <p className="mt-4 max-w-2xl text-2xl font-bold leading-tight sm:text-3xl">Jelovnik na QR kodu koji ujedno skuplja recenzije.</p>
+          <p className="mt-4 max-w-2xl text-2xl font-bold leading-tight sm:text-3xl">Jelovnik na NFC pločici i QR kodu koji ujedno skuplja recenzije.</p>
           <p className="mt-4 max-w-2xl text-[15px] leading-relaxed text-muted">
-            Za ugostiteljske lokale imamo jednu mogućnost više: digitalni jelovnik koji izrađujemo i hostamo na našoj stranici. Vi stavite QR kod na stolove, a gost nakon posjeta
+            Za ugostiteljske lokale imamo jednu mogućnost više: digitalni jelovnik koji izrađujemo i hostamo na našoj stranici. Vi stavite QR kod i NFC pločicu na stolove, a gost nakon posjeta
             dobije poruku s molbom za Google recenziju.
           </p>
           <p className="mt-3 max-w-2xl border-l-[3px] border-orange bg-orange-soft p-4 text-[15px] leading-relaxed">
-            <strong>Samo jelovnik ili jelovnik s recenzijama?</strong> Za kafiće i restorane imamo i posebnu ponudu s paketima Jelovnik, Jelovnik + Recenzije i Sve uključeno, uključujući tiskane stalke i
+            <strong>Samo jelovnik ili jelovnik s recenzijama?</strong> Za kafiće i restorane imamo i posebnu ponudu s paketima Jelovnik, Jelovnik + Recenzije i Sve uključeno, uključujući tiskane stalke s QR kodom, NFC pločice i
             unos jelovnika.{" "}
             <Link href="/digitalni-jelovnik" className="font-bold underline underline-offset-4">
               Pogledajte digitalni jelovnik

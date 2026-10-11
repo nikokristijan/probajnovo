@@ -4,7 +4,7 @@ import { ArrowRight, Check, Phone } from "lucide-react";
 import NovoShell from "@/components/novo/NovoShell";
 import { Button } from "@/components/recenzije/ui/button";
 import { DigitalniJelovnikInquiryForm } from "@/components/digitalni-jelovnik/inquiry-form";
-import { GatePhone, MenuPhone, QrGlyph } from "@/components/digitalni-jelovnik/phones";
+import { GatePhone, MenuPhone, MiniPlate, QrGlyph, TableStand } from "@/components/digitalni-jelovnik/phones";
 import { getAgencyContact } from "@/lib/novoHomeData";
 import { telHref, whatsappUrl } from "@/lib/phone";
 import {
@@ -13,12 +13,15 @@ import {
   FULL_PLAN_KEY,
   HOSPITALITY_ADDONS,
   HOSPITALITY_PLANS,
+  HOSPITALITY_SETUP,
+  KIT_NOTE,
   SETUP_FEE_EUR,
   annualPriceEur,
   bundleSavingEur,
   everythingSeparatelyEur,
   findHospitalityPlan,
   formatEur,
+  piecesLabel,
 } from "@/lib/hospitality-plans";
 
 export const dynamic = "force-dynamic";
@@ -29,7 +32,7 @@ const FULL_PRICE = HOSPITALITY_PLANS.find((p) => p.key === FULL_PLAN_KEY)?.price
 const CHEAPEST = Math.min(...HOSPITALITY_PLANS.map((p) => p.priceMonthlyEur));
 
 const TITLE = "Digitalni jelovnik za kafiće i restorane – NOVO";
-const DESCRIPTION = `QR jelovnik za kafiće i restorane. Mi unesemo jelovnik, tiskamo stalke i mijenjamo cijene na vaš poziv, a gost po želji dobije molbu za Google recenziju. Od ${formatEur(CHEAPEST)} mjesečno, bez PDV-a.`;
+const DESCRIPTION = `Digitalni jelovnik za kafiće i restorane: gost prisloni mobitel na NFC pločicu ili skenira QR kod, bez aplikacije. Mi unesemo jelovnik, isporučimo stalke s QR kodom i NFC pločice te mijenjamo cijene na vaš poziv. Od ${formatEur(CHEAPEST)} mjesečno, bez PDV-a.`;
 
 export const metadata: Metadata = {
   title: { absolute: TITLE },
@@ -49,8 +52,8 @@ export const metadata: Metadata = {
 
 const GUEST_STEPS = [
   {
-    title: "Gost skenira QR kod",
-    text: "Mobitelom skenira kod na stolu ili na vratima. Ne treba mu aplikacija, račun ni vaš Wi-Fi.",
+    title: "Gost prisloni mobitel ili skenira QR kod",
+    text: "Mobitel prisloni na NFC pločicu na stolu ili skenira QR kod na stalku. Oboje otvara istu stranicu, a gostu ne treba aplikacija, račun ni vaš Wi-Fi. NFC čita većina novijih mobitela (iPhone i Android); na starijima gost skenira QR kod, koji je na svakom stalku.",
   },
   {
     title: "Otvara se jelovnik",
@@ -68,8 +71,8 @@ const FEATURES = [
     text: "Vaš jelovnik živi na probajnovo.com, čitak na svakom mobitelu. Ne trebate vlastitu web stranicu ni domenu.",
   },
   {
-    title: "Tiskani stalci i naljepnica",
-    text: "Dobivate tiskane stolne stalke s QR kodom (jedan komplet) i naljepnicu za vrata. Stižu gotovi, vi ih samo postavite. NFC pločicu možemo dodati po dogovoru.",
+    title: "Stalci s QR kodom i NFC pločica",
+    text: "Dobivate tiskane stolne stalke s QR kodom i NFC pločice, te naljepnicu za vrata. Stižu gotovi, s već upisanom adresom jelovnika, vi ih samo postavite. Pločica i QR kod otvaraju isti jelovnik, po želji s brojem stola.",
   },
   {
     title: "Izmjene cijena na poziv",
@@ -103,8 +106,8 @@ const WE_DO = [
     text: "SMS, WhatsApp ili poziv, npr. „od sutra kava 1,80”. Mi to promijenimo.",
   },
   {
-    title: "Mi postavimo i isprintamo",
-    text: "Stolni stalci i naljepnica za vrata stižu isprintani. Vi ih samo stavite na stolove i vrata.",
+    title: "Mi pripremimo i isprintamo",
+    text: "Stolni stalci s QR kodom, NFC pločice i naljepnica za vrata stižu gotovi. Vi ih samo stavite na stolove i vrata.",
   },
   {
     title: "Podrška na hrvatskom",
@@ -146,7 +149,19 @@ const FAQ = [
   },
   {
     q: "Što ako nemam internet na stolu?",
-    a: "Gostu ne treba vaš Wi-Fi, dovoljan je njegov mobilni internet. Ako negdje u lokalu nema signala, preporučujemo da uz QR kod zadržite i papirnati jelovnik kao rezervu.",
+    a: "Gostu ne treba vaš Wi-Fi, dovoljan je njegov mobilni internet. Ako negdje u lokalu nema signala, preporučujemo da uz stalak zadržite i papirnati jelovnik kao rezervu.",
+  },
+  {
+    q: "Što je NFC pločica i treba li gostu aplikacija?",
+    a: "NFC pločica je mala pločica na stalku u kojoj je upisana adresa vašeg jelovnika. Gost samo prisloni mobitel na nju, na nekoliko centimetara, i jelovnik se otvara u pregledniku. Aplikacija nije potrebna, a pločica ne treba bateriju ni internet. Radi na većini novijih mobitela (iPhone i Android); na nekim Androidima NFC mora biti uključen u postavkama. Pločica samo otvara adresu jelovnika i ništa ne bilježi o gostu.",
+  },
+  {
+    q: "Koliko stalaka i pločica dobivam i što ako trebam više?",
+    a: `Brojimo komade: 1 komad je jedan stolni stalak s QR kodom i jedna NFC pločica. Jednokratno postavljanje (${formatEur(SETUP_FEE_EUR)} bez PDV-a) uključuje do ${piecesLabel(HOSPITALITY_SETUP.includedPieces)}, uz unos jelovnika s fotografije, ispis i podešavanje. Svaki dodatni komad je ${formatEur(HOSPITALITY_SETUP.extraPieceEur)}. Uz godišnju uplatu je postavljanje besplatno za isti broj komada, a svaki dodatni komad je ${formatEur(HOSPITALITY_SETUP.extraPieceAnnualEur)}. Brojimo komade, a ne stolove, jer veći stol može trebati komad za više gostiju. Dostava izvan Slavonskog Broda i okolice: poštarina ${formatEur(HOSPITALITY_SETUP.shippingEur)}.`,
+  },
+  {
+    q: "Što ako mobitel ne čita NFC?",
+    a: "Zato je na svakom stalku i QR kod. Gost ga skenira kamerom mobitela i otvara se isti jelovnik. Stariji mobiteli, neki jeftiniji modeli i mobiteli s isključenim NFC-om pločicu ne čitaju, a QR kod radi na svakom mobitelu s kamerom. Pločica je dodatna udobnost, ne zamjena za QR kod.",
   },
   {
     q: "Moraju li gosti ostaviti broj i što ako ne žele poruke?",
@@ -170,7 +185,7 @@ const FAQ = [
   },
   {
     q: "Mogu li koristiti vlastiti jelovnik ili PDF?",
-    a: "Da. Ako već imate jelovnik kao PDF ili stranicu, QR kod i ulaz ostaju isti, a gost jednim dodirom otvara vaš jelovnik. Preporučujemo ipak naš unos: bolje se čita na mobitelu, a cijene mijenjamo bez ponovnog slanja datoteke.",
+    a: "Da. Ako već imate jelovnik kao PDF ili stranicu, QR kod, NFC pločica i ulaz ostaju isti, a gost jednim dodirom otvara vaš jelovnik. Preporučujemo ipak naš unos: bolje se čita na mobitelu, a cijene mijenjamo bez ponovnog slanja datoteke.",
   },
   {
     q: "Imam goste iz inozemstva. Je li jelovnik na više jezika?",
@@ -202,24 +217,35 @@ export default async function DigitalniJelovnikPage({ searchParams }: { searchPa
       "@context": "https://schema.org",
       "@type": "Service",
       name: "Digitalni jelovnik za kafiće i restorane",
-      serviceType: "Digitalni jelovnik s QR kodom",
+      serviceType: "Digitalni jelovnik s NFC pločicom i QR kodom",
       description:
-        "NOVO za kafić ili restoran izrađuje digitalni jelovnik na QR kodu, mijenja cijene na zahtjev, isporučuje tiskane stolne stalke i naljepnicu za vrata, a po želji gostu uz privolu šalje molbu za Google recenziju.",
+        "NOVO za kafić ili restoran izrađuje digitalni jelovnik koji gost otvara prislanjanjem mobitela na NFC pločicu ili skeniranjem QR koda, mijenja cijene na zahtjev, isporučuje tiskane stolne stalke s QR kodom, NFC pločice i naljepnicu za vrata, a po želji gostu uz privolu šalje molbu za Google recenziju.",
       url: PAGE_URL,
       provider: { "@type": "Organization", name: "NOVO", url: BASE_URL },
       areaServed: { "@type": "Country", name: "Hrvatska" },
-      offers: HOSPITALITY_PLANS.map((p) => {
-        const price = p.priceMonthlyEur.toFixed(2);
-        return {
+      offers: [
+        ...HOSPITALITY_PLANS.map((p) => {
+          const price = p.priceMonthlyEur.toFixed(2);
+          return {
+            "@type": "Offer",
+            name: p.name,
+            description: p.summary,
+            price,
+            priceCurrency: "EUR",
+            url: `${PAGE_URL}?paket=${p.key}`,
+            priceSpecification: { "@type": "UnitPriceSpecification", price, priceCurrency: "EUR", unitCode: "MON", valueAddedTaxIncluded: false },
+          };
+        }),
+        {
           "@type": "Offer",
-          name: p.name,
-          description: p.summary,
-          price,
+          name: "Jednokratno postavljanje",
+          description: `Do ${piecesLabel(HOSPITALITY_SETUP.includedPieces)} (stolni stalak s QR kodom i NFC pločica), unos jelovnika s fotografije, ispis i podešavanje. Dodatni komad ${HOSPITALITY_SETUP.extraPieceEur} EUR, uz godišnju uplatu ${HOSPITALITY_SETUP.extraPieceAnnualEur} EUR. Postavljanje je besplatno uz godišnju uplatu.`,
+          price: SETUP_FEE_EUR.toFixed(2),
           priceCurrency: "EUR",
-          url: `${PAGE_URL}?paket=${p.key}`,
-          priceSpecification: { "@type": "UnitPriceSpecification", price, priceCurrency: "EUR", unitCode: "MON", valueAddedTaxIncluded: false },
-        };
-      }),
+          url: `${PAGE_URL}#cijene`,
+          priceSpecification: { "@type": "PriceSpecification", price: SETUP_FEE_EUR.toFixed(2), priceCurrency: "EUR", valueAddedTaxIncluded: false },
+        },
+      ],
     },
     {
       "@context": "https://schema.org",
@@ -256,7 +282,7 @@ export default async function DigitalniJelovnikPage({ searchParams }: { searchPa
             </p>
             <h1 className="mt-5 text-[40px] font-bold leading-[1.02] tracking-[-0.03em] sm:text-[58px]">Digitalni jelovnik za kafiće i restorane</h1>
             <p className="mt-6 max-w-xl text-[20px] leading-relaxed text-ink-soft">
-              Gost skenira QR kod na stolu i na mobitelu otvara vaš jelovnik. Mi ga unesemo, isprintamo stalke za stolove i mijenjamo cijene kad nam javite.{" "}
+              Gost prisloni mobitel na pločicu na stolu ili skenira QR kod i otvara vaš jelovnik. Mi ga unesemo, isporučimo stalke s QR kodom i NFC pločice te mijenjamo cijene kad nam javite.{" "}
               <strong className="text-foreground">Vi ne radite ništa.</strong>
             </p>
             <p className="mt-7 text-3xl font-bold">
@@ -275,23 +301,27 @@ export default async function DigitalniJelovnikPage({ searchParams }: { searchPa
               )}
             </div>
             <ul className="mt-6 flex flex-wrap gap-x-5 gap-y-2 text-[16px] text-ink-soft">
-              {["Bez aplikacije i prijave", "Otkaz bilo kad", "Podrška na hrvatskom"].map((t) => (
+              {["NFC pločica i QR kod", "Bez aplikacije i prijave", "Otkaz bilo kad", "Podrška na hrvatskom"].map((t) => (
                 <li key={t} className="inline-flex items-center gap-2">
                   <Check className="size-4 text-orange" aria-hidden /> {t}
                 </li>
               ))}
             </ul>
+            <p className="mt-4 max-w-xl text-[16px] leading-relaxed text-muted">
+              NFC radi na većini novijih mobitela. Na svakom stalku je i QR kod, pa jelovnik otvori i gost sa starijim mobitelom.
+            </p>
           </div>
 
           <figure className="relative mx-auto w-full max-w-[340px] min-w-0 lg:mx-0 lg:justify-self-center">
             <MenuPhone />
             <div
-              className="absolute bottom-16 -left-[84px] hidden w-[84px] rotate-[-4deg] border border-foreground bg-white p-1.5 shadow-[4px_4px_0_0_rgb(0_0_0/0.9)] lg:block"
+              className="absolute bottom-44 -left-[44px] hidden w-[84px] rotate-[-4deg] border border-foreground bg-white p-1.5 shadow-[4px_4px_0_0_rgb(0_0_0/0.9)] lg:block"
               aria-hidden="true"
             >
               <QrGlyph className="block w-full" />
+              <MiniPlate />
             </div>
-            <figcaption className="mt-9 text-center text-[15px] leading-relaxed text-muted">
+            <figcaption className="mt-9 text-center text-[16px] leading-relaxed text-muted">
               Primjer kako jelovnik izgleda na mobitelu. Lokal i cijene su izmišljeni.
             </figcaption>
           </figure>
@@ -304,25 +334,33 @@ export default async function DigitalniJelovnikPage({ searchParams }: { searchPa
             Tri koraka za gosta, bez ikakve aplikacije
           </h2>
           <div className="mt-9 grid items-start gap-10 lg:grid-cols-[1.2fr_0.8fr]">
-            <ol className="min-w-0 border border-border">
-              {GUEST_STEPS.map((s, i) => (
-                <li key={s.title} className="flex gap-5 border-b border-border p-6 last:border-b-0">
-                  <span className="grid size-11 shrink-0 place-items-center bg-orange text-[20px] font-bold text-black" aria-hidden>
-                    {i + 1}
-                  </span>
-                  <div className="min-w-0">
-                    <h3 className="text-[22px] font-bold leading-snug">
-                      <span className="sr-only">Korak {i + 1}: </span>
-                      {s.title}
-                    </h3>
-                    <p className="mt-2 text-[17px] leading-relaxed text-ink-soft">{s.text}</p>
-                  </div>
-                </li>
-              ))}
-            </ol>
+            <div className="min-w-0">
+              <ol className="min-w-0 border border-border">
+                {GUEST_STEPS.map((s, i) => (
+                  <li key={s.title} className="flex gap-5 border-b border-border p-6 last:border-b-0">
+                    <span className="grid size-11 shrink-0 place-items-center bg-orange text-[20px] font-bold text-black" aria-hidden>
+                      {i + 1}
+                    </span>
+                    <div className="min-w-0">
+                      <h3 className="text-[22px] font-bold leading-snug">
+                        <span className="sr-only">Korak {i + 1}: </span>
+                        {s.title}
+                      </h3>
+                      <p className="mt-2 text-[17px] leading-relaxed text-ink-soft">{s.text}</p>
+                    </div>
+                  </li>
+                ))}
+              </ol>
+              <figure className="mt-6 min-w-0 border border-border bg-surface-2 px-4 py-6">
+                <TableStand />
+                <figcaption className="mt-3 text-center text-[16px] leading-relaxed text-muted">
+                  Na stalku su NFC pločica i QR kod. Gost bira što mu je lakše, a otvara se isti jelovnik.
+                </figcaption>
+              </figure>
+            </div>
             <figure className="mx-auto w-full max-w-[340px] min-w-0">
               <GatePhone />
-              <figcaption className="mt-5 text-center text-[15px] leading-relaxed text-muted">
+              <figcaption className="mt-5 text-center text-[16px] leading-relaxed text-muted">
                 Ulazni prozor u paketima s recenzijama: broj je moguć, ali jelovnik se otvara i bez njega.
               </figcaption>
             </figure>
@@ -333,7 +371,7 @@ export default async function DigitalniJelovnikPage({ searchParams }: { searchPa
         <section className="border-t border-border py-14" aria-labelledby="dobivate">
           <Eyebrow>Što dobivate</Eyebrow>
           <h2 id="dobivate" className={H2}>
-            Sve što lokalu treba za jelovnik na QR kodu
+            Sve što lokalu treba za jelovnik na NFC pločici i QR kodu
           </h2>
           <ul className="mt-9 grid gap-px border border-border bg-border sm:grid-cols-2 lg:grid-cols-3">
             {FEATURES.map((f) => (
@@ -343,6 +381,13 @@ export default async function DigitalniJelovnikPage({ searchParams }: { searchPa
               </li>
             ))}
           </ul>
+          <p className="mt-6 max-w-3xl text-[17px] leading-relaxed text-ink-soft">
+            NFC pločice izrađujemo i za druge namjene, na primjer za Wi-Fi u apartmanima.{" "}
+            <Link href="/proizvodi" className="inline-flex min-h-11 items-center font-bold text-foreground underline underline-offset-4">
+              Pogledajte NFC pločice u našoj ponudi
+            </Link>
+            .
+          </p>
         </section>
 
         {/* Mi radimo sve, vi ništa */}
@@ -389,7 +434,7 @@ export default async function DigitalniJelovnikPage({ searchParams }: { searchPa
               <p className="mt-4 break-words text-[17px] leading-relaxed">
                 Hvala sto ste svratili u [naziv lokala]! Ako vam je bilo lijepo, ostavite nam kratku Google recenziju: probajnovo.com/r/k3Fq9xLm2a Za odjavu napisite STOP.
               </p>
-              <figcaption className="mt-4 text-[15px] leading-relaxed text-muted">
+              <figcaption className="mt-4 text-[16px] leading-relaxed text-muted">
                 Samo primjer teksta. Ime gosta ne znamo, pa ga poruka ne spominje.
               </figcaption>
             </figure>
@@ -489,7 +534,15 @@ export default async function DigitalniJelovnikPage({ searchParams }: { searchPa
                 <span className="dj-a">
                   <strong className="tabular text-[26px]">Besplatno</strong> uz godišnju uplatu (inače {formatEur(SETUP_FEE_EUR)} bez PDV-a).{" "}
                 </span>
-                Uključuje tisak stalaka, naljepnicu za vrata i unos jelovnika s fotografije.
+                Uključuje do {piecesLabel(HOSPITALITY_SETUP.includedPieces)} (stolni stalci s QR kodom i NFC pločice s upisanom adresom jelovnika), unos jelovnika s
+                fotografije, ispis i podešavanje, te naljepnicu za vrata.
+              </p>
+              <p className="mt-3 text-[17px] leading-relaxed text-ink-soft">
+                {KIT_NOTE} <span className="dj-m">Svaki dodatni komad: {formatEur(HOSPITALITY_SETUP.extraPieceEur)}.</span>
+                <span className="dj-a">Svaki dodatni komad uz godišnju uplatu: {formatEur(HOSPITALITY_SETUP.extraPieceAnnualEur)}.</span>
+              </p>
+              <p className="mt-3 text-[17px] leading-relaxed text-ink-soft">
+                Poštarina {formatEur(HOSPITALITY_SETUP.shippingEur)} za dostavu izvan Slavonskog Broda i okolice. Iznosi su bez PDV-a.
               </p>
             </div>
 

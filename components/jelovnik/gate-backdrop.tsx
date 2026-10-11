@@ -39,20 +39,16 @@ function RealPreview({ menu, categories, all }: { menu: PublicMenuInfo; categori
         </div>
       </div>
       <div className="jl-wrap jl-secs">
-        {categories.map((c) => (
+        {categories.map((c, i) => (
           <div key={c.id} className="jl-sec">
+            <div className="jl-sec-n">{String(i + 1).padStart(2, "0")}</div>
             <div className="jl-sec-h">{c.name}</div>
             <ul className="jl-items">
               {c.items.slice(0, BACKDROP_ITEMS).map((it) => (
                 <li key={it.id} className="jl-item">
                   <div className="jl-item-top">
                     <div className="jl-item-name">{it.name}</div>
-                    {it.priceCents > 0 && (
-                      <>
-                        <span className="jl-leader" />
-                        <span className="jl-price">{formatPriceCents(it.priceCents)}</span>
-                      </>
-                    )}
+                    {it.priceCents > 0 && <span className="jl-price">{formatPriceCents(it.priceCents)}</span>}
                   </div>
                   {it.description && <p className="jl-desc">{it.description}</p>}
                 </li>

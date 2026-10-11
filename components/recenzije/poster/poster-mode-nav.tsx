@@ -5,7 +5,7 @@ export type PosterMode = "recenzija" | "jelovnik";
 
 const MODES: { id: PosterMode; label: string; hint: string; href: string }[] = [
   { id: "recenzija", label: "Google recenzija", hint: "QR vodi na recenziju", href: "/recenzije/plakat" },
-  { id: "jelovnik", label: "Jelovnik", hint: "QR vodi na jelovnik", href: "/recenzije/plakat?nacin=jelovnik" },
+  { id: "jelovnik", label: "Jelovnik", hint: "QR i NFC vode na jelovnik", href: "/recenzije/plakat?nacin=jelovnik" },
 ];
 
 /** Prekidač načina na stranici QR plakata (samo za ugostiteljstvo). Obične poveznice: stranica se gradi na poslužitelju. */

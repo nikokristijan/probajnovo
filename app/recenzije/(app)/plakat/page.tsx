@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { CircleAlert, Plug } from "lucide-react";
-import { MenuPosterStudio } from "@/components/recenzije/poster/menu-poster-studio";
+import { MenuPosterStudio, type MenuPosterMode } from "@/components/recenzije/poster/menu-poster-studio";
 import { PosterModeNav } from "@/components/recenzije/poster/poster-mode-nav";
 import { PosterStudio } from "@/components/recenzije/poster/poster-studio";
 import { Button } from "@/components/recenzije/ui/button";
@@ -17,7 +17,7 @@ export default async function PosterPage({ searchParams }: { searchParams: Promi
   const sp = await searchParams;
   const ctx = await requireOrg();
   // Način "Jelovnik" postoji samo za ugostiteljske tvrtke; za ostale stranica ostaje kakva je bila.
-  if (ctx.org.isVenue && sp.nacin === "jelovnik") return <MenuPoster />;
+  if (ctx.org.isVenue && sp.nacin === "jelovnik") return <MenuPoster initialMode={sp.prikaz === "nfc" ? "nfc" : sp.prikaz === "stolovi" ? "sheet" : "single"} />;
   const raw = ctx.org.googleReviewUrl?.trim() || null;
   const reviewUrl = parseReviewUrl(raw);
 
@@ -89,8 +89,11 @@ export default async function PosterPage({ searchParams }: { searchParams: Promi
   );
 }
 
-/** QR plakat za digitalni jelovnik ugostiteljske tvrtke: kod vodi na /jelovnik/<slug>, adresa se uzima iz baze za aktivnu tvrtku. */
-async function MenuPoster() {
+/**
+ * QR plakat i NFC pločice za digitalni jelovnik ugostiteljske tvrtke: i kod i pločica vode na /jelovnik/<slug>,
+ * adresa se uzima iz baze za aktivnu tvrtku.
+ */
+async function MenuPoster({ initialMode }: { initialMode: MenuPosterMode }) {
   const ctx = await requireOrg();
   const view = await getVenueMenuForOperator(ctx.org.id);
   let qr: QrMatrix | null = null;
@@ -109,10 +112,10 @@ async function MenuPoster() {
       <PosterModeNav active="jelovnik" />
       <PageHeader
         kicker="QR plakat"
-        title="QR kod za jelovnik"
-        description="Ispišite plakat, stolnu karticu ili ploču sa svim stolovima. Gost skenira kod mobitelom i otvara jelovnik."
+        title="QR kod i NFC pločica za jelovnik"
+        description="Ispišite plakat, stolnu karticu ili ploču sa svim stolovima, a za NFC pločice kopirajte adrese za upis. Gost prisloni mobitel na pločicu ili skenira kod, i otvara isti jelovnik."
         actions={
-          <Button variant="secondary" asChild>
+          <Button variant="secondary" asChild className="h-11">
             <Link href="/recenzije/jelovnik">Uredi jelovnik</Link>
           </Button>
         }
@@ -133,7 +136,7 @@ async function MenuPoster() {
               Gost koji skenira kod vidi stranicu s greškom. Uključite jelovnik prije ispisa.
             </Alert>
           )}
-          <MenuPosterStudio orgName={ctx.org.name} baseUrl={view.publicUrl} initialQr={qr} allowSkip={view.menu.allowSkip || !view.menu.captureEnabled} captureEnabled={view.menu.captureEnabled} menuKind={view.menu.menuKind === "meni" ? "meni" : "jelovnik"} />
+          <MenuPosterStudio orgName={ctx.org.name} baseUrl={view.publicUrl} initialQr={qr} allowSkip={view.menu.allowSkip || !view.menu.captureEnabled} captureEnabled={view.menu.captureEnabled} initialMode={initialMode} menuKind={view.menu.menuKind === "meni" ? "meni" : "jelovnik"} />
         </div>
       ) : (
         <Card>
