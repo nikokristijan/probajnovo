@@ -47,7 +47,13 @@ function friendlyAiError(e: unknown): Error {
     }
     if (e.status === 429) return new AiRequestError("AI je trenutno preopterećen ili je potrošen limit. Pokušajte ponovno za minutu.");
     if (e.status !== undefined && e.status >= 500) return new AiRequestError("AI servis trenutno nije dostupan. Pokušajte ponovno kasnije.");
-    return new AiRequestError(`AI zahtjev nije uspio${e.status ? ` (šifra ${e.status})` : ""}. Pokušajte ponovno.`);
+    // Poruku Anthropica (bez ključa i bez zaglavlja) prikazujemo skraćenu: sučelje vide samo prijavljeni operateri/admin, a bez nje se uzrok greške 400 ne vidi.
+    const detail = e.message
+      .replace(/^\d{3}\s*/, "")
+      .replace(/sk-ant-[A-Za-z0-9_-]+/g, "[ključ]")
+      .replace(/\s+/g, " ")
+      .slice(0, 220);
+    return new AiRequestError(`AI zahtjev nije uspio${e.status ? ` (šifra ${e.status})` : ""}${detail ? `: ${detail}` : ""}`);
   }
   console.error("[ai] neočekivana greška", e instanceof Error ? e.message.slice(0, 300) : e);
   return new AiRequestError("AI zahtjev nije uspio. Pokušajte ponovno.");
