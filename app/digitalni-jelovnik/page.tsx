@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { pageMetadata } from "@/lib/seo";
 import Link from "next/link";
 import { ArrowRight, Check, Phone } from "lucide-react";
 import NovoShell from "@/components/novo/NovoShell";
@@ -35,23 +36,16 @@ const FULL_PRICE = HOSPITALITY_PLANS.find((p) => p.key === FULL_PLAN_KEY)?.price
 const CHEAPEST = Math.min(...HOSPITALITY_PLANS.map((p) => p.priceMonthlyEur));
 
 const TITLE = "Digitalni jelovnik za kafiće i restorane – NOVO";
-const DESCRIPTION = `Digitalni jelovnik za kafiće i restorane: gost prisloni mobitel na NFC pločicu ili skenira QR kod, bez aplikacije. Mi unesemo jelovnik, isporučimo stalke s QR kodom i NFC pločice te mijenjamo cijene na vaš poziv. Od ${formatEur(CHEAPEST)} mjesečno, bez PDV-a.`;
 
-export const metadata: Metadata = {
-  title: { absolute: TITLE },
-  description: DESCRIPTION,
-  alternates: { canonical: PAGE_URL },
-  openGraph: {
-    title: TITLE,
-    description: DESCRIPTION,
-    url: PAGE_URL,
-    siteName: "NOVO",
-    locale: "hr_HR",
-    type: "website",
-    images: [{ url: "/novo-logo.png", width: 1474, height: 497 }],
-  },
-  twitter: { card: "summary_large_image", title: TITLE, description: DESCRIPTION, images: ["/novo-logo.png"] },
-};
+/** Opis za Google: do ~155 znakova, koliko se prikaže u rezultatima. */
+const META_DESCRIPTION = `Digitalni jelovnik za kafiće i restorane: gost prisloni mobitel na NFC pločicu ili skenira QR kod, bez aplikacije. Od ${formatEur(CHEAPEST)} mjesečno.`;
+
+export const metadata: Metadata = pageMetadata({
+  title: TITLE,
+  absoluteTitle: true,
+  description: META_DESCRIPTION,
+  path: "/digitalni-jelovnik",
+});
 
 const GUEST_STEPS = [
   {
