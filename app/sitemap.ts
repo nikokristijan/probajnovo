@@ -32,12 +32,18 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     { url: `${BASE_URL}/kolacici`, changeFrequency: "yearly", priority: 0.3 },
   ];
 
-  const propertyEntries: MetadataRoute.Sitemap = properties.map((p) => ({
-    url: `${BASE_URL}/${p.slug}`,
-    lastModified: p.updatedAt,
-    changeFrequency: "weekly",
-    priority: 0.8,
-  }));
+  // Vikendice imaju i englesku inačicu (/en/<slug>, vidi app/en/[slug]). Obje
+  // adrese idu u sitemap i međusobno se najavljuju (hreflang), da ih Google
+  // poveže kao istu stranicu na dva jezika umjesto da ih smatra duplikatima.
+  const propertyEntries: MetadataRoute.Sitemap = properties.flatMap((p): MetadataRoute.Sitemap => {
+    const hr = `${BASE_URL}/${p.slug}`;
+    const en = `${BASE_URL}/en/${p.slug}`;
+    const languages = { hr, en, "x-default": hr };
+    return [
+      { url: hr, lastModified: p.updatedAt, changeFrequency: "weekly", priority: 0.8, alternates: { languages } },
+      { url: en, lastModified: p.updatedAt, changeFrequency: "weekly", priority: 0.6, alternates: { languages } },
+    ];
+  });
 
   const companyEntries: MetadataRoute.Sitemap = companies.map((c) => ({
     url: `${BASE_URL}/${c.slug}`,
