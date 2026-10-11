@@ -14,10 +14,13 @@ export default function GalleryLightbox({
   images,
   alt,
   categories,
+  fullWidth = false,
 }: {
   images: string[];
   alt: string;
   categories?: Record<string, string>;
+  /** Grand layout: svaka slika zauzima cijelu širinu stupca (ne mrežu od 2-3 slike u retku). */
+  fullWidth?: boolean;
 }) {
   const [open, setOpen] = useState<number | null>(null);
 
@@ -65,7 +68,7 @@ export default function GalleryLightbox({
           className="stay-gallery-img"
           width={800}
           height={600}
-          sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
+          sizes={fullWidth ? "100vw" : "(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"}
         />
       </button>
     );

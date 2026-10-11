@@ -2,6 +2,7 @@ import { useId } from "react";
 import Link from "next/link";
 import SystemTile from "@/components/novo/SystemTile";
 import type { RelatedOffer } from "@/lib/related-products";
+import { IMG_SIZES, responsiveImgSource } from "@/lib/blob-image";
 
 /**
  * Kartice povezanih ponuda ("Uz ovo ide i", "Možda vam treba i"). Naslov odjeljka piše stranica koja ga koristi,
@@ -32,7 +33,7 @@ export default function RelatedOffers({
                 {o.image ? (
                   // eslint-disable-next-line @next/next/no-img-element
                   <img
-                    src={o.image}
+                    {...responsiveImgSource(o.image, IMG_SIZES.relatedTile)}
                     alt=""
                     className="ro-img"
                     loading="lazy"

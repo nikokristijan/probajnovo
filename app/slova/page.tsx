@@ -78,6 +78,7 @@ export default function SlovaPage() {
               className="novo-product-logo-img"
               width={1474}
               height={497}
+              sizes="80px"
               priority
             />
           </Link>

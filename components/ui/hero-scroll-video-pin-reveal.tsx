@@ -4,6 +4,7 @@ import React, { useEffect, useRef } from "react";
 import gsap from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
 import { SplitText } from "gsap/SplitText";
+import { responsiveImgSource } from "@/lib/blob-image";
 
 /**
  * Adaptirano iz 21st.dev "hero-scroll-video-pin-reveal" community komponente
@@ -84,7 +85,13 @@ function VideoPlaceholder({ posterSrc }: { posterSrc?: string }) {
     >
       {posterSrc && (
         // eslint-disable-next-line @next/next/no-img-element -- poster iz baze (products.images), dinamički URL
-        <img src={posterSrc} alt="" className="absolute inset-0 w-full h-full object-cover opacity-40" />
+        <img
+          {...responsiveImgSource(posterSrc, "100vw")}
+          alt=""
+          className="absolute inset-0 w-full h-full object-cover opacity-40"
+          loading="lazy"
+          decoding="async"
+        />
       )}
       <div className="relative z-10 flex flex-col items-center gap-3 text-center px-6">
         <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-full bg-white/10 backdrop-blur-md border border-white/25 flex items-center justify-center">

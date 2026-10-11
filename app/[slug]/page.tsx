@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import "./stay.css";
 import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -460,6 +461,7 @@ export async function PropertyView({
                 fill
                 sizes="100vw"
                 priority
+                fetchPriority="high"
                 data-parallax
               />
             </div>
@@ -531,6 +533,7 @@ export async function PropertyView({
             sizes="100vw"
             style={{ objectFit: "cover" }}
             priority
+            fetchPriority="high"
           />
           {layout === "editorial" && (
             <div className="stay-spine" aria-hidden="true">
@@ -633,7 +636,12 @@ export async function PropertyView({
           <h2 className="stay-eyebrow">
             <span className="stay-eyebrow-no">{eyebrowNo()}</span>{L("Galerija", "Gallery")}
           </h2>
-          <GalleryLightbox images={gallery} alt={property.name} categories={property.imageCategories} />
+          <GalleryLightbox
+            images={gallery}
+            alt={property.name}
+            categories={property.imageCategories}
+            fullWidth={layout === "grand"}
+          />
         </RevealSection>
       )}
 
@@ -979,7 +987,7 @@ function CompanyView({ company, agency }: { company: Company; agency: Agency | n
         <section className="stay-grand-intro">
           {effectiveBanner && (
             <div className="stay-grand-intro-media">
-              <Image src={effectiveBanner} alt="" fill sizes="100vw" priority data-parallax />
+              <Image src={effectiveBanner} alt="" fill sizes="100vw" priority fetchPriority="high" data-parallax />
             </div>
           )}
           <div className="stay-grand-intro-scrim" aria-hidden="true" />
@@ -1041,6 +1049,7 @@ function CompanyView({ company, agency }: { company: Company; agency: Agency | n
             sizes="100vw"
             style={{ objectFit: "cover" }}
             priority
+            fetchPriority="high"
           />
           {layout === "editorial" && (
             <div className="stay-spine" aria-hidden="true">
@@ -1125,7 +1134,12 @@ function CompanyView({ company, agency }: { company: Company; agency: Agency | n
           <h2 className="stay-eyebrow">
             <span className="stay-eyebrow-no">{eyebrowNo()}</span>Galerija
           </h2>
-          <GalleryLightbox images={gallery} alt={company.name} categories={company.imageCategories} />
+          <GalleryLightbox
+            images={gallery}
+            alt={company.name}
+            categories={company.imageCategories}
+            fullWidth={layout === "grand"}
+          />
         </RevealSection>
       )}
 

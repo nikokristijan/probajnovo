@@ -88,7 +88,7 @@ export default function NovoShell({
     <div className={variant === "detail" ? "novo-os novo-os--detail" : "novo-os"}>
       <div className="novo-os-topbar">
         <Link href="/" className="novo-os-brand" onClick={navClick("home")} aria-label="NOVO — natrag na početnu">
-          <Image src="/novo-logo.png" alt="NOVO" className="novo-os-logo-img" width={1474} height={497} priority />
+          <Image src="/novo-logo.png" alt="NOVO" className="novo-os-logo-img" width={1474} height={497} sizes="80px" priority />
         </Link>
         <span className="novo-os-coords mono muted" aria-hidden="true">
           {coords.x}(X), {coords.y}(Y)

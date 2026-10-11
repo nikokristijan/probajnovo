@@ -23,7 +23,7 @@ function Shell({ kicker, title, children }: { kicker: string; title: string; chi
   return (
     <div className="flex min-h-dvh flex-col bg-white text-black" style={{ fontFamily: "var(--font-space-grotesk), Arial, sans-serif" }}>
       <header className="flex h-16 items-center border-b border-[#e6e6e6] px-4 sm:px-6">
-        <Image src="/novo-logo.png" alt="NOVO" width={1474} height={497} className="h-[22px] w-auto" priority />
+        <Image src="/novo-logo.png" alt="NOVO" width={1474} height={497} sizes="80px" className="h-[22px] w-auto" priority />
       </header>
       <main className="mx-auto w-full max-w-[460px] flex-1 px-4 py-12 sm:px-0 sm:py-16">
         <p className="mb-3 flex items-center gap-2 text-[11px] uppercase tracking-[0.14em] text-[#6b6b6b]" style={mono}>
