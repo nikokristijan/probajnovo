@@ -1,11 +1,10 @@
 import type { Metadata } from "next";
+import { pageMetadata } from "@/lib/seo";
 import LegalPage from "@/components/LegalPage";
 
 export const metadata: Metadata = {
-  title: "Politika povrata",
-  description: "Pravila povrata i reklamacija za usluge i fizičke proizvode NOVO studija.",
+  ...pageMetadata({ title: "Politika povrata", description: "Pravila povrata i reklamacija za usluge i fizičke proizvode NOVO studija.", path: "/povrat" }),
   robots: { index: true, follow: true },
-  alternates: { canonical: "https://www.probajnovo.com/povrat" },
 };
 
 export default function RefundPolicyPage() {
