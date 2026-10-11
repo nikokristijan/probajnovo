@@ -3,6 +3,7 @@ import { Space_Grotesk, JetBrains_Mono, Zilla_Slab, Karla, Caveat, Inter, Fraunc
 import { Analytics } from "@vercel/analytics/next";
 import "./globals.css";
 import AutomationKick from "@/components/AutomationKick";
+import { DEFAULT_OG_IMAGE } from "@/lib/seo";
 
 const spaceGrotesk = Space_Grotesk({
   variable: "--font-space-grotesk",
@@ -15,29 +16,39 @@ subsets: ["latin"],
   weight: ["400", "500"],
 });
 const zillaSlab = Zilla_Slab({
+  // Ne preloadamo na svakoj stranici: koristi se samo u pojedinim izgledima (vikendice, /drop).
+  preload: false,
   variable: "--font-zilla-slab",
   subsets: ["latin"],
   weight: ["500", "600", "700"],
 });
 const karla = Karla({
+  // Ne preloadamo na svakoj stranici: koristi se samo u pojedinim izgledima (vikendice, /drop).
+  preload: false,
   variable: "--font-karla",
   subsets: ["latin"],
   weight: ["400", "500", "600", "700"],
 });
 /** Rukom pisani font — Classic pečat i potpisi ispod polaroida (stay layout). */
 const caveat = Caveat({
+  // Ne preloadamo na svakoj stranici: koristi se samo u pojedinim izgledima (vikendice, /drop).
+  preload: false,
   variable: "--font-caveat",
   subsets: ["latin"],
   weight: ["600", "700"],
 });
 /** Apple layout — bliže sistemskom San Francisco fontu nego Space Grotesk/Karla. */
 const inter = Inter({
+  // Ne preloadamo na svakoj stranici: koristi se samo u pojedinim izgledima (vikendice, /drop).
+  preload: false,
   variable: "--font-inter",
   subsets: ["latin"],
   weight: ["400", "500", "600", "700", "800"],
 });
 /** Grand layout — visoka, tanka serifna vitrina. */
 const fraunces = Fraunces({
+  // Ne preloadamo na svakoj stranici: koristi se samo u pojedinim izgledima (vikendice, /drop).
+  preload: false,
   variable: "--font-fraunces",
   subsets: ["latin"],
   weight: ["300", "400", "500", "600"],
@@ -46,46 +57,52 @@ const fraunces = Fraunces({
 /** Drop mikrostranica (/drop) — igriv, "bubble" naslovni font za izmišljeni
  * GenZ fizički-newsletter koncept (showcase primjer, ne pravi klijent). */
 const baloo2 = Baloo_2({
+  // Ne preloadamo na svakoj stranici: koristi se samo u pojedinim izgledima (vikendice, /drop).
+  preload: false,
   variable: "--font-baloo",
   subsets: ["latin"],
   weight: ["500", "600", "700", "800"],
 });
 /** Drop mikrostranica — zaobljeni, prijateljski font za tijelo teksta. */
 const nunito = Nunito({
+  // Ne preloadamo na svakoj stranici: koristi se samo u pojedinim izgledima (vikendice, /drop).
+  preload: false,
   variable: "--font-nunito",
   subsets: ["latin"],
   weight: ["400", "600", "700", "800"],
 });
 
 const SITE_URL = "https://www.probajnovo.com";
+const DEFAULT_TITLE = "NOVO — web stranice, brending i digitalni proizvodi | Slavonski Brod";
+const DEFAULT_DESCRIPTION =
+  "NOVO je kreativni studio iz Slavonskog Broda: web stranice, brend identitet, NFC pločice, digitalni jelovnik, Google recenzije i prostorna slova po mjeri.";
 
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
   title: {
-    default: "NOVO — kreativni studio iz Slavonskog Broda",
+    default: DEFAULT_TITLE,
     template: "%s — NOVO",
   },
-  description:
-    "NOVO je kreativni studio iz Slavonskog Broda — brend identitet, digitalni dizajn, web stranice za vikendice i firme, NFC pločice i prostorna slova po mjeri.",
+  description: DEFAULT_DESCRIPTION,
+  applicationName: "NOVO",
   icons: {
     icon: "/favicon-orange.png",
   },
+  formatDetection: { telephone: false, email: false, address: false },
   openGraph: {
-    title: "NOVO — kreativni studio iz Slavonskog Broda",
-    description:
-      "Brend identitet, digitalni dizajn, web stranice za vikendice i firme, NFC pločice i prostorna slova po mjeri.",
+    title: DEFAULT_TITLE,
+    description: DEFAULT_DESCRIPTION,
     url: SITE_URL,
     siteName: "NOVO",
     locale: "hr_HR",
     type: "website",
-    images: [{ url: "/novo-logo.png", width: 1474, height: 497 }],
+    images: [DEFAULT_OG_IMAGE],
   },
   twitter: {
     card: "summary_large_image",
-    title: "NOVO — kreativni studio iz Slavonskog Broda",
-    description:
-      "Brend identitet, digitalni dizajn, web stranice za vikendice i firme, NFC pločice i prostorna slova po mjeri.",
-    images: ["/novo-logo.png"],
+    title: DEFAULT_TITLE,
+    description: DEFAULT_DESCRIPTION,
+    images: [DEFAULT_OG_IMAGE.url],
   },
 };
 
@@ -100,8 +117,10 @@ export const metadata: Metadata = {
 const ORGANIZATION_JSON_LD = {
   "@context": "https://schema.org",
   "@type": "Organization",
+  "@id": `${SITE_URL}/#organization`,
   name: "NOVO",
   url: SITE_URL,
+  description: DEFAULT_DESCRIPTION,
   logo: `${SITE_URL}/novo-logo.png`,
   email: "hello@novo.studio",
   sameAs: ["https://instagram.com/novo.hr"],
@@ -110,6 +129,19 @@ const ORGANIZATION_JSON_LD = {
     addressLocality: "Slavonski Brod",
     addressCountry: "HR",
   },
+  areaServed: { "@type": "Country", name: "Hrvatska" },
+};
+
+/** WebSite JSON-LD — naziv stranice u Google rezultatima ("NOVO" umjesto domene). */
+const WEBSITE_JSON_LD = {
+  "@context": "https://schema.org",
+  "@type": "WebSite",
+  "@id": `${SITE_URL}/#website`,
+  name: "NOVO",
+  alternateName: "probajnovo.com",
+  url: SITE_URL,
+  inLanguage: "hr-HR",
+  publisher: { "@id": `${SITE_URL}/#organization` },
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
@@ -123,6 +155,10 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(ORGANIZATION_JSON_LD) }}
+      />
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(WEBSITE_JSON_LD) }}
       />
       {children}
       <Analytics />
