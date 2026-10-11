@@ -3,6 +3,7 @@ import type { StudyProject, ProductCard } from "@/components/NovoHome";
 import type { Product } from "@/lib/db/schema";
 import { saleInfo } from "@/lib/pricing";
 import { todayDateStringZagreb } from "@/lib/date";
+import { mergeSystemProducts } from "@/lib/system-products";
 
 export type AgencyContact = { contactEmail: string; instagramHandle: string; city: string };
 
@@ -102,6 +103,7 @@ export async function loadNovoHomeData() {
   return {
     ...contact,
     projects: [...propertyProjects, ...studyProjects],
-    products: productsData.map(toProductCard),
+    // Sistemske ponude iz koda (digitalni jelovnik) + objavljeni proizvodi iz baze, vidi lib/system-products.ts.
+    products: mergeSystemProducts(productsData.map(toProductCard)),
   };
 }

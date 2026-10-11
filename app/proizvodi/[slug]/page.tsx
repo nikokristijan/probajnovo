@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getProductBySlug, listProducts, recordPageView } from "@/lib/db/queries";
-import { getAgencyContact } from "@/lib/novoHomeData";
+import { getAgencyContact, toProductCard } from "@/lib/novoHomeData";
 import { todayDateStringZagreb } from "@/lib/date";
 import NovoShell from "@/components/novo/NovoShell";
 import ProductGalleryNovo from "@/components/novo/ProductGalleryNovo";
@@ -18,6 +18,8 @@ import { telHref, whatsappUrl } from "@/lib/phone";
 import { eur, normalizeDiscounts, saleInfo, shortDate } from "@/lib/pricing";
 import NfcPagePreview from "@/components/novo/NfcPagePreview";
 import NfcPageOption from "@/components/novo/NfcPageOption";
+import RelatedOffers from "@/components/novo/RelatedOffers";
+import { relatedForProduct } from "@/lib/related-products";
 
 export const revalidate = 0;
 
@@ -123,7 +125,8 @@ export default async function ProductPage({ params }: { params: Promise<Params> 
   const sale = saleInfo(product, today);
   const unitPrice = sale.price;
   const url = `${BASE_URL}/proizvodi/${product.slug}`;
-  const others = all.filter((p) => p.id !== product.id && p.slug).slice(0, 3);
+  // "Uz ovo ide i": ručno određene povezane ponude (lib/related-products.ts), zatim drugi proizvodi po poretku.
+  const related = relatedForProduct(toProductCard(product), all.map(toProductCard));
   const embed = product.videoUrl ? videoEmbed(product.videoUrl) : null;
   // Snimka uploadana u admin (ne YouTube/Vimeo) ide na vrh kao glavni sadržaj.
   const fileVideo = product.videoUrl && !embed ? product.videoUrl : null;
@@ -439,34 +442,12 @@ export default async function ProductPage({ params }: { params: Promise<Params> 
             />
           </section>
 
-          {others.length > 0 && (
-            <section className="pd-section" aria-labelledby="pd-ostali">
-              <h2 id="pd-ostali" className="section-title">
-                OSTALI PROIZVODI
+          {related.length > 0 && (
+            <section className="pd-section" aria-labelledby="pd-uz">
+              <h2 id="pd-uz" className="section-title">
+                UZ OVO IDE I
               </h2>
-              <div className="pl-grid">
-                {others.map((p) => (
-                  <Link key={p.id} href={`/proizvodi/${p.slug}`} className="pl-card">
-                    <div className="pl-card-img">
-                      {p.images[0] ? (
-                        // eslint-disable-next-line @next/next/no-img-element
-                        <img src={p.images[0]} alt={p.name} className="pl-card-thumb" loading="lazy" />
-                      ) : null}
-                    </div>
-                    <div className="pl-card-body">
-                      <span className="pl-card-cat mono">{(p.category || "Proizvod").toUpperCase()}</span>
-                      <span className="pl-card-name">{p.name}</span>
-                      <span className="pl-card-tagline">{p.tagline}</span>
-                      <span className="pl-card-foot">
-                        <span className="pl-card-price mono">{priceLabel(saleInfo(p, today).price)}</span>
-                        <span className="pl-card-go mono" aria-hidden="true">
-                          DETALJI →
-                        </span>
-                      </span>
-                    </div>
-                  </Link>
-                ))}
-              </div>
+              <RelatedOffers offers={related} label="Povezane ponude" />
             </section>
           )}
 

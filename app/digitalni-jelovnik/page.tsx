@@ -5,7 +5,10 @@ import NovoShell from "@/components/novo/NovoShell";
 import { Button } from "@/components/recenzije/ui/button";
 import { DigitalniJelovnikInquiryForm } from "@/components/digitalni-jelovnik/inquiry-form";
 import { GatePhone, MenuPhone, MiniPlate, QrGlyph, TableStand } from "@/components/digitalni-jelovnik/phones";
-import { getAgencyContact } from "@/lib/novoHomeData";
+import RelatedOffers from "@/components/novo/RelatedOffers";
+import { listProducts } from "@/lib/db/queries";
+import { getAgencyContact, toProductCard } from "@/lib/novoHomeData";
+import { relatedForMenuPage } from "@/lib/related-products";
 import { telHref, whatsappUrl } from "@/lib/phone";
 import {
   ANNUAL_FREE_MONTHS,
@@ -205,7 +208,16 @@ const H2 = "mt-4 max-w-3xl text-[30px] font-bold leading-[1.08] tracking-[-0.03e
 const LEAD = "mt-4 max-w-2xl text-[18px] leading-relaxed text-ink-soft";
 
 export default async function DigitalniJelovnikPage({ searchParams }: { searchParams: Promise<Record<string, string | undefined>> }) {
-  const [contact, sp] = await Promise.all([getAgencyContact(), searchParams]);
+  const [contact, sp, products] = await Promise.all([
+    getAgencyContact(),
+    searchParams,
+    // Proizvodi služe samo za poveznice u odjeljku "Možda vam treba i": ako baza ne odgovori, stranica se svejedno prikazuje.
+    listProducts({ onlyPublished: true }).catch((err) => {
+      console.error("[digitalni-jelovnik] proizvodi nisu učitani:", err);
+      return [];
+    }),
+  ]);
+  const related = relatedForMenuPage(products.map(toProductCard));
   const defaultPlan = findHospitalityPlan(sp.paket)?.key;
 
   const waHref = contact.phone ? whatsappUrl(contact.phone, "Pozdrav! Zanima me NOVO digitalni jelovnik za moj lokal.") : null;
@@ -643,13 +655,17 @@ export default async function DigitalniJelovnikPage({ searchParams }: { searchPa
           </div>
         </section>
 
-        <p className="border-t border-border pt-8 text-[16px] leading-relaxed text-ink-soft">
-          Imate obrt ili tvrtku, a ne lokal?{" "}
-          <Link href="/recenzije" className="inline-flex min-h-11 items-center font-bold text-foreground underline underline-offset-4">
-            Pogledajte NOVO Recenzije
-          </Link>
-          .
-        </p>
+        {/* Povezane ponude */}
+        <section className="border-t border-border py-14" aria-labelledby="povezano">
+          <Eyebrow>Uz jelovnik</Eyebrow>
+          <h2 id="povezano" className={H2}>
+            Možda vam treba i
+          </h2>
+          <div className="mt-8">
+            <RelatedOffers offers={related} label="Povezane ponude" />
+          </div>
+        </section>
+
         <nav aria-label="Pravne informacije" className="mt-2 flex flex-wrap gap-x-6 pb-6 text-[16px]">
           <Link href="/privatnost" className="inline-flex min-h-11 items-center underline underline-offset-4">
             Politika privatnosti
