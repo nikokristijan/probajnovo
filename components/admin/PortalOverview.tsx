@@ -39,6 +39,8 @@ const ACTION_LABELS: Record<string, string> = {
   deleted_reservation: "Obrisana rezervacija",
   updated_reservation: "Uređena rezervacija",
   replied_inquiry: "Odgovor na upit",
+  created_nfc_link: "Novi NFC link",
+  changed_nfc_link: "Promijenjen NFC link",
   created_expense: "Novi trošak",
   deleted_expense: "Obrisan trošak",
 };
