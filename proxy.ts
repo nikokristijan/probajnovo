@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { jwtVerify } from "jose";
+import { LINK_HOST, NFC_LINK_CODE_RE } from "@/lib/linkHost";
 
 const COOKIE_NAME = "novo_admin_session";
 
@@ -70,11 +71,36 @@ function rewriteWildcardSubdomain(req: NextRequest): NextResponse | null {
   return NextResponse.rewrite(url);
 }
 
+/**
+ * Neutralna domena za dinamičke NFC linkove (NEXT_PUBLIC_LINK_HOST, vidi
+ * lib/linkHost.ts): "<LINK_HOST>/<code>" se iznutra prepisuje na /k/<code>
+ * (čisti 302 na odredište), a SVE ostalo na toj domeni je prazna 404 — na
+ * njoj se ne smije moći otvoriti admin ni ijedna NOVO stranica.
+ */
+function handleLinkHost(req: NextRequest): NextResponse | null {
+  if (!LINK_HOST) return null;
+  const hostname = (req.headers.get("host") || "").split(":")[0].toLowerCase();
+  if (hostname !== LINK_HOST && hostname !== `www.${LINK_HOST}`) return null;
+  const code = req.nextUrl.pathname.slice(1).replace(/\/$/, "").toLowerCase();
+  if (NFC_LINK_CODE_RE.test(code)) {
+    const url = req.nextUrl.clone();
+    url.pathname = `/k/${code}`;
+    return NextResponse.rewrite(url);
+  }
+  return new NextResponse("404", {
+    status: 404,
+    headers: { "Content-Type": "text/plain; charset=utf-8", "X-Robots-Tag": "noindex" },
+  });
+}
+
 // Next.js 16 dopušta SAMO JEDAN proxy/middleware fajl u projektu — ovdje
 // spajamo dvije neovisne provjere (poddomena → rewrite, /admin → auth) u
 // jednu funkciju umjesto dva odvojena fajla (middleware.ts + proxy.ts), jer
 // build inače puca s "Both middleware file and proxy file are detected".
 export async function proxy(req: NextRequest) {
+  const linkHost = handleLinkHost(req);
+  if (linkHost) return linkHost;
+
   const rewritten = rewriteWildcardSubdomain(req);
   if (rewritten) return rewritten;
 

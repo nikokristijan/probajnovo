@@ -736,6 +736,39 @@ export type NfcTag = typeof nfcTags.$inferSelect;
 export type NewNfcTag = typeof nfcTags.$inferInsert;
 
 /**
+ * Dinamički NFC linkovi (privjesci i sl.): na stotine fizičkih oznaka upiše
+ * se ISTI kratki link "<LINK_HOST>/<code>", a odredište se mijenja iz admina
+ * (/admin/linkovi) — sve oznake odmah vode na novu adresu, bez ponovnog
+ * programiranja. Posjet je čisti HTTP 302 bez ikakve stranice, naslova ili
+ * brendinga (vidi app/k/[code]/route.ts), a s neutralne domene
+ * (NEXT_PUBLIC_LINK_HOST, vidi proxy.ts) nigdje se ne vidi NOVO/probajnovo.
+ * 302 + no-store (ne 301) je namjerno: preglednici trajno pamte 301 pa
+ * promjena odredišta ne bi stigla do onih koji su već jednom skenirali.
+ * Tablica se sama kreira pri prvom upitu (ensureNfcLinksTableOnce).
+ */
+export const nfcLinks = pgTable("nfc_links", {
+  id: serial("id").primaryKey(),
+  /** Kratki kod u linku na oznaci: <LINK_HOST>/<code>. Mala slova i brojke. */
+  code: text("code").notNull().unique(),
+  /** Interni naziv (npr. "Padel klub — privjesci, serija 1"), nikad se ne prikazuje vani. */
+  label: text("label").notNull(),
+  /** Trenutno odredište (http/https). Mijenja se kad god treba. */
+  targetUrl: text("target_url").notNull(),
+  /** Prethodno odredište — za brzi povratak ("Vrati prethodni"). */
+  previousUrl: text("previous_url"),
+  /** Isključen link vraća neutralnu 404 (bez brendinga). */
+  active: boolean("active").notNull().default(true),
+  /** Koliko puta je link otvoren (svi dodiri/skeniranja zajedno). */
+  scanCount: integer("scan_count").notNull().default(0),
+  lastScanAt: timestamp("last_scan_at"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export type NfcLink = typeof nfcLinks.$inferSelect;
+export type NewNfcLink = typeof nfcLinks.$inferInsert;
+
+/**
  * FAZA 2 — interni tim (tim/zadaci/poruke), na izričit zahtjev nakon
  * neumorphism redizajna dashboarda. Vidljivo SVIM punim adminima i
  * superadminima (role="admin", provjera requireAdmin u lib/actions.ts),
