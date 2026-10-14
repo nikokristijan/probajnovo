@@ -131,6 +131,7 @@ const RESERVED_SLUGS = new Set([
   "favicon.ico",
   "_next",
   "en", // /en/[slug] — auto-prijevod vikendica, vidi app/en/[slug]/page.tsx
+  "k", // /k/[code] — dinamički NFC linkovi (privjesci), vidi app/k/[code]/route.ts
   "nfc", // /nfc/[slug] — gost-facing WiFi stranice za NFC pločice, vidi lib/db/schema.ts nfcTags
   "proizvodi", // /proizvodi i /proizvodi/[slug] — javne stranice proizvoda, vidi lib/db/schema.ts products
   "jelovnik", // /jelovnik/[slug] — javni QR jelovnici ugostiteljskih klijenata NOVO Recenzija, vidi app/jelovnik
