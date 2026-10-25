@@ -42,6 +42,8 @@ export const env = {
 
   anthropicKey: process.env.ANTHROPIC_API_KEY || "",
   /** Haiku je najjeftiniji i sasvim dovoljan za kratke SMS-ove. */
+  // Neki Anthropic API ključevi nisu vezani uz workspace: tada zahtjev mora nositi zaglavlje anthropic-workspace-id.
+  anthropicWorkspaceId: (process.env.ANTHROPIC_WORKSPACE_ID || "").trim(),
   anthropicModel: process.env.ANTHROPIC_MODEL || "claude-haiku-5-5",
 
   twilioSid: (process.env.TWILIO_ACCOUNT_SID || "").trim(),

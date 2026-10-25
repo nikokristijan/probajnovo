@@ -24,7 +24,10 @@ const AI_TIMEOUT_MS = 45_000;
 let client: Anthropic | null = null;
 function anthropic() {
   if (!integrations.ai()) throw new AiNotConfiguredError();
-  client ??= new Anthropic({ apiKey: env.anthropicKey });
+  client ??= new Anthropic({
+    apiKey: env.anthropicKey,
+    ...(env.anthropicWorkspaceId ? { defaultHeaders: { "anthropic-workspace-id": env.anthropicWorkspaceId } } : {}),
+  });
   return client;
 }
 
@@ -38,6 +41,11 @@ function friendlyAiError(e: unknown): Error {
     console.error("[ai] zahtjev nije uspio", e.status ?? "bez statusa", e.message.slice(0, 300));
     if (e.status === 401 || e.status === 403) {
       return new AiRequestError("AI ključ nije prihvaćen. Provjerite ANTHROPIC_API_KEY u Vercel env varijablama.");
+    }
+    if (e.status === 400 && /workspace/i.test(e.message)) {
+      return new AiRequestError(
+        "AI ključ nije vezan uz workspace. Napravite novi API ključ unutar workspacea u Anthropic konzoli ili postavite ANTHROPIC_WORKSPACE_ID u Vercel env varijablama."
+      );
     }
     if (e.status === 404) {
       return new AiRequestError(`AI model "${env.anthropicModel}" nije pronađen. Postavite ANTHROPIC_MODEL u Vercel env varijablama (npr. claude-haiku-5-5).`);
