@@ -924,3 +924,37 @@
   .stay-choreo-static { grid-template-columns: 1fr; }
 }
 
+/* =====================================================================
+GRAND — Lato umjesto Fraunces/Karla/JetBrains Mono (zahtjev klijenta:
+pravilno pismo bez serifa, poput Helvetice). Font-varijable se preusmjere
+unutar .stay-grand, pa sva postojeća grand pravila automatski koriste Lato.
+===================================================================== */
+.stay-grand {
+  --font-fraunces: var(--font-lato);
+  --font-karla: var(--font-lato);
+  --font-zilla-slab: var(--font-lato);
+  --font-jetbrains-mono: var(--font-lato);
+  font-family: var(--font-lato), "Helvetica Neue", Helvetica, Arial, sans-serif;
+}
+.stay-grand h1, .stay-grand h2, .stay-grand h3, .stay-grand .stay-grand-intro-mark { font-weight: 300; letter-spacing: 0; }
+.stay-grand .stay-pullquote blockquote { font-weight: 300; }
+.stay-grand .stay-eyebrow { font-weight: 700; letter-spacing: 0.24em; }
+
+/* Oznake povjerenja (npr. park prirode) u uvodnom zaslonu, uz lokaciju. */
+.stay-grand-intro-badges {
+  margin-top: 10px; font-size: 11px; font-weight: 700; letter-spacing: 0.22em;
+  text-transform: uppercase; color: #fff; opacity: 0.85;
+  text-shadow: 0 2px 20px rgba(0,0,0,0.55), 0 1px 3px rgba(0,0,0,0.4);
+  animation: stay-grand-fade-in 1.1s ease 0.4s both;
+}
+
+/* Apartmani — svaka jedinica svoj blok: fotografije, naziv i vlastiti cjenik. */
+.stay-units-list { display: flex; flex-direction: column; gap: clamp(48px, 8vw, 96px); }
+.stay-unit-body { padding-top: clamp(18px, 3vw, 28px); max-width: 60ch; }
+.stay-unit-body h3 { font-size: clamp(26px, 3.4vw, 40px); margin: 0; }
+.stay-grand .stay-unit .stay-gallery { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: clamp(6px, 1vw, 12px); }
+.stay-grand .stay-unit .stay-gallery-item:first-child { grid-column: 1 / -1; }
+.stay-grand .stay-unit .stay-gallery-img { aspect-ratio: 4 / 3; }
+.stay-grand .stay-unit .stay-gallery-item:first-child .stay-gallery-img { aspect-ratio: 16 / 9; }
+.stay-units-amenities { margin-top: clamp(48px, 8vw, 88px); }
+.stay-units-amenities h3 { font-size: 12px; font-weight: 700; letter-spacing: 0.22em; text-transform: uppercase; color: var(--dim); margin: 0 0 6px; }
