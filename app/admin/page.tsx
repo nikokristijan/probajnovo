@@ -26,6 +26,7 @@ import OwnerHero from "@/components/admin/OwnerHero";
 import OwnerTrendChart from "@/components/admin/OwnerTrendChart";
 import OwnerPropertyCarousel from "@/components/admin/OwnerPropertyCarousel";
 import OwnerMiniCalendar from "@/components/admin/OwnerMiniCalendar";
+import { getUnitsForProperties, listUnitBlockedDates, mergeUnitBlocked } from "@/lib/db/units";
 import OwnerShareReport from "@/components/admin/OwnerShareReport";
 import SuperadminToday from "@/components/admin/SuperadminToday";
 
@@ -531,11 +532,36 @@ async function OwnerDashboard({ admin }: { admin: AdminUser }) {
 
   const recentTrend = trend.slice(-6);
 
-  const miniCalProperties = properties.map((p, i) => ({
+  const miniCalAll = properties.map((p, i) => ({
     id: p.id,
     name: p.name,
     blocked: (blockedByProperty[i] ?? []).map((b) => ({ date: b.date, source: b.source })),
   }));
+  // Vikendice s apartmanima (lib/db/units.ts): svaki apartman dobiva svoj
+  // mali kalendar (vlastiti dani + dani blokirani za cijeli objekt).
+  const unitMiniCals: { id: number; key: string; href: string; name: string; blocked: { date: string; source: string }[] }[] = [];
+  try {
+    const unitsByProperty = await getUnitsForProperties(propertyIds);
+    for (let i = 0; i < properties.length; i++) {
+      const p = properties[i];
+      const units = unitsByProperty.get(p.id);
+      if (!units) continue;
+      const rows = await listUnitBlockedDates(p.id);
+      for (const u of units) {
+        unitMiniCals.push({
+          id: p.id,
+          key: `${p.id}:${u.slug}`,
+          href: `/admin/kalendar?property=${p.id}`,
+          name: u.name,
+          blocked: mergeUnitBlocked(u.slug, rows, miniCalAll[i].blocked).map((b) => ({ date: b.date, source: b.source })),
+        });
+      }
+    }
+  } catch (err) {
+    console.error("[OwnerDashboard] kalendari apartmana nisu uspjeli:", err);
+  }
+  const unitPropertyIds = new Set(unitMiniCals.map((u) => u.id));
+  const miniCalProperties = miniCalAll.filter((p) => !unitPropertyIds.has(p.id));
   const pageCount = properties.length + companies.length;
   const singleName = pageCount === 1 ? (properties[0]?.name ?? companies[0]?.name ?? null) : null;
   const monthLabel = `${OWNER_MONTH_NAMES_HR[nowZagreb.month - 1]} ${nowZagreb.year}`;
@@ -604,6 +630,9 @@ async function OwnerDashboard({ admin }: { admin: AdminUser }) {
               yoyDeltaDays={yoyDeltaDays}
             />
             <div className="flex flex-col gap-5">
+              {unitMiniCals.map((u) => (
+                <OwnerMiniCalendar key={u.key} properties={[u]} now={now} />
+              ))}
               {miniCalProperties.length > 0 && <OwnerMiniCalendar properties={miniCalProperties} now={now} />}
             </div>
           </div>

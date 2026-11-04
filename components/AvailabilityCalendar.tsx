@@ -44,8 +44,8 @@ function formatDate(dateStr: string, lang: "hr" | "en"): string {
  * ispod prijašnjeg "Željeni termin" retka, taj tekst ostaje — samo se prvi
  * redak zamijeni novim datumima.
  */
-function applySelection(startStr: string, endStr: string, lang: "hr" | "en") {
-  const line = `${MARKER[lang]} ${formatDate(startStr, lang)} – ${formatDate(endStr, lang)}`;
+function applySelection(startStr: string, endStr: string, lang: "hr" | "en", label?: string) {
+  const line = `${MARKER[lang]} ${label ? `${label}, ` : ""}${formatDate(startStr, lang)} – ${formatDate(endStr, lang)}`;
   const textarea = document.querySelector('textarea[name="message"]');
   if (!(textarea instanceof HTMLTextAreaElement)) return;
 
@@ -70,10 +70,13 @@ function applySelection(startStr: string, endStr: string, lang: "hr" | "en") {
 export default function AvailabilityCalendar({
   blockedDates,
   lang,
-}: {
+  label,
+  }: {
   blockedDates: { date: string }[];
   lang: "hr" | "en";
-}) {
+  /** Naziv apartmana — upisuje se u poruku upita uz odabrane datume (više kalendara na stranici). */
+  label?: string;
+  }) {
   const [rangeStart, setRangeStart] = useState<string | null>(null);
   const [rangeEnd, setRangeEnd] = useState<string | null>(null);
 
@@ -109,7 +112,7 @@ export default function AvailabilityCalendar({
       return;
     }
     setRangeEnd(dateStr);
-    applySelection(rangeStart, dateStr, lang);
+    applySelection(rangeStart, dateStr, lang, label);
   }
 
   function clearSelection() {

@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { authorizeCron, runCron } from "@/lib/cron";
 import { getPropertiesWithIcalUrl, replaceIcalBlockedDates } from "@/lib/db/queries";
 import { fetchIcalBlockedDates } from "@/lib/ical";
+import { listUnitIcalFeeds, replaceUnitIcalBlockedDates } from "@/lib/db/units";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
@@ -35,6 +36,24 @@ export async function GET(req: Request) {
       results.push({ propertyId: property.id, ok: true, count: dates.length });
     }
 
-    return NextResponse.json({ synced: results.length, results });
+    // Apartmani s vlastitim iCal linkom (lib/db/units.ts) — svaki svoj kalendar.
+    const unitResults: { propertyId: number; unit: string; ok: boolean; count?: number }[] = [];
+    let unitFeeds: Awaited<ReturnType<typeof listUnitIcalFeeds>> = [];
+    try {
+      unitFeeds = await listUnitIcalFeeds();
+    } catch (err) {
+      console.error("[sync-ical] listUnitIcalFeeds nije uspio:", err);
+    }
+    for (const feed of unitFeeds) {
+      const dates = await fetchIcalBlockedDates(feed.icalUrl);
+      if (dates === null) {
+        unitResults.push({ propertyId: feed.propertyId, unit: feed.unitSlug, ok: false });
+        continue;
+      }
+      await replaceUnitIcalBlockedDates(feed.propertyId, feed.unitSlug, dates);
+      unitResults.push({ propertyId: feed.propertyId, unit: feed.unitSlug, ok: true, count: dates.length });
+    }
+
+    return NextResponse.json({ synced: results.length, results, units: unitResults });
   });
 }

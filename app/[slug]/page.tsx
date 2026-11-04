@@ -12,6 +12,8 @@ import GalleryLightbox from "@/components/GalleryLightbox";
 import StayInteractions from "@/components/StayInteractions";
 import InquiryForm from "@/components/InquiryForm";
 import AvailabilityCalendar from "@/components/AvailabilityCalendar";
+import { getPropertyExtrasSafe, listUnitBlockedDates, mergeUnitBlocked, type PropertyExtras, type PropertyUnit } from "@/lib/db/units";
+import { pickLang, stayLinks, unitFacts, unitImages } from "./stay-shared";
 
 export const revalidate = 0;
 
@@ -159,7 +161,7 @@ function osmLinkHref(latitude: string, longitude: string): string | null {
     nazivom; bez logotipa prikazuje "NOVO" samo ako showNovoBranding nije isključen
     (ovisi o paketu koji je klijent kupio); bez logotipa i s isključenim brendiranjem
     kut ostaje prazan. */
-function NavBrand({
+export function NavBrand({
   logoUrl,
   showNovoBranding,
   name,
@@ -187,7 +189,7 @@ function NavBrand({
 }
 
 /** Sitna ikona uz sadržaj (amenity) — prepoznaje uobičajene hrvatske riječi, inače prikazuje generičku kvačicu. */
-function AmenityIcon({ label }: { label: string }) {
+export function AmenityIcon({ label }: { label: string }) {
   const l = label.toLowerCase();
   const common = { width: 18, height: 18, viewBox: "0 0 20 20", fill: "none", stroke: "currentColor", strokeWidth: 1.6, strokeLinecap: "round" as const, strokeLinejoin: "round" as const };
   if (/wifi|internet/.test(l))
@@ -297,7 +299,7 @@ export async function PropertyView({
   // Best-effort — isti duh kao lib/geocode.ts i lib/ical.ts: ako dohvat
   // blokiranih datuma padne, gost jednostavno ne vidi kalendar dostupnosti
   // (umjesto da mu cijela stranica vikendice ne uspije učitati).
-  let blockedDates: { date: string }[] = [];
+  let blockedDates: { date: string; source: string }[] = [];
   try {
     blockedDates = await listBlockedDates(property.id);
   } catch (err) {
@@ -322,6 +324,22 @@ export async function PropertyView({
   // rijetko), a admin i dalje po želji može uključiti .stay-dark za ovaj
   // konkretan objekt, isto kao i za classic/editorial/raw/apple.
   const stayClass = `stay stay-${layout}${property.darkMode ? " stay-dark" : ""}`;
+  // Apartmani kao zasebne podstranice (vlastite karakteristike + kalendar) i
+  // sekcija "Doživite <lokacija>" — samo Grand, vidi lib/db/units.ts.
+  const extras: PropertyExtras =
+    layout === "grand" ? await getPropertyExtrasSafe(property.id) : { units: [], destination: null };
+  const unitPages: PropertyUnit[] = extras.units;
+  const hasUnitPages = unitPages.length > 0;
+  let unitRows: Awaited<ReturnType<typeof listUnitBlockedDates>> = [];
+  if (hasUnitPages) {
+    try {
+      unitRows = await listUnitBlockedDates(property.id);
+    } catch (err) {
+      console.error("[PropertyView] listUnitBlockedDates nije uspio:", err);
+    }
+  }
+  const links = await stayLinks(property.slug, lang);
+  const destination = layout === "grand" ? extras.destination : null;
   const accentStyle = { "--accent": property.accentColor } as React.CSSProperties;
   const contactEmail = property.contactEmail || agency?.contactEmail || "hello@novo.studio";
   // Ako admin nije eksplicitno postavio banner, koristi prvu sliku iz galerije —
@@ -388,8 +406,11 @@ export async function PropertyView({
 
   // Grand s 2+ jedinice: svaka jedinica dobiva vlastiti blok (slike + cjenik),
   // pa se sadrzaji i cjenik ne ponavljaju kao zasebne sekcije/izbornik.
-  const grandUnits = layout === "grand" && unitGroups.length >= 2;
-  const unitKeys = new Set(unitGroups.map((u) => u.name.toLowerCase()));
+  const grandUnits = layout === "grand" && (hasUnitPages || unitGroups.length >= 2);
+  const unitKeys = new Set([
+    ...unitGroups.map((u) => u.name.toLowerCase()),
+    ...unitPages.flatMap((u) => [u.name.trim().toLowerCase(), u.slug]),
+  ]);
   // "Dozivite <lokacija>" (Grand): slike kategorizirane imenom lokacije
   // (npr. "Lastovo") ili kategorijom koja pocinje s "Dozivite"/"Experience".
   const locationKey = String(property.location || "").trim().toLowerCase();
@@ -418,7 +439,7 @@ export async function PropertyView({
           { href: "#o-objektu", label: L("O objektu", "About") },
           grandUnits && { href: "#apartmani", label: L("Apartmani", "Apartments") },
           ambientGallery.length > 0 && { href: "#galerija", label: L("Ambijent", "Surroundings") },
-          destinationImages.length > 0 && { href: "#dozivite", label: L("Doživite ", "Experience ") + property.location },
+          (destinationImages.length > 0 || destination) && { href: "#dozivite", label: L("Doživite ", "Experience ") + property.location },
           !grandUnits && property.amenities.length > 0 && { href: "#sadrzaji", label: L("Sadržaji", "Amenities") },
           (property.mapUrl || (property.latitude && property.longitude)) && {
             href: "#lokacija",
@@ -549,7 +570,7 @@ export async function PropertyView({
         <div className="stay-nav-right">
           <a
             className="stay-lang-switch"
-            href={lang === "en" ? `/${property.slug}` : `/en/${property.slug}`}
+            href={links.homeIn(lang === "en" ? "hr" : "en")}
           >
             {lang === "en" ? "HR" : "EN"}
           </a>
@@ -647,16 +668,60 @@ export async function PropertyView({
         <h2 className="stay-eyebrow">
           <span className="stay-eyebrow-no">{aboutNo}</span>{L("O objektu", "About")}
         </h2>
-        <p className={layout === "editorial" ? "stay-dropcap" : undefined}>
-          {property.description}
-        </p>
-      </RevealSection>
+        {layout === "grand" ? (
+          <div className="stay-grand-about">
+            <dl className="stay-grand-facts">
+              {[
+                { label: L("Lokacija", "Location"), value: property.location },
+                hasUnitPages
+                  ? { label: L("Smještaj", "Accommodation"), value: L(`${unitPages.length} apartmana`, `${unitPages.length} apartments`) }
+                  : { label: L("Spavaće sobe", "Bedrooms"), value: String(property.bedrooms) },
+                { label: L("Gosti", "Guests"), value: `${L("do", "up to")} ${property.capacityGuests}` },
+                property.reviewBadges[0] ? { label: L("Okruženje", "Setting"), value: property.reviewBadges[0] } : null,
+              ]
+                .filter((f): f is { label: string; value: string } => f !== null)
+                .map((f) => (
+                  <div key={f.label}>
+                    <dt>{f.label}</dt>
+                    <dd>{f.value}</dd>
+                  </div>
+                ))}
+            </dl>
+            <p>{property.description}</p>
+          </div>
+        ) : (
+          <p className={layout === "editorial" ? "stay-dropcap" : undefined}>
+            {property.description}
+          </p>
+        )}
+        </RevealSection>
 
       {grandUnits && (
         <RevealSection className="stay-section" id="apartmani">
           <h2 className="stay-eyebrow">
             <span className="stay-eyebrow-no">{eyebrowNo()}</span>{L("Apartmani", "Apartments")}
           </h2>
+          {hasUnitPages ? (
+            <div className="stay-unit-cards">
+              {unitPages.map((u) => {
+                const cover = unitImages(property, u)[0] ?? effectiveBanner;
+                return (
+                  <Link className="stay-unit-card2" href={links.unit(u.slug)} key={u.slug}>
+                    {cover && (
+                      <div className="stay-unit-card2-media">
+                        <Image src={cover} alt={u.name} fill sizes="(min-width: 900px) 50vw, 100vw" />
+                      </div>
+                    )}
+                    <div className="stay-unit-card2-body">
+                      <h3>{u.name}</h3>
+                      <p className="stay-unit-facts">{unitFacts(u, lang).join(" · ")}</p>
+                      <span className="stay-unit-more">{L("Pogledajte apartman", "View apartment")} →</span>
+                    </div>
+                  </Link>
+                );
+              })}
+            </div>
+          ) : (
           <div className="stay-units-list">
             {unitGroups.map((u) => (
               <article className="stay-unit" key={u.name}>
@@ -678,8 +743,9 @@ export async function PropertyView({
                 </div>
               </article>
             ))}
-          </div>
-          {property.amenities.length > 0 && (
+            </div>
+            )}
+            {property.amenities.length > 0 && (
             <div className="stay-units-amenities">
               <h3>
                 {unitGroups.length === 2
@@ -721,13 +787,33 @@ export async function PropertyView({
         </RevealSection>
       )}
 
-      {destinationImages.length > 0 && (
-        <RevealSection className="stay-section" id="dozivite">
+      {(destination || destinationImages.length > 0) && (
+        <RevealSection className="stay-section stay-destination" id="dozivite">
           <h2 className="stay-eyebrow">
             <span className="stay-eyebrow-no">{eyebrowNo()}</span>
             {L("Doživite", "Experience")} {property.location}
           </h2>
-          <GalleryLightbox images={destinationImages} alt={property.location} fullWidth />
+          {destination && (destination.intro || destination.title) && (
+            <div className="stay-destination-head">
+              <h3>{pickLang(lang, destination.title, destination.titleEn) || property.location}</h3>
+              <p>{pickLang(lang, destination.intro, destination.introEn)}</p>
+            </div>
+          )}
+          {destination && destination.highlights.length > 0 && (
+            <div className="stay-destination-grid">
+              {destination.highlights.map((h, i) => (
+                <div className="stay-destination-item" key={h.title + i}>
+                  <h4>{pickLang(lang, h.title, h.titleEn)}</h4>
+                  <p>{pickLang(lang, h.text, h.textEn)}</p>
+                </div>
+              ))}
+            </div>
+          )}
+        </RevealSection>
+      )}
+      {destinationImages.length > 0 && (
+        <RevealSection className="stay-section stay-destination-media">
+          <GalleryLightbox images={destinationImages} alt={property.location} />
         </RevealSection>
       )}
 
@@ -909,13 +995,39 @@ export async function PropertyView({
         </RevealSection>
       )}
 
-      <RevealSection className="stay-section">
+      <RevealSection className="stay-section" id="dostupnost">
+      {hasUnitPages ? (
+        <>
+          <h2 className="stay-eyebrow">
+            <span className="stay-eyebrow-no">{eyebrowNo()}</span>
+            {L("Dostupnost", "Availability")}
+          </h2>
+          <div className="stay-units-cals">
+            {unitPages.map((u) => (
+              <div className="stay-units-cal" key={u.slug}>
+                <div className="stay-units-cal-head">
+                  <h3>{u.name}</h3>
+                  <Link href={links.unit(u.slug)}>{L("Detalji i cijene", "Details & prices")} →</Link>
+                </div>
+                <AvailabilityCalendar blockedDates={mergeUnitBlocked(u.slug, unitRows, blockedDates)} lang={lang} label={u.name} />
+              </div>
+            ))}
+          </div>
+        </>
+      ) : (
         <AvailabilityCalendar blockedDates={blockedDates} lang={lang} />
-        <div className="stay-book">
-          <div>
-            <div className="price">
-              {property.priceFromEur} € <small>{L("/ noćenje", "/ night")}</small>
-            </div>
+      )}
+      <div className="stay-book">
+      <div>
+      <div className="price">
+      {hasUnitPages ? (
+        L("Rezervirajte izravno", "Book direct")
+      ) : (
+        <>
+          {property.priceFromEur} € <small>{L("/ noćenje", "/ night")}</small>
+        </>
+      )}
+      </div>
             <p>{L("Odgovaramo unutar 24h", "We reply within 24h")}</p>
           </div>
           <div className="stay-book-actions">
@@ -940,8 +1052,37 @@ export async function PropertyView({
         <h2 className="stay-eyebrow">
           <span className="stay-eyebrow-no">{eyebrowNo()}</span>{L("Pošaljite upit", "Send an inquiry")}
         </h2>
-        <InquiryForm source="property" sourceId={property.id} sourceName={property.name} lang={lang} />
-      </RevealSection>
+        {layout === "grand" ? (
+          <div className="stay-grand-contact">
+            <div className="stay-grand-contact-info">
+              <p className="stay-grand-contact-lead">
+                {L("Pišite nam ili nazovite — odgovaramo unutar 24 sata.", "Write or call us — we reply within 24 hours.")}
+              </p>
+              <ul>
+                {telHref && property.phone && (
+                  <li>
+                    <span>{L("Telefon", "Phone")}</span>
+                    <a href={telHref}>{property.phone}</a>
+                  </li>
+                )}
+                <li>
+                  <span>Email</span>
+                  <a href={mailHref}>{contactEmail}</a>
+                </li>
+                {property.address && (
+                  <li>
+                    <span>{L("Adresa", "Address")}</span>
+                    {property.address}
+                  </li>
+                )}
+              </ul>
+            </div>
+            <InquiryForm source="property" sourceId={property.id} sourceName={property.name} lang={lang} />
+          </div>
+        ) : (
+          <InquiryForm source="property" sourceId={property.id} sourceName={property.name} lang={lang} />
+        )}
+        </RevealSection>
 
       <footer className="stay-foot" data-watermark={property.name}>
         {property.name} · {property.location}
@@ -967,7 +1108,7 @@ export async function PropertyView({
  * pozivni broj (npr. počinje s "385" ili "00"), samo miče razmake/crtice.
  * Nije 100% robusno za sve zemlje, ali pokriva realan slučaj (HR firme).
  */
-function whatsAppNumber(phone: string): string {
+export function whatsAppNumber(phone: string): string {
   let digits = phone.replace(/[^\d]/g, "");
   if (digits.startsWith("00")) digits = digits.slice(2);
   else if (digits.startsWith("0")) digits = "385" + digits.slice(1);

@@ -958,3 +958,126 @@ unutar .stay-grand, pa sva postojeća grand pravila automatski koriste Lato.
 .stay-grand .stay-unit .stay-gallery-item:first-child .stay-gallery-img { aspect-ratio: 16 / 9; }
 .stay-units-amenities { margin-top: clamp(48px, 8vw, 88px); }
 .stay-units-amenities h3 { font-size: 12px; font-weight: 700; letter-spacing: 0.22em; text-transform: uppercase; color: var(--dim); margin: 0 0 6px; }
+
+/* =====================================================================
+   GRAND — širina na desktopu: sadržaj je centriran u stupcu do 1180px
+   (umjesto da sve stoji uz lijevi rub, a desna polovica ekrana ostane
+   prazna). Pozadine sekcija (.stay-alt) i dalje idu preko cijele širine.
+   ===================================================================== */
+.stay-grand {
+  --grand-gutter: clamp(20px, 5vw, 56px);
+  --grand-side: max(var(--grand-gutter), calc((100% - 1180px) / 2));
+}
+.stay-grand .stay-about { max-width: none; }
+@media (min-width: 900px) {
+  .stay-grand .stay-section,
+  .stay-grand .stay-nav,
+  .stay-grand .stay-pullquote,
+  .stay-grand .stay-grand-intro { padding-left: var(--grand-side); padding-right: var(--grand-side); }
+  .stay-grand .stay-section:has(> .stay-gallery) .stay-eyebrow,
+  .stay-grand .stay-section:has(> .stay-gallery-groups) .stay-eyebrow { margin-left: var(--grand-side); margin-right: var(--grand-side); }
+}
+
+/* O objektu / O apartmanu: činjenice lijevo, tekst desno (desktop). */
+.stay-grand-about { display: grid; gap: 28px; }
+.stay-grand-facts {
+  margin: 0; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); column-gap: 20px;
+  border-top: 1px solid color-mix(in srgb, var(--ink) 12%, transparent);
+}
+.stay-grand-facts > div { padding: 14px 0; border-bottom: 1px solid color-mix(in srgb, var(--ink) 12%, transparent); }
+.stay-grand-facts dt { font-size: 10.5px; font-weight: 700; letter-spacing: 0.22em; text-transform: uppercase; color: var(--dim); }
+.stay-grand-facts dd { margin: 6px 0 0; font-size: 17px; font-weight: 300; color: var(--ink); }
+.stay-grand-about > p { margin: 0; max-width: 62ch; white-space: pre-line; }
+@media (min-width: 900px) {
+  .stay-grand-about { grid-template-columns: minmax(240px, 1fr) minmax(0, 1.9fr); gap: clamp(48px, 7vw, 110px); align-items: start; }
+  .stay-grand-facts { grid-template-columns: 1fr; }
+}
+
+/* Apartmani kao kartice s poveznicom na podstranicu. */
+.stay-unit-cards { display: grid; grid-template-columns: 1fr; gap: clamp(32px, 4vw, 48px); }
+@media (min-width: 760px) { .stay-unit-cards { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.stay-unit-card2 { display: flex; flex-direction: column; color: var(--ink); text-decoration: none; }
+.stay-unit-card2-media { position: relative; aspect-ratio: 4 / 3; overflow: hidden; background: var(--plaster); }
+.stay-unit-card2-media img { object-fit: cover; transition: transform 1.2s cubic-bezier(.16,.84,.44,1); }
+.stay-unit-card2:hover .stay-unit-card2-media img { transform: scale(1.04); }
+.stay-unit-card2:focus-visible { outline: 2px solid var(--accent-dark); outline-offset: 6px; }
+.stay-unit-card2-body { padding-top: 18px; display: flex; flex-direction: column; gap: 8px; }
+.stay-unit-card2-body h3 { margin: 0; font-size: clamp(24px, 2.6vw, 34px); font-weight: 300; }
+.stay-unit-facts { margin: 0; font-size: 14px; color: var(--dim); letter-spacing: 0.02em; }
+.stay-unit-more { margin-top: 6px; font-size: 11px; font-weight: 700; letter-spacing: 0.22em; text-transform: uppercase; color: var(--accent-dark); }
+
+/* Kalendari po apartmanu. */
+.stay-units-cals { display: grid; grid-template-columns: 1fr; gap: clamp(36px, 5vw, 56px); margin-bottom: clamp(28px, 4vw, 40px); }
+@media (min-width: 1100px) { .stay-units-cals { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.stay-units-cals.stay-units-cals-single { grid-template-columns: 1fr; }
+.stay-units-cal-head {
+  display: flex; align-items: baseline; justify-content: space-between; gap: 16px; margin-bottom: 16px; padding-bottom: 12px;
+  border-bottom: 1px solid color-mix(in srgb, var(--ink) 12%, transparent);
+}
+.stay-units-cal-head h3 { margin: 0; font-size: clamp(20px, 2vw, 26px); font-weight: 300; }
+.stay-units-cal-head a { font-size: 11px; font-weight: 700; letter-spacing: 0.2em; text-transform: uppercase; color: var(--accent-dark); text-decoration: none; white-space: nowrap; }
+.stay-units-cal .stay-avail-cal { max-width: none; margin-bottom: 0; }
+@media (min-width: 640px) {
+  .stay-units-cal .stay-avail-cal { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); column-gap: 24px; }
+  .stay-units-cal .stay-avail-month + .stay-avail-month { margin-top: 0; }
+  .stay-units-cal .stay-avail-legend, .stay-units-cal .stay-avail-hint { grid-column: 1 / -1; }
+}
+@media (min-width: 1000px) {
+  .stay-unit-avail { display: grid; grid-template-columns: minmax(0, 1.7fr) minmax(280px, 1fr); gap: clamp(32px, 5vw, 64px); align-items: start; }
+  .stay-unit-avail .stay-units-cals { margin-bottom: 0; }
+  .stay-unit-avail .stay-book { flex-direction: column; align-items: flex-start; }
+}
+
+/* Doživite <lokacija>. */
+.stay-destination-head { display: grid; gap: 18px; margin-bottom: clamp(32px, 5vw, 56px); }
+.stay-destination-head h3 { margin: 0; font-size: clamp(30px, 4.4vw, 56px); font-weight: 300; line-height: 1.08; text-wrap: balance; }
+.stay-destination-head p { margin: 0; font-size: 18px; line-height: 1.85; color: color-mix(in srgb, var(--ink) 88%, transparent); max-width: 62ch; white-space: pre-line; }
+@media (min-width: 900px) {
+  .stay-destination-head { grid-template-columns: minmax(240px, 1fr) minmax(0, 1.9fr); gap: clamp(48px, 7vw, 110px); align-items: start; }
+}
+.stay-destination-grid { display: grid; grid-template-columns: 1fr; border-top: 1px solid color-mix(in srgb, var(--ink) 12%, transparent); }
+@media (min-width: 640px) { .stay-destination-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); column-gap: clamp(24px, 4vw, 56px); } }
+@media (min-width: 1000px) { .stay-destination-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+.stay-destination-item { padding: 22px 0 26px; border-bottom: 1px solid color-mix(in srgb, var(--ink) 12%, transparent); }
+.stay-destination-item h4 { margin: 0 0 8px; font-size: 12px; font-weight: 700; letter-spacing: 0.2em; text-transform: uppercase; color: var(--accent-dark); }
+.stay-destination-item p { margin: 0; font-size: 15px; line-height: 1.7; color: color-mix(in srgb, var(--ink) 82%, transparent); }
+.stay-grand .stay-destination-media { padding-top: 0; }
+.stay-grand .stay-destination-media .stay-gallery { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 4px; }
+@media (min-width: 900px) { .stay-grand .stay-destination-media .stay-gallery { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+.stay-grand .stay-destination-media .stay-gallery-img { aspect-ratio: 4 / 5; }
+
+/* Ambijent na desktopu: prva fotografija preko cijele širine, ostale u dva stupca
+   (umjesto dugog niza 21:9 fotografija jedna ispod druge). */
+@media (min-width: 900px) {
+  .stay-grand #galerija .stay-gallery { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 4px; }
+  .stay-grand #galerija .stay-gallery-item:first-child { grid-column: 1 / -1; }
+  .stay-grand #galerija .stay-gallery-img { aspect-ratio: 3 / 2; }
+  .stay-grand #galerija .stay-gallery-item:first-child .stay-gallery-img { aspect-ratio: 21 / 9; }
+}
+
+/* Kontakt: podaci lijevo, obrazac desno (desktop). */
+.stay-grand-contact { display: grid; gap: 32px; }
+@media (min-width: 900px) {
+  .stay-grand-contact { grid-template-columns: minmax(240px, 1fr) minmax(0, 1.9fr); gap: clamp(48px, 7vw, 110px); align-items: start; }
+}
+.stay-grand-contact-lead { margin: 0 0 20px; font-size: clamp(20px, 2vw, 26px); font-weight: 300; line-height: 1.4; }
+.stay-grand-contact-info ul { list-style: none; margin: 0; padding: 0; border-top: 1px solid color-mix(in srgb, var(--ink) 12%, transparent); }
+.stay-grand-contact-info li {
+  display: flex; flex-direction: column; gap: 4px; padding: 14px 0; font-size: 15px; overflow-wrap: anywhere;
+  border-bottom: 1px solid color-mix(in srgb, var(--ink) 12%, transparent);
+}
+.stay-grand-contact-info li span { font-size: 10.5px; font-weight: 700; letter-spacing: 0.22em; text-transform: uppercase; color: var(--dim); }
+.stay-grand-contact-info a { color: var(--ink); text-decoration: none; }
+.stay-grand-contact-info a:hover { color: var(--accent-dark); }
+
+/* Podstranica apartmana. */
+.stay-unit-back {
+  display: inline-block; margin-bottom: 18px; font-size: 11px; font-weight: 700; letter-spacing: 0.22em;
+  text-transform: uppercase; color: #fff; text-decoration: none; opacity: 0.85;
+  text-shadow: 0 2px 20px rgba(0,0,0,0.55), 0 1px 3px rgba(0,0,0,0.4);
+}
+.stay-unit-back:hover { opacity: 1; }
+.stay-unit-home { display: inline-flex; text-decoration: none; }
+.stay-unit-home .stay-nav-brand { cursor: pointer; }
+.stay-unit-page .stay-grand-intro { height: 86svh; }
+.stay-unit-page .stay-grand-intro-mark { font-size: clamp(36px, 6.5vw, 84px); max-width: 16ch; }

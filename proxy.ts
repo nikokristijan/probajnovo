@@ -67,7 +67,16 @@ function rewriteWildcardSubdomain(req: NextRequest): NextResponse | null {
   }
 
   const url = req.nextUrl.clone();
-  url.pathname = `/${subdomain}${url.pathname === "/" ? "" : url.pathname}`;
+  const path = url.pathname;
+  // Engleska inačica na poddomeni: "/en" → "/en/<slug>", "/en/apartman-1" →
+  // "/en/<slug>/apartman-1". Stari linkovi oblika "/en/<slug>…" se ne dupliraju.
+  if (path === "/en" || path.startsWith("/en/")) {
+    let rest = path.slice(3);
+    if (rest === `/${subdomain}` || rest.startsWith(`/${subdomain}/`)) rest = rest.slice(subdomain.length + 1);
+    url.pathname = `/en/${subdomain}${rest}`;
+    return NextResponse.rewrite(url);
+  }
+  url.pathname = `/${subdomain}${path === "/" ? "" : path}`;
   return NextResponse.rewrite(url);
 }
 
