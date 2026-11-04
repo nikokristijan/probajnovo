@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Space_Grotesk, JetBrains_Mono, Zilla_Slab, Karla, Caveat, Inter, Fraunces, Baloo_2, Nunito } from "next/font/google";
+import { Space_Grotesk, JetBrains_Mono, Zilla_Slab, Karla, Caveat, Inter, Fraunces, Baloo_2, Nunito, Lato } from "next/font/google";
 import { Analytics } from "@vercel/analytics/next";
 import "./globals.css";
 import AutomationKick from "@/components/AutomationKick";
@@ -71,6 +71,14 @@ const nunito = Nunito({
   preload: false,
   subsets: ["latin"],
   weight: ["400", "600", "700", "800"],
+});
+
+/** Grand layout — Lato: cisto, pravilno pismo bez serifa (latin-ext zbog č/ć/đ/š/ž). */
+const lato = Lato({
+  variable: "--font-lato",
+  preload: false,
+  subsets: ["latin", "latin-ext"],
+  weight: ["300", "400", "700"],
 });
 
 const SITE_URL = "https://www.probajnovo.com";
@@ -149,7 +157,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html
       lang="hr"
-      className={`${spaceGrotesk.variable} ${jetbrainsMono.variable} ${zillaSlab.variable} ${karla.variable} ${caveat.variable} ${inter.variable} ${fraunces.variable} ${baloo2.variable} ${nunito.variable}`}
+      className={`${spaceGrotesk.variable} ${jetbrainsMono.variable} ${zillaSlab.variable} ${karla.variable} ${caveat.variable} ${inter.variable} ${fraunces.variable} ${baloo2.variable} ${nunito.variable} ${lato.variable}`}
       >
     <body>
       {/* Statični, hardkodirani JSON-LD (ne user input) — sigurno za dangerouslySetInnerHTML. */}
