@@ -5,6 +5,9 @@ import { updatePropertyAction } from "@/lib/actions";
 import { geoMissWarning } from "@/lib/geocode";
 import PropertyForm from "@/components/admin/PropertyForm";
 import DeletePropertyButton from "@/components/admin/DeletePropertyButton";
+import PropertyUnitsEditor from "@/components/admin/PropertyUnitsEditor";
+import { saveUnitsAction } from "@/lib/actions-units";
+import { getPropertyExtrasSafe } from "@/lib/db/units";
 
 export default async function EditPropertyPage({
   params,
@@ -23,6 +26,15 @@ const property = await getPropertyById(numericId);
   if (!property) notFound();
 
 const boundAction = updatePropertyAction.bind(null, numericId);
+const extras = await getPropertyExtrasSafe(numericId);
+// Nazivi jedinica iz sezonskog cjenika ("Naziv (sezona)") — prijedlog za brzo dodavanje apartmana.
+const suggestedNames = [
+  ...new Set(
+    property.seasonalPricing
+      .map((sp) => sp.label.replace(/\s*\([^)]*\)\s*$/, "").trim())
+      .filter(Boolean)
+  ),
+];
 
   const sp = await searchParams;
   // Postavljeno u createPropertyAction kad je adresa unesena pri kreiranju
@@ -42,8 +54,16 @@ const boundAction = updatePropertyAction.bind(null, numericId);
     action={boundAction}
     submitLabel="Spremi izmjene"
     initialWarning={initialWarning}
-  />
-  </div>
+    />
+    <PropertyUnitsEditor
+      action={saveUnitsAction.bind(null, numericId)}
+      initialUnits={extras.units}
+      initialDestination={extras.destination}
+      location={property.location}
+      suggestedNames={suggestedNames.length >= 2 ? suggestedNames : []}
+      slug={property.slug}
+    />
+    </div>
   );
   }
 
