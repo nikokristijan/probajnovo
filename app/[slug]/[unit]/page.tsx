@@ -12,7 +12,7 @@ type Params = { slug: string; unit: string };
 
 export async function generateMetadata({ params }: { params: Promise<Params> }): Promise<Metadata> {
   const { slug, unit: unitSlug } = await params;
-  let property: Awaited<ReturnType<typeof getPropertyBySlug>> = null;
+  let property: Awaited<ReturnType<typeof getPropertyBySlug>> | null = null;
   try {
     property = await getPropertyBySlug(slug);
   } catch {
