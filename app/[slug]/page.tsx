@@ -353,24 +353,60 @@ export async function PropertyView({
     const order: string[] = [];
     const displayName = new Map<string, string>();
     const prices = new Map<string, number[]>();
+    const rows = new Map<string, { season: string; priceEur: number }[]>();
     for (const sp of property.seasonalPricing) {
       const name = sp.label.replace(/\s*\([^)]*\)\s*$/, "").trim() || sp.label;
+      const season = (sp.label.match(/\(([^)]*)\)\s*$/)?.[1] ?? "").trim();
       // Grupiramo case-insensitive jer admin ponekad nedosljedno unese isti
-      // naziv jedinice (npr. "Manji Apartman" vs "Manji apartman") u
-      // različitim sezonskim redovima — to je i dalje ista jedinica.
+      // naziv jedinice (npr. "Manji Apartman" vs "Manji apartman").
       const key = name.toLowerCase();
       if (!prices.has(key)) {
         prices.set(key, []);
+        rows.set(key, []);
         displayName.set(key, name);
         order.push(key);
       }
       prices.get(key)!.push(sp.priceEur);
+      rows.get(key)!.push({ season, priceEur: sp.priceEur });
     }
     return order.map((key) => {
       const list = prices.get(key)!;
-      return { name: displayName.get(key)!, min: Math.min(...list), max: Math.max(...list) };
+      // Slike jedinice = slike galerije kojima je u adminu ("Kategoriziraj
+      // slike galerije") kategorija jednaka nazivu jedinice.
+      const images = gallery.filter(
+        (src) => (property.imageCategories[src] ?? "").trim().toLowerCase() === key
+      );
+      return {
+        name: displayName.get(key)!,
+        min: Math.min(...list),
+        max: Math.max(...list),
+        rows: rows.get(key)!,
+        images,
+      };
     });
   })();
+
+  // Grand s 2+ jedinice: svaka jedinica dobiva vlastiti blok (slike + cjenik),
+  // pa se sadrzaji i cjenik ne ponavljaju kao zasebne sekcije/izbornik.
+  const grandUnits = layout === "grand" && unitGroups.length >= 2;
+  const unitKeys = new Set(unitGroups.map((u) => u.name.toLowerCase()));
+  // "Dozivite <lokacija>" (Grand): slike kategorizirane imenom lokacije
+  // (npr. "Lastovo") ili kategorijom koja pocinje s "Dozivite"/"Experience".
+  const locationKey = String(property.location || "").trim().toLowerCase();
+  const isDestinationCategory = (c: string) => {
+    const k = c.trim().toLowerCase();
+    return k !== "" && (k === locationKey || k.startsWith("doživite") || k.startsWith("experience"));
+  };
+  const destinationImages =
+    layout === "grand"
+      ? gallery.filter((src) => isDestinationCategory(property.imageCategories[src] ?? ""))
+      : [];
+  // Ostatak galerije (bez slika jedinica i "Dozivite") = Ambijent / Galerija.
+  const ambientGallery = gallery.filter((src) => {
+    const c = (property.imageCategories[src] ?? "").trim().toLowerCase();
+    if (grandUnits && unitKeys.has(c)) return false;
+    return !destinationImages.includes(src);
+  });
 
   // Grand — gornji navigacijski izbornik na stranicu (umjesto da je "sve
   // nanizano na jednom mjestu"): linkovi na sekcije koje ova vikendica
@@ -380,14 +416,15 @@ export async function PropertyView({
     layout === "grand"
       ? ([
           { href: "#o-objektu", label: L("O objektu", "About") },
-          unitGroups.length >= 2 && { href: "#apartmani", label: L("Apartmani", "Apartments") },
-          gallery.length > 0 && { href: "#galerija", label: L("Galerija", "Gallery") },
-          property.amenities.length > 0 && { href: "#sadrzaji", label: L("Sadržaji", "Amenities") },
+          grandUnits && { href: "#apartmani", label: L("Apartmani", "Apartments") },
+          ambientGallery.length > 0 && { href: "#galerija", label: L("Ambijent", "Surroundings") },
+          destinationImages.length > 0 && { href: "#dozivite", label: L("Doživite ", "Experience ") + property.location },
+          !grandUnits && property.amenities.length > 0 && { href: "#sadrzaji", label: L("Sadržaji", "Amenities") },
           (property.mapUrl || (property.latitude && property.longitude)) && {
             href: "#lokacija",
             label: L("Lokacija", "Location"),
           },
-          property.seasonalPricing.length > 0 && { href: "#cjenik", label: L("Cjenik", "Pricing") },
+          !grandUnits && property.seasonalPricing.length > 0 && { href: "#cjenik", label: L("Cjenik", "Pricing") },
           { href: "#upit", label: L("Kontakt", "Contact") },
         ].filter(Boolean) as { href: string; label: string }[])
       : [];
@@ -475,6 +512,9 @@ export async function PropertyView({
           <div className="stay-grand-intro-scrim" aria-hidden="true" />
           <div className="stay-grand-intro-content">
             <div className="stay-grand-intro-loc">{property.location}</div>
+            {property.reviewBadges.length > 0 && (
+              <div className="stay-grand-intro-badges">{property.reviewBadges.join(" · ")}</div>
+            )}
             {property.logoUrl ? (
               <Image
                 src={property.logoUrl}
@@ -584,14 +624,16 @@ export async function PropertyView({
         </div>
       )}
 
-      <div className="stay-stats">
+      {layout !== "grand" && (
+        <div className="stay-stats">
         <div className="stay-stat">{property.capacityGuests} {L("gostiju", "guests")}</div>
         <div className="stay-stat">{property.bedrooms} {L("spavaće sobe", "bedrooms")}</div>
         <div className="stay-stat">{property.distanceFromCenter}</div>
         <div className="stay-stat">{L("od", "from")} {property.priceFromEur} €{L("/noć", "/night")}</div>
       </div>
+      )}
 
-      {property.reviewBadges.length > 0 && (
+      {layout !== "grand" && property.reviewBadges.length > 0 && (
         <div className="stay-badges">
           {property.reviewBadges.map((b) => (
             <span className="stay-badge" key={b}>
@@ -610,22 +652,50 @@ export async function PropertyView({
         </p>
       </RevealSection>
 
-      {layout === "grand" && unitGroups.length >= 2 && (
+      {grandUnits && (
         <RevealSection className="stay-section" id="apartmani">
           <h2 className="stay-eyebrow">
             <span className="stay-eyebrow-no">{eyebrowNo()}</span>{L("Apartmani", "Apartments")}
           </h2>
-          <div className="stay-units-grid">
+          <div className="stay-units-list">
             {unitGroups.map((u) => (
-              <div className="stay-unit-card" key={u.name}>
-                <h3>{u.name}</h3>
-                <p className="stay-unit-price">
-                  {u.min === u.max ? `${u.min} €` : `${u.min}–${u.max} €`}{" "}
-                  <span>{L("/ noć", "/ night")}</span>
-                </p>
-              </div>
+              <article className="stay-unit" key={u.name}>
+                {u.images.length > 0 && <GalleryLightbox images={u.images} alt={u.name} />}
+                <div className="stay-unit-body">
+                  <h3>{u.name}</h3>
+                  {u.rows.length > 0 && (
+                    <div className="stay-season-table">
+                      {u.rows.map((r, i) => (
+                        <div className="stay-season-row" key={r.season + i}>
+                          <span>{r.season || L("Cijena", "Price")}</span>
+                          <span className="stay-season-price">
+                            {r.priceEur} € {L("/ noć", "/ night")}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </article>
             ))}
           </div>
+          {property.amenities.length > 0 && (
+            <div className="stay-units-amenities">
+              <h3>
+                {unitGroups.length === 2
+                  ? L("Sadržaji u oba apartmana", "In both apartments")
+                  : L("Sadržaji u svim apartmanima", "In every apartment")}
+              </h3>
+              <div className="stay-amenities">
+                {property.amenities.map((a) => (
+                  <div className="stay-amenity" key={a}>
+                    <AmenityIcon label={a} />
+                    <span>{a}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </RevealSection>
       )}
 
@@ -637,17 +707,27 @@ export async function PropertyView({
         </div>
       )}
 
-      {gallery.length > 0 && (
+      {ambientGallery.length > 0 && (
         <RevealSection className="stay-section" id="galerija">
           <h2 className="stay-eyebrow">
-            <span className="stay-eyebrow-no">{eyebrowNo()}</span>{L("Galerija", "Gallery")}
+            <span className="stay-eyebrow-no">{eyebrowNo()}</span>{layout === "grand" ? L("Ambijent", "Surroundings") : L("Galerija", "Gallery")}
           </h2>
           <GalleryLightbox
-            images={gallery}
+            images={ambientGallery}
             alt={property.name}
             categories={property.imageCategories}
             fullWidth={layout === "grand"}
           />
+        </RevealSection>
+      )}
+
+      {destinationImages.length > 0 && (
+        <RevealSection className="stay-section" id="dozivite">
+          <h2 className="stay-eyebrow">
+            <span className="stay-eyebrow-no">{eyebrowNo()}</span>
+            {L("Doživite", "Experience")} {property.location}
+          </h2>
+          <GalleryLightbox images={destinationImages} alt={property.location} fullWidth />
         </RevealSection>
       )}
 
@@ -673,7 +753,7 @@ export async function PropertyView({
         </RevealSection>
       )}
 
-      {property.amenities.length > 0 && (
+      {!grandUnits && property.amenities.length > 0 && (
         <RevealSection className="stay-section stay-alt" id="sadrzaji">
           <h2 className="stay-eyebrow">
             <span className="stay-eyebrow-no">{eyebrowNo()}</span>{L("Sadržaji", "Amenities")}
@@ -813,7 +893,7 @@ export async function PropertyView({
         );
       })()}
 
-      {property.seasonalPricing.length > 0 && (
+      {!grandUnits && property.seasonalPricing.length > 0 && (
         <RevealSection className="stay-section" id="cjenik">
           <h2 className="stay-eyebrow">
             <span className="stay-eyebrow-no">{eyebrowNo()}</span>{L("Sezonski cjenik", "Seasonal pricing")}
