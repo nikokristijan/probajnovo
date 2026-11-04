@@ -26,8 +26,12 @@ function miniMondayIndex(date: Date): number {
     kartice. `now` mora doći iz currentYearMonthZagreb() (vidi lib/date.ts)
     — golo `new Date()` bi oko ponoći pokazalo pogrešan (UTC) mjesec. */
 type MiniCalProperty = {
-  id: number;
-  name: string;
+id: number;
+/** Jedinstveni ključ kad ista vikendica ima više kalendara (apartmani). */
+key?: string;
+/** Poveznica "Puni kalendar →" (zadano /admin/kalendar?property=id). */
+href?: string;
+name: string;
   blocked: { date: string; source: string }[];
 };
 
@@ -55,8 +59,9 @@ export default function OwnerMiniCalendar({
   now: Date;
 }) {
   // Plan #48: prekidač između vikendica umjesto samo prve.
-  const [activeId, setActiveId] = useState(properties[0]?.id);
-  const active = properties.find((p) => p.id === activeId) ?? properties[0];
+  const keyOf = (p: MiniCalProperty) => p.key ?? String(p.id);
+  const [activeKey, setActiveKey] = useState(properties[0] ? keyOf(properties[0]) : undefined);
+  const active = properties.find((p) => keyOf(p) === activeKey) ?? properties[0];
   if (!active) return null;
 
   const year = now.getFullYear();
@@ -81,7 +86,7 @@ export default function OwnerMiniCalendar({
           {properties.length === 1 ? ` — ${active.name}` : ""}
         </h2>
         <Link
-          href={`/admin/kalendar?property=${active.id}`}
+          href={active.href ?? `/admin/kalendar?property=${active.id}`}
           className="text-xs font-semibold text-[var(--neu-accent-ink,#b35600)]"
         >
           Puni kalendar →
@@ -91,12 +96,12 @@ export default function OwnerMiniCalendar({
         <div className="flex flex-wrap gap-1.5 mb-3" role="tablist" aria-label="Vikendica">
           {properties.map((p) => (
             <button
-              key={p.id}
+              key={keyOf(p)}
               type="button"
               role="tab"
-              aria-selected={p.id === active.id}
-              onClick={() => setActiveId(p.id)}
-              className={"owner-quicklink !text-xs !py-1 !px-3" + (p.id === active.id ? " owner-quicklink-active" : "")}
+              aria-selected={keyOf(p) === keyOf(active)}
+              onClick={() => setActiveKey(keyOf(p))}
+              className={"owner-quicklink !text-xs !py-1 !px-3" + (keyOf(p) === keyOf(active) ? " owner-quicklink-active" : "")}
             >
               {p.name}
             </button>
