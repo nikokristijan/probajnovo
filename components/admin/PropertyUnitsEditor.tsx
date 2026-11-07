@@ -1,7 +1,7 @@
 "use client";
 
 import { useActionState, useState } from "react";
-import type { PropertyDestination, PropertyUnit } from "@/lib/db/units";
+import type { PropertyDestination, PropertyTexts, PropertyUnit } from "@/lib/db/units";
 import type { SaveUnitsState } from "@/lib/actions-units";
 
 type UnitDraft = {
@@ -75,6 +75,7 @@ export default function PropertyUnitsEditor({
   action,
   initialUnits,
   initialDestination,
+  initialTexts,
   location,
   suggestedNames,
   slug,
@@ -82,12 +83,19 @@ export default function PropertyUnitsEditor({
   action: (prev: SaveUnitsState, formData: FormData) => Promise<SaveUnitsState>;
   initialUnits: PropertyUnit[];
   initialDestination: PropertyDestination | null;
+  initialTexts?: PropertyTexts;
   location: string;
   suggestedNames: string[];
   slug: string;
 }) {
   const [units, setUnits] = useState<UnitDraft[]>(() => initialUnits.map(toUnitDraft));
   const [dest, setDest] = useState<DestinationDraft>(() => toDestinationDraft(initialDestination));
+  const [texts, setTexts] = useState(() => ({
+    taglineEn: initialTexts?.taglineEn ?? "",
+    descriptionEn: initialTexts?.descriptionEn ?? "",
+    amenitiesEn: (initialTexts?.amenitiesEn ?? []).join("\n"),
+    badgesEn: (initialTexts?.badgesEn ?? []).join("\n"),
+  }));
   const [state, formAction, pending] = useActionState(action, null);
   const [jsonError, setJsonError] = useState<string | null>(null);
 
@@ -101,6 +109,7 @@ export default function PropertyUnitsEditor({
       featuresEn: u.featuresEn.split("\n"),
     })),
     destination: dest,
+    texts: { ...texts, amenitiesEn: texts.amenitiesEn.split("\n"), badgesEn: texts.badgesEn.split("\n") },
   });
 
   const setUnit = (i: number, patch: Partial<UnitDraft>) =>
@@ -314,6 +323,34 @@ export default function PropertyUnitsEditor({
         </button>
       </section>
 
+      <section className="border border-black/10 rounded-xl p-5 bg-white flex flex-col gap-4">
+        <div>
+          <h2 className="text-lg font-bold">Engleska verzija stranice (ručno)</h2>
+          <p className="text-xs text-black/55 mt-1 leading-relaxed">
+            Hrvatski tekst se upisuje gore u osnovnim poljima (slogan, opis, sadržaji, oznake). Ovdje upišite engleski tekst
+            koji se prikazuje na /en/ stranici. Prazno polje = automatski prijevod hrvatskog teksta.
+          </p>
+        </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <label className={label}>
+            Slogan (EN)
+            <input className="admin-input" value={texts.taglineEn} onChange={(e) => setTexts((t) => ({ ...t, taglineEn: e.target.value }))} />
+          </label>
+          <label className={label}>
+            Oznake / okruženje (EN), jedna po retku
+            <textarea className="admin-input" rows={2} value={texts.badgesEn} onChange={(e) => setTexts((t) => ({ ...t, badgesEn: e.target.value }))} />
+          </label>
+          <label className={label + " sm:col-span-2"}>
+            Opis objekta (EN)
+            <textarea className="admin-input" rows={7} value={texts.descriptionEn} onChange={(e) => setTexts((t) => ({ ...t, descriptionEn: e.target.value }))} />
+          </label>
+          <label className={label + " sm:col-span-2"}>
+            Sadržaji (EN), jedan po retku
+            <textarea className="admin-input" rows={6} value={texts.amenitiesEn} onChange={(e) => setTexts((t) => ({ ...t, amenitiesEn: e.target.value }))} />
+          </label>
+        </div>
+      </section>
+
       <details className="border border-black/10 rounded-xl p-4 bg-white">
         <summary className="text-xs font-semibold cursor-pointer text-black/60">Napredno: uvoz/izvoz (JSON)</summary>
         <p className="text-xs text-black/50 mt-2">Zalijepi JSON {"{ units: [...], destination: {...} }"} da odjednom popuniš polja iznad.</p>
@@ -329,7 +366,7 @@ export default function PropertyUnitsEditor({
 
       <div className="flex items-center gap-4">
         <button type="submit" disabled={pending} className="rounded-full bg-black text-white text-sm font-semibold px-5 py-2.5 disabled:opacity-50">
-          {pending ? "Spremam…" : "Spremi apartmane i destinaciju"}
+          {pending ? "Spremam…" : "Spremi apartmane, destinaciju i engleski tekst"}
         </button>
         {state && <span className={"text-sm " + (state.ok ? "text-green-700" : "text-red-700")}>{state.message}</span>}
       </div>
