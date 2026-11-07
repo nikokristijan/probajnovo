@@ -12,7 +12,7 @@ import GalleryLightbox from "@/components/GalleryLightbox";
 import StayInteractions from "@/components/StayInteractions";
 import InquiryForm from "@/components/InquiryForm";
 import AvailabilityCalendar from "@/components/AvailabilityCalendar";
-import { getPropertyExtrasSafe, listUnitBlockedDates, mergeUnitBlocked, type PropertyExtras, type PropertyUnit } from "@/lib/db/units";
+import { EMPTY_TEXTS, getPropertyExtrasSafe, listUnitBlockedDates, mergeUnitBlocked, type PropertyExtras, type PropertyUnit } from "@/lib/db/units";
 import { pickLang, stayLinks, unitFacts, unitImages } from "./stay-shared";
 
 export const revalidate = 0;
@@ -327,7 +327,7 @@ export async function PropertyView({
   // Apartmani kao zasebne podstranice (vlastite karakteristike + kalendar) i
   // sekcija "Doživite <lokacija>" — samo Grand, vidi lib/db/units.ts.
   const extras: PropertyExtras =
-    layout === "grand" ? await getPropertyExtrasSafe(property.id) : { units: [], destination: null };
+    layout === "grand" ? await getPropertyExtrasSafe(property.id) : { units: [], destination: null, texts: { ...EMPTY_TEXTS } };
   const unitPages: PropertyUnit[] = extras.units;
   const hasUnitPages = unitPages.length > 0;
   let unitRows: Awaited<ReturnType<typeof listUnitBlockedDates>> = [];
@@ -532,7 +532,10 @@ export async function PropertyView({
           )}
           <div className="stay-grand-intro-scrim" aria-hidden="true" />
           <div className="stay-grand-intro-content">
-            <div className="stay-grand-intro-loc">{property.location}</div>
+            {/* Lokacija se ne ponavlja ako je već sadržana u prvoj oznaci (npr. "Lastovo" + "Lastovo Archipelago Nature Park"). */}
+            {!(property.location && property.reviewBadges[0]?.toLowerCase().includes(property.location.trim().toLowerCase())) && (
+              <div className="stay-grand-intro-loc">{property.location}</div>
+            )}
             {property.reviewBadges.length > 0 && (
               <div className="stay-grand-intro-badges">{property.reviewBadges.join(" · ")}</div>
             )}
