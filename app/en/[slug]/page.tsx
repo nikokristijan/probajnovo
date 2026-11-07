@@ -4,6 +4,7 @@ import { redirect, notFound } from "next/navigation";
 import { getPropertyBySlug, getCompanyBySlug, getAgency } from "@/lib/db/queries";
 import { getEnglishPropertyContent, type PropertyTranslationFields } from "@/lib/translate";
 import { PropertyView } from "../../[slug]/page";
+import { enOverrides, getPropertyExtrasSafe, hasEnTexts } from "@/lib/db/units";
 
 /**
  * Prijevod je "best effort" (vidi lib/translate.ts), ali za svaki slučaj da
@@ -44,8 +45,8 @@ export async function generateMetadata({
   }
   if (!property || !property.published) return {};
 
-  const en = await safeGetEnglishPropertyContent(property);
-  const tagline = en?.tagline ?? property.tagline;
+  const [en, extras] = await Promise.all([safeGetEnglishPropertyContent(property), getPropertyExtrasSafe(property.id)]);
+  const tagline = extras.texts.taglineEn || en?.tagline || property.tagline;
   const title = `${property.name} — ${property.location}`;
   const image = property.bannerImage || property.images[0];
   const url = `https://www.probajnovo.com/en/${slug}`;
@@ -102,14 +103,15 @@ export default async function EnglishSlugPage({
   }
 
   if (property && property.published) {
-    const en = await safeGetEnglishPropertyContent(property);
-    if (!en) {
-      // Nema DeepL ključa (ili nikad nije uspio) i nema starog keša — nemamo
-      // što prikazati kao "engleski", radije vratimo gosta na hrvatsku stranicu
+    const [en, extras] = await Promise.all([safeGetEnglishPropertyContent(property), getPropertyExtrasSafe(property.id)]);
+    if (!en && !hasEnTexts(extras.texts)) {
+      // Nema DeepL ključa (ili nikad nije uspio), nema starog keša i nema ručnog
+      // engleskog teksta — radije vratimo gosta na hrvatsku stranicu
       // nego da "/en/" URL tiho prikaže hrvatski tekst.
       redirect(`/${slug}`);
     }
-    const translatedProperty = { ...property, ...en };
+    // Ručni engleski tekst (admin → "Engleska verzija stranice") ima prednost pred DeepL-om.
+    const translatedProperty = { ...property, ...(en ?? {}), ...enOverrides(extras.texts) };
     return <PropertyView property={translatedProperty} agency={agency} lang="en" />;
   }
 

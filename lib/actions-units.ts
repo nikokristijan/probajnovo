@@ -7,7 +7,7 @@ import { getAdminById, getPropertyById, hasAdminAccess } from "@/lib/db/queries"
 import {
   blockUnitDateRange,
   getPropertyExtras,
-  normalizeDestination,
+  normalizeDestination, normalizeTexts,
   normalizeUnits,
   savePropertyExtras,
   toggleUnitBlockedDate,
@@ -92,7 +92,7 @@ export async function saveUnitsAction(
   const property = await getPropertyById(propertyId);
   if (!property) return { ok: false, message: "Vikendica ne postoji." };
 
-  let parsed: { units?: unknown; destination?: unknown };
+  let parsed: { units?: unknown; destination?: unknown; texts?: unknown };
   try {
     parsed = JSON.parse(String(formData.get("payload") ?? "{}"));
   } catch {
@@ -100,7 +100,8 @@ export async function saveUnitsAction(
   }
   const units = normalizeUnits(parsed.units);
   const destination = normalizeDestination(parsed.destination);
-  await savePropertyExtras(propertyId, units, destination);
+  const texts = parsed.texts !== undefined ? normalizeTexts(parsed.texts) : undefined;
+  await savePropertyExtras(propertyId, units, destination, texts);
 
   revalidatePath(`/admin/properties/${propertyId}`);
   revalidatePath(`/${property.slug}`);

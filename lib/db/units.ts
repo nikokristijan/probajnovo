@@ -46,12 +46,24 @@ export type PropertyDestination = {
   introEn: string;
   highlights: DestinationHighlight[];
 };
-export type PropertyExtras = { units: PropertyUnit[]; destination: PropertyDestination | null };
+/**
+ * Ručni engleski tekstovi za /en/ stranicu (imaju prednost pred DeepL
+ * prijevodom). Prazno polje = koristi se DeepL / hrvatski izvor.
+ */
+export type PropertyTexts = {
+  taglineEn: string;
+  descriptionEn: string;
+  amenitiesEn: string[];
+  badgesEn: string[];
+};
+export const EMPTY_TEXTS: PropertyTexts = { taglineEn: "", descriptionEn: "", amenitiesEn: [], badgesEn: [] };
+export type PropertyExtras = { units: PropertyUnit[]; destination: PropertyDestination | null; texts: PropertyTexts };
 
 export const propertyExtras = pgTable("property_extras", {
   propertyId: integer("property_id").primaryKey(),
   units: jsonb("units").$type<PropertyUnit[]>().notNull().default([]),
   destination: jsonb("destination").$type<PropertyDestination | null>(),
+  texts: jsonb("texts").$type<PropertyTexts | null>(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
 
@@ -78,6 +90,7 @@ function ensureUnitTables(): Promise<void> {
           updated_at TIMESTAMP NOT NULL DEFAULT now()
         )
       `);
+      await db.execute(sql`ALTER TABLE property_extras ADD COLUMN IF NOT EXISTS texts JSONB`);
       await db.execute(sql`
         CREATE TABLE IF NOT EXISTS property_unit_blocked_dates (
           id SERIAL PRIMARY KEY,
@@ -182,6 +195,31 @@ export function normalizeDestination(raw: unknown): PropertyDestination | null {
   return d.intro || d.highlights.length > 0 || d.title ? d : null;
 }
 
+export function normalizeTexts(raw: unknown): PropertyTexts {
+  if (!raw || typeof raw !== "object") return { ...EMPTY_TEXTS };
+  const r = raw as Record<string, unknown>;
+  return {
+    taglineEn: str(r.taglineEn, 300),
+    descriptionEn: str(r.descriptionEn, 8000),
+    amenitiesEn: lines(r.amenitiesEn),
+    badgesEn: lines(r.badgesEn),
+  };
+}
+
+export function hasEnTexts(t: PropertyTexts): boolean {
+  return Boolean(t.taglineEn || t.descriptionEn || t.amenitiesEn.length || t.badgesEn.length);
+}
+
+/** Polja vikendice koja ručni engleski tekst zamjenjuje (samo ona koja su upisana). */
+export function enOverrides(t: PropertyTexts): { tagline?: string; description?: string; amenities?: string[]; reviewBadges?: string[] } {
+  const o: { tagline?: string; description?: string; amenities?: string[]; reviewBadges?: string[] } = {};
+  if (t.taglineEn) o.tagline = t.taglineEn;
+  if (t.descriptionEn) o.description = t.descriptionEn;
+  if (t.amenitiesEn.length) o.amenities = t.amenitiesEn;
+  if (t.badgesEn.length) o.reviewBadges = t.badgesEn;
+  return o;
+}
+
 /* ------------------------------------------------------------------ */
 /* Čitanje / spremanje                                                  */
 /* ------------------------------------------------------------------ */
@@ -190,8 +228,8 @@ export async function getPropertyExtras(propertyId: number): Promise<PropertyExt
   await ensureUnitTables();
   const rows = await db.select().from(propertyExtras).where(eq(propertyExtras.propertyId, propertyId)).limit(1);
   const row = rows[0];
-  if (!row) return { units: [], destination: null };
-  return { units: normalizeUnits(row.units), destination: normalizeDestination(row.destination) };
+  if (!row) return { units: [], destination: null, texts: { ...EMPTY_TEXTS } };
+  return { units: normalizeUnits(row.units), destination: normalizeDestination(row.destination), texts: normalizeTexts(row.texts) };
 }
 
 /** Best-effort inačica za javne stranice — greška baze nikad ne smije srušiti stranicu gostu. */
@@ -200,22 +238,24 @@ export async function getPropertyExtrasSafe(propertyId: number): Promise<Propert
     return await getPropertyExtras(propertyId);
   } catch (err) {
     console.error("[getPropertyExtrasSafe] nije uspio:", err);
-    return { units: [], destination: null };
+    return { units: [], destination: null, texts: { ...EMPTY_TEXTS } };
   }
 }
 
 export async function savePropertyExtras(
   propertyId: number,
   units: PropertyUnit[],
-  destination: PropertyDestination | null
+  destination: PropertyDestination | null,
+  texts?: PropertyTexts
 ) {
   await ensureUnitTables();
+  const extra = texts ? { texts } : {};
   await db
     .insert(propertyExtras)
-    .values({ propertyId, units, destination, updatedAt: new Date() })
+    .values({ propertyId, units, destination, ...extra, updatedAt: new Date() })
     .onConflictDoUpdate({
       target: propertyExtras.propertyId,
-      set: { units, destination, updatedAt: new Date() },
+      set: { units, destination, ...extra, updatedAt: new Date() },
     });
 }
 
