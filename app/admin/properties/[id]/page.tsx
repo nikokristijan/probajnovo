@@ -59,6 +59,7 @@ const suggestedNames = [
       action={saveUnitsAction.bind(null, numericId)}
       initialUnits={extras.units}
       initialDestination={extras.destination}
+      initialTexts={extras.texts}
       location={property.location}
       suggestedNames={suggestedNames.length >= 2 ? suggestedNames : []}
       slug={property.slug}
