@@ -7,6 +7,8 @@ import type { SaveUnitsState } from "@/lib/actions-units";
 type UnitDraft = {
   slug: string;
   name: string;
+  label: string;
+  labelEn: string;
   sizeM2: string;
   guests: string;
   bedrooms: string;
@@ -24,6 +26,8 @@ function toUnitDraft(u: PropertyUnit): UnitDraft {
   return {
     slug: u.slug,
     name: u.name,
+    label: u.label ?? "",
+    labelEn: u.labelEn ?? "",
     sizeM2: u.sizeM2 != null ? String(u.sizeM2) : "",
     guests: u.guests != null ? String(u.guests) : "",
     bedrooms: u.bedrooms != null ? String(u.bedrooms) : "",
@@ -40,6 +44,8 @@ function emptyUnit(name = ""): UnitDraft {
   return {
     slug: "",
     name,
+    label: "",
+    labelEn: "",
     sizeM2: "",
     guests: "",
     bedrooms: "",
@@ -95,6 +101,10 @@ export default function PropertyUnitsEditor({
     descriptionEn: initialTexts?.descriptionEn ?? "",
     amenitiesEn: (initialTexts?.amenitiesEn ?? []).join("\n"),
     badgesEn: (initialTexts?.badgesEn ?? []).join("\n"),
+    quote: initialTexts?.quote ?? "",
+    quoteEn: initialTexts?.quoteEn ?? "",
+    quoteBy: initialTexts?.quoteBy ?? "",
+    quoteKicker: initialTexts?.quoteKicker ?? "",
   }));
   const [state, formAction, pending] = useActionState(action, null);
   const [jsonError, setJsonError] = useState<string | null>(null);
@@ -136,6 +146,8 @@ export default function PropertyUnitsEditor({
               descriptionEn: u.descriptionEn ?? "",
               icalUrl: u.icalUrl ?? "",
               slug: u.slug ?? "",
+              label: u.label ?? "",
+              labelEn: u.labelEn ?? "",
             })
           )
         );
@@ -197,6 +209,17 @@ export default function PropertyUnitsEditor({
                 <input className="admin-input" value={u.slug} placeholder="apartman-1" onChange={(e) => setUnit(i, { slug: e.target.value })} />
               </label>
             </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <label className={label}>
+                Naziv za prikaz (HR) — prazno = Naziv
+                <input className="admin-input" value={u.label} placeholder="npr. Duka & Piko apartmani 1" onChange={(e) => setUnit(i, { label: e.target.value })} />
+              </label>
+              <label className={label}>
+                Naziv za prikaz (EN) — prazno = Naziv
+                <input className="admin-input" value={u.labelEn} placeholder="npr. Duka & Piko Apartments 1" onChange={(e) => setUnit(i, { labelEn: e.target.value })} />
+              </label>
+            </div>
+            <p className="text-xs text-black/50 -mt-1">„Naziv” povezuje apartman sa sezonskim cjenikom i kategorijom fotografija, pa ga ne mijenjajte bez potrebe — za drugačiji prikaz koristite polja iznad.</p>
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
               <label className={label}>
                 Površina (m²)
@@ -347,6 +370,31 @@ export default function PropertyUnitsEditor({
           <label className={label + " sm:col-span-2"}>
             Sadržaji (EN), jedan po retku
             <textarea className="admin-input" rows={6} value={texts.amenitiesEn} onChange={(e) => setTexts((t) => ({ ...t, amenitiesEn: e.target.value }))} />
+          </label>
+        </div>
+      </section>
+
+      <section className="border border-black/10 rounded-xl p-5 bg-white flex flex-col gap-4">
+        <div>
+          <h2 className="text-lg font-bold">Citat na sredini stranice</h2>
+          <p className="text-xs text-black/55 mt-1 leading-relaxed">Prikazuje se umjesto ponovljenog slogana. Prazno = slogan kao i dosad.</p>
+        </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <label className={label}>
+            Natpis iznad citata (npr. LASTOVO · PASADUR)
+            <input className="admin-input" value={texts.quoteKicker} onChange={(e) => setTexts((t) => ({ ...t, quoteKicker: e.target.value }))} />
+          </label>
+          <label className={label}>
+            Autor citata
+            <input className="admin-input" value={texts.quoteBy} onChange={(e) => setTexts((t) => ({ ...t, quoteBy: e.target.value }))} />
+          </label>
+          <label className={label}>
+            Citat (HR)
+            <textarea className="admin-input" rows={2} value={texts.quote} onChange={(e) => setTexts((t) => ({ ...t, quote: e.target.value }))} />
+          </label>
+          <label className={label}>
+            Citat (EN)
+            <textarea className="admin-input" rows={2} value={texts.quoteEn} onChange={(e) => setTexts((t) => ({ ...t, quoteEn: e.target.value }))} />
           </label>
         </div>
       </section>
