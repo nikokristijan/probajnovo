@@ -25,6 +25,11 @@ export type PropertyUnit = {
   /** Puni naziv — isti kao naziv ispred zagrade u sezonskom cjeniku i kao
       kategorija slika u galeriji (tako se povezuju cijene i fotografije). */
   name: string;
+  /** Naziv za prikaz na hrvatskoj / engleskoj stranici (prazno = name). `name`
+      ostaje ključ za cjenik i kategorije slika, pa se ovim nazivom može
+      mijenjati prikaz bez diranja cijena i fotografija. */
+  label: string;
+  labelEn: string;
   sizeM2: number | null;
   guests: number | null;
   bedrooms: number | null;
@@ -55,8 +60,13 @@ export type PropertyTexts = {
   descriptionEn: string;
   amenitiesEn: string[];
   badgesEn: string[];
+  /** Citat na sredini stranice (umjesto ponavljanja slogana). Prazno = slogan. */
+  quote: string;
+  quoteEn: string;
+  quoteBy: string;
+  quoteKicker: string;
 };
-export const EMPTY_TEXTS: PropertyTexts = { taglineEn: "", descriptionEn: "", amenitiesEn: [], badgesEn: [] };
+export const EMPTY_TEXTS: PropertyTexts = { taglineEn: "", descriptionEn: "", amenitiesEn: [], badgesEn: [], quote: "", quoteEn: "", quoteBy: "", quoteKicker: "" };
 export type PropertyExtras = { units: PropertyUnit[]; destination: PropertyDestination | null; texts: PropertyTexts };
 
 export const propertyExtras = pgTable("property_extras", {
@@ -161,6 +171,8 @@ export function normalizeUnits(raw: unknown): PropertyUnit[] {
     out.push({
       slug,
       name,
+      label: str(r.label, 120),
+      labelEn: str(r.labelEn, 120),
       sizeM2: int(r.sizeM2),
       guests: int(r.guests),
       bedrooms: int(r.bedrooms),
@@ -203,6 +215,10 @@ export function normalizeTexts(raw: unknown): PropertyTexts {
     descriptionEn: str(r.descriptionEn, 8000),
     amenitiesEn: lines(r.amenitiesEn),
     badgesEn: lines(r.badgesEn),
+    quote: str(r.quote, 400),
+    quoteEn: str(r.quoteEn, 400),
+    quoteBy: str(r.quoteBy, 120),
+    quoteKicker: str(r.quoteKicker, 120),
   };
 }
 
