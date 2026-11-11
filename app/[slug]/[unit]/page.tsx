@@ -4,7 +4,7 @@ import { getPropertyBySlug, getAgency, recordPageView } from "@/lib/db/queries";
 import { getPropertyExtrasSafe } from "@/lib/db/units";
 import { todayDateStringZagreb } from "@/lib/date";
 import { UnitView } from "../UnitView";
-import { stayLinks, unitFacts } from "../stay-shared";
+import { stayLinks, unitFacts, unitLabel } from "../stay-shared";
 
 export const revalidate = 0;
 
@@ -22,7 +22,7 @@ export async function generateMetadata({ params }: { params: Promise<Params> }):
   const { units } = await getPropertyExtrasSafe(property.id);
   const unit = units.find((u) => u.slug === unitSlug);
   if (!unit) return {};
-  const title = `${unit.name} — ${property.location}`;
+  const title = `${unitLabel(unit, "hr")} — ${property.location}`;
   const description = [unitFacts(unit, "hr").join(" · "), property.tagline].filter(Boolean).join(" — ");
   const url = `https://www.probajnovo.com/${slug}/${unit.slug}`;
   const image = property.bannerImage || property.images[0];
@@ -35,7 +35,7 @@ export async function generateMetadata({ params }: { params: Promise<Params> }):
       canonical: url,
       languages: { hr: url, en: `https://www.probajnovo.com/en/${slug}/${unit.slug}`, "x-default": url },
     },
-    openGraph: { title, description, url, siteName: "NOVO", locale: "hr_HR", type: "website", images: image ? [{ url: image, alt: unit.name }] : [] },
+    openGraph: { title, description, url, siteName: "NOVO", locale: "hr_HR", type: "website", images: image ? [{ url: image, alt: unitLabel(unit, "hr") }] : [] },
   };
 }
 
