@@ -4,7 +4,7 @@ import { getPropertyBySlug, getAgency } from "@/lib/db/queries";
 import { getPropertyExtrasSafe } from "@/lib/db/units";
 import { getEnglishPropertyContent } from "@/lib/translate";
 import { UnitView } from "../../../[slug]/UnitView";
-import { stayLinks, unitFacts } from "../../../[slug]/stay-shared";
+import { stayLinks, unitFacts, unitLabel } from "../../../[slug]/stay-shared";
 
 export const revalidate = 0;
 
@@ -22,7 +22,7 @@ export async function generateMetadata({ params }: { params: Promise<Params> }):
   const { units } = await getPropertyExtrasSafe(property.id);
   const unit = units.find((u) => u.slug === unitSlug);
   if (!unit) return {};
-  const title = `${unit.name} — ${property.location}`;
+  const title = `${unitLabel(unit, "en")} — ${property.location}`;
   const url = `https://www.probajnovo.com/en/${slug}/${unit.slug}`;
   return {
     title,

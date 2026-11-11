@@ -13,7 +13,7 @@ import StayInteractions from "@/components/StayInteractions";
 import InquiryForm from "@/components/InquiryForm";
 import AvailabilityCalendar from "@/components/AvailabilityCalendar";
 import { EMPTY_TEXTS, getPropertyExtrasSafe, listUnitBlockedDates, mergeUnitBlocked, type PropertyExtras, type PropertyUnit } from "@/lib/db/units";
-import { pickLang, stayLinks, unitFacts, unitImages } from "./stay-shared";
+import { pickLang, stayLinks, unitFacts, unitImages, unitLabel } from "./stay-shared";
 
 export const revalidate = 0;
 
@@ -712,11 +712,11 @@ export async function PropertyView({
                   <Link className="stay-unit-card2" href={links.unit(u.slug)} key={u.slug}>
                     {cover && (
                       <div className="stay-unit-card2-media">
-                        <Image src={cover} alt={u.name} fill sizes="(min-width: 900px) 50vw, 100vw" />
+                        <Image src={cover} alt={unitLabel(u, lang)} fill sizes="(min-width: 900px) 50vw, 100vw" />
                       </div>
                     )}
                     <div className="stay-unit-card2-body">
-                      <h3>{u.name}</h3>
+                      <h3>{unitLabel(u, lang)}</h3>
                       <p className="stay-unit-facts">{unitFacts(u, lang).join(" · ")}</p>
                       <span className="stay-unit-more">{L("Pogledajte apartman", "View apartment")} →</span>
                     </div>
@@ -771,7 +771,15 @@ export async function PropertyView({
       {(layout === "editorial" || layout === "grand") && (
         <div className="stay-pullquote">
           <RevealSection>
-            <blockquote>“{property.tagline}”</blockquote>
+            {extras.texts.quote ? (
+              <figure className="stay-pullquote-fig">
+                {extras.texts.quoteKicker && <figcaption className="stay-pullquote-kicker">{extras.texts.quoteKicker}</figcaption>}
+                <blockquote lang={lang === "en" && extras.texts.quoteEn ? "en" : "hr"}>{pickLang(lang, extras.texts.quote, extras.texts.quoteEn)}</blockquote>
+                {extras.texts.quoteBy && <figcaption className="stay-pullquote-by">— {extras.texts.quoteBy}</figcaption>}
+              </figure>
+            ) : (
+              <blockquote>“{property.tagline}”</blockquote>
+            )}
           </RevealSection>
         </div>
       )}
@@ -1009,10 +1017,10 @@ export async function PropertyView({
             {unitPages.map((u) => (
               <div className="stay-units-cal" key={u.slug}>
                 <div className="stay-units-cal-head">
-                  <h3>{u.name}</h3>
+                  <h3>{unitLabel(u, lang)}</h3>
                   <Link href={links.unit(u.slug)}>{L("Detalji i cijene", "Details & prices")} →</Link>
                 </div>
-                <AvailabilityCalendar blockedDates={mergeUnitBlocked(u.slug, unitRows, blockedDates)} lang={lang} label={u.name} />
+                <AvailabilityCalendar blockedDates={mergeUnitBlocked(u.slug, unitRows, blockedDates)} lang={lang} label={unitLabel(u, lang)} />
               </div>
             ))}
           </div>

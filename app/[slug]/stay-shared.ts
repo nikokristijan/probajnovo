@@ -92,3 +92,8 @@ export function unitImages(property: Property, unit: PropertyUnit): string[] {
 export function pickLang(lang: "hr" | "en", hr: string, en: string): string {
   return lang === "en" ? en || hr : hr;
 }
+
+/** Naziv apartmana za prikaz (hrvatski / engleski), s `name` kao rezervom. */
+export function unitLabel(unit: PropertyUnit, lang: "hr" | "en"): string {
+  return pickLang(lang, unit.label || unit.name, unit.labelEn || unit.name);
+}
