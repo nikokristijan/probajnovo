@@ -10,7 +10,7 @@ import StayInteractions from "@/components/StayInteractions";
 import InquiryForm from "@/components/InquiryForm";
 import AvailabilityCalendar from "@/components/AvailabilityCalendar";
 import { AmenityIcon, NavBrand, whatsAppNumber } from "./page";
-import { pickLang, stayLinks, unitFacts, unitImages, unitPriceRows } from "./stay-shared";
+import { pickLang, stayLinks, unitFacts, unitImages, unitLabel, unitPriceRows } from "./stay-shared";
 
 /**
  * Podstranica jednog apartmana (/[slug]/[unit], /en/[slug]/[unit]) — vlastite
@@ -54,10 +54,10 @@ export async function UnitView({
 
   const accentStyle = { "--accent": property.accentColor } as React.CSSProperties;
   const contactEmail = property.contactEmail || agency?.contactEmail || "hello@novo.studio";
-  const mailHref = `mailto:${contactEmail}?subject=${encodeURIComponent(`Upit — ${unit.name}`)}`;
+  const mailHref = `mailto:${contactEmail}?subject=${encodeURIComponent(`Upit — ${unitLabel(unit, lang)}`)}`;
   const telHref = property.phone ? `tel:${property.phone.replace(/[^\d+]/g, "")}` : null;
   const waHref = property.phone
-    ? `https://wa.me/${whatsAppNumber(property.phone)}?text=${encodeURIComponent(`Pozdrav! Imam upit za ${unit.name}.`)}`
+    ? `https://wa.me/${whatsAppNumber(property.phone)}?text=${encodeURIComponent(`Pozdrav! Imam upit za ${unitLabel(unit, lang)}.`)}`
     : null;
 
   const factRows = [
@@ -87,7 +87,7 @@ export async function UnitView({
       <section className="stay-grand-intro stay-unit-intro">
         {cover && (
           <div className="stay-grand-intro-media">
-            <Image src={cover} alt={`${unit.name} — ${property.location}`} fill sizes="100vw" priority fetchPriority="high" data-parallax />
+            <Image src={cover} alt={`${unitLabel(unit, lang)} — ${property.location}`} fill sizes="100vw" priority fetchPriority="high" data-parallax />
           </div>
         )}
         <div className="stay-grand-intro-scrim" aria-hidden="true" />
@@ -96,7 +96,7 @@ export async function UnitView({
             ← {property.name}
           </Link>
           <div className="stay-grand-intro-loc">{property.location}</div>
-          <h1 className="stay-grand-intro-mark">{unit.name}</h1>
+          <h1 className="stay-grand-intro-mark">{unitLabel(unit, lang)}</h1>
           {facts.length > 0 && <p className="stay-grand-intro-tagline">{facts.join(" · ")}</p>}
         </div>
       </section>
@@ -148,7 +148,7 @@ export async function UnitView({
             {L("Fotografije", "Photos")}
           </h2>
           <div className="stay-unit">
-            <GalleryLightbox images={images} alt={unit.name} />
+            <GalleryLightbox images={images} alt={unitLabel(unit, lang)} />
           </div>
         </RevealSection>
       )}
@@ -192,12 +192,12 @@ export async function UnitView({
       <RevealSection className="stay-section" id="dostupnost">
         <h2 className="stay-eyebrow">
           <span className="stay-eyebrow-no">{eyebrowNo()}</span>
-          {L("Dostupnost", "Availability")} — {unit.name}
+          {L("Dostupnost", "Availability")} — {unitLabel(unit, lang)}
         </h2>
         <div className="stay-unit-avail">
         <div className="stay-units-cals stay-units-cals-single">
           <div className="stay-units-cal">
-            <AvailabilityCalendar blockedDates={blocked} lang={lang} label={unit.name} />
+            <AvailabilityCalendar blockedDates={blocked} lang={lang} label={unitLabel(unit, lang)} />
           </div>
         </div>
         <div className="stay-book">
@@ -208,7 +208,7 @@ export async function UnitView({
                   {L("od", "from")} {minPrice} € <small>{L("/ noćenje", "/ night")}</small>
                 </>
               ) : (
-                unit.name
+                unitLabel(unit, lang)
               )}
             </div>
             <p>{L("Odgovaramo unutar 24h", "We reply within 24h")}</p>
@@ -245,11 +245,11 @@ export async function UnitView({
                 <Link className="stay-unit-card2" href={links.unit(o.slug)} key={o.slug}>
                   {oCover && (
                     <div className="stay-unit-card2-media">
-                      <Image src={oCover} alt={o.name} fill sizes="(min-width: 900px) 50vw, 100vw" />
+                      <Image src={oCover} alt={unitLabel(o, lang)} fill sizes="(min-width: 900px) 50vw, 100vw" />
                     </div>
                   )}
                   <div className="stay-unit-card2-body">
-                    <h3>{o.name}</h3>
+                    <h3>{unitLabel(o, lang)}</h3>
                     <p className="stay-unit-facts">{unitFacts(o, lang).join(" · ")}</p>
                     <span className="stay-unit-more">{L("Pogledajte apartman", "View apartment")} →</span>
                   </div>
@@ -291,7 +291,7 @@ export async function UnitView({
       </RevealSection>
 
       <footer className="stay-foot" data-watermark={property.name}>
-        {unit.name} · {property.location}
+        {unitLabel(unit, lang)} · {property.location}
         <div className="credit">
           {L("Stranicu pokreće", "Site by")} <Link href="/">NOVO</Link>
         </div>
